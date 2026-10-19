@@ -4076,24 +4076,52 @@ async function renderStaff() {
   view().querySelectorAll('[data-cv-x]').forEach((b) => b.addEventListener('click', async () => { if (!(await confirmBox('Cancel this cover? The session goes back to its coach.'))) return; const r = await post('cancelCover', { id: b.dataset.cvX }); toast(r.ok ? 'Cover cancelled' : r.data.error); renderStaff() }))
 }
 
-// The On The Go planner: coaches build a session on an A4 pitch page and save
-// it here. Opens in a new tab; Save in the planner lands in this list.
+// Session planners: coaches build a quick On The Go session on an A4 pitch page
+// or a Detailed (animated, multi-screen) session, and save it here. Each opens
+// in a new tab; Save in the planner lands in this list. Coaches see only their
+// own; Lee and Ligia see every coach's and can filter by coach, type and name.
+const planUi = { rows: [], coach: '', type: '', q: '' }
 async function plannerBlock(admin) {
-  const r = await post('planList')
-  const list = r.ok ? r.data.plans : []
-  const when = (iso) => new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
+  const [a, b] = await Promise.all([post('planList'), post('plan2List')])
+  planUi.rows = [
+    ...(a.ok ? a.data.plans : []).map((x) => ({ ...x, kind: 'otg' })),
+    ...(b.ok ? b.data.plans : []).map((x) => ({ ...x, kind: 'detailed' })),
+  ].sort((x, y) => String(y.savedAt).localeCompare(String(x.savedAt)))
+  const coaches = [...new Map(planUi.rows.map((x) => [x.owner, x.ownerName || x.owner])).entries()].sort((x, y) => String(x[1]).localeCompare(String(y[1])))
+  const filters = admin ? `<div class="j-two" style="margin-top:12px;gap:8px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+      <label class="j-field" style="margin:0"><span>Coach</span><select class="j-select" id="pl-coach"><option value="">All coaches (${coaches.length})</option>${coaches.map(([e, n]) => `<option value="${esc(e)}">${esc(n)}</option>`).join('')}</select></label>
+      <label class="j-field" style="margin:0"><span>Type</span><select class="j-select" id="pl-type"><option value="">All types</option><option value="detailed">Detailed</option><option value="otg">On The Go</option></select></label>
+      <label class="j-field" style="margin:0"><span>Search</span><input class="j-input" id="pl-q" type="search" placeholder="Session name" autocomplete="off"></label></div>` : ''
   return `<section class="jd-card" style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
-      <div><h2>${admin ? 'Coach sessions' : 'My sessions'}</h2><p class="sub">Build a session on the On The Go planner: drag players, cones and arrows onto the pitch, add the coaching points, then press Save in the planner.</p></div>
-      <a class="j-btn j-btn-dark" href="/jfp-planner/blank.html?new=1" target="_blank" rel="noopener">+ Create a session</a></div>
-    ${list.length ? `<ul class="jm-hist" style="margin-top:12px">${list.map((x) => `<li><span><b>${esc(x.title)}</b><small>${admin ? `${esc(x.ownerName || x.owner)} · ` : ''}saved ${esc(when(x.savedAt))}</small></span><span style="display:flex;gap:6px"><a class="j-btn j-btn-line j-btn-sm" href="/jfp-planner/blank.html?plan=${encodeURIComponent(x.id)}" target="_blank" rel="noopener">Open</a><button type="button" class="j-btn j-btn-ghost j-btn-sm" data-plan-del="${esc(x.id)}">Delete</button></span></li>`).join('')}</ul>` : '<p class="muted small" style="margin-top:12px">No saved sessions yet. Create one and it appears here.</p>'}
+      <div><h2>${admin ? 'Coach sessions' : 'My sessions'}</h2><p class="sub"><b>Detailed</b> sessions are animated and have as many screens as you need. <b>On The Go</b> is a quick A4 pitch page. Press Save in the planner and the session lands here.</p></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><a class="j-btn j-btn-dark" href="/jfp-planner/detailed.html?new=1" target="_blank" rel="noopener">+ New detailed session</a><a class="j-btn j-btn-line" href="/jfp-planner/blank.html?new=1" target="_blank" rel="noopener">+ Create a session (On The Go)</a></div></div>
+    ${filters}
+    <div id="pl-list">${planListHtml(admin)}</div>
   </section>`
 }
+function planListHtml(admin) {
+  const when = (iso) => new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
+  const q = planUi.q.trim().toLowerCase()
+  const list = planUi.rows.filter((x) => (!planUi.coach || x.owner === planUi.coach) && (!planUi.type || x.kind === planUi.type) && (!q || String(x.title).toLowerCase().includes(q)))
+  if (!planUi.rows.length) return '<p class="muted small" style="margin-top:12px">No saved sessions yet. Create one and it appears here.</p>'
+  if (!list.length) return '<p class="muted small" style="margin-top:12px">No sessions match those filters.</p>'
+  return `<ul class="jm-hist" style="margin-top:12px">${list.map((x) => {
+    const det = x.kind === 'detailed'
+    const href = det ? `/jfp-planner/detailed.html?plan=${encodeURIComponent(x.id)}` : `/jfp-planner/blank.html?plan=${encodeURIComponent(x.id)}`
+    return `<li><span><b>${esc(x.title)}</b> <span class="j-pill" style="font-size:11px;padding:1px 8px;border-radius:99px;border:1px solid var(--line,#ccc);margin-left:4px">${det ? 'Detailed' : 'On The Go'}</span><small>${admin ? `${esc(x.ownerName || x.owner)} · ` : ''}${det && x.scenes ? `${x.scenes} screen${x.scenes === 1 ? '' : 's'} · ` : ''}saved ${esc(when(x.savedAt))}</small></span><span style="display:flex;gap:6px"><a class="j-btn j-btn-line j-btn-sm" href="${href}" target="_blank" rel="noopener">Open</a><button type="button" class="j-btn j-btn-ghost j-btn-sm" data-plan-del="${esc(x.id)}" data-plan-kind="${x.kind}">Delete</button></span></li>`
+  }).join('')}</ul>`
+}
 function bindPlanner() {
-  view().querySelectorAll('[data-plan-del]').forEach((b) => b.addEventListener('click', async () => {
+  const admin = P.user.role === 'admin'
+  const bindDel = () => view().querySelectorAll('[data-plan-del]').forEach((b) => b.addEventListener('click', async () => {
     if (!(await confirmBox('Delete this session? It cannot be brought back.', { ok: 'Delete', danger: true }))) return
-    const r = await post('planDelete', { id: b.dataset.planDel })
+    const r = await post(b.dataset.planKind === 'detailed' ? 'plan2Delete' : 'planDelete', { id: b.dataset.planDel })
     toast(r.ok ? 'Deleted' : r.data.error); renderPlans()
   }))
+  const redraw = () => { const box = $('pl-list'); if (box) { box.innerHTML = planListHtml(admin); bindDel() } }
+  const hook = (id, key, ev) => { const el = $(id); if (el) { el.value = planUi[key]; el.addEventListener(ev, () => { planUi[key] = el.value; redraw() }) } }
+  hook('pl-coach', 'coach', 'change'); hook('pl-type', 'type', 'change'); hook('pl-q', 'q', 'input')
+  bindDel()
 }
 
 async function renderPlans() {

@@ -1,0 +1,3 @@
+{ "name": "jfp-detailed-planner-build", "private": true, "type": "module",
+  "dependencies": { "react": "18.3.1", "react-dom": "18.3.1", "@phosphor-icons/react": "2.1.7" },
+  "devDependencies": { "esbuild": "0.25.5" } }

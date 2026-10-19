@@ -3083,6 +3083,11 @@ async function staffAction(req, res, principal, config, body, isAdmin, action) {
     }
     return res.status(200).json({ success: true, plan: { ...summary, onTheGo: JSON.parse((await kvCommand(['GET', `jfp:otg:doc:${id}`])) || 'null') } })
   }
+  // Detailed (animated, multi-screen) session planner, ported from Teams
+  // (Lee, 19 Oct 2026). Same rule as On The Go: a coach sees and edits only
+  // their own, Lee and Ligia see every coach's. Own index and doc keys so the
+  // On The Go lists are untouched. Documents can be bigger (up to 2.5 MB).
+  if (action.startsWith('plan2')) return await detailedPlanAction(res, principal, config, body, isAdmin, action)
   if (action === 'savePlans') {
     if (!isAdmin) return fail(res, 403, 'Only Lee or Ligia edit session plans.')
     const link = (v) => (/^https:\/\//.test(v || '') ? clean(v, 500) : '')
@@ -3258,6 +3263,90 @@ export default async function handler(req, res) {
   }
 }
 
+
+// ---------- detailed session planner storage (KV) ----------
+const PLAN2_INDEX = 'jfp:plan2:index'
+const PLAN2_MAX_BYTES = 2_500_000
+const plan2Key = (id) => `jfp:plan2:doc:${id}`
+const PLAN2_ID = /^[A-Za-z0-9-]{1,80}$/
+async function plan2All() {
+  const raw = await kvCommand(['HGETALL', PLAN2_INDEX])
+  const list = []
+  for (let i = 0; i + 1 < (raw || []).length; i += 2) { try { list.push(JSON.parse(raw[i + 1])) } catch {} }
+  return list.sort((a, b) => String(b.savedAt).localeCompare(String(a.savedAt)))
+}
+function plan2Summary(plan) {
+  const first = plan.scenes?.[0]
+  const dots = (first?.objects || []).filter((o) => o && o.kind === 'player' && Number.isFinite(o.x) && Number.isFinite(o.y)).slice(0, 24).map((o) => ({ x: o.x / 1000, y: o.y / 640, c: /^#[0-9a-f]{6}$/i.test(o.color || '') ? o.color : '#e8000d' }))
+  return { scenes: plan.scenes.length, preview: { dots }, videoUrl: /^https:\/\//.test(plan.videoUrl || '') ? clean(plan.videoUrl, 300) : '' }
+}
+async function detailedPlanAction(res, principal, config, body, isAdmin, action) {
+  const myCoachId = principal.coachId || config.coaches.find((c) => c.email && c.email === principal.email)?.id || ''
+  const isLeeLib = (r) => (config.superAdmins || []).includes(r.owner)
+  const visible = (r) => isAdmin || r.owner === principal.email
+  if (action === 'plan2List') {
+    const plans = (await plan2All()).filter(visible).map((r) => ({ ...r, updatedAt: r.savedAt, savedBy: isAdmin ? (r.ownerName || r.owner) : undefined }))
+    return res.status(200).json({ success: true, plans })
+  }
+  if (action === 'plan2Library') {
+    // Lee's own saved detailed sessions, readable by every signed-in coach.
+    const academy = (await plan2All()).filter(isLeeLib).map((r) => ({ id: r.id, title: r.title, scenes: r.scenes, preview: r.preview, videoUrl: r.videoUrl, updatedAt: r.savedAt }))
+    return res.status(200).json({ success: true, academy, club: [], isManager: false })
+  }
+  if (action === 'plan2Save') {
+    const plan = body.plan
+    if (!plan || typeof plan !== 'object' || typeof plan.title !== 'string' || !Array.isArray(plan.scenes) || !plan.scenes.length) return fail(res, 400, 'Nothing to save.')
+    const text = JSON.stringify(plan)
+    if (text.length > PLAN2_MAX_BYTES) return fail(res, 413, 'This session is too big to save (over 2.5 MB). Remove a video link or some scenes and try again.')
+    const wanted = body.id ? clean(body.id, 80) : ''
+    let existing = null
+    if (wanted && PLAN2_ID.test(wanted)) {
+      existing = JSON.parse((await kvCommand(['HGET', PLAN2_INDEX, wanted])) || 'null')
+      if (existing && !visible(existing)) existing = null // never overwrite someone else's: make a new one
+    }
+    const id = existing?.id || newId('DET')
+    const now = new Date().toISOString()
+    const record = {
+      id, kind: 'detailed', title: clean(plan.title, 140) || 'Detailed session',
+      owner: existing?.owner || principal.email, ownerName: existing?.ownerName || principal.name, coachId: existing ? existing.coachId : myCoachId,
+      savedAt: now, createdAt: existing?.createdAt || now, bytes: text.length, ...plan2Summary(plan),
+    }
+    await kvCommand(['SET', plan2Key(id), text])
+    await kvCommand(['HSET', PLAN2_INDEX, id, JSON.stringify(record)])
+    await audit({ by: principal.email, action: 'plan2.save', target: id, after: { name: record.title, scenes: record.scenes } })
+    return res.status(200).json({ success: true, id, plan: record })
+  }
+  if (action === 'plan2Use') {
+    // Copy one of Lee's library sessions into the signed-in coach's own list.
+    const sourceId = clean(body.planId, 80)
+    const src = PLAN2_ID.test(sourceId) ? JSON.parse((await kvCommand(['HGET', PLAN2_INDEX, sourceId])) || 'null') : null
+    if (!src || !isLeeLib(src)) return fail(res, 404, 'Session not found.')
+    const text = await kvCommand(['GET', plan2Key(sourceId)])
+    if (!text) return fail(res, 404, 'Session not found.')
+    const id = newId('DET'), now = new Date().toISOString()
+    const record = { ...src, id, title: clean(`${src.title} (copy)`, 140), owner: principal.email, ownerName: principal.name, coachId: myCoachId, savedAt: now, createdAt: now, copiedFrom: sourceId }
+    await kvCommand(['SET', plan2Key(id), text])
+    await kvCommand(['HSET', PLAN2_INDEX, id, JSON.stringify(record)])
+    await audit({ by: principal.email, action: 'plan2.copy', target: id, after: { name: record.title, from: sourceId } })
+    return res.status(200).json({ success: true, id })
+  }
+  // plan2Get / plan2Delete
+  const id = clean(body.id, 80)
+  const summary = PLAN2_ID.test(id) ? JSON.parse((await kvCommand(['HGET', PLAN2_INDEX, id])) || 'null') : null
+  const libraryRead = action === 'plan2Get' && summary && isLeeLib(summary)
+  if (!summary || (!visible(summary) && !libraryRead)) return fail(res, 404, 'Session not found.')
+  if (action === 'plan2Delete') {
+    if (!visible(summary)) return fail(res, 404, 'Session not found.')
+    await kvCommand(['DEL', plan2Key(id)])
+    await kvCommand(['HDEL', PLAN2_INDEX, id])
+    await audit({ by: principal.email, action: 'plan2.delete', target: id, after: { name: summary.title } })
+    return res.status(200).json({ success: true })
+  }
+  const doc = JSON.parse((await kvCommand(['GET', plan2Key(id)])) || 'null')
+  if (!doc) return fail(res, 404, 'Session not found.')
+  return res.status(200).json({ success: true, plan: doc, meta: summary })
+}
+
 async function handle(req, res) {
   res.setHeader('Cache-Control', 'no-store')
   res.setHeader('X-Content-Type-Options', 'nosniff')
@@ -3284,7 +3373,7 @@ async function handle(req, res) {
     if (action === 'coachPhoto') return await saveCoachPhoto(res, principal, config, body, isAdmin)
     if (INVOICE_ACTIONS.has(action)) return await invoiceAction(res, principal, config, body, action, { isAdmin, myCoachId: principal.coachId || config.coaches.find((c) => c.email && c.email === principal.email)?.id || '', listCovers })
     if (HOURS_ACTIONS.has(action)) return await hoursAction(res, principal, config, body, action, { isAdmin, myCoachId: principal.coachId || config.coaches.find((c) => c.email && c.email === principal.email)?.id || '', listCovers })
-    if (['ideasGet', 'ideasSave', 'ideasApp', 'staffOverview', 'staffAlerts', 'requestCover', 'cancelCover', 'declineCover', 'requestSwap', 'answerSwap', 'cancelTimeOff', 'requestTimeOff', 'decideTimeOff', 'savePlans', 'planList', 'planSave', 'planGet', 'planDelete'].includes(action)) return await staffAction(req, res, principal, config, body, isAdmin, action)
+    if (['ideasGet', 'ideasSave', 'ideasApp', 'staffOverview', 'staffAlerts', 'requestCover', 'cancelCover', 'declineCover', 'requestSwap', 'answerSwap', 'cancelTimeOff', 'requestTimeOff', 'decideTimeOff', 'savePlans', 'planList', 'planSave', 'planGet', 'planDelete', 'plan2List', 'plan2Save', 'plan2Get', 'plan2Delete', 'plan2Library', 'plan2Use'].includes(action)) return await staffAction(req, res, principal, config, body, isAdmin, action)
 
     if (action === 'cancellations') return await cancellationsData(res, principal, config, body, isAdmin)
     if (action === 'cancelAlerts') return await cancelAlerts(res, principal, config, isAdmin)
