@@ -2194,6 +2194,15 @@ async function searchPlayers(config, body) {
   for (const x of removedMatches(await removedPlayers(config, { roster }), q)) add(`${normName(x.name)}|${x.email}`, x)
   for (const r of roster.term3) if (normName(r.player).includes(q)) add(`${normName(r.player)}|${r.emails[0] || ''}`, { name: r.player, parentName: r.parent, email: r.emails[0] || '', mobile: r.phone, dob: r.dob, age: ageOn(r.dob, config.termStart), source: `Term 3${r.day ? `, ${r.day} ${r.time}` : ''}` })
   for (const w of roster.waivers) if (normName(w.player).includes(q)) add(`${normName(w.player)}|${w.email}`, { name: w.player, parentName: w.parent, email: w.email, mobile: w.mobile, dob: w.dob, age: ageOn(w.dob, config.termStart), source: `Waiver ${w.term || ''}`.trim() })
+  // The Players master (Lee, 19 Oct 2026): every player we have ever held, with the details we kept,
+  // so a returning player is added with everything filled in and can be sent their login.
+  try {
+    for (const m of await allProfiles()) {
+      if (!normName(m.name).includes(q)) continue
+      const email = m.emails[0] || ''
+      add(`${normName(m.name)}|${email}`, { name: m.name, parentName: m.parentName, email, mobile: m.parentMobile, dob: m.dob, age: ageOn(m.dob, config.termStart), source: 'Past player (kept details)' })
+    }
+  } catch (e) { console.error('jfp master search failed', e) }
   return [...seen.values()].slice(0, 12).map((p) => ({ ...p, waiver: Boolean(waiverFor(p.name, { emails: [p.email], phones: [p.mobile] }, roster.waivers)) }))
 }
 
