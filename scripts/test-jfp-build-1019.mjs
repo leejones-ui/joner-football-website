@@ -243,5 +243,18 @@ await test('players across terms and JF Master Players: Lee only, never a phone 
   assert.equal((await portal(lee, 'playersHistory', { term: 'nope' })).status, 400)
 })
 
+await test('the public booking page lists public extra sessions in the next 7 days, no coach, no price, no private ones', async () => {
+  const c = client()
+  await c.call('/api/jfp-access', { password: 'term4' })
+  const g = await c.call('/api/jfp-groups')
+  assert.equal(g.status, 200, JSON.stringify(g.data).slice(0, 200))
+  const ids = new Set(MANY.map((x) => x.id))
+  assert.equal(g.data.extras.filter((x) => ids.has(x.id)).length, 4)
+  assert.ok(!/coach|price|A\$|private|token/i.test(JSON.stringify(g.data.extras)), JSON.stringify(g.data.extras[0]))
+  const later = await ok(sam, 'extraSave', { slot: { date: day(12), time: '4:00pm', capacity: 2, location: 'Belrose HQ', priceId: (await ok(sam, 'extraList')).prices[0].id, visibility: 'public' } })
+  const g2 = await c.call('/api/jfp-groups')
+  assert.ok(!g2.data.extras.some((x) => x.id === later.slot.id), 'more than a week away is not shown yet')
+})
+
 console.log(`${passed} passed`)
 process.exit(0)

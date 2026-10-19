@@ -745,3 +745,15 @@ body.has-picks .j-toast { bottom: calc(92px + env(safe-area-inset-bottom)); }
   .jp-modal-foot .j-btn { white-space: normal; padding-left: 10px; padding-right: 10px; }
   .jp-modal-foot > span > .j-btn, .jp-modal-foot > .j-btn:last-child { flex: 1; }
 }
+
+/* Extra sessions this week on the booking page (Lee, 19 Oct 2026). */
+.j-extras { margin: 0 0 22px; }
+.j-extras .j-hint { margin: -4px 0 10px; }
+.j-extras-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.j-extra { display: flex; flex-direction: column; gap: 3px; min-height: 44px; padding: 14px 16px; border: 1.5px solid var(--j-line); border-radius: var(--j-radius); background: var(--j-surface); color: inherit; text-decoration: none; transition: border-color .12s; }
+.j-extra:hover, .j-extra:focus-visible { border-color: var(--j-ink, currentColor); }
+.j-extra b { font-size: 15px; }
+.j-extra span { font-size: 13px; opacity: .8; }
+.j-extra .left { color: var(--j-green, #15803d); opacity: 1; font-weight: 600; }
+.j-extra .is-full, .j-extra.is-full .left { color: var(--j-muted, #6b7280); }
+.j-extra.is-full { opacity: .7; }

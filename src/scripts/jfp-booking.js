@@ -80,10 +80,24 @@ async function load(quiet) {
   if (!r.ok) { if (!quiet) $('results').innerHTML = `<div class="j-empty">${esc(r.data.error || 'Could not load the timetable. Try again in a minute.')}</div>`; return }
   S.data = r.data
   renderMeta()
+  renderExtras()
   renderFilters()
   renderLocations()
   renderResults()
   renderPicks()
+}
+
+// Extra sessions in the next 7 days (Lee, 19 Oct 2026): booked in My account.
+function renderExtras() {
+  const box = $('extras-week')
+  const list = S.data.extras || []
+  box.hidden = !list.length
+  if (!list.length) { box.innerHTML = ''; return }
+  box.innerHTML = `<section class="j-extras" aria-labelledby="extras-h">
+    <h2 class="j-step" id="extras-h">Extra sessions this week</h2>
+    <p class="j-hint">One off sessions on top of the term. Sign in to book.</p>
+    <div class="j-extras-list">${list.map((x) => `<a class="j-extra${x.full ? ' is-full' : ''}" href="/jfp-account/#extra"><b>${esc(x.dateLabel)}, ${esc(x.time)}</b><span>${esc(x.label)} · ${esc(String(x.durationMin))} min · ${esc(x.location)}</span><span class="${x.full ? 'is-full' : 'left'}">${x.full ? 'Full' : `${x.placesLeft} place${x.placesLeft === 1 ? '' : 's'} left`}</span></a>`).join('')}</div>
+  </section>`
 }
 
 // ---------- top of page ----------
