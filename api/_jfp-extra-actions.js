@@ -8,11 +8,12 @@ import { createPlayerCharge, cancelCharge, listCharges } from './_jfp-charges.js
 import { profileKey } from './_jfp-profiles.js'
 import { siteUrl } from './_holiday-store.js'
 import { queueAnnounce, announceSettings } from './_jfp-extra-announce.js'
+import { coachAsks, replyExtra, coachAskView } from './_jfp-extras.js'
 import {
   allSlots, getSlot, saveSlot, cancelSlot, reserveExtraPlace, setBookingCharge, liveBookings, removeBooking, markBooking, marksFor, staffView, extraMinutes, cleanExtraPrices, newExtraPrice,
 } from './_jfp-extra.js'
 
-export const EXTRA_ACTIONS = new Set(['extraList', 'extraSave', 'extraSaveMany', 'extraCancel', 'extraAttach', 'extraRemove', 'extraMark', 'extraSearch', 'extraPrices', 'extraAnnounce'])
+export const EXTRA_ACTIONS = new Set(['extraList', 'extraSave', 'extraSaveMany', 'extraCancel', 'extraAttach', 'extraRemove', 'extraMark', 'extraSearch', 'extraPrices', 'extraAnnounce', 'extraAsks', 'extraAskReply'])
 const ok = (res, body) => res.status(200).json({ success: true, ...body })
 
 // Prices stay with Lee and Ligia (Lee, 19 Oct 2026): a coach sees the kind of
@@ -165,6 +166,22 @@ export async function extraAction(req, res, principal, config, body, action, isA
     }
     const fresh = await getSlot(s.id)
     return ok(res, { booking: out.booking, already: Boolean(out.already), chargeError, slot: forCoach(staffView(config, fresh || out.slot, await listPayreqs()), isAdmin) })
+  }
+
+  // Families' extra session requests, for every coach to take or pass (Lee, 19 Oct 2026).
+  const nameOf = (id) => coachLabel(coachById(config, id))
+  if (action === 'extraAsks') {
+    if (!principal.coachId) return ok(res, { asks: [] })
+    return ok(res, { asks: await coachAsks(principal.coachId, nameOf) })
+  }
+  if (action === 'extraAskReply') {
+    if (!principal.coachId) return no(res, 403, 'Your login is not linked to a coach yet. Ask Lee.')
+    const answer = ['take', 'pass'].includes(body.answer) ? body.answer : ''
+    const out = await replyExtra({ id: body.id, coachId: principal.coachId, answer, by: principal.email })
+    if (!out.ok) return no(res, out.status, out.error)
+    const r = out.record
+    if (out.changed) await telegramAlert(r.takenBy ? `Coach ${nameOf(principal.coachId)} will take the extra session request for ${r.player} (${r.type}${r.days?.length ? `, ${r.days.join(', ')}` : ''}). Book it in with them.` : `Coach ${nameOf(principal.coachId)} let go of the extra session request for ${r.player}. It is open again.`)
+    return ok(res, { ask: coachAskView(r, principal.coachId, nameOf) })
   }
 
   // The JFP family email on a new public session: Lee and Ligia only.

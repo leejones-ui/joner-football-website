@@ -337,6 +337,12 @@ export function normaliseConfig(input = {}) {
     // being chased the moment reminders go on.
     // Extra session prices coaches pick from (Lee and Ligia set them).
     extraPrices: cleanExtraPrices(input.extraPrices),
+    // Email JFP families on a new public extra session: off until Lee says yes (19 Oct 2026).
+    extraAnnounce: input.extraAnnounce === true,
+    // Session ideas for coaches (19 Oct 2026): null until Lee or Ligia edit the list.
+    sessionIdeas: Array.isArray(input.sessionIdeas) ? input.sessionIdeas.slice(0, 30).map((x) => ({ label: clean(x?.label, 80), url: clean(x?.url, 600), note: clean(x?.note, 240) })).filter((x) => x.label && /^https:\/\/\S+$/.test(x.url)) : null,
+    // Coach pay for invoices (19 Oct 2026): hourly rate in cents per coach id, set by Lee or Ligia.
+    coachRates: Object.fromEntries(Object.entries(input.coachRates && typeof input.coachRates === 'object' ? input.coachRates : {}).filter(([k, v]) => /^[a-z0-9-]{1,30}$/.test(k) && Number.isInteger(v) && v > 0 && v <= 100000)),
     // Invoices (Lee, 14 Oct 2026): bank details shown on an invoice only once
     // staff save them in Settings; the ABN only if one is saved. Never hardcoded.
     invoice: cleanInvoiceSettings(input.invoice),

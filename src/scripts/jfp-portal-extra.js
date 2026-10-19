@@ -56,6 +56,7 @@ export async function renderExtra(ui) {
   </div>`
   view().innerHTML = `<div class="jp-head"><div><h1>Extra sessions</h1>${psHelp('Open extra hours. Public ones show in families\' accounts to book. Private ones have their own link for a player you have booked yourself. Every payment lands against the player and you.', 'About this page')}${hours ? `<p class="muted small"><b>${esc(hours)}</b></p>` : ''}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">${admin ? `<select class="j-select" id="xs-coach" style="width:auto"><option value="">Every coach</option>${d.coaches.map((c) => `<option value="${esc(c.id)}" ${S.coachId === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>` : ''}<button type="button" class="j-btn j-btn-dark" id="xs-new">+ New extra session</button></div></div>
+    ${admin ? '' : '<div id="xs-asks"></div>'}
     ${admin ? pricesCard(d) : ''}
     ${admin ? '<div id="xs-announce"></div>' : ''}
     ${d.prices.length ? '' : `<p class="j-box j-box-amber small" style="margin-bottom:12px">${admin ? 'Add a price below first: coaches pick from your prices.' : 'Lee and Ligia have not set extra session prices yet. Ask them, then you can open sessions.'}</p>`}
@@ -83,7 +84,39 @@ export async function renderExtra(ui) {
     const cur = slotOf(slotId).marks?.[bookingId]
     const r = await post('extraMark', { slotId, bookingId, status: cur === st ? '' : st }); if (!r.ok) return toast(r.data.error); again()
   }))
-  if (admin) { bindPrices(ui, again); announceCard(ui) }
+  if (admin) { bindPrices(ui, again); announceCard(ui) } else asksCard(ui)
+}
+
+// Families asking for an extra session (Lee, 19 Oct 2026): every coach sees
+// them. Take it, or not for me. The first coach to take it has it, and Lee
+// and Ligia hear straight away. No family contact details here: Ligia books it in.
+async function asksCard(ui) {
+  const { view, post, toast } = ui
+  const el = view().querySelector('#xs-asks')
+  if (!el) return
+  const r = await post('extraAsks')
+  if (!r.ok) return
+  const asks = r.data.asks || []
+  const open = asks.filter((a) => !a.takenBy || a.takenByMe)
+  if (!open.length) { el.innerHTML = ''; return }
+  const when = (iso) => new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
+  const row = (a) => `<li data-ask="${esc(a.id)}"><span><b>${esc(a.player)}</b> <span class="muted small">asked ${esc(when(a.createdAt))}</span>
+      <small>${esc(a.type || 'Either')} · ${esc(a.days.join(', ') || 'any day')} · ${esc(a.times.join(', ') || 'any time')}${a.coach ? ` · wants ${esc(a.coach)}` : ''}</small>${a.notes ? `<small>${esc(a.notes)}</small>` : ''}</span>
+    <span style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">${a.takenByMe ? '<span class="j-pill j-pill-green">You are taking it</span><button type="button" class="j-btn j-btn-ghost j-btn-sm" data-ask-go="">Let it go</button>'
+      : a.mine === 'pass' ? '<span class="j-pill j-pill-grey">Not for you</span><button type="button" class="j-btn j-btn-ghost j-btn-sm" data-ask-go="">Undo</button>'
+      : '<button type="button" class="j-btn j-btn-dark j-btn-sm" data-ask-go="take">Take it</button><button type="button" class="j-btn j-btn-line j-btn-sm" data-ask-go="pass">Not for me</button>'}</span></li>`
+  el.innerHTML = `<div class="j-card" style="padding:14px 16px;margin-bottom:14px"><h3 style="margin-bottom:4px">Requests from families</h3>
+    <p class="muted small" style="margin-bottom:6px">Families asking for an extra session. Take it if you can coach it: Lee and Ligia hear straight away and book it in with you.</p>
+    <ul class="jm-hist">${open.map(row).join('')}</ul></div>`
+  el.querySelectorAll('[data-ask-go]').forEach((b) => b.addEventListener('click', async () => {
+    b.disabled = true
+    const id = b.closest('[data-ask]').dataset.ask
+    const res = await post('extraAskReply', { id, answer: b.dataset.askGo })
+    if (!res.ok) { toast(res.data.error); b.disabled = false; return asksCard(ui) }
+    toast(b.dataset.askGo === 'take' ? 'Taken. Lee and Ligia have been told.' : b.dataset.askGo === 'pass' ? 'Noted' : 'Done')
+    asksCard(ui)
+    ui.refreshAsks?.()
+  }))
 }
 
 // The email to JFP families when a public session opens (Lee, 19 Oct 2026).

@@ -39,6 +39,7 @@ import { telegramAlert } from './_jfp-notify.js'
 import { EXTRA_ACTIONS, extraAction } from './_jfp-extra-actions.js'
 import { ANNOUNCE_ACTIONS, announceAction } from './_jfp-announce.js'
 import { HOURS_ACTIONS, hoursAction } from './_jfp-hours.js'
+import { INVOICE_ACTIONS, invoiceAction } from './_jfp-coach-invoices.js'
 import { FAMILY_NOTE_ACTIONS, familyNoteAction } from './_jfp-family-notes.js'
 import { REPORT_ACTIONS, reportAction } from './_jfp-report-actions.js'
 import { pushFamilyNote } from './_jfp-push.js'
@@ -2599,7 +2600,7 @@ function coachSessions(config, groups, roster, coachId, date, juniors = {}, note
     return {
       id: g.id, day: g.day, time: g.time, sortTime: to24h(g.time), location: loc.name, address: loc.address, durationMin: g.durationMin,
       label: g.label, minAge: g.minAge, maxAge: g.maxAge, dates: dates.map((d) => ({ iso: d, label: dateLabel(d) })), nextDate: next,
-      players, coachName: coachLabel(me),
+      players, coachName: coachLabel(me), coachId,
     }
   })
 }
@@ -2759,6 +2760,13 @@ function coverView(c, config, groupsById) {
   return { ...c, group: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : c.groupId, coach: coachLabel(coachById(config, c.coachId)), cover: coachLabel(coachById(config, c.coverCoachId)), dateLabel: dateLabel(c.date) }
 }
 
+// What Session ideas shows until Lee or Ligia change it. Lee's training video
+// spreadsheet goes here once Lee sends the link.
+const SESSION_IDEAS = [
+  { label: 'The JF App', url: 'https://apps.apple.com/au/app/joner-football-app/id6737069275', note: 'Drills and full sessions to follow. Android: search Joner Football in Google Play.' },
+  { label: 'Joner Football on YouTube', url: 'https://www.youtube.com/@jonerfootball', note: 'Free drills, Shorts and full sessions.' },
+]
+
 async function staffAction(req, res, principal, config, body, isAdmin, action) {
   const me = principal.coachId || ''
   const groups = await listGroups()
@@ -2774,6 +2782,34 @@ async function staffAction(req, res, principal, config, body, isAdmin, action) {
       mySessions: groups.filter((g) => g.mode !== 'closed' && (isAdmin || g.coachId === me || (g.extraCoachIds || []).includes(me))).map((g) => ({ id: g.id, coachId: g.coachId, label: `${g.day} ${g.time}, ${locationFor(config, g.location).name}`, dates: sessionDates(config, g.day).filter((d) => d >= sydneyToday()).map((d) => ({ iso: d, label: dateLabel(d) })) })),
       plans,
     })
+  }
+  // Session ideas (Lee, 19 Oct 2026): where coaches go for drills. Lee and
+  // Ligia keep the list; every coach reads it.
+  if (action === 'ideasGet' || action === 'ideasSave') {
+    if (action === 'ideasSave') {
+      if (!isAdmin) return fail(res, 403, 'Only Lee or Ligia change this list.')
+      const list = (Array.isArray(body.ideas) ? body.ideas : []).slice(0, 30).map((x) => ({ label: clean(x?.label, 80), url: clean(x?.url, 600), note: clean(x?.note, 240) })).filter((x) => x.label && /^https:\/\/\S+$/.test(x.url))
+      await saveConfig({ sessionIdeas: list })
+      await audit({ by: principal.email, action: 'ideas.save', target: 'config', after: { count: list.length } })
+      return res.status(200).json({ success: true, ideas: list })
+    }
+    return res.status(200).json({ success: true, ideas: Array.isArray(config.sessionIdeas) ? config.sessionIdeas : SESSION_IDEAS, admin: isAdmin })
+  }
+  // Lee and Ligia: covers and time off asked for since they last opened Cover
+  // and time off (Lee, 19 Oct 2026: "This is key"). Time off still waiting
+  // always counts. seen: true marks it read for this person.
+  if (action === 'staffAlerts') {
+    if (!isAdmin) return res.status(200).json({ success: true, count: 0, latest: [] })
+    const seenKey = 'jfp:staff-seen'
+    const last = (await kvCommand(['HGET', seenKey, principal.email])) || ''
+    if (body.seen === true) await kvCommand(['HSET', seenKey, principal.email, new Date().toISOString()])
+    const [covers, timeOff] = await Promise.all([listCovers(), listTimeOff()])
+    const fresh = [
+      ...covers.filter((c) => c.status === 'active' && c.createdAt > last).map((c) => ({ kind: 'cover', id: c.id, at: c.createdAt, text: `${coachLabel(coachById(config, c.coachId))} covered by ${coachLabel(coachById(config, c.coverCoachId))}, ${dateLabel(c.date)}` })),
+      ...timeOff.filter((t) => t.status === 'pending').map((t) => ({ kind: 'timeoff', id: t.id, at: t.createdAt, text: `${coachLabel(coachById(config, t.coachId))} asks for time off, ${dateLabel(t.from)}${t.to !== t.from ? ` to ${dateLabel(t.to)}` : ''}` })),
+    ].sort((a, b) => String(b.at).localeCompare(String(a.at)))
+    const count = body.seen === true ? fresh.filter((x) => x.kind === 'timeoff').length : fresh.length
+    return res.status(200).json({ success: true, count, latest: fresh.slice(0, 5) })
   }
   if (action === 'requestCover') {
     const g = byId[clean(body.groupId, 80)]
@@ -3052,22 +3088,31 @@ async function handle(req, res) {
       return res.status(200).json({ success: true, user: { ...principal, coachId: myCoachId, photo: mine?.photo || '' }, coaches: isAdmin ? coachList(config) : [] })
     }
     if (action === 'coachPhoto') return await saveCoachPhoto(res, principal, config, body, isAdmin)
+    if (INVOICE_ACTIONS.has(action)) return await invoiceAction(res, principal, config, body, action, { isAdmin, myCoachId: principal.coachId || config.coaches.find((c) => c.email && c.email === principal.email)?.id || '', listCovers })
     if (HOURS_ACTIONS.has(action)) return await hoursAction(res, principal, config, body, action, { isAdmin, myCoachId: principal.coachId || config.coaches.find((c) => c.email && c.email === principal.email)?.id || '', listCovers })
-    if (['staffOverview', 'requestCover', 'cancelCover', 'requestTimeOff', 'decideTimeOff', 'savePlans', 'planList', 'planSave', 'planGet', 'planDelete'].includes(action)) return await staffAction(req, res, principal, config, body, isAdmin, action)
+    if (['ideasGet', 'ideasSave', 'staffOverview', 'staffAlerts', 'requestCover', 'cancelCover', 'requestTimeOff', 'decideTimeOff', 'savePlans', 'planList', 'planSave', 'planGet', 'planDelete'].includes(action)) return await staffAction(req, res, principal, config, body, isAdmin, action)
 
     if (action === 'cancellations') return await cancellationsData(res, principal, config, body, isAdmin)
     if (action === 'cancelAlerts') return await cancelAlerts(res, principal, config, isAdmin)
 
     if (action === 'coachSessions') {
       const coachId = isAdmin ? clean(body.coachId, 30) : principal.coachId
-      if (!coachById(config, coachId)) return fail(res, 400, 'Choose a coach.')
+      // The whole program (Lee, 19 Oct 2026): Lee and Ligia see every coach's sessions at once.
+      const all = isAdmin && coachId === 'all'
+      if (!all && !coachById(config, coachId)) return fail(res, 400, 'Choose a coach.')
       const [groups, roster, notes] = await Promise.all([listGroups(), loadRoster(), coachNotes()])
       const juniors = await juniorsFor(groups, config)
-      const sessions = coachSessions(config, groups, roster, coachId, clean(body.date, 10), juniors, notes)
+      let sessions = all
+        ? groups.flatMap((g) => coachSessions(config, [g], roster, g.coachId, clean(body.date, 10), juniors, notes))
+        : coachSessions(config, groups, roster, coachId, clean(body.date, 10), juniors, notes)
+      // A week (its Monday): each session on its day that week; no session that week, not shown.
+      const week = ISO.test(body.week || '') ? body.week : ''
+      const weekEnd = week ? new Date(Date.parse(`${week}T00:00:00Z`) + 6 * 86400000).toISOString().slice(0, 10) : ''
+      if (week) sessions = sessions.map((x) => ({ ...x, nextDate: x.dates.find((d) => d.iso >= week && d.iso <= weekEnd)?.iso || '' })).filter((x) => x.nextDate)
       // Sessions this coach is covering, and covers on their own sessions.
       const covers = (await listCovers()).filter((c) => c.status === 'active' && c.date >= sydneyToday())
       for (const s of sessions) s.coveredBy = covers.filter((c) => c.groupId === s.id).map((c) => ({ date: c.date, dateLabel: dateLabel(c.date), coach: coachLabel(coachById(config, c.coverCoachId)) }))
-      for (const c of covers.filter((x) => x.coverCoachId === coachId)) {
+      for (const c of all ? [] : covers.filter((x) => x.coverCoachId === coachId && (!week || (x.date >= week && x.date <= weekEnd)))) {
         const g = groups.find((x) => x.id === c.groupId)
         if (!g) continue
         const [s] = coachSessions(config, [{ ...g, coachId }], roster, coachId, c.date, juniors, notes)
@@ -3089,7 +3134,7 @@ async function handle(req, res) {
       }
       const trials = coachTrials(sessions, await trialFeedbackAll(), sydneyToday())
       const perWeek = sessions.reduce((t, s) => t + s.durationMin, 0)
-      return res.status(200).json({ success: true, trials, verdicts: TRIAL_VERDICTS, coach: coachLabel(coachById(config, coachId)), coachPhoto: coachList(config, false).find((c) => c.id === coachId)?.photo || '', term: config.term, sessions, hours: { perWeekMinutes: perWeek, termMinutes: perWeek * config.weeks, weeks: config.weeks } })
+      return res.status(200).json({ success: true, trials, verdicts: TRIAL_VERDICTS, coach: all ? 'Whole program' : coachLabel(coachById(config, coachId)), coachPhoto: all ? '' : coachList(config, false).find((c) => c.id === coachId)?.photo || '', all, week, term: config.term, sessions, hours: { perWeekMinutes: perWeek, termMinutes: perWeek * config.weeks, weeks: config.weeks } })
     }
 
     // A player's football information for their coach (Lee, 15 Oct 2026):

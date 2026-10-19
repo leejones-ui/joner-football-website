@@ -144,5 +144,90 @@ await test('one request per player per session: the second says already applied,
   assert.equal(reqs.length, 1)
 })
 
+await test('a family extra session request: every coach sees it, one takes it, the other cannot, Lee sees who', async () => {
+  const dean = client()
+  await signIn(dean, 'jonerfootballdean@gmail.com', 'staff')
+  const r = await acct(fam, 'requestExtra', { kind: 'extra', player: 'Ava Ashdown', days: ['Tuesday'], type: 'Either' })
+  assert.equal(r.status, 200, JSON.stringify(r.data))
+  const id = r.data.request.id
+  const seen = (await ok(sam, 'extraAsks')).asks
+  assert.ok(seen.some((a) => a.id === id), 'Sam sees it')
+  assert.ok((await ok(dean, 'extraAsks')).asks.some((a) => a.id === id), 'Dean sees it')
+  assert.equal((await ok(dean, 'extraAskReply', { id, answer: 'pass' })).ask.mine, 'pass')
+  await ok(sam, 'extraAskReply', { id, answer: 'take' })
+  const clash = await portal(dean, 'extraAskReply', { id, answer: 'take' })
+  assert.equal(clash.status, 409)
+  const admin = JSON.stringify(await ok(lee, 'requests'))
+  assert.ok(/takenBy|Sam/.test(admin))
+  await ok(sam, 'extraAskReply', { id, answer: '' })
+  await ok(dean, 'extraAskReply', { id, answer: 'take' })
+})
+
+await test('cover and time off: Lee and Ligia get a count in the portal until they open it', async () => {
+  const before = await ok(lee, 'staffAlerts', { seen: true })
+  const t = await ok(sam, 'requestTimeOff', { from: day(30), to: day(31), reason: 'Away' })
+  assert.ok(t.timeOff.id)
+  const a = await ok(lee, 'staffAlerts')
+  assert.ok(a.count >= 1 && a.latest.some((x) => x.kind === 'timeoff'))
+  assert.equal((await ok(sam, 'staffAlerts')).count, 0, 'a coach gets no admin alerts')
+  assert.ok(before.count >= 0)
+})
+
+await test('session ideas: the JF App and YouTube for coaches; only Lee or Ligia edit the list', async () => {
+  const i = await ok(sam, 'ideasGet')
+  assert.ok(i.ideas.some((x) => /apps\.apple\.com/.test(x.url)) && i.ideas.some((x) => /youtube\.com/.test(x.url)))
+  assert.equal((await portal(sam, 'ideasSave', { ideas: [] })).status, 403)
+  const sv = await ok(lee, 'ideasSave', { ideas: [...i.ideas, { label: 'Training videos', url: 'https://docs.google.com/spreadsheets/d/example', note: '' }, { label: 'Bad', url: 'http://x' }] })
+  assert.equal(sv.ideas.length, i.ideas.length + 1)
+})
+
+await test('coach invoices: built from logged hours, a covered session is flagged, hours sit on one invoice only', async () => {
+  const dates = [1, 2, 3, 4, 5, 6, 7].map((n) => day(-n))
+  const thuDate = dates.find((d) => new Date(`${d}T12:00:00Z`).getUTCDay() === 4)
+  await ok(lee, 'coachInvRate', { coachId: 'sam', dollars: 40 })
+  // The cover checks on a line: Dean covered it, Sam still claims it, Dean logged it too.
+  const { flagsFor } = await import('../api/_jfp-coach-invoices.js')
+  const line = { status: 'approved', groupId: 'G1', date: '2026-10-16', kind: 'session' }
+  const covers = [{ status: 'active', groupId: 'G1', date: '2026-10-16', coachId: 'sam', coverCoachId: 'dean' }]
+  const codes = flagsFor(line, 'sam', { covers, hours: [{ coachId: 'dean', groupId: 'G1', date: '2026-10-16', kind: 'session' }], name: (id) => id }).map((f) => f.code)
+  assert.deepEqual(codes, ['covered', 'double'])
+  assert.deepEqual(flagsFor({ ...line, kind: 'cover' }, 'max', { covers, hours: [], name: (id) => id }).map((f) => f.code), ['no-cover'])
+  const h1 = await ok(sam, 'hoursSave', { date: thuDate, start: '16:15', end: '17:15', kind: 'session', groupId: THU })
+  await ok(sam, 'hoursSave', { date: day(-2), start: '09:00', end: '10:30', kind: 'admin' })
+  const draft = await ok(sam, 'coachInvList', { from: day(-7), to: day(0) })
+  assert.equal(draft.draft.length, 2)
+  assert.ok(draft.draft.every((l) => l.flags.some((f) => f.code === 'waiting')), 'not approved yet is flagged')
+  assert.ok(!('rates' in draft), 'a coach never sees other rates')
+  const inv = (await ok(sam, 'coachInvCreate', { from: day(-7), to: day(0), abn: '12 345 678 901', payTo: 'S York' })).invoice
+  assert.equal(inv.totalMinutes, 150); assert.equal(inv.amountCents, 10000)
+  assert.match(inv.number, /^SAM-\d{3}$/)
+  assert.equal((await portal(sam, 'coachInvCreate', { from: day(-7), to: day(0) })).status, 400, 'nothing left to invoice')
+  assert.equal((await portal(sam, 'hoursSave', { id: h1.entry.id, date: thuDate, start: '16:00', end: '17:15', kind: 'session', groupId: THU })).status, 409)
+  assert.equal((await portal(sam, 'coachInvDecide', { id: inv.id, status: 'approved' })).status, 403)
+  await ok(lee, 'coachInvDecide', { id: inv.id, status: 'queried', note: 'Check Thursday' })
+  const again = await ok(sam, 'coachInvList', { from: day(-7), to: day(0) })
+  assert.equal(again.draft.length, 2, 'sent back frees the hours')
+  const inv2 = (await ok(sam, 'coachInvCreate', { from: day(-7), to: day(0) })).invoice
+  await ok(lee, 'coachInvDecide', { id: inv2.id, status: 'approved' })
+  await ok(lee, 'coachInvDecide', { id: inv2.id, status: 'paid' })
+  const list = await ok(lee, 'coachInvList', {})
+  assert.ok(list.invoices.some((x) => x.id === inv2.id && x.status === 'paid'))
+})
+
+await test('the whole program register: Lee sees every coach in a week; a coach only sees their own', async () => {
+  await ok(lee, 'saveGroup', { group: { day: 'Monday', time: '5:00pm', location: 'Belrose HQ', coachId: 'dean', capacity: 10, mode: 'direct' } })
+  const all = await ok(lee, 'coachSessions', { coachId: 'all' })
+  assert.equal(all.coach, 'Whole program')
+  const coaches = new Set(all.sessions.map((s) => s.coachId))
+  assert.ok(coaches.has('sam') && coaches.has('dean'))
+  const t = new Date(); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7) + 7)
+  const week = t.toISOString().slice(0, 10)
+  const w = await ok(lee, 'coachSessions', { coachId: 'all', week })
+  const end = new Date(t.getTime() + 6 * 86400000).toISOString().slice(0, 10)
+  assert.ok(w.sessions.length && w.sessions.every((s) => s.nextDate >= week && s.nextDate <= end))
+  const mine = await ok(sam, 'coachSessions', { coachId: 'all' })
+  assert.ok(mine.sessions.every((s) => s.coachId === 'sam'))
+})
+
 console.log(`${passed} passed`)
 process.exit(0)

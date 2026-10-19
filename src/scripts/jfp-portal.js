@@ -14,6 +14,8 @@ import { programmeSwitch, bindSwitch, moneyHead, bindTip, prefetchOthers, forget
 import { renderProMoney, proData } from './jfp-portal-pro.js'
 import { renderExtraMoney } from './jfp-portal-charges.js'
 import { renderInvoices } from './jfp-portal-invoices.js'
+import { renderCoachInvoices } from './jfp-portal-coach-invoices.js'
+import { renderIdeas } from './jfp-portal-ideas.js'
 import { renderCampsMoney, campsData } from './jfp-portal-camps.js'
 import { renderEverything } from './jfp-portal-everything.js'
 import { drawFamilies, sessionModal } from './jfp-portal-family.js'
@@ -63,7 +65,12 @@ async function showSignIn() {
 // The sidebar: sections, each tab with a line icon. Coaches only ever get
 // their own five tabs; the server checks every request again.
 const NAV = {
-  coach: [['Coaching', [['program', 'Program'], ['coach', 'My sessions'], ['extra', 'Extra sessions'], ['reports', 'Player reports'], ['cancellations', 'Cancellations'], ['staff', 'Cover and time off'], ['hours', 'My hours'], ['plans', 'Session plans'], ['profile', 'My profile']]]],
+  // Three groups, not one long Coaching list (Lee, 19 Oct 2026).
+  coach: [
+    ['My coaching', [['program', 'Program'], ['coach', 'My sessions'], ['extra', 'Extra sessions'], ['reports', 'Player reports'], ['cancellations', 'Cancellations']]],
+    ['Time and pay', [['staff', 'Cover and time off'], ['hours', 'My hours'], ['cinvoices', 'My invoices']]],
+    ['Ideas and plans', [['ideas', 'Session ideas'], ['plans', 'Session plans'], ['profile', 'My profile']]],
+  ],
   admin: [
     ['Overview', [['overview', 'Dashboard']]],
     ['Program', [['board', 'Timetable'], ['families', 'Players'], ['messages', 'Messages'], ['announce', 'Announcements'], ['fnotes', 'Coach notes'], ['requests', 'Requests'], ['accounts', 'New accounts'], ['trials', 'Trial feedback'], ['groups', 'Groups and rules'], ['next', 'Next term'], ['holiday', 'Holiday training']]],
@@ -71,13 +78,15 @@ const NAV = {
     JJ_NAV,
     // Bank payments (Lee, 16 Oct 2026): Money with the bank list open, its count on the badge.
     ['Money', [['money', 'Money'], ['bank', 'Bank payments'], ['payments', 'Payment links'], ['prices', 'Prices']]],
-    ['Coaches', [['coach', 'Registers'], ['reports', 'Player reports'], ['extra', 'Extra sessions'], ['cancellations', 'Cancellations'], ['staff', 'Cover and time off'], ['hours', 'Coach hours'], ['plans', 'Session plans'], ['coaches', 'Coaches']]],
+    ['Coaches', [['coach', 'Registers'], ['reports', 'Player reports'], ['extra', 'Extra sessions'], ['cancellations', 'Cancellations'], ['staff', 'Cover and time off'], ['hours', 'Coach hours'], ['cinvoices', 'Coach invoices'], ['ideas', 'Session ideas'], ['plans', 'Session plans'], ['coaches', 'Coaches']]],
     ['Admin', [['removed', 'Removed players'], ['audit', 'Audit log'], ['settings', 'Settings']]],
   ],
 }
 const ICON = {
   reports: '<path d="M6 3.5h9l3.5 3.5v13.5H6z"/><path d="M14.5 3.5V7.5h4M9 17v-3M12 17v-5.5M15 17v-2"/>',
   extra: '<circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/>',
+  cinvoices: '<path d="M6 3.5h12v17l-3-2-3 2-3-2-3 2z"/><path d="M9 8.5h6M9 12h6M9 15.5h3"/>',
+  ideas: '<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/>',
   overview: '<path d="M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-4H4zM14 4v4h6V4z"/>',
   board: '<rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
   program: '<rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
@@ -146,8 +155,9 @@ function renderNav() {
   const open = navOpen()
   $('nav').innerHTML = sections.map(([title, list]) => {
     const here = list.some(([k]) => k === P.tab)
-    const shut = sections.length > 1 && !here && open[title] !== true
-    return `<div class="jp-navgrp${shut ? ' shut' : ''}"><button type="button" class="jp-nav-sec" data-navsec="${esc(title)}" aria-expanded="${shut ? 'false' : 'true'}"><span>${esc(title)}</span>${list.some(([k]) => k === 'bank') ? bankBadge() : ''}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></button><div class="jp-navlist">${list.map(([k, label]) => `<button type="button" data-tab="${k}" data-label="${esc(label)}" aria-current="${P.tab === k ? 'page' : 'false'}">${icon(k)}<span class="jp-lbl">${esc(label)}</span>${k === 'requests' && P.pendingCount ? `<span class="count">${P.pendingCount}</span>` : ''}${k === 'accounts' && P.acctNew?.count ? `<span class="count" title="New accounts since you last looked">${P.acctNew.count}</span>` : ''}${k === 'trials' && P.trialNew ? `<span class="count" title="New trial feedback">${P.trialNew}</span>` : ''}${k === 'cancellations' && P.cxNew?.count ? `<span class="count" title="New since you last looked">${P.cxNew.count}</span>` : ''}${k === 'bank' ? bankBadge() : ''}</button>`).join('')}</div></div>`
+    // Coaches: every group open until they close one. Lee and Ligia: closed until opened.
+    const shut = sections.length > 1 && !here && (P.user.role === 'admin' ? open[title] !== true : open[title] === false)
+    return `<div class="jp-navgrp${shut ? ' shut' : ''}"><button type="button" class="jp-nav-sec" data-navsec="${esc(title)}" aria-expanded="${shut ? 'false' : 'true'}"><span>${esc(title)}</span>${list.some(([k]) => k === 'bank') ? bankBadge() : ''}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></button><div class="jp-navlist">${list.map(([k, label]) => `<button type="button" data-tab="${k}" data-label="${esc(label)}" aria-current="${P.tab === k ? 'page' : 'false'}">${icon(k)}<span class="jp-lbl">${esc(label)}</span>${k === 'requests' && P.pendingCount ? `<span class="count">${P.pendingCount}</span>` : ''}${k === 'accounts' && P.acctNew?.count ? `<span class="count" title="New accounts since you last looked">${P.acctNew.count}</span>` : ''}${k === 'trials' && P.trialNew ? `<span class="count" title="New trial feedback">${P.trialNew}</span>` : ''}${k === 'cancellations' && P.cxNew?.count ? `<span class="count" title="New since you last looked">${P.cxNew.count}</span>` : ''}${k === 'bank' ? bankBadge() : ''}${k === 'staff' && P.staffNew?.count ? `<span class="count" title="Cover and time off to see">${P.staffNew.count}</span>` : ''}${k === 'extra' && P.user.role !== 'admin' && P.askNew ? `<span class="count" title="Requests from families">${P.askNew}</span>` : ''}</button>`).join('')}</div></div>`
   }).join('')
 }
 
@@ -219,10 +229,10 @@ async function go(tab, { quiet = false, instant = false } = {}) {
   if (!quiet && !instant) view().innerHTML = '<p class="muted">Loading</p>'
   closeSide()
   setDrawer(false)
-  const fn = JJ_TABS.has(tab) ? () => renderJJ(tab, jjUi()) : { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, accounts: renderNewAccounts, trials: renderTrials, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, cancellations: renderCancellations, coaches: renderCoaches, profile: renderProfile, staff: renderStaff, plans: renderPlans, families: renderPlayers, messages: () => renderMessages({ view, need, modal, closeModal, confirmBox }), announce: () => renderAnnouncements({ view, need, modal, closeModal, confirmBox }), hours: () => renderHours({ view, post, need, modal, closeModal, confirmBox, user: P.user }), fnotes: () => renderFamilyNotesPage({ view, post, need, modal, closeModal, confirmBox }), extra: () => renderExtra({ view, post, need, modal, closeModal, confirmBox, toast, copy, user: P.user }), reports: () => renderReports(reportsUi()), removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
+  const fn = JJ_TABS.has(tab) ? () => renderJJ(tab, jjUi()) : { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, accounts: renderNewAccounts, trials: renderTrials, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, cancellations: renderCancellations, coaches: renderCoaches, profile: renderProfile, staff: renderStaff, plans: renderPlans, families: renderPlayers, messages: () => renderMessages({ view, need, modal, closeModal, confirmBox }), announce: () => renderAnnouncements({ view, need, modal, closeModal, confirmBox }), hours: () => renderHours({ view, post, need, modal, closeModal, confirmBox, user: P.user }), fnotes: () => renderFamilyNotesPage({ view, post, need, modal, closeModal, confirmBox }), extra: () => renderExtra({ view, post, need, modal, closeModal, confirmBox, toast, copy, user: P.user, refreshAsks: checkAskAlerts }), reports: () => renderReports(reportsUi()), cinvoices: () => renderCoachInvoices({ view, post, need, modal, closeModal, confirmBox, user: P.user }), ideas: () => renderIdeas({ view, post, need, toast }), removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
   try { await fn() } catch (e) { console.error(e); if (!quiet) view().innerHTML = `<div class="j-box j-box-red">Something went wrong loading this page. ${esc(e.message || '')}</div>` }
   if (P.user?.role === 'admin' && (tab === 'money' || tab === 'jj-money')) prefetchOthers(tab === 'jj-money' ? 'juniors' : P.jf.programme, moneyReaders())
-  if (!P.cxChecked) { P.cxChecked = true; checkCancelAlerts(); checkTrialAlerts(); checkAccountAlerts(); checkRequestAlerts() } else cancelBanner()
+  if (!P.cxChecked) { P.cxChecked = true; checkCancelAlerts(); checkTrialAlerts(); checkAccountAlerts(); checkRequestAlerts(); checkAskAlerts(); checkStaffAlerts() } else cancelBanner()
   if (!quiet) view().focus({ preventScroll: true })
 }
 // Bank payments (the sidebar and the Dashboard's link): Money for this
@@ -239,7 +249,7 @@ const bankUiBase = () => ({ post, toast })
 // How often the portal re-reads by itself (Lee, 18 Oct 2026: "every 30 mins").
 const REFRESH_MS = 30 * 60 * 1000
 // New cancellations, trials, accounts and requests show up within 30 minutes, whatever page is open.
-setInterval(() => { if (P.user && document.visibilityState === 'visible') { checkCancelAlerts(); checkTrialAlerts(); checkAccountAlerts(); checkRequestAlerts() } }, REFRESH_MS)
+setInterval(() => { if (P.user && document.visibilityState === 'visible') { checkCancelAlerts(); checkTrialAlerts(); checkAccountAlerts(); checkRequestAlerts(); checkAskAlerts(); checkStaffAlerts() } }, REFRESH_MS)
 // The red count on Requests (Lee, 18 Oct 2026: it showed nothing until the
 // page was opened, then 4). One count everywhere, read when the portal opens
 // and every two minutes: new applications and waitlist, plus extra session
@@ -254,6 +264,28 @@ async function checkRequestAlerts() {
   const before = P.pendingCount || 0
   P.pendingCount = requestCount(P.requests, P.extraReqs)
   if (before !== P.pendingCount) renderNav()
+}
+// Lee and Ligia: covers and time off asked for (Lee, 19 Oct 2026), a red
+// count on Cover and time off and a note on the screen when one comes in.
+async function checkStaffAlerts(seen = false) {
+  if (P.user?.role !== 'admin') return
+  const r = await post('staffAlerts', seen ? { seen: true } : {})
+  if (!r.ok) return
+  const before = P.staffNew?.count || 0
+  const loaded = Boolean(P.staffNew)
+  P.staffNew = r.data
+  if (before !== P.staffNew.count) renderNav()
+  if (!seen && loaded && P.staffNew.count > before && P.staffNew.latest[0]) toast(P.staffNew.latest[0].text, 8000)
+}
+// Coaches: families' extra session requests not answered yet, a red count on
+// Extra sessions (Lee, 19 Oct 2026).
+async function checkAskAlerts() {
+  if (P.user?.role === 'admin' && !P.user?.coachId) return
+  const r = await post('extraAsks')
+  if (!r.ok) return
+  const before = P.askNew || 0
+  P.askNew = (r.data.asks || []).filter((a) => !a.mine && !a.takenBy).length
+  if (before !== P.askNew) renderNav()
 }
 // New trial feedback from a coach: a red count on Trial feedback within two minutes (Lee, 15 Oct 2026).
 async function checkTrialAlerts() {
@@ -1252,6 +1284,13 @@ const ANSWER = { club: 'Club', team: 'Team', playingUp: 'Playing', trainedBefore
 const linksHtml = (text) => String(text || '').split(/\s+/).filter((u) => /^https?:\/\/[^\s<>"']+$/.test(u)).map((u) => `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer nofollow">${esc(u.replace(/^https?:\/\/(www\.)?/, '').slice(0, 40))}</a>`).join(' · ')
 
 // Book extra sessions and Book game analysis, sent from My account (round 3).
+// What the coaches said to an extra session request (Lee, 19 Oct 2026).
+function askLine(r) {
+  const coach = (id) => (P.coaches || P.board?.coaches || []).find((c) => c.id === id)?.name || id
+  const passed = Object.entries(r.replies || {}).filter(([, v]) => v === 'pass').map(([k]) => coach(k))
+  return `<p class="small" style="margin-top:8px">${r.takenBy ? `<span class="j-pill j-pill-green">Coach ${esc(coach(r.takenBy))} will take it</span>` : '<span class="j-pill j-pill-amber">No coach has taken it yet</span>'}${passed.length ? ` <span class="muted">Not for: ${esc(passed.join(', '))}</span>` : ''}</p>`
+}
+
 function extraRequestsHtml(list) {
   if (!list.length) return ''
   const fresh = list.filter((r) => r.status !== 'done')
@@ -1263,6 +1302,7 @@ function extraRequestsHtml(list) {
       ? `<span class="muted">Match:</span> <b>${esc(r.matchDate || 'not given')}</b> · <span class="muted">Video:</span> ${r.video ? linksHtml(r.video) || esc(r.video) : '<b>they will send it</b>'}${r.priceLabel ? ` · <span class="muted">Price shown:</span> <b>${esc(r.priceLabel)}</b>` : ''}`
       : `<span class="muted">Type:</span> <b>${esc(r.type)}</b> · <span class="muted">Days:</span> <b>${esc((r.days || []).join(', ') || 'any')}</b> · <span class="muted">Times:</span> <b>${esc((r.times || []).join(', ') || 'any')}</b>${r.coach ? ` · <span class="muted">Coach:</span> <b>${esc(r.coach)}</b>` : ''}`}</p>
     ${r.notes ? `<p class="small j-box j-box-grey" style="margin-top:8px">${esc(r.notes)}</p>` : ''}
+    ${r.kind === 'extra' ? askLine(r) : ''}
     <p class="small" style="margin-top:6px">${esc(r.parentName || 'No name')} · <a href="mailto:${esc(r.email)}">${esc(r.email)}</a>${r.phone ? ` · <a href="tel:${esc(r.phone)}">${esc(r.phone)}</a>` : ''}${r.deliveries?.staff === 'failed' ? ' · <span class="j-pill j-pill-red">Email to staff did not send</span>' : ''}</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button type="button" class="j-btn j-btn-${r.status === 'done' ? 'line' : 'dark'} j-btn-sm" data-xr-status="${r.status === 'done' ? 'new' : 'done'}" data-xr-id="${esc(r.id)}">${r.status === 'done' ? 'Back to new' : 'Mark done'}</button></div>
   </article>`
@@ -2888,35 +2928,59 @@ function coachDates() {
 }
 function saveCoachDates() { try { sessionStorage.setItem('jfp-coach-date', JSON.stringify(P.coachDate)) } catch {} }
 
+// The register's weeks: Monday of this week (+n weeks) in Sydney.
+function weekStart(n = 0) {
+  const t = new Date(`${new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' })}T00:00:00Z`)
+  t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7) + 7 * n)
+  return t.toISOString().slice(0, 10)
+}
+const weekLabel = (iso) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+// The date of a weekday in the chosen week, for the day chips.
+function weekDate(day) {
+  if (!P.regWeek) return ''
+  const t = new Date(`${P.regWeek}T12:00:00Z`)
+  t.setUTCDate(t.getUTCDate() + DAYS.indexOf(day))
+  return t.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+}
 async function renderCoach(keep = false) {
   const admin = P.user.role === 'admin'
   coachDates()
   if (admin && !P.coaches) P.coaches = (await need(await post('me'))).coaches
-  if (admin && !P.coachId) P.coachId = P.coaches?.[0]?.id || ''
-  const d = keep && P.coachData?.id === P.coachId ? P.coachData.d : await need(await post('coachSessions', { coachId: P.coachId }))
-  P.coachData = { id: P.coachId, d }
+  // Lee and Ligia start on the whole program (Lee, 19 Oct 2026: no clicking each coach).
+  if (admin && !P.coachId) P.coachId = 'all'
+  const all = admin && P.coachId === 'all'
+  P.regWeek ??= all ? weekStart(0) : ''
+  const key = `${P.coachId}|${P.regWeek}`
+  const d = keep && P.coachData?.id === key ? P.coachData.d : await need(await post('coachSessions', { coachId: P.coachId, week: P.regWeek }))
+  P.coachData = { id: key, d }
   // The Players page toolbar (Lee, 14 Oct 2026): search, Day, Venue, quick chips.
   P.regF = { q: '', day: '', loc: '', flag: '', ...(P.regF || {}) }
   const F = P.regF, q = F.q.trim().toLowerCase()
   const dateOf = (s) => (s.dates.some((x) => x.iso === P.coachDate[s.id]) ? P.coachDate[s.id] : s.nextDate)
   const flagOf = (s, p, date) => ({ trial: Boolean(p.trial), cancelled: Boolean((s.cancelledBy?.[date] || {})[p.rowId]), unconfirmed: p.status !== 'Confirmed' })
   const showP = (s, p) => { const date = dateOf(s); return (!p.trialDate || p.trialDate === date) && (!q || `${p.name} ${p.coach || ''}`.toLowerCase().includes(q)) && (!F.flag || flagOf(s, p, date)[F.flag]) }
+  const order = (s) => `${DAYS.indexOf(s.day)}${s.sortTime || ''}`
+  d.sessions.sort((a, b) => order(a).localeCompare(order(b)) || a.location.localeCompare(b.location))
   const sessions = d.sessions.filter((s) => (!F.day || s.day === F.day) && (!F.loc || s.location === F.loc) && (!q && !F.flag || s.players.some((p) => showP(s, p))))
   const active = ['q', 'day', 'loc', 'flag'].filter((k) => F[k]).length
   const flagCount = (k) => d.sessions.reduce((t, s) => t + s.players.filter((p) => { const date = dateOf(s); return (!p.trialDate || p.trialDate === date) && flagOf(s, p, date)[k] }).length, 0)
   const days = DAYS.filter((x) => d.sessions.some((s) => s.day === x)).map((x) => ({ id: x, label: x }))
+  const weeks = [['', 'Next sessions'], [weekStart(0), 'This week'], [weekStart(1), 'Next week'], [weekStart(2), 'Week after']]
+  const dayChips = days.length > 1 ? `<div class="ps-chips" aria-label="Day"><button type="button" class="ps-chip" data-cday="" aria-pressed="${!F.day}">All days <b>${d.sessions.length}</b></button>${days.map((x) => `<button type="button" class="ps-chip" data-cday="${esc(x.id)}" aria-pressed="${F.day === x.id}">${esc(x.id.slice(0, 3))}${weekDate(x.id) ? ` ${esc(weekDate(x.id))}` : ''} <b>${d.sessions.filter((s) => s.day === x.id).length}</b></button>`).join('')}</div>` : ''
+  const playerCount = sessions.reduce((t, s) => t + s.players.length, 0)
   const locs = [...new Set(d.sessions.map((s) => s.location))].sort().map((x) => ({ id: x, label: x }))
   const hrs = (min) => `${Math.floor(min / 60)}h${min % 60 ? ` ${min % 60}m` : ''}`
   view().innerHTML = `
-    <div class="jp-head"><div style="display:flex;gap:12px;align-items:center">${avatar(d.coachPhoto, d.coach, 40)}<div><h1>${admin ? `Coach ${esc(d.coach)}` : 'My sessions'}</h1><p class="muted small">${esc(d.term)} · ${d.sessions.length} session${d.sessions.length === 1 ? '' : 's'} a week · ${hrs(d.hours.perWeekMinutes)} a week, ${hrs(d.hours.termMinutes)} across the term</p></div></div>
+    <div class="jp-head"><div style="display:flex;gap:12px;align-items:center">${avatar(d.coachPhoto, d.coach, 40)}<div><h1>${all ? 'Whole program' : admin ? `Coach ${esc(d.coach)}` : 'My sessions'}</h1><p class="muted small">${all ? `${esc(d.term)} · ${sessions.length} session${sessions.length === 1 ? '' : 's'} · ${playerCount} player places${P.regWeek ? ` · week of ${esc(weekLabel(P.regWeek))}` : ''}` : `${esc(d.term)} · ${d.sessions.length} session${d.sessions.length === 1 ? '' : 's'} a week · ${hrs(d.hours.perWeekMinutes)} a week, ${hrs(d.hours.termMinutes)} across the term`}</p></div></div>
     </div>
     <div class="ps-tools" role="search">
-      ${admin ? psSelect('c-pick', P.coaches.map((c) => ({ id: c.id, label: `Coach ${c.name}` })), P.coachId, 'Coach').replace(/<option value="">[^<]*<\/option>/, '') : ''}
+      ${admin ? psSelect('c-pick', [{ id: 'all', label: 'Whole program (every coach)' }, ...P.coaches.map((c) => ({ id: c.id, label: `Coach ${c.name}` }))], P.coachId, 'Coach').replace(/<option value="">[^<]*<\/option>/, '') : ''}
+      ${psSelect('c-week', weeks.map(([id, label]) => ({ id, label })), P.regWeek, 'Week').replace(/<option value="">[^<]*<\/option>/, `<option value="" ${P.regWeek ? '' : 'selected'}>Next sessions</option>`)}
       ${psSearch('c-q', 'Search players…', F.q, 'Search players in these sessions')}
-      ${days.length > 1 ? psSelect('c-day', days, F.day, 'Day') : ''}
       ${locs.length > 1 ? psSelect('c-loc', locs, F.loc, 'Venue') : ''}
       ${psToolsMore('c', { hasMore: false, active })}
     </div>
+    ${dayChips}
     ${psChips([['trial', 'Trials', 'violet'], ['cancelled', 'Cancelled by parent', 'orange'], ['unconfirmed', 'Not confirmed', 'grey']].map(([v, l, c]) => ({ key: 'flag', value: v, label: l, color: c, count: flagCount(v) })), (k, v) => F[k] === v)}
     
     ${trialCards(d.trials || [])}
@@ -2926,21 +2990,23 @@ async function renderCoach(keep = false) {
       return `<article class="j-card" style="padding:16px;margin-bottom:12px" data-sess="${esc(s.id)}">
         ${s.covering ? `<div class="j-box j-box-blue small" style="margin-bottom:8px"><b>Covering for ${esc(s.covering.for)}</b> on ${esc(s.covering.dateLabel)}</div>` : ''}
         ${(s.coveredBy || []).length ? `<div class="j-box j-box-grey small" style="margin-bottom:8px">${s.coveredBy.map((c) => `${esc(c.dateLabel)}: covered by <b>${esc(c.coach)}</b>`).join('<br>')}</div>` : ''}
-        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><div><h3 style="font-size:17px">${esc(s.day)} ${esc(s.time)} · ${esc(s.location)}</h3><p class="muted small">${esc(s.label)}${s.minAge != null ? ` · ages ${s.minAge} to ${s.maxAge}` : ''} · ${s.durationMin} min · ${s.players.length} player${s.players.length === 1 ? '' : 's'}</p></div>
+        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><div><h3 style="font-size:17px">${esc(s.day)} ${esc(s.time)} · ${esc(s.location)}</h3><p class="muted small">${all && s.coachName ? `<b>Coach ${esc(s.coachName)}</b> · ` : ''}${esc(s.label)}${s.minAge != null ? ` · ages ${s.minAge} to ${s.maxAge}` : ''} · ${s.durationMin} min · ${s.players.length} player${s.players.length === 1 ? '' : 's'}</p></div>
           <span class="jp-reg-tools"><select class="j-select" style="width:auto" data-date="${esc(s.id)}" aria-label="Session date">${s.dates.map((x, i) => `<option value="${esc(x.iso)}" ${x.iso === date ? 'selected' : ''}>Week ${i + 1} · ${esc(x.label)}${Object.keys(attOf(s, x.iso)).length ? ' ✓' : ''}</option>`).join('')}</select><button type="button" class="j-btn j-btn-line" data-term="${esc(s.id)}">Whole term</button></span></div>
         <div style="margin-top:10px">${s.players.filter((p) => showP(s, p)).map((p) => `<div class="jp-player" style="cursor:default">${avatar(p.photo, p.name, 32)}<span class="nm" style="flex:1 1 auto;min-width:0">${p.juniors ? esc(p.name) : `<button type="button" class="ps-link jp-cp-name" data-cp="${esc(p.rowId)}" aria-label="About ${esc(p.name)}">${esc(p.name)}</button>`}${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}${!p.mine ? ` <span class="muted small">· ${esc(p.coach)}</span>` : ''}${(s.cancelledBy?.[date] || {})[p.rowId] ? ` <span class="j-pill j-pill-amber" title="${esc(`${s.cancelledBy[date][p.rowId].reason}, ${s.cancelledBy[date][p.rowId].notice}`)}">Cancelled by parent</span>` : ''}${p.trial ? ' <span class="j-pill j-pill-blue">Trial</span>' : ''}${p.status !== 'Confirmed' ? ` <span class="j-pill j-pill-amber">${esc(p.status)}</span>` : ''}${noteLine(p, date)}</span>
           <span class="jp-att"><button type="button" class="p" data-att="Present" data-row="${esc(p.rowId)}" aria-pressed="${att[p.rowId] === 'Present'}">Here</button><button type="button" class="a" data-att="Absent" data-row="${esc(p.rowId)}" aria-pressed="${['Absent', 'Notified'].includes(att[p.rowId])}" ${att[p.rowId] === 'Notified' ? 'title="The family told us they cannot make it"' : ''}>${att[p.rowId] === 'Notified' ? 'Away (told us)' : 'Away'}</button></span></div>`).join('') || '<p class="muted small">No players yet.</p>'}</div>
       </article>`
     }).join('') : `<div class="ps-table-wrap"><div class="ps-empty">${active ? 'No sessions match. <button type="button" class="ps-link" data-c-clear>Clear filters</button>' : 'No sessions yet.'}</div></div>`}`
-  $('c-pick')?.addEventListener('change', (e) => { P.coachId = e.target.value; renderCoach() })
+  $('c-pick')?.addEventListener('change', (e) => { P.coachId = e.target.value; if (P.coachId === 'all' && !P.regWeek) P.regWeek = weekStart(0); F.day = ''; renderCoach() })
+  $('c-week')?.addEventListener('change', (e) => { P.regWeek = e.target.value; for (const k of Object.keys(P.coachDate)) delete P.coachDate[k]; saveCoachDates(); renderCoach() })
+  view().querySelectorAll('[data-cday]').forEach((b) => b.addEventListener('click', () => { F.day = b.dataset.cday; redraw() }))
   const redraw = () => renderCoach(true)
   $('c-q').addEventListener('input', (e) => { F.q = e.target.value; const at = e.target.selectionStart; redraw(); const i = $('c-q'); i.focus(); i.setSelectionRange(at, at) })
-  for (const [id, k] of [['c-day', 'day'], ['c-loc', 'loc']]) $(id)?.addEventListener('change', (e) => { F[k] = e.target.value; redraw() })
+  for (const [id, k] of [['c-loc', 'loc']]) $(id)?.addEventListener('change', (e) => { F[k] = e.target.value; redraw() })
   view().querySelectorAll('[data-chip]').forEach((b) => b.addEventListener('click', () => { const [k, v] = b.dataset.chip.split(':'); F[k] = F[k] === v ? '' : v; redraw() }))
   const clear = () => { Object.assign(F, { q: '', day: '', loc: '', flag: '' }); redraw() }
   $('c-clear')?.addEventListener('click', clear)
   view().querySelector('[data-c-clear]')?.addEventListener('click', clear)
-  view().querySelectorAll('[data-cp]').forEach((b) => b.addEventListener('click', () => coachPlayerModal(b.dataset.cp)))
+  view().querySelectorAll('[data-cp]').forEach((b) => b.addEventListener('click', () => coachPlayerModal(b.dataset.cp, d.sessions.find((x) => x.id === b.closest('[data-sess]')?.dataset.sess)?.coachId)))
   view().querySelectorAll('[data-trial-fb]').forEach((b) => b.addEventListener('click', () => trialFeedbackModal((d.trials || []).find((t) => t.rowId === b.dataset.trialFb), d.verdicts)))
   view().querySelectorAll('[data-date]').forEach((sel) => sel.addEventListener('change', () => { P.coachDate[sel.dataset.date] = sel.value; saveCoachDates(); renderCoach(true) }))
   view().querySelectorAll('[data-term]').forEach((b) => b.addEventListener('click', () => termRegister(d.sessions.find((x) => x.id === b.dataset.term))))
@@ -2968,8 +3034,8 @@ async function renderCoach(keep = false) {
 // they play for, age, level, positions, and what they want to work on. The
 // family fills it in from My account; medical notes too (Lee, 18 Oct 2026),
 // never contacts or money.
-async function coachPlayerModal(rowId) {
-  const r = await post('coachPlayer', { rowId, coachId: P.coachId })
+async function coachPlayerModal(rowId, coachId) {
+  const r = await post('coachPlayer', { rowId, coachId: P.coachId === 'all' ? coachId || '' : P.coachId })
   if (!r.ok) return toast(r.data.error || 'Could not open that player.')
   const p = r.data.player
   const first = p.name.split(' ')[0]
@@ -3664,6 +3730,7 @@ async function renderPlayers(keep = false) {
 async function renderStaff() {
   const admin = P.user.role === 'admin'
   const d = await need(await post('staffOverview'))
+  if (admin) checkStaffAlerts(true)
   const pill = { active: ['green', 'Covered'], cancelled: ['grey', 'Cancelled'], pending: ['amber', 'Waiting for approval'], approved: ['green', 'Approved'], declined: ['red', 'Declined'] }
   const sessOpts = d.mySessions.map((s) => `<option value="${esc(s.id)}">${esc(s.label)}</option>`).join('')
   view().innerHTML = `<div class="jp-head"><div><h1>Cover and time off</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">${admin ? 'Every cover and time off request. Covers apply straight away; time off waits for you or Ligia.' : 'Need someone to take a session? Choose the date and the coach, and they get it in their My sessions straight away. Time off goes to Lee and Ligia to approve.'}</div></details></div></div>

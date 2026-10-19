@@ -112,3 +112,43 @@ export async function setExtraStatus({ id, status, by }) {
   await audit({ by, action: 'extra.status', target: rec.id, after: { status: next } })
   return { ok: true, record: saved }
 }
+
+// ---------- coaches (Lee, 19 Oct 2026) ----------
+// A family's extra session request goes to every coach in their portal. A
+// coach can take it or say not for me. The first to take it has it; Lee and
+// Ligia hear on Telegram and see who took it under Requests. Coaches see the
+// player and what they asked for, never the family's email or phone.
+export const ASK_DAYS = 30
+export function coachAskView(r, coachId, coachName = (id) => id) {
+  const replies = r.replies || {}
+  return {
+    id: r.id, player: r.player, type: r.type, days: r.days || [], times: r.times || [], coach: r.coach || '', notes: r.notes || '',
+    createdAt: r.createdAt, status: r.status, mine: replies[coachId] || '',
+    takenBy: r.takenBy ? coachName(r.takenBy) : '', takenByMe: r.takenBy === coachId,
+  }
+}
+export async function coachAsks(coachId, coachName, nowMs = Date.now()) {
+  const from = new Date(nowMs - ASK_DAYS * 86400000).toISOString()
+  return (await listExtras()).filter((r) => r.kind === 'extra' && r.createdAt >= from && (r.status !== 'done' || r.takenBy === coachId)).map((r) => coachAskView(r, coachId, coachName))
+}
+// answer: take | pass | '' (undo). { ok, record } or { ok: false, status, error }.
+export async function replyExtra({ id, coachId, answer, by }) {
+  const rec = parse(await kvCommand(['HGET', KEY, clean(id, 60)]))
+  if (!rec || rec.kind !== 'extra') return { ok: false, status: 404, error: 'We could not find that request.' }
+  if (!['take', 'pass', ''].includes(answer)) return { ok: false, status: 400, error: 'Take it, or not for me.' }
+  if (answer === 'take') {
+    if (rec.takenBy && rec.takenBy !== coachId) return { ok: false, status: 409, error: 'Another coach has already taken this one.' }
+    // Two coaches at the same moment: only one gets it.
+    const got = await kvCommand(['SET', `jfp:extra-take:${rec.id}`, coachId, 'NX', 'EX', String(ASK_DAYS * 86400)])
+    if (got !== 'OK' && (await kvCommand(['GET', `jfp:extra-take:${rec.id}`])) !== coachId) return { ok: false, status: 409, error: 'Another coach has already taken this one.' }
+  }
+  const fresh = parse(await kvCommand(['HGET', KEY, rec.id])) || rec
+  const replies = { ...(fresh.replies || {}), [coachId]: answer }
+  if (!answer) delete replies[coachId]
+  let takenBy = fresh.takenBy || ''
+  if (answer === 'take') takenBy = coachId
+  if (fresh.takenBy === coachId && answer !== 'take') { takenBy = ''; await kvCommand(['DEL', `jfp:extra-take:${rec.id}`]) }
+  const saved = await saveExtra({ ...fresh, replies, takenBy, ...(answer === 'take' ? { takenAt: new Date().toISOString() } : {}) })
+  await audit({ by, action: `extra.coach.${answer || 'undo'}`, target: rec.id, after: { coachId } })
+  return { ok: true, record: saved, changed: fresh.takenBy !== takenBy }
+}

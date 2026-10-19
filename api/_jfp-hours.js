@@ -99,6 +99,8 @@ export async function hoursAction(res, principal, config, body, action, { isAdmi
     const was = id ? parse(await kvCommand(['HGET', KEY, id])) : null
     if (id && !was) return no(404, 'That entry is gone. Refresh the page.')
     if (was && !isAdmin && (was.coachId !== myCoachId || was.status === 'approved')) return no(403, was?.status === 'approved' ? 'Approved hours can only be changed by Lee or Ligia.' : 'Not your hours.')
+    // On an invoice: the invoice and the hours must match (Lee, 19 Oct 2026).
+    if (was?.invoiceId && !isAdmin) return no(409, 'These hours are on an invoice. Withdraw the invoice first, then change them.')
     const coachId = was ? was.coachId : isAdmin ? clean(body.coachId, 30) || myCoachId : myCoachId
     if (!coachById(config, coachId)) return no(400, isAdmin ? 'Choose the coach.' : 'Your login is not linked to a coach yet. Ask Lee.')
     const others = (await allHours()).filter((h) => h.coachId === coachId && h.id !== id)
@@ -119,6 +121,7 @@ export async function hoursAction(res, principal, config, body, action, { isAdmi
     const was = parse(await kvCommand(['HGET', KEY, id]))
     if (!was) return no(404, 'That entry is already gone.')
     if (!isAdmin && (was.coachId !== myCoachId || was.status === 'approved')) return no(403, 'Approved hours can only be removed by Lee or Ligia.')
+    if (was.invoiceId) return no(409, 'These hours are on an invoice. Withdraw or send back the invoice first.')
     await kvCommand(['HDEL', KEY, id])
     await audit({ by: principal.email, action: 'hours.delete', target: id, before: { coachId: was.coachId, date: was.date, start: was.start, end: was.end } })
     return ok({ deleted: id })
