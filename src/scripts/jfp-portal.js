@@ -2134,7 +2134,7 @@ const holidayUi = () => ({ view, post, toast, filter: P.jf, programmeSwitch: pro
 // What the Joners Juniors pages use from here.
 const jjUi = () => ({ view, post, need, modal, closeModal, confirmBox, go, filter: P.jf, stale: () => P.tab !== 'jj-money' })
 // Money > Pro sessions, Camps and Everything (13 Oct 2026).
-const proUi = () => ({ view, post, toast, filter: P.jf, go, confirm: confirmBox, saveFile, csvCell, aud, slug, bankStale, stale: () => P.tab !== 'money' || P.jf.programme !== 'pro' })
+const proUi = () => ({ view, post, toast, modal, closeModal, filter: P.jf, go, confirm: confirmBox, saveFile, csvCell, aud, slug, bankStale, stale: () => P.tab !== 'money' || P.jf.programme !== 'pro' })
 const moneyKitUi = (prog) => ({ view, post, toast, modal, closeModal, confirm: confirmBox, copy, filter: P.jf, go, saveFile, csvCell, aud, board: async () => (P.board ||= await need(await post('board'))), pricing: async () => pricing(), coaches: async () => (P.coaches ||= (await need(await post('me'))).coaches), stale: () => P.tab !== 'money' || P.jf.programme !== prog })
 const campsUi = () => ({ view, post, toast, filter: P.jf, go, saveFile, csvCell, aud, stale: () => P.tab !== 'money' || P.jf.programme !== 'camps' })
 const everythingUi = () => ({

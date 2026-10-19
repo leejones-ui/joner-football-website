@@ -8,6 +8,8 @@ import { esc, money } from './jfp-common.js'
 import { moneyHead, bindTip, programmeSwitch, bindSwitch, remember, recall, quietOk, markUpdated } from './jfp-portal-programmes.js'
 // Auto charges: saved cards and bank accounts charged after each session (claude/card-on-file).
 import { renderAutoChargePanel } from './jfp-portal-autocharge.js'
+// Bill a Pro player's sessions from here (Lee, 19 Oct 2026: Pro players are not on the JFP list).
+import { sessionModal } from './jfp-portal-family.js'
 
 export const PRO_DEFINITION = 'Pro sessions: Stripe payments on Pro links (the real Stripe fee on each, from Stripe), cash and bank transfers recorded on Pro players, and bank transfers you marked "Pro session" on Money &gt; JFP &gt; Bank transfers to check. Kept = taken less refunds and Stripe fees. Billed and owing come from the players\' rows in Airtable. None of it is in the JFP figures.'
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
@@ -94,7 +96,7 @@ function draw(ui, v) {
       ${v.byMonth.length ? stackTable('p-months', ['Month', 'Taken', 'Refunded', 'Stripe fees', 'Kept'], v.byMonth.map((r) => [esc(r.label), esc(money(r.takenCents)), esc(money(r.refundedCents)), esc(money(r.feeCents)), `<b>${esc(money(r.keptCents))}</b>`]), v.byMonth.length > 1 ? ['Total', esc(money(t.takenCents)), esc(money(t.refundedCents)), esc(money(t.feeCents)), esc(money(t.keptCents))] : null) : '<p class="muted small">No Pro money yet.</p>'}
     </section>
     <section class="jd-card jh-sheet" id="p-players-card"><h2>By player</h2><p class="sub">Billed and paid so far from Airtable; taken and kept ${v.month ? `in ${esc(label)}` : 'here'}.</p>
-      ${v.byPlayer.length || v.unmatched ? stackTable('p-players', ['Player', 'Billed', 'Paid', 'Owing', 'Kept'], [...v.byPlayer.map((p) => [`${esc(p.player)}${p.perSessionCents ? ` <small class="muted">${esc(money(p.perSessionCents))} a session</small>` : ''}${p.prepaidSessions ? ` <small class="muted">${esc(p.prepaidSessions)} prepaid</small>` : ''}`, esc(money(p.billedCents)), esc(money(p.paidCents)), p.owingCents ? `<b>${esc(money(p.owingCents))}</b>` : '<span class="muted">0</span>', esc(money(p.keptCents))]), ...(v.unmatched ? [['<span class="muted">Not matched to a player</span>', '', '', '', esc(money(v.unmatched.keptCents))]] : [])]) : '<p class="muted small">No Pro players yet. A player is Pro when their payment type is JFP Pro sessions.</p>'}
+      ${v.byPlayer.length || v.unmatched ? stackTable('p-players', ['Player', 'Billed', 'Paid', 'Owing', 'Kept'], [...v.byPlayer.map((p) => [`${esc(p.player)}${p.perSessionCents ? ` <small class="muted">${esc(money(p.perSessionCents))} a session</small>` : ''}${p.prepaidSessions ? ` <small class="muted">${esc(p.prepaidSessions)} prepaid</small>` : ''}${p.holdsPlace ? ` <button type="button" class="j-btn j-btn-line j-btn-sm jm-pink" data-pbill="${esc(p.rowId)}">Sessions${p.perSessionCents ? ` · ${esc(money(p.perSessionCents))}` : ''}</button>` : ''}`, esc(money(p.billedCents)), esc(money(p.paidCents)), p.owingCents ? `<b>${esc(money(p.owingCents))}</b>` : '<span class="muted">0</span>', esc(money(p.keptCents))]), ...(v.unmatched ? [['<span class="muted">Not matched to a player</span>', '', '', '', esc(money(v.unmatched.keptCents))]] : [])]) : '<p class="muted small">No Pro players yet. A player is Pro when their payment type is JFP Pro sessions.</p>'}
     </section>
     <section class="jd-card jh-list" id="p-lines"><h2>Payments</h2><p class="sub">${plural(v.lines.length, 'payment')}, newest first</p>
       ${v.lines.length ? `<ul class="jm-hist">${v.lines.map(lineHtml).join('')}</ul>` : '<p class="muted small">Nothing yet. Mark bank transfers in Money &gt; Bank payments.</p>'}</section>`
@@ -109,6 +111,13 @@ function draw(ui, v) {
     renderProMoney(ui)
   })
   v$('#p-csv').addEventListener('click', () => ui.saveFile(`jfp-pro-sessions-${ui.slug(label)}.csv`, proCsv(v, ui)))
+  // The same Sessions box as session-by-session players on Money > JFP.
+  v$('#p-players-card').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-pbill]')
+    if (!b) return
+    const players = v.byPlayer.map((p) => ({ ...p, status: 'session', familyKey: p.email || p.rowId }))
+    sessionModal(players.find((p) => p.rowId === b.dataset.pbill), { m: { players }, post: ui.post, toast: ui.toast, confirmBox: ui.confirm, modal: ui.modal, closeModal: ui.closeModal, done: async () => { await proData(ui.post, { month: v.month, fresh: true }).catch(() => {}); renderProMoney(ui) } })
+  })
   v$('#p-lines').addEventListener('click', async (e) => {
     const b = e.target.closest('[data-pundo]')
     if (!b) return

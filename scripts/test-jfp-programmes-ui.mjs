@@ -45,6 +45,7 @@ const answers = (b) => {
   if (b.action === 'proMoney') return { success: true, pro: pro(b.month || '') }
   if (b.action === 'campsMoney') return { success: true, camps: camps(b.year || 0) }
   if (b.action === 'campsStripe') return { success: true, stripe: STRIPE_CAMPS }
+  if (b.action === 'sessionInvoice') return { success: true, payreq: { id: 'PAY-S', url: 'https://example.com/pay', amountCents: 4000, amountLabel: 'A$40' }, emailed: true }
   return null
 }
 
@@ -89,6 +90,23 @@ await test('switching is instant: the last reading paints at once and the latest
   // Joners Juniors has its own Money page.
   await p.pick('#m-prog', 'juniors')
   assert.match(p.w.location.hash, /^#jj-money/)
+  assert.deepEqual(p.errors, [])
+  p.close()
+})
+
+await test('Pro sessions: each player has a Sessions button that bills their sessions, as on JFP (Lee, 19 Oct 2026)', async () => {
+  const p = await openPortal({ money: fresh(), onPost: answers })
+  await p.pick('#m-prog', 'pro')
+  const b = p.$('[data-pbill="recPRO1"]')
+  assert.ok(b, 'the Sessions button is on the player')
+  assert.match(b.textContent, /Sessions · A\$40/)
+  await p.click('[data-pbill="recPRO1"]')
+  assert.match(p.d.body.textContent, /Sessions: Ava Pro/)
+  assert.equal(p.$('[data-srow="recPRO1"] [data-per]').value, '40')
+  await p.click('#ss-go')
+  const sent = p.posts.find((x) => x.action === 'sessionInvoice')
+  assert.deepEqual(sent.rows, [{ rowId: 'recPRO1', sessions: 1, perSessionCents: 4000 }])
+  assert.equal(sent.mode, 'link')
   assert.deepEqual(p.errors, [])
   p.close()
 })
