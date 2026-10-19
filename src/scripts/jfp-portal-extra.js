@@ -181,12 +181,28 @@ function slotForm(ui, d, s, done) {
     <label class="j-field"><span>Where</span><select class="j-select" id="xf-loc">${venues.map((v) => `<option ${s?.location === v ? 'selected' : ''}>${esc(v)}</option>`).join('')}<option value="__other" ${s && !venues.includes(s.location) ? 'selected' : ''}>Somewhere else</option></select></label>
     <label class="j-field" id="xf-other-wrap" ${s && !venues.includes(s.location) ? '' : 'hidden'}><span>Place</span><input class="j-input" id="xf-other" value="${esc(s && !venues.includes(s.location) ? s.location : '')}"></label>
     <div class="j-field"><span>Who can book</span><div class="jp-seg" id="xf-vis"><button type="button" data-v="private" aria-pressed="${s?.visibility !== 'public'}">Private: only with the link</button><button type="button" data-v="public" aria-pressed="${s?.visibility === 'public'}">Public: in My account</button></div></div>
+    ${s ? '' : `<div class="j-field" id="xf-who"><span>Who is it for? <span class="muted">(private, booked with you)</span></span>
+      <input class="j-input" id="xf-q" placeholder="Type the player's name" autocomplete="off">
+      <div id="xf-res"></div>
+      <details class="xf-new"><summary class="small">Not on the list? Add their details</summary>
+        <div class="j-two"><label class="j-field"><span>Player name</span><input class="j-input" id="xf-name"></label><label class="j-field"><span>Email (they sign in with this)</span><input class="j-input" id="xf-email" type="email" inputmode="email"></label></div>
+        <label class="j-field"><span>Mobile <span class="muted">(optional)</span></span><input class="j-input" id="xf-mobile" type="tel" inputmode="tel"></label>
+      </details></div>`}
     <label class="j-field"><span>Name families see <span class="muted">(optional)</span></span><input class="j-input" id="xf-title" value="${esc(s?.title || '')}" placeholder="For example, Finishing session"></label>
     <p class="j-err" id="xf-err" hidden></p>
     <div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-dark" id="xf-go">${s ? 'Save' : 'Open the session'}</button></div>`, { wide: true })
   const go = box.querySelector('#xf-go')
   const times = () => [...box.querySelectorAll('[data-xf-time]')].map((x) => x.value).filter(Boolean)
-  const count = () => { if (s) return; const n = cal.get().length * new Set(times()).size; go.textContent = n > 1 ? `Open ${n} sessions` : 'Open the session' }
+  // A private session for a player booked with the coach (Lee, 19 Oct 2026):
+  // pick them here and it is made, put in their account to pay and emailed.
+  let who = null
+  const whoName = () => who?.name || (box.querySelector('#xf-name')?.value || '').trim()
+  const count = () => {
+    if (s) return
+    const n = cal.get().length * new Set(times()).size
+    const nm = vis === 'private' ? whoName() : ''
+    go.textContent = nm ? `Create and send to ${nm.split(' ')[0]}` : n > 1 ? `Open ${n} sessions` : 'Open the session'
+  }
   const cal = calendar(box.querySelector('#xf-cal'), { multi: !s, selected: [s?.date || ''], min: todayIso(), max: maxIso, onChange: count })
   box.querySelector('#xf-times').addEventListener('click', (e) => {
     if (e.target.closest('#xf-time-add')) { e.target.closest('#xf-time-add').insertAdjacentHTML('beforebegin', timeBox(hourAfter(times().at(-1) || '15:30'))); count(); return }
@@ -195,7 +211,31 @@ function slotForm(ui, d, s, done) {
   })
   box.querySelector('#xf-times').addEventListener('change', count)
   let vis = s?.visibility === 'public' ? 'public' : 'private'
-  box.querySelector('#xf-vis').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (!b) return; vis = b.dataset.v; box.querySelectorAll('#xf-vis [data-v]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))) })
+  const whoBox = box.querySelector('#xf-who')
+  const showWho = () => { if (whoBox) whoBox.hidden = vis !== 'private'; count() }
+  box.querySelector('#xf-vis').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (!b) return; vis = b.dataset.v; box.querySelectorAll('#xf-vis [data-v]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); showWho() })
+  if (whoBox) {
+    let t
+    const pickHtml = () => (who ? `<div class="xf-picked"><span><b>${esc(who.name)}</b><br><span class="muted small">${esc(who.group)}${who.hasEmail ? '' : ' · no email on file, add it below'}</span></span><button type="button" class="j-btn j-btn-line j-btn-sm" id="xf-unpick">Change</button></div>` : '')
+    const drawPick = () => {
+      box.querySelector('#xf-res').innerHTML = pickHtml()
+      box.querySelector('#xf-q').hidden = Boolean(who)
+      box.querySelector('#xf-unpick')?.addEventListener('click', () => { who = null; drawPick(); box.querySelector('#xf-q').value = ''; box.querySelector('#xf-q').focus(); count() })
+      if (who && !who.hasEmail) { box.querySelector('.xf-new').open = true; box.querySelector('#xf-name').value = who.name }
+      count()
+    }
+    box.querySelector('#xf-q').addEventListener('input', (e) => {
+      clearTimeout(t)
+      t = setTimeout(async () => {
+        const r = await post('extraSearch', { q: e.target.value })
+        const list = r.ok ? r.data.results : []
+        box.querySelector('#xf-res').innerHTML = list.length ? list.map((x, i) => `<button type="button" class="j-player" data-i="${i}"><span><b>${esc(x.name)}</b><br><span class="muted small">${esc(x.group)}${x.hasEmail ? '' : ' · no email on file'}</span></span></button>`).join('') : e.target.value.trim().length > 1 ? '<p class="muted small">No one by that name. Add their details below.</p>' : ''
+        box.querySelectorAll('#xf-res [data-i]').forEach((b) => b.addEventListener('click', () => { who = list[Number(b.dataset.i)]; drawPick() }))
+      }, 250)
+    })
+    box.querySelector('#xf-name').addEventListener('input', count)
+    showWho()
+  }
   box.querySelector('#xf-loc').addEventListener('change', (e) => { box.querySelector('#xf-other-wrap').hidden = e.target.value !== '__other' })
   box.querySelector('#xf-price').addEventListener('change', (e) => { const m = e.target.selectedOptions[0]?.dataset.min; if (m) box.querySelector('#xf-min').value = m })
   go.addEventListener('click', async () => {
@@ -206,6 +246,12 @@ function slotForm(ui, d, s, done) {
     const ts = [...new Set(times())].map(ampm)
     if (!dates.length) { err.textContent = s ? 'Tap a date.' : 'Tap at least one date.'; err.hidden = false; return }
     if (!ts.length) { err.textContent = 'Add a start time.'; err.hidden = false; return }
+    if (whoBox && vis === 'private') {
+      const typed = (box.querySelector('#xf-q').value || '').trim()
+      const email = (box.querySelector('#xf-email').value || '').trim()
+      if (!who && typed && !whoName()) { err.textContent = `Tap ${typed}'s name in the list, or add their details.`; err.hidden = false; return }
+      if (whoName() && !who?.hasEmail && !/^\S+@\S+\.\S+$/.test(email)) { err.textContent = 'Add their email so they can pay in their account.'; err.hidden = false; return }
+    }
     const slot = {
       id: s?.id || '', coachId: box.querySelector('#xf-coach')?.value || '', date: dates[0], time: ts[0],
       priceId: box.querySelector('#xf-price').value, durationMin: Number(box.querySelector('#xf-min').value), capacity: Number(box.querySelector('#xf-cap').value),
@@ -215,9 +261,36 @@ function slotForm(ui, d, s, done) {
     const many = !s && dates.length * ts.length > 1
     const r = many ? await post('extraSaveMany', { slot, dates, times: ts }) : await post('extraSave', { slot })
     if (!r.ok) { go.disabled = false; err.textContent = r.data.error; err.hidden = false; if (many && /were made/.test(r.data.error || '')) done(); return }
-    const n = many ? r.data.slots.length : 1
+    const made = many ? r.data.slots : [r.data.slot]
+    const n = made.length
+    const nm = !s && vis === 'private' ? whoName() : ''
+    if (nm) {
+      // Put the player on every session just made: each goes in their account to pay, and they get the email.
+      const pick = { pick: who?.pick || '', rowId: who?.rowId || '', name: nm, email: box.querySelector('#xf-email')?.value || '', mobile: box.querySelector('#xf-mobile')?.value || '' }
+      const results = []
+      for (const sl of made) results.push(await post('extraAttach', { slotId: sl.id, ...pick }))
+      const bad = results.find((x) => !x.ok || x.data.chargeError)
+      const first = results.find((x) => x.ok)?.data
+      closeModal()
+      if (!first) { toast(`Session${n > 1 ? 's' : ''} made, but ${nm} was not added: ${bad?.data?.error || 'try Add a player on the session'}`, 9000); return done() }
+      sentBox(ui, first.booking, first.slot, n, bad ? (bad.data.error || bad.data.chargeError) : '')
+      return done()
+    }
     closeModal(); toast(s ? 'Saved' : `${n > 1 ? `${n} sessions open` : 'Open'}: ${vis === 'public' ? 'families can book in My account' : 'copy the link or add a player'}`); done()
   })
+}
+
+// After a private session is made and sent: what happened, and the text to send.
+function sentBox(ui, b, slot, n, problem) {
+  const { modal, copy } = ui
+  const text = extraText({ name: b.name, coach: coachWord(slot), slot, email: b.email })
+  const box = modal(`<h2 style="margin-bottom:6px">Sent to ${esc(b.name)}</h2>
+    <p class="muted small" style="margin-bottom:12px">${problem ? `<b>Check this:</b> ${esc(problem)}<br>` : ''}${n > 1 ? `${n} sessions are` : 'The session is'} in their account to pay, and they have an email with a Pay button${b.email ? ` (${esc(b.email)})` : ''}. You can also text them:</p>
+    <label class="j-field"><span>The text</span><textarea class="j-textarea" id="xd-text" rows="8">${esc(text)}</textarea></label>
+    <div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Done</button><button type="button" class="j-btn j-btn-line" id="xd-copy">Copy link</button>${b.mobile ? `<a class="j-btn j-btn-dark" id="xd-sms" href="${esc(smsHref(b.mobile, text))}">Text from my phone</a>` : ''}</div>`)
+  box.querySelector('#xd-copy').addEventListener('click', () => copy(slot.link))
+  box.querySelector('#xd-text').addEventListener('input', (ev) => { const a = box.querySelector('#xd-sms'); if (a) a.href = smsHref(b.mobile, ev.target.value) })
+
 }
 
 function addPlayer(ui, s, done) {
@@ -230,7 +303,7 @@ function addPlayer(ui, s, done) {
     <label class="j-field"><span>Mobile <span class="muted">(to text them the link)</span></span><input class="j-input" id="xa-mobile" type="tel" inputmode="tel"></label>
     <p class="j-err" id="xa-err" hidden></p>
     <div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-dark" id="xa-go">Add to the session</button></div>`, { wide: true })
-  let rowId = ''
+  let rowId = '', pick = ''
   let t
   box.querySelector('#xa-q').addEventListener('input', (e) => {
     clearTimeout(t)
@@ -239,15 +312,15 @@ function addPlayer(ui, s, done) {
       const list = r.ok ? r.data.results : []
       box.querySelector('#xa-res').innerHTML = list.map((x, i) => `<button type="button" class="j-player" data-i="${i}"><span><b>${esc(x.name)}</b><br><span class="muted small">${esc(x.group)}${x.hasEmail ? '' : ' · no email on file'}</span></span></button>`).join('')
       box.querySelectorAll('[data-i]').forEach((b) => b.addEventListener('click', () => {
-        const x = list[Number(b.dataset.i)]; rowId = x.rowId
-        box.querySelector('#xa-name').value = x.name; box.querySelector('#xa-res').innerHTML = `<p class="j-box j-box-grey small">Using ${esc(x.name)} from Term 4 Players. Their email and mobile come from Airtable.</p>`
+        const x = list[Number(b.dataset.i)]; rowId = x.rowId; pick = x.pick || ''
+        box.querySelector('#xa-name').value = x.name; box.querySelector('#xa-res').innerHTML = `<p class="j-box j-box-grey small">Using ${esc(x.name)} (${esc(x.group)}). Their email and mobile are on file${x.hasEmail ? '' : ': none yet, add the email below'}.</p>`
       }))
     }, 250)
   })
-  box.querySelector('#xa-name').addEventListener('input', () => { rowId = '' })
+  box.querySelector('#xa-name').addEventListener('input', () => { rowId = ''; pick = '' })
   box.querySelector('#xa-go').addEventListener('click', async (e) => {
     e.currentTarget.disabled = true
-    const r = await post('extraAttach', { slotId: s.id, rowId, name: box.querySelector('#xa-name').value, email: box.querySelector('#xa-email').value, mobile: box.querySelector('#xa-mobile').value })
+    const r = await post('extraAttach', { slotId: s.id, rowId, pick, name: box.querySelector('#xa-name').value, email: box.querySelector('#xa-email').value, mobile: box.querySelector('#xa-mobile').value })
     if (!r.ok) { box.querySelector('#xa-go').disabled = false; const err = box.querySelector('#xa-err'); err.textContent = r.data.error; err.hidden = false; return }
     const b = r.data.booking
     const slot = r.data.slot

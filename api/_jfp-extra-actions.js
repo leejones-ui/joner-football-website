@@ -28,6 +28,27 @@ const no = (res, status, error) => res.status(status).json({ success: false, err
 
 const MANY_MAX = 24
 
+// ---------- finding a player ----------
+const blank = (r) => /test/i.test(r.player || r.name || '')
+async function people() {
+  const roster = await loadRoster()
+  const out = [], seen = new Set()
+  const add = (x) => { const k = `${normName(x.name)}|${(x.email || '').toLowerCase()}`; if (!x.name || seen.has(k)) return; seen.add(k); out.push(x) }
+  for (const r of roster.players) if (!blank(r)) add({ pick: `t4:${r.id}`, rowId: r.id, name: r.player, email: r.email || '', mobile: r.phone || '', where: [r.day, r.time, r.location].filter(Boolean).join(' ') || 'Term 4, no group' })
+  for (const r of roster.term3 || []) if (!blank(r)) add({ pick: `t3:${r.id}`, name: r.player, email: r.emails?.[0] || '', mobile: r.phone || '', where: 'Term 3 player' })
+  for (const s of await allSlots()) for (const b of s.bookings || []) if (b.status !== 'removed' && !b.rowId && b.email) add({ pick: `xb:${s.id}:${b.id}`, name: b.name, email: b.email, mobile: b.mobile || '', where: `Extra session ${dateLabel(s.date)}` })
+  return out
+}
+async function searchPeople(q) {
+  const words = q.split(' ').filter(Boolean)
+  return (await people()).filter((x) => { const n = normName(x.name); return words.every((w) => n.includes(w)) })
+    .sort((a, b) => Number(normName(b.name).startsWith(q)) - Number(normName(a.name).startsWith(q)))
+    .slice(0, 12).map((x) => ({ pick: x.pick, rowId: x.rowId || '', name: x.name, group: x.where, hasEmail: Boolean(x.email), hasMobile: Boolean(x.mobile) }))
+}
+async function resolvePick(pick) {
+  return (await people()).find((x) => x.pick === pick) || null
+}
+
 // A new public session: the JFP family email (built off until Lee says yes to
 // the wording, see _jfp-extra-announce.js).
 async function announcePublic(config, slots) {
@@ -126,14 +147,14 @@ export async function extraAction(req, res, principal, config, body, action, isA
     return out.error ? no(res, 400, out.error) : ok(res, { status: out.status })
   }
 
-  // Players a coach can put on a session: Term 4 players by name (no contacts shown).
+  // Players a coach can put on a session (no contacts shown). Term 4 players,
+  // then Term 3 players and anyone booked on an extra session before, so
+  // Dean's private players come up by name (Lee, 19 Oct 2026). A pick other
+  // than a Term 4 row is a reference the server turns back into the details.
   if (action === 'extraSearch') {
     const q = normName(body.q || '')
     if (q.length < 2) return ok(res, { results: [] })
-    const roster = await loadRoster()
-    const results = roster.players.filter((r) => !/test/i.test(r.player) && normName(r.player).includes(q)).slice(0, 12)
-      .map((r) => ({ rowId: r.id, name: r.player, group: [r.day, r.time, r.location].filter(Boolean).join(' ') || 'No group', hasEmail: Boolean(r.email), hasMobile: Boolean(r.phone) }))
-    return ok(res, { results })
+    return ok(res, { results: await searchPeople(q) })
   }
 
   // A coach puts a player on their session: a Term 4 player, or someone new
@@ -143,6 +164,12 @@ export async function extraAction(req, res, principal, config, body, action, isA
     if (!s) return no(res, 404, 'That session is gone.')
     if (!isAdmin && s.coachId !== principal.coachId) return no(res, 403, 'Not your session.')
     let name = clean(body.name, 80), email = clean(body.email, 120), mobile = clean(body.mobile, 30), rowId = ''
+    if (body.pick && !body.rowId) {
+      const who = await resolvePick(clean(body.pick, 120))
+      if (!who) return no(res, 404, 'That player could not be found. Search again.')
+      if (who.rowId) body.rowId = who.rowId
+      else { name = who.name; email = who.email || email; mobile = who.mobile || mobile }
+    }
     if (body.rowId) {
       const r = (await loadRoster({ fresh: true })).players.find((x) => x.id === clean(body.rowId, 30))
       if (!r) return no(res, 404, 'That player is not in Term 4 Players.')
