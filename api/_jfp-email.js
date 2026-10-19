@@ -776,3 +776,14 @@ export function accountGuideText(r, { sender = 'Lee' } = {}) {
   const list = todo.length > 1 ? `${todo.slice(0, -1).join(', ')} and ${todo.at(-1)}` : todo[0]
   return `Hi ${w.hi}, it's ${sender} from Joner Football. Everything now runs through your Joner Football account: fees, waivers, player info, cancellations, holiday training and extra sessions. Sign in at jonerfootball.com/jfp-account with ${r.email} (no password, just a code).${list ? ` Still to do: ${list}.` : ''} We've emailed you the full guide. Any questions, just reply.`
 }
+
+// Coach invoices (Lee, 20 Oct 2026): to Lee and Ligia only, never the wider
+// staff list (wage details stay with them). The PDF is attached. The subject
+// carries no amounts, as the email log shows subjects.
+export const PAY_TEAM = [{ email: 'leejones@jonerfootball.com', name: 'Lee' }, { email: 'ligia@jonerfootball.com', name: 'Ligia' }]
+export async function sendCoachInvoiceToStaff({ subject, heading, paras = [], list = [], cta = null, attachment, replyTo = '', kind = 'coach invoice' }) {
+  const body = `${paras.map((x) => p(esc(x))).join('\n')}
+${list.length ? rows(list.filter(([, v]) => v).map(([k, v]) => [k, esc(v)])) : ''}
+${cta ? button(cta.label, cta.url) : ''}`
+  return send({ to: PAY_TEAM, subject, html: shell({ preheader: subject, heading, body }), replyTo: replyTo || 'ligia@jonerfootball.com', kind, ...(attachment ? { attachment: [attachment] } : {}) })
+}

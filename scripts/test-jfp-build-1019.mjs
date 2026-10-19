@@ -54,6 +54,7 @@ const acct = (c, action, body = {}) => c.call('/api/jfp-account', { action, ...b
 const ok = async (c, action, body) => { const r = await portal(c, action, body); assert.equal(r.status, 200, `${action}: ${JSON.stringify(r.data)}`); return r.data }
 const hadmin = async (action, b = {}) => (await fetch(`${B}/api/holiday-admin`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-holiday-admin-secret': 'admin', origin: B }, body: JSON.stringify({ action, ...b }) })).json()
 const day = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10)
+const kv = async (cmd) => (await fetch(`${B}/__kv?cmd=${encodeURIComponent(JSON.stringify(cmd))}`)).text()
 
 const lee = client(), sam = client()
 await signIn(lee, 'leejones@jonerfootball.com', 'staff')
@@ -185,7 +186,12 @@ await test('session ideas: the JF App and YouTube for coaches; only Lee or Ligia
 await test('coach invoices: built from logged hours, a covered session is flagged, hours sit on one invoice only', async () => {
   const dates = [1, 2, 3, 4, 5, 6, 7].map((n) => day(-n))
   const thuDate = dates.find((d) => new Date(`${d}T12:00:00Z`).getUTCDay() === 4)
-  await ok(lee, 'coachInvRate', { coachId: 'sam', dollars: 40 })
+  const dean = client()
+  await signIn(dean, 'jonerfootballdean@gmail.com', 'staff')
+  // Sam's rate card (invented amounts): an hour by players present, weekend extra, Pathway flat.
+  await ok(lee, 'coachPayCardSave', { coachId: 'sam', card: { bands: [4000, 5000, 6000, 7000, 7500, 8500, 9000], weekendExtra: 1000, pathwayFlat: 5000, jjHead: 5000, jjShadow: 5000 } })
+  assert.equal((await portal(sam, 'coachPayCardSave', { coachId: 'sam', card: { bands: [1, 1, 1, 1, 1, 1, 1] } })).status, 403, 'a coach never sets rates')
+  assert.equal((await portal(sam, 'coachPayCards')).status, 403, 'a coach never sees the rate cards')
   // The cover checks on a line: Dean covered it, Sam still claims it, Dean logged it too.
   const { flagsFor } = await import('../api/_jfp-coach-invoices.js')
   const line = { status: 'approved', groupId: 'G1', date: '2026-10-16', kind: 'session' }
@@ -194,13 +200,29 @@ await test('coach invoices: built from logged hours, a covered session is flagge
   assert.deepEqual(codes, ['covered', 'double'])
   assert.deepEqual(flagsFor({ ...line, kind: 'cover' }, 'max', { covers, hours: [], name: (id) => id }).map((f) => f.code), ['no-cover'])
   const h1 = await ok(sam, 'hoursSave', { date: thuDate, start: '16:15', end: '17:15', kind: 'session', groupId: THU })
+  // The register: three marked present, one absent.
+  for (const [id, v] of [['recA', 'Present'], ['recB', 'Present'], ['recC', 'Present'], ['recD', 'Absent']]) await kv(['HSET', `jfp:att:${THU}:${thuDate}`, id, v])
   await ok(sam, 'hoursSave', { date: day(-2), start: '09:00', end: '10:30', kind: 'admin' })
   const draft = await ok(sam, 'coachInvList', { from: day(-7), to: day(0) })
   assert.equal(draft.draft.length, 2)
   assert.ok(draft.draft.every((l) => l.flags.some((f) => f.code === 'waiting')), 'not approved yet is flagged')
-  assert.ok(!('rates' in draft), 'a coach never sees other rates')
-  const inv = (await ok(sam, 'coachInvCreate', { from: day(-7), to: day(0), abn: '12 345 678 901', payTo: 'S York' })).invoice
-  assert.equal(inv.totalMinutes, 150); assert.equal(inv.amountCents, 10000)
+  assert.ok(!('rates' in draft) && !('cards' in draft), 'a coach never sees other rates')
+  const sess = draft.draft.find((l) => l.kind === 'session')
+  assert.equal(sess.players, 3); assert.equal(sess.cents, 6000, '3 present: the 3 player rate for 1 hour'); assert.match(sess.description, /^3on1/)
+  const office = draft.draft.find((l) => l.kind === 'admin')
+  assert.equal(office.cents, null, 'no agreed office rate: TBC, never guessed')
+  assert.equal((await portal(sam, 'coachInvCreate', { from: day(-7), to: day(0) })).status, 400, 'details first')
+  await ok(sam, 'coachPayDetailsSave', { details: { fullName: 'Sam Example', abn: '12345678901', accountName: 'S Example', bsb: '062-000', accountNumber: '12345678' } })
+  const made = await ok(sam, 'coachInvCreate', { from: day(-7), to: day(0) })
+  const inv = made.invoice
+  assert.equal(inv.totalMinutes, 150); assert.equal(inv.amountCents, 6000); assert.equal(inv.pending, 1)
+  const mail = (await (await fetch(`${B}/__emails`)).json()).filter((e) => /Coach invoice SAM-/.test(e.subject)).at(-1)
+  assert.ok(mail, 'emailed to Lee and Ligia'); assert.ok(!/\$|A\$/.test(mail.subject), 'no amount in the subject')
+  const pdf = await ok(sam, 'coachInvPdf', { id: inv.id })
+  assert.ok(Buffer.from(pdf.base64, 'base64').subarray(0, 4).toString() === '%PDF')
+  assert.equal((await portal(dean, 'coachInvPdf', { id: inv.id })).status, 403, 'another coach cannot open it')
+  assert.ok(!(await ok(dean, 'coachInvList', {})).invoices.some((x) => x.id === inv.id), 'another coach never sees it')
+  assert.equal((await portal(lee, 'coachInvDecide', { id: inv.id, status: 'approved' })).status, 400, 'TBC lines first')
   assert.match(inv.number, /^SAM-\d{3}$/)
   assert.equal((await portal(sam, 'coachInvCreate', { from: day(-7), to: day(0) })).status, 400, 'nothing left to invoice')
   assert.equal((await portal(sam, 'hoursSave', { id: h1.entry.id, date: thuDate, start: '16:00', end: '17:15', kind: 'session', groupId: THU })).status, 409)
@@ -209,6 +231,9 @@ await test('coach invoices: built from logged hours, a covered session is flagge
   const again = await ok(sam, 'coachInvList', { from: day(-7), to: day(0) })
   assert.equal(again.draft.length, 2, 'sent back frees the hours')
   const inv2 = (await ok(sam, 'coachInvCreate', { from: day(-7), to: day(0) })).invoice
+  const tbc = inv2.lines.findIndex((l) => l.cents == null)
+  assert.equal((await portal(sam, 'coachInvLineSet', { id: inv2.id, index: tbc, cents: 3000, note: 'x' })).status, 403)
+  assert.equal((await ok(lee, 'coachInvLineSet', { id: inv2.id, index: tbc, cents: 4500, note: 'Office rate agreed' })).invoice.amountCents, 10500)
   await ok(lee, 'coachInvDecide', { id: inv2.id, status: 'approved' })
   await ok(lee, 'coachInvDecide', { id: inv2.id, status: 'paid' })
   const list = await ok(lee, 'coachInvList', {})

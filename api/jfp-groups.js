@@ -127,6 +127,12 @@ export default async function handler(req, res) {
     try { stripe = await reconcileStripe(await getConfig(), undefined, { alert: true }) } catch (error) { console.error('jfp stripe sync failed', error) }
     // A place opened in a group with a waitlist: email those waiting (_jfp-waitlist-open.js).
     try { const { waitlistTick } = await import('./_jfp-waitlist-open.js'); await waitlistTick(await getConfig()) } catch (error) { console.error('jfp waitlist place check failed', error) }
+    // Coach invoices due Monday 9am: a Sunday 6pm reminder, a Monday 9am list for Lee and Ligia.
+    try {
+      const [{ invoiceReminders }, { sendCoachNotice }, { claimOnce }] = await Promise.all([import('./_jfp-coach-invoices.js'), import('./_jfp-email.js'), import('./_holiday-store.js')])
+      const now = process.env.JFP_TEST_CLOCK === '1' && Number(req.query.now) ? Number(req.query.now) : Date.now()
+      await invoiceReminders(await getConfig(), { nowMs: now, sendCoach: sendCoachNotice, claimOnce })
+    } catch (error) { console.error('jfp coach invoice reminders failed', error) }
     try { await sweepExpiredOffers({ email: 'hourly check' }); return res.status(200).json({ success: true, stripe: stripe ? { recorded: stripe.recorded, failed: stripe.failed?.length || 0, busy: Boolean(stripe.busy) } : null }) } catch (error) { console.error('jfp offer sweep failed', error); return res.status(500).json({ success: false }) }
   }
   res.setHeader('Cache-Control', 'no-store')
