@@ -5,6 +5,7 @@
 // A coach only sees players in their own groups; Lee and Ligia see everyone.
 // Every change saves as a draft on the server, with a copy on this device so
 // nothing typed is lost if the page closes.
+import { mountReportDue } from './jfp-portal-reportdue.js'
 import { esc } from './jfp-common.js'
 import { psHelp } from './jfp-portal-ps.js'
 import { savePdfOnDevice, reportCardHtml, reportDate as dateLabel } from './jfp-report-view.js'
@@ -27,6 +28,7 @@ export async function renderReports(ui) {
   const notDone = d.players.filter((p) => !p.sentAt).length
   view().innerHTML = `<div class="jp-head"><div><h1>Player reports</h1>
       <p class="muted small" style="margin-top:2px">${esc(d.term)} · ${d.isAdmin ? 'every JFP player' : 'the players in your groups'} ${psHelp('Pick a player, rate them and write your feedback. It saves as you go. When you press Send, the report goes into the family\'s account under Player reports and they get an email with the PDF. A player with their own login gets it too. Nobody else.')}</p></div></div>
+    <div id="rp-due"></div>
     <div class="j-chips" style="margin:10px 0 14px" id="rp-tabs">
       <button type="button" class="j-chip" data-tab="write" aria-pressed="${S.tab === 'write'}">Players${notDone ? ` (${notDone} to do)` : ''}</button>
       <button type="button" class="j-chip" data-tab="drafts" aria-pressed="${S.tab === 'drafts'}">Drafts${drafts.length ? ` (${drafts.length})` : ''}</button>
@@ -40,6 +42,7 @@ export async function renderReports(ui) {
     drawBody(ui)
   })
   drawBody(ui)
+  mountReportDue(view().querySelector('#rp-due'), ui, { always: true })
 }
 
 function drawBody(ui) {

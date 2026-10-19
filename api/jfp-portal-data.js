@@ -50,7 +50,7 @@ import { EXTRA_ACTIONS, extraAction } from './_jfp-extra-actions.js'
 import { ANNOUNCE_ACTIONS, announceAction } from './_jfp-announce.js'
 import { HOURS_ACTIONS, hoursAction } from './_jfp-hours.js'
 import { INVOICE_ACTIONS, invoiceAction } from './_jfp-coach-invoices.js'
-import { FAMILY_NOTE_ACTIONS, familyNoteAction } from './_jfp-family-notes.js'
+import { FAMILY_NOTE_ACTIONS, familyNoteAction, coachPNotesByRow } from './_jfp-family-notes.js'
 import { REPORT_ACTIONS, reportAction } from './_jfp-report-actions.js'
 import { pushFamilyNote } from './_jfp-push.js'
 import { noteNewPlayer, alertsStatus, newPlayerWords, registerWords, tellCoach } from './_jfp-coach-alerts.js'
@@ -2885,6 +2885,17 @@ const SESSION_IDEAS = [
 
 // The Session ideas topics a coach can file a link under (match TOPICS in jfp-portal-ideas.js).
 const IDEA_TOPICS = ['speed', 'ball', 'dribble', 'pass', 'shoot', '1v1', 'defend', 'head', 'aware', 'warm', 'gk', 'session', 'other']
+// A coach may open a player's card and notes when the group is theirs, they
+// help on it, they cover it (from a week before to any date ahead), or it
+// runs today: a coach standing in on the day (Lee, 20 Oct 2026).
+function coachMaySee(config, g, coachId, covers) {
+  if (!coachId) return false
+  if (g.coachId === coachId || (g.extraCoachIds || []).includes(coachId)) return true
+  const today = sydneyToday()
+  const weekAgo = new Date(Date.parse(`${today}T00:00:00Z`) - 7 * 86400000).toISOString().slice(0, 10)
+  if (covers.some((c) => c.status === 'active' && c.groupId === g.id && c.coverCoachId === coachId && c.date >= weekAgo)) return true
+  return sessionDates(config, g.day).includes(today)
+}
 async function staffAction(req, res, principal, config, body, isAdmin, action) {
   const me = principal.coachId || ''
   const groups = await listGroups()
@@ -2932,7 +2943,7 @@ async function staffAction(req, res, principal, config, body, isAdmin, action) {
       const all = ((await kvCommand(['HVALS', KEY])) || []).map((x) => { try { return JSON.parse(x) } catch { return null } }).filter(Boolean)
       if (all.some((x) => x.url === url)) return fail(res, 409, 'That link is already in the library.')
       if (all.filter((x) => x.byEmail === principal.email && x.at > new Date(Date.now() - 86400000).toISOString()).length >= 40) return fail(res, 429, 'That is a lot of links today. Try again tomorrow.')
-      const link = { id: newId('IL'), url, title, topic, note: clean(body.note, 240), by: principal.name || coachLabel(coachById(config, me)) || principal.email, byEmail: principal.email, coachId: me, at: new Date().toISOString() }
+      const link = { id: newId('IL'), url, title, topic, place: ['hq', 'field'].includes(body.place) ? body.place : '', note: clean(body.note, 240), by: principal.name || coachLabel(coachById(config, me)) || principal.email, byEmail: principal.email, coachId: me, at: new Date().toISOString() }
       await kvCommand(['HSET', KEY, link.id, JSON.stringify(link)])
       await audit({ by: principal.email, action: 'ideas.link.add', target: link.id, after: { url, topic } })
       return res.status(200).json({ success: true, link: { ...link, mine: true } })
@@ -2956,7 +2967,11 @@ async function staffAction(req, res, principal, config, body, isAdmin, action) {
   if (action === 'ideasApp') {
     const { appCatalog } = await import('./_jfp-uscreen.js')
     const cat = await appCatalog()
-    return res.status(200).json({ success: true, at: cat.at, videos: cat.videos })
+    // Where it was filmed (Lee, 20 Oct 2026): HQ or the field, from the sorted
+    // thumbnails; a newer video goes by its tags.
+    const { default: places } = await import('./_jfp-app-places.js')
+    const placeOf = (v) => places[String(v.id)] || ((v.tags || []).some((t) => /^(hq|indoor|indoor training)$/i.test(t)) ? 'hq' : '')
+    return res.status(200).json({ success: true, at: cat.at, videos: cat.videos.map((v) => ({ ...v, place: placeOf(v) })) })
   }
   // Lee and Ligia: covers and time off asked for since they last opened Cover
   // and time off (Lee, 19 Oct 2026: "This is key"). Time off still waiting
@@ -3437,6 +3452,21 @@ async function handle(req, res) {
       return res.status(200).json({ success: true, user: { ...principal, coachId: myCoachId, photo: mine?.photo || '' }, coaches: isAdmin ? coachList(config) : [] })
     }
     if (action === 'coachPhoto') return await saveCoachPhoto(res, principal, config, body, isAdmin)
+    // Player reports due in week 9 (Lee, 20 Oct 2026): a coach sees their own
+    // count, Lee and Ligia every coach's, plus the reminders switch.
+    if (action === 'reportDue') {
+      const rd = await import('./_jfp-report-due.js')
+      if (typeof body.reminders === 'boolean') {
+        if (!isAdmin) return fail(res, 403, 'Only Lee or Ligia change this.')
+        await saveConfig({ reportReminders: body.reminders })
+        await audit({ by: principal.email, action: 'report.reminders', target: 'config', after: { on: body.reminders } })
+        return res.status(200).json({ success: true, reminders: body.reminders })
+      }
+      const st = await rd.dueStatus(config)
+      const myCoachId = principal.coachId || config.coaches.find((c) => c.email && c.email === principal.email)?.id || ''
+      const coaches = isAdmin ? st.coaches : st.coaches.filter((c) => c.coachId === myCoachId)
+      return res.status(200).json({ success: true, phase: st.phase, week: st.week, dueWeek: rd.DUE_WEEK, start: st.start, end: st.end, endLabel: st.endLabel, admin: isAdmin, reminders: config.reportReminders === true, coaches: coaches.map((c) => ({ coachId: c.coachId, name: c.name, total: c.total, sent: c.sent, left: c.left, missing: isAdmin ? [] : c.missing })) })
+    }
     // Coach profiles (Lee, 20 Oct 2026): a coach edits their own, Lee and
     // Ligia any; every coach reads them all on Our coaches.
     if (action === 'coachProfiles' || action === 'coachProfileSave' || action === 'coachProfilesFamilies') {
@@ -3472,9 +3502,12 @@ async function handle(req, res) {
     if (action === 'cancelAlerts') return await cancelAlerts(res, principal, config, isAdmin)
 
     if (action === 'coachSessions') {
-      const coachId = isAdmin ? clean(body.coachId, 30) : principal.coachId
+      // The Register tab (Lee, 20 Oct 2026): every coach can open any coach's
+      // sessions, or the whole program, to mark a register they are covering.
+      const any = body.any === true
+      const coachId = isAdmin || any ? clean(body.coachId, 30) || (any ? 'all' : '') : principal.coachId
       // The whole program (Lee, 19 Oct 2026): Lee and Ligia see every coach's sessions at once.
-      const all = isAdmin && coachId === 'all'
+      const all = (isAdmin || any) && coachId === 'all'
       if (!all && !coachById(config, coachId)) return fail(res, 400, 'Choose a coach.')
       const [groups, roster, notes] = await Promise.all([listGroups(), loadRoster(), coachNotes()])
       const juniors = await juniorsFor(groups, config)
@@ -3522,9 +3555,17 @@ async function handle(req, res) {
         s.cancelledBy = {}
         for (const r of away) if (r.groupId === s.id) (s.cancelledBy[r.date] ||= {})[r.rowId] = { reason: r.reason, notice: r.noticeLabel }
       }
-      const trials = coachTrials(sessions, await trialFeedbackAll(), sydneyToday())
+      // Notes between coaches on each player, for the sessions this coach runs,
+      // helps on or is covering (Lee, 20 Oct 2026: a cover coach sees them).
+      const me = principal.coachId
+      const notesOn = (s) => isAdmin || s.covering || s.coachId === me || (s.extraCoachIds || []).includes(me) || covers.some((c) => c.groupId === s.id && c.coverCoachId === me)
+      if (sessions.some(notesOn)) {
+        const pn = await coachPNotesByRow()
+        for (const s of sessions) if (notesOn(s)) for (const p of s.players) { const n = pn.get(p.rowId); if (n?.length) p.pnotes = n.slice(0, 2) }
+      }
+      const trials = !isAdmin && any && coachId !== me ? [] : coachTrials(sessions, await trialFeedbackAll(), sydneyToday())
       const perWeek = sessions.reduce((t, s) => t + s.durationMin, 0)
-      return res.status(200).json({ success: true, trials, verdicts: TRIAL_VERDICTS, coach: all ? 'Whole program' : coachLabel(coachById(config, coachId)), coachPhoto: all ? '' : coachList(config, false).find((c) => c.id === coachId)?.photo || '', all, week, term: config.term, sessions, hours: { perWeekMinutes: perWeek, termMinutes: perWeek * config.weeks, weeks: config.weeks } })
+      return res.status(200).json({ success: true, ...(isAdmin || any ? { coachList: coachList(config, false).map((c) => ({ id: c.id, name: c.firstName })) } : {}), trials, verdicts: TRIAL_VERDICTS, coach: all ? 'Whole program' : coachLabel(coachById(config, coachId)), coachPhoto: all ? '' : coachList(config, false).find((c) => c.id === coachId)?.photo || '', all, week, term: config.term, sessions, hours: { perWeekMinutes: perWeek, termMinutes: perWeek * config.weeks, weeks: config.weeks } })
     }
 
     // A player's football information for their coach (Lee, 15 Oct 2026):
@@ -3539,8 +3580,7 @@ async function handle(req, res) {
       const [groups, roster, notes, covers] = await Promise.all([listGroups(), loadRoster(), coachNotes(), listCovers()])
       const r = roster.players.find((x) => x.id === rowId && x.holdsPlace)
       const g = r && groups.find((x) => x.id === r.groupId)
-      const coversIt = (gid) => covers.some((c) => c.status === 'active' && c.groupId === gid && c.coverCoachId === coachId && c.date >= sydneyToday())
-      if (!r || !g || isJuniorsGroup(g) || (!isAdmin && !(g.coachId === coachId || (g.extraCoachIds || []).includes(coachId) || coversIt(g.id)))) return fail(res, 404, 'That player is not in your sessions.')
+      if (!r || !g || isJuniorsGroup(g) || (!isAdmin && !coachMaySee(config, g, coachId, covers))) return fail(res, 404, 'That player is not in your sessions.')
       const prof = pickProfile(await allProfiles().catch(() => []), { key: profileKey(r.player, r.email), rowIds: [r.id] })
       const w = prof?.club ? null : waiverFor(r.player, { emails: rowEmails(r), phones: [r.phone], dob: r.dob }, roster.waivers)
       const dob = prof?.dob || isoDate(r.dob) || w?.dob || ''
@@ -3599,8 +3639,8 @@ async function handle(req, res) {
       const g = await getGroup(body.groupId)
       if (!g) return fail(res, 404, 'Group not found.')
       const date = clean(body.date, 10)
-      const covering = (await listCovers()).some((c) => c.status === 'active' && c.groupId === g.id && c.date === date && c.coverCoachId === principal.coachId)
-      if (!isAdmin && !covering && g.coachId !== principal.coachId && !(g.extraCoachIds || []).includes(principal.coachId)) return fail(res, 403, 'Not your session.')
+      // Any coach can mark any register (Lee, 20 Oct 2026): covering is easier.
+      // Airtable records which coach marked it.
       const dates = isJuniorsGroup(g) ? jjDatesForGroup(config, g) : sessionDates(config, g.day)
       if (!dates.includes(date)) return fail(res, 400, 'That date is not a session for this group.')
       if ((await sessionOffMap()).has(`${g.id}|${date}`)) return fail(res, 400, 'That session was cancelled, so there is no register for it.')
@@ -3651,9 +3691,7 @@ async function handle(req, res) {
         const r = roster.players.find((x) => x.id === rowId && x.holdsPlace)
         const g = r && groups.find((x) => x.id === r.groupId)
         if (!r || !g || isJuniorsGroup(g)) return null
-        const coachId = principal.coachId
-        const covering = covers.some((c) => c.status === 'active' && c.groupId === g.id && c.coverCoachId === coachId && c.date >= sydneyToday())
-        if (!isAdmin && !(g.coachId === coachId || (g.extraCoachIds || []).includes(coachId) || covering)) return null
+        if (!isAdmin && !coachMaySee(config, g, principal.coachId, covers)) return null
         return { row: r, group: g }
       }
       return await familyNoteAction(res, principal, body, action, { isAdmin, access, onNew: (rec, row) => pushFamilyNote(rec, row) })

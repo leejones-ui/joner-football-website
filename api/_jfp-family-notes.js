@@ -27,6 +27,14 @@ export async function allFamilyNotes() {
   return out.sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')))
 }
 
+// Coach-to-coach notes by player, newest first (for a covering coach's register).
+export async function coachPNotesByRow() {
+  const raw = (await kvCommand(['HGETALL', PKEY])) || []
+  const vals = Array.isArray(raw) ? raw.filter((_, i) => i % 2 === 1) : Object.values(raw)
+  const by = new Map()
+  for (const n of vals.map(parse).filter(Boolean).sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')))) (by.get(n.rowId) || by.set(n.rowId, []).get(n.rowId)).push({ text: n.text, byName: n.byName || '', dateLabel: dateLabel(sydDay(n.at)) })
+  return by
+}
 export function cleanNoteText(v) { return String(v || '').replace(/\r\n/g, '\n').slice(0, NOTE_TEXT_MAX).trim() }
 
 async function readIds(email) {

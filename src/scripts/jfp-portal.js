@@ -18,6 +18,7 @@ import { renderInvoices } from './jfp-portal-invoices.js'
 import { renderCoachInvoices } from './jfp-portal-coach-invoices.js'
 import { renderIdeas } from './jfp-portal-ideas.js'
 import { renderTeam, mountMyProfile } from './jfp-portal-cprofile.js'
+import { mountReportDue } from './jfp-portal-reportdue.js'
 import { renderCampsMoney, campsData } from './jfp-portal-camps.js'
 import { renderEverything } from './jfp-portal-everything.js'
 import { drawFamilies, sessionModal } from './jfp-portal-family.js'
@@ -70,7 +71,7 @@ async function showSignIn() {
 const NAV = {
   // Three groups, not one long Coaching list (Lee, 19 Oct 2026).
   coach: [
-    ['My coaching', [['program', 'Program'], ['coach', 'My sessions'], ['extra', 'Extra sessions'], ['reports', 'Player reports'], ['cancellations', 'Cancellations']]],
+    ['My coaching', [['program', 'Program'], ['coach', 'My sessions'], ['register', 'Register'], ['extra', 'Extra sessions'], ['reports', 'Player reports'], ['cancellations', 'Cancellations']]],
     ['Time and pay', [['staff', 'Cover and time off'], ['hours', 'My hours'], ['cinvoices', 'My invoices']]],
     ['Ideas and plans', [['ideas', 'Session ideas'], ['plans', 'Session plans'], ['help', 'Who handles what'], ['team', 'Our coaches'], ['profile', 'My profile']]],
   ],
@@ -90,6 +91,7 @@ const ICON = {
   extra: '<circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/>',
   cinvoices: '<path d="M6 3.5h12v17l-3-2-3 2-3-2-3 2z"/><path d="M9 8.5h6M9 12h6M9 15.5h3"/>',
   help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7M12 17h.01"/>',
+  register: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2h6v2M9 11l2 2 4-4M9 17h6"/>',
   team: '<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14c2.8 0 5 2.2 5 5"/>',
   ideas: '<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/>',
   overview: '<path d="M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-4H4zM14 4v4h6V4z"/>',
@@ -235,7 +237,7 @@ async function go(tab, { quiet = false, instant = false } = {}) {
   if (!quiet && !instant) view().innerHTML = '<p class="muted">Loading</p>'
   closeSide()
   setDrawer(false)
-  const fn = JJ_TABS.has(tab) ? () => renderJJ(tab, jjUi()) : { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, accounts: renderNewAccounts, trials: renderTrials, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, cancellations: renderCancellations, coaches: renderCoaches, profile: renderProfile, staff: renderStaff, plans: renderPlans, help: renderHelp, families: renderPlayers, messages: () => renderMessages({ view, need, modal, closeModal, confirmBox }), announce: () => renderAnnouncements({ view, need, modal, closeModal, confirmBox }), hours: () => renderHours({ view, post, need, modal, closeModal, confirmBox, user: P.user }), makeups: () => renderMakeups({ view, post, need, modal, closeModal, confirmBox }), fnotes: () => renderFamilyNotesPage({ view, post, need, modal, closeModal, confirmBox }), extra: () => renderExtra({ view, post, need, modal, closeModal, confirmBox, toast, copy, user: P.user, refreshAsks: checkAskAlerts }), reports: () => renderReports(reportsUi()), cinvoices: () => renderCoachInvoices({ view, post, need, modal, closeModal, confirmBox, user: P.user }), ideas: () => renderIdeas({ view, post, need, toast }), team: () => renderTeam({ view, post, need, modal, closeModal, toast }), removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
+  const fn = JJ_TABS.has(tab) ? () => renderJJ(tab, jjUi()) : { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, accounts: renderNewAccounts, trials: renderTrials, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, register: () => renderCoach(), cancellations: renderCancellations, coaches: renderCoaches, profile: renderProfile, staff: renderStaff, plans: renderPlans, help: renderHelp, families: renderPlayers, messages: () => renderMessages({ view, need, modal, closeModal, confirmBox }), announce: () => renderAnnouncements({ view, need, modal, closeModal, confirmBox }), hours: () => renderHours({ view, post, need, modal, closeModal, confirmBox, user: P.user }), makeups: () => renderMakeups({ view, post, need, modal, closeModal, confirmBox }), fnotes: () => renderFamilyNotesPage({ view, post, need, modal, closeModal, confirmBox }), extra: () => renderExtra({ view, post, need, modal, closeModal, confirmBox, toast, copy, user: P.user, refreshAsks: checkAskAlerts }), reports: () => renderReports(reportsUi()), cinvoices: () => renderCoachInvoices({ view, post, need, modal, closeModal, confirmBox, user: P.user }), ideas: () => renderIdeas({ view, post, need, toast }), team: () => renderTeam({ view, post, need, modal, closeModal, toast }), removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
   try { await fn() } catch (e) { console.error(e); if (!quiet) view().innerHTML = `<div class="j-box j-box-red">Something went wrong loading this page. ${esc(e.message || '')}</div>` }
   if (P.user?.role === 'admin' && (tab === 'money' || tab === 'jj-money')) prefetchOthers(tab === 'jj-money' ? 'juniors' : P.jf.programme, moneyReaders())
   if (!P.cxChecked) { P.cxChecked = true; checkCancelAlerts(); checkTrialAlerts(); checkAccountAlerts(); checkRequestAlerts(); checkAskAlerts(); checkStaffAlerts() } else cancelBanner()
@@ -3008,7 +3010,7 @@ async function flushMarks() {
       if (r.ok) sent += 1; else toast(r.data.error || 'One saved tap could not be sent.')
       writeQueue(q)
     }
-    if (sent) { toast(`Sent ${sent} saved tap${sent === 1 ? '' : 's'}.`); if (P.tab === 'coach') renderCoach(true) }
+    if (sent) { toast(`Sent ${sent} saved tap${sent === 1 ? '' : 's'}.`); if (P.tab === 'coach' || P.tab === 'register') renderCoach(true) }
   } finally { flushing = false }
 }
 function showQueue() {
@@ -3022,16 +3024,38 @@ window.addEventListener('online', () => flushMarks())
 setInterval(() => { if (readQueue().length && navigator.onLine !== false) flushMarks() }, 20000)
 setTimeout(() => { showQueue(); if (readQueue().length) flushMarks() }, 1500)
 
+// Notes between coaches on a player, shown on the register of a coach who
+// runs or covers the session (Lee, 20 Oct 2026).
+// Covers coming up, at the top of My sessions (Lee, 20 Oct 2026): the group,
+// how many players, and a tap to its register.
+function coverStrip(sessions) {
+  const list = sessions.filter((s) => s.covering)
+  if (!list.length) return ''
+  return `<div class="j-box j-box-blue small" style="margin:8px 0"><b>You are covering</b><ul style="margin:6px 0 0;padding-left:18px;display:grid;gap:4px">${list.map((s) => `<li><button type="button" class="ps-link" data-jump="${esc(s.id)}|${esc(s.nextDate)}">${esc(s.covering.dateLabel)} · ${esc(s.covering.for)}'s ${esc(s.time)}, ${esc(s.location)}</button> <span class="muted">${s.players.length} player${s.players.length === 1 ? '' : 's'}${s.players.some((p) => p.pnotes?.length) ? ', with coach notes' : ''}</span></li>`).join('')}</ul></div>`
+}
+
+function pnoteLine(p) {
+  if (!p.pnotes?.length) return ''
+  return `<span class="jp-pnote">${p.pnotes.map((n) => `<span><b>${esc(n.byName || 'Coach')}</b> ${esc(n.dateLabel)}: ${esc(n.text.length > 160 ? `${n.text.slice(0, 160)}…` : n.text)}</span>`).join('')}</span>`
+}
+
 async function renderCoach(keep = false) {
   const admin = P.user.role === 'admin'
+  // The Register tab (Lee, 20 Oct 2026): every coach picks any coach (or the
+  // whole program), day and venue, and marks it. My sessions stays their own.
+  const reg = P.tab === 'register'
+  const wide = admin || reg
   coachDates()
   if (admin && !P.coaches) P.coaches = (await need(await post('me'))).coaches
   // Lee and Ligia start on the whole program (Lee, 19 Oct 2026: no clicking each coach).
   if (admin && !P.coachId) P.coachId = 'all'
-  const all = admin && P.coachId === 'all'
-  P.regWeek ??= all ? weekStart(0) : ''
-  const key = `${P.coachId}|${P.regWeek}`
-  const d = keep && P.coachData?.id === key ? P.coachData.d : await need(await post('coachSessions', { coachId: P.coachId, week: P.regWeek }))
+  if (reg && !P.rCoachId) P.rCoachId = 'all'
+  const cid = reg ? P.rCoachId : P.coachId
+  const all = wide && cid === 'all'
+  if (all && !P.regWeek) P.regWeek = weekStart(0)
+  P.regWeek ??= ''
+  const key = `${reg ? 'r' : 'c'}|${cid}|${P.regWeek}`
+  const d = keep && P.coachData?.id === key ? P.coachData.d : await need(await post('coachSessions', { coachId: cid, week: P.regWeek, ...(reg && !admin ? { any: true } : {}) }))
   P.coachData = { id: key, d }
   // The Players page toolbar (Lee, 14 Oct 2026): search, Day, Venue, quick chips.
   P.regF = { q: '', day: '', loc: '', flag: '', ...(P.regF || {}) }
@@ -3064,17 +3088,20 @@ async function renderCoach(keep = false) {
   const locs = [...new Set(d.sessions.map((s) => s.location))].sort().map((x) => ({ id: x, label: x }))
   const hrs = (min) => `${Math.floor(min / 60)}h${min % 60 ? ` ${min % 60}m` : ''}`
   view().innerHTML = `
-    <div class="jp-head"><div style="display:flex;gap:12px;align-items:center">${avatar(d.coachPhoto, d.coach, 40)}<div><h1>${all ? 'Whole program' : admin ? `Coach ${esc(d.coach)}` : 'My sessions'}</h1><p class="muted small">${all ? `${esc(d.term)} · ${sessions.length} session${sessions.length === 1 ? '' : 's'} · ${playerCount} player places${P.regWeek ? ` · week of ${esc(weekLabel(P.regWeek))}` : ''}` : `${esc(d.term)} · ${d.sessions.length} session${d.sessions.length === 1 ? '' : 's'} a week · ${hrs(d.hours.perWeekMinutes)} a week, ${hrs(d.hours.termMinutes)} across the term`}</p></div></div>
+    <div class="jp-head"><div style="display:flex;gap:12px;align-items:center">${avatar(d.coachPhoto, d.coach, 40)}<div><h1>${reg ? (all ? 'Register' : `Register · Coach ${esc(d.coach)}`) : all ? 'Whole program' : admin ? `Coach ${esc(d.coach)}` : 'My sessions'}</h1><p class="muted small">${all ? `${esc(d.term)} · ${sessions.length} session${sessions.length === 1 ? '' : 's'} · ${playerCount} player places${P.regWeek ? ` · week of ${esc(weekLabel(P.regWeek))}` : ''}` : `${esc(d.term)} · ${d.sessions.length} session${d.sessions.length === 1 ? '' : 's'} a week · ${hrs(d.hours.perWeekMinutes)} a week, ${hrs(d.hours.termMinutes)} across the term`}</p></div></div>
     </div>
     <div class="ps-tools" role="search">
-      ${admin ? psSelect('c-pick', [{ id: 'all', label: 'Whole program (every coach)' }, ...P.coaches.map((c) => ({ id: c.id, label: `Coach ${c.name}` }))], P.coachId, 'Coach').replace(/<option value="">[^<]*<\/option>/, '') : ''}
+      ${wide ? psSelect('c-pick', [{ id: 'all', label: 'Every coach' }, ...(d.coachList || P.coaches || []).map((c) => ({ id: c.id, label: `Coach ${c.name}` }))], cid, 'Coach').replace(/<option value="">[^<]*<\/option>/, '') : ''}
       ${psSelect('c-week', weeks.map(([id, label]) => ({ id, label })), P.regWeek, 'Next sessions', 'Week')}
       ${psSearch('c-q', 'Search players…', F.q, 'Search players in these sessions')}
       ${locs.length > 1 ? psSelect('c-loc', locs, F.loc, 'Venue') : ''}
       ${psToolsMore('c', { hasMore: false, active })}
     </div>
     ${dayChips}
-    ${admin ? `<p class="j-box ${unmarkedN ? 'j-box-amber' : 'j-box-green'} small" style="margin:8px 0">${unmarkedN ? `<b>${unmarkedN} player${unmarkedN === 1 ? '' : 's'} not marked off</b> in ${unmarkedS} session${unmarkedS === 1 ? '' : 's'} that ${unmarkedS === 1 ? 'has' : 'have'} happened${P.regWeek ? ` (week of ${esc(weekLabel(P.regWeek))})` : ''}. <button type="button" class="ps-link" data-chip="flag:unmarked">${F.flag === 'unmarked' ? 'Show everyone' : 'Show only these'}</button>` : `Every player is marked off for the sessions that have happened${P.regWeek ? ` in the week of ${esc(weekLabel(P.regWeek))}` : ''}.`}</p>` : ''}
+    <div id="rd-banner"></div>
+    ${!wide ? coverStrip(d.sessions) : ''}
+    ${reg ? '<p class="muted small" style="margin:4px 0 8px">Covering a session? Pick the coach, day or venue and mark it here. It saves for everyone straight away.</p>' : ''}
+    ${wide ? `<p class="j-box ${unmarkedN ? 'j-box-amber' : 'j-box-green'} small" style="margin:8px 0">${unmarkedN ? `<b>${unmarkedN} player${unmarkedN === 1 ? '' : 's'} not marked off</b> in ${unmarkedS} session${unmarkedS === 1 ? '' : 's'} that ${unmarkedS === 1 ? 'has' : 'have'} happened${P.regWeek ? ` (week of ${esc(weekLabel(P.regWeek))})` : ''}. <button type="button" class="ps-link" data-chip="flag:unmarked">${F.flag === 'unmarked' ? 'Show everyone' : 'Show only these'}</button>` : `Every player is marked off for the sessions that have happened${P.regWeek ? ` in the week of ${esc(weekLabel(P.regWeek))}` : ''}.`}</p>` : ''}
     ${psChips([['unmarked', 'Not marked off', 'red'], ['trial', 'Trials', 'violet'], ['cancelled', 'Cancelled by parent', 'orange'], ['unconfirmed', 'Not confirmed', 'grey']].map(([v, l, c]) => ({ key: 'flag', value: v, label: l, color: c, count: flagCount(v) })), (k, v) => F[k] === v)}
     
     ${trialCards(d.trials || [])}
@@ -3092,11 +3119,17 @@ async function renderCoach(keep = false) {
         ${off ? '<p class="j-box j-box-grey small" style="margin-top:10px">This session has not happened yet. The register opens on the day.</p>' : ''}
         ${date <= today ? (() => { const left = s.players.filter((p) => onDate(s, p, date) && unmarked(s, p, date)).length; return left ? `<p class="j-box j-box-amber small" style="margin-top:10px"><b>${left} not marked off</b> for ${esc(s.dates.find((x) => x.iso === date)?.label || date)}</p>` : s.players.some((p) => onDate(s, p, date)) ? `<p class="small" style="margin-top:8px;color:var(--j-green,#15803d)">✓ All marked off for ${esc(s.dates.find((x) => x.iso === date)?.label || date)}</p>` : '' })() : ''}
         ${cancelledNow ? `<p class="j-box j-box-red small" style="margin-top:10px"><b>Session cancelled</b> (${esc(cancelledNow)}). There is no register for this date.</p>` : ''}
-        <div style="margin-top:10px" ${cancelledNow ? 'hidden' : ''}>${s.players.filter((p) => showP(s, p)).map((p) => `<div class="jp-player" style="cursor:default">${avatar(p.photo, p.name, 32)}<span class="nm" style="flex:1 1 auto;min-width:0">${p.juniors ? esc(p.name) : `<button type="button" class="ps-link jp-cp-name" data-cp="${esc(p.rowId)}" aria-label="About ${esc(p.name)}">${esc(p.name)}</button>`}${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}${!p.mine ? ` <span class="muted small">· ${esc(p.coach)}</span>` : ''}${(s.cancelledBy?.[date] || {})[p.rowId] ? ` <span class="j-pill j-pill-amber" title="${esc(`${s.cancelledBy[date][p.rowId].reason}, ${s.cancelledBy[date][p.rowId].notice}`)}">Cancelled by parent</span>` : ''}${p.trial ? ' <span class="j-pill j-pill-blue">Trial</span>' : ''}${p.noFilm ? ' <span class="j-pill j-pill-red" title="The family said no to filming and photos">No filming</span>' : ''}${p.status !== 'Confirmed' ? ` <span class="j-pill j-pill-amber">${esc(p.status)}</span>` : ''}${noteLine(p, date)}</span>
+        <div style="margin-top:10px" ${cancelledNow ? 'hidden' : ''}>${s.players.filter((p) => showP(s, p)).map((p) => `<div class="jp-player" style="cursor:default">${avatar(p.photo, p.name, 32)}<span class="nm" style="flex:1 1 auto;min-width:0">${p.juniors ? esc(p.name) : `<button type="button" class="ps-link jp-cp-name" data-cp="${esc(p.rowId)}" aria-label="About ${esc(p.name)}">${esc(p.name)}</button>`}${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}${!p.mine ? ` <span class="muted small">· ${esc(p.coach)}</span>` : ''}${(s.cancelledBy?.[date] || {})[p.rowId] ? ` <span class="j-pill j-pill-amber" title="${esc(`${s.cancelledBy[date][p.rowId].reason}, ${s.cancelledBy[date][p.rowId].notice}`)}">Cancelled by parent</span>` : ''}${p.trial ? ' <span class="j-pill j-pill-blue">Trial</span>' : ''}${p.noFilm ? ' <span class="j-pill j-pill-red" title="The family said no to filming and photos">No filming</span>' : ''}${p.status !== 'Confirmed' ? ` <span class="j-pill j-pill-amber">${esc(p.status)}</span>` : ''}${noteLine(p, date)}${pnoteLine(p)}</span>
           <span class="jp-att"><button type="button" class="p" data-att="Present" data-row="${esc(p.rowId)}" aria-pressed="${att[p.rowId] === 'Present'}" ${off}>Here</button><button type="button" class="a" data-att="Absent" data-row="${esc(p.rowId)}" ${off} aria-pressed="${['Absent', 'Notified'].includes(att[p.rowId])}" ${att[p.rowId] === 'Notified' ? 'title="The family told us they cannot make it"' : ''}>${att[p.rowId] === 'Notified' ? 'Away (told us)' : 'Away'}</button></span></div>`).join('') || '<p class="muted small">No players yet.</p>'}${guests.map((x) => `<div class="jp-player" style="cursor:default">${avatar('', x.name, 32)}<span class="nm" style="flex:1 1 auto;min-width:0">${esc(x.name)} <span class="j-pill j-pill-blue">Free make-up</span></span><span class="jp-att"><button type="button" class="p" data-att="Make-up" data-row="${esc(x.rowId)}" aria-pressed="${att[x.rowId] === 'Make-up' || att[x.rowId] === 'Present'}" ${off}>Here</button><button type="button" class="a" data-att="Absent" data-row="${esc(x.rowId)}" ${off} aria-pressed="${att[x.rowId] === 'Absent'}">Away</button></span></div>`).join('')}</div>
       </article>`
     }).join('') : `<div class="ps-table-wrap"><div class="ps-empty">${active ? 'No sessions match. <button type="button" class="ps-link" data-c-clear>Clear filters</button>' : 'No sessions yet.'}</div></div>`}`
-  $('c-pick')?.addEventListener('change', (e) => { P.coachId = e.target.value; if (P.coachId === 'all' && !P.regWeek) P.regWeek = weekStart(0); F.day = ''; renderCoach() })
+  if (!admin) mountReportDue($('rd-banner'), { post, toast })
+  view().querySelectorAll('[data-jump]').forEach((b) => b.addEventListener('click', () => {
+    const [id] = b.dataset.jump.split('|')
+    const card = [...view().querySelectorAll('[data-sess]')].find((x) => x.dataset.sess === id && x.querySelector('.j-box-blue'))
+    card?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }))
+  $('c-pick')?.addEventListener('change', (e) => { if (reg) P.rCoachId = e.target.value; else P.coachId = e.target.value; if (e.target.value === 'all' && !P.regWeek) P.regWeek = weekStart(0); F.day = ''; renderCoach() })
   $('c-week')?.addEventListener('change', (e) => { P.regWeek = e.target.value; for (const k of Object.keys(P.coachDate)) delete P.coachDate[k]; saveCoachDates(); renderCoach() })
   view().querySelectorAll('[data-cday]').forEach((b) => b.addEventListener('click', () => { F.day = b.dataset.cday; redraw() }))
   const redraw = () => renderCoach(true)

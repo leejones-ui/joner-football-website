@@ -9,6 +9,20 @@ import { sessionKind } from './_jfp-family-extra.js'
 import { sweepExpiredOffers } from './_jfp-offers.js'
 import { coachTick } from './_jfp-coach-alerts.js'
 import { pushTick } from './_jfp-push.js'
+async function runReportTick() {
+  const { reportTick, staffSummary } = await import('./_jfp-report-due.js')
+  const { tellCoach } = await import('./_jfp-coach-alerts.js')
+  const { sendStaffNotice, cancelStaffTo } = await import('./_jfp-email.js')
+  const { telegramAlert } = await import('./_jfp-notify.js')
+  const cfg = await getConfig()
+  return reportTick({ send: {
+    coach: (m) => tellCoach(m),
+    staff: async (s) => {
+      try { await telegramAlert(`JFP ${s.subject}\n${s.lines.join('\n')}\n\nhttps://jonerfootball.com/jfp-portal/#reports`) } catch (e) { console.error('report telegram failed', e) }
+      await sendStaffNotice({ to: cancelStaffTo(cfg), subject: s.subject, heading: 'Player reports at the end of week 9', paras: ['Where each coach is with their player reports:'], list: s.lines.map((l) => { const i = l.indexOf(':'); return [l.slice(0, i), l.slice(i + 2)] }), cta: { label: 'Open Player reports', url: 'https://jonerfootball.com/jfp-portal/#reports' }, kind: 'report summary' })
+    },
+  } })
+}
 import { reconcileStripe } from './jfp-portal-data.js'
 // Auto-charge after each session (claude/card-on-file).
 import { cronAutoCharges } from './_jfp-saved-pay.js'
@@ -94,7 +108,11 @@ export default async function handler(req, res) {
   if (req.method === 'GET' && req.query?.pushTick) {
     const secret = process.env.CRON_SECRET
     if (!secret || String(req.headers?.authorization || '') !== `Bearer ${secret}`) return res.status(401).json({ success: false })
-    try { const now = process.env.JFP_TEST_CLOCK === '1' && Number(req.query.now) ? Number(req.query.now) : Date.now(); return res.status(200).json({ success: true, ...(await pushTick(now)) }) } catch (error) { console.error('jfp push tick failed', error); return res.status(500).json({ success: false }) }
+    try { const now = process.env.JFP_TEST_CLOCK === '1' && Number(req.query.now) ? Number(req.query.now) : Date.now(); const push = await pushTick(now)
+      // Player reports due in week 9 (20 Oct 2026): off until config.reportReminders.
+      let reports = null
+      try { reports = await runReportTick() } catch (error) { console.error('jfp report tick failed', error); reports = { error: true } }
+      return res.status(200).json({ success: true, ...push, reports }) } catch (error) { console.error('jfp push tick failed', error); return res.status(500).json({ success: false }) }
   }
   // Check the JF App link: the Uscreen group JFP (seats left) and the app video
   // list for Session ideas. Read only; ?refresh=1 reloads the video list.

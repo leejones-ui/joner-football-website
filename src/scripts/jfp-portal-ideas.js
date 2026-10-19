@@ -20,7 +20,10 @@ const TOPICS = [
   ['session', 'Full sessions', /full (training )?session|follow-along|session\b/i],
 ]
 const SOURCES = [['all', 'Everything'], ['app', 'JF App'], ['sheet', 'Drill links'], ['coach', 'From coaches'], ['programs', 'JFP programs'], ['plan', 'How we plan']]
-const S = { q: '', topic: '', source: 'all', app: null, appState: 'idle', shown: 48 }
+const S = { q: '', topic: '', place: '', source: 'all', app: null, appState: 'idle', shown: 48 }
+// Where a drill is filmed (Lee, 20 Oct 2026): helps plan for HQ or the field.
+const PLACES = [['', 'Anywhere'], ['hq', 'HQ (indoor)'], ['field', 'Field']]
+const placeBadge = (p) => (p === 'hq' ? '<span class="ji-place">HQ</span>' : p === 'field' ? '<span class="ji-place ji-field">Field</span>' : '')
 const PLATFORMS = [[/instagram\.com/, 'Instagram'], [/tiktok\.com/, 'TikTok'], [/youtube\.com|youtu\.be/, 'YouTube'], [/(^|\.)x\.com|twitter\.com/, 'X'], [/facebook\.com|fb\.watch/, 'Facebook']]
 const platformOf = (u) => (PLATFORMS.find(([re]) => re.test(host(u))) || [0, host(u) || 'Link'])[1]
 const topicLabel = (id) => (TOPICS.find((t) => t[0] === id) || [0, 'Other'])[1]
@@ -51,14 +54,14 @@ export async function renderIdeas(ui) {
     paint()
   }
 
-  const match = (x) => (!S.topic || x.topics.includes(S.topic)) && (!S.q || S.q.split(/\s+/).every((w) => x.hay.includes(w)))
+  const match = (x) => (!S.place || x.place === S.place) && (!S.topic || x.topics.includes(S.topic)) && (!S.q || S.q.split(/\s+/).every((w) => x.hay.includes(w)))
   const card = (x) => {
     if (x.kind === 'coach') return `<div class="ji-cw"><a class="j-card ji-card" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">
-        <span class="ji-img ji-${esc(norm(x.platform))}"><span class="ji-plat">${esc(x.platform)}</span><span class="ji-badge ji-coach">From ${esc(String(x.by).split(' ')[0])}</span></span>
+        <span class="ji-img ji-${esc(norm(x.platform))}"><span class="ji-plat">${esc(x.platform)}</span><span class="ji-badge ji-coach">From ${esc(String(x.by).split(' ')[0])}</span>${placeBadge(x.place)}</span>
         <span class="ji-bd"><b>${esc(x.title)}</b><span class="muted small">${esc(x.topicName)}${x.note ? ` · ${esc(x.note)}` : ''}</span></span></a>
         ${x.canRemove ? `<button type="button" class="j-btn j-btn-ghost j-btn-sm ji-rm" data-il-rm="${esc(x.id)}">Remove</button>` : ''}</div>`
     if (x.kind === 'app') return `<a class="j-card ji-card" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">
-        <span class="ji-img">${x.img ? `<img src="${esc(x.img)}" alt="" loading="lazy">` : ''}<span class="ji-badge ji-app">JF App</span>${x.min ? `<span class="ji-min">${x.min} min</span>` : ''}</span>
+        <span class="ji-img">${x.img ? `<img src="${esc(x.img)}" alt="" loading="lazy">` : ''}<span class="ji-badge ji-app">JF App</span>${placeBadge(x.place)}${x.min ? `<span class="ji-min">${x.min} min</span>` : ''}</span>
         <span class="ji-bd"><b>${esc(x.title)}</b>${x.text ? `<span class="muted small">${esc(x.text)}</span>` : ''}<span class="ji-tags">${x.cats.slice(0, 2).map((c) => `<i>${esc(c)}</i>`).join('')}</span></span></a>`
     const title = x.title || `${x.topic}${x.short ? ' (short clip)' : ''}`
     return `<a class="j-card ji-card" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">
@@ -96,10 +99,11 @@ export async function renderIdeas(ui) {
       const mine = showCoach ? coachItems().filter(match) : []
       // Coaches' own links lead: they are the newest and the most local.
       const list = [...mine, ...(S.source === 'all' ? interleave(app, links) : [...app, ...links])]
+      const placeNote = S.place && showSheet ? `<p class="muted small">Showing JF App videos and coach links filmed ${S.place === 'hq' ? 'at HQ' : 'on the field'}. Lee's drill links have no venue, so they are hidden while this is on.</p>` : ''
       const emptyCoach = S.source === 'coach' && !coachLinks.length ? '<p class="muted">No coach links yet. Seen a good drill on Instagram, TikTok or YouTube? Press Add a link.</p>' : ''
       const appNote = showApp && S.appState === 'loading' ? '<p class="muted small">Loading the JF App videos…</p>' : showApp && S.appState === 'failed' ? '<p class="muted small">The JF App videos could not load just now. The drill links still work.</p>' : ''
       out.push(`<section class="ji-sec"><div class="ji-sec-h"><h2>Videos and drills</h2><span class="muted small">${list.length} found${showApp && S.app ? ` · ${S.app.length} in the JF App` : ''} · ${sheet.length} drill links${coachLinks.length ? ` · ${coachLinks.length} from coaches` : ''}</span></div>${appNote}
-        ${emptyCoach}<div class="ji-grid">${list.slice(0, S.shown).map(card).join('') || (emptyCoach ? '' : '<p class="muted">Nothing matches. Try fewer words or another topic.</p>')}</div>
+        ${placeNote}${emptyCoach}<div class="ji-grid">${list.slice(0, S.shown).map(card).join('') || (emptyCoach ? '' : '<p class="muted">Nothing matches. Try fewer words or another topic.</p>')}</div>
         ${list.length > S.shown ? `<button type="button" class="j-btn j-btn-line" id="ji-more" style="margin-top:12px">Show more (${list.length - S.shown} left)</button>` : ''}</section>`)
     }
     if (S.source === 'all' || S.source === 'programs') out.push(`<section class="ji-sec"><div class="ji-sec-h"><h2>JFP programs, week by week</h2><span class="muted small">From Lee's spreadsheet</span></div>${progHtml()}</section>`)
@@ -131,6 +135,7 @@ export async function renderIdeas(ui) {
       <label class="j-field"><span>Link</span><input class="j-input" name="url" inputmode="url" placeholder="https://www.instagram.com/reel/…" required></label>
       <div class="j-two"><label class="j-field"><span>Name it</span><input class="j-input" name="title" maxlength="100" placeholder="Rondo 4v1, tight spaces" required></label>
       <label class="j-field"><span>Group</span><select class="j-input" name="topic" required><option value="">Choose a group</option>${TOPICS.map(([id, label]) => `<option value="${id}" ${S.topic === id ? 'selected' : ''}>${esc(label)}</option>`).join('')}<option value="other">Other</option></select></label></div>
+      <label class="j-field"><span>Where is it done? <span class="muted">(optional)</span></span><select class="j-input" name="place"><option value="">Not sure, or either</option><option value="hq" ${S.place === 'hq' ? 'selected' : ''}>HQ (indoor)</option><option value="field" ${S.place === 'field' ? 'selected' : ''}>Field</option></select></label>
       <label class="j-field"><span>Note <span class="muted">(optional)</span></span><input class="j-input" name="note" maxlength="240" placeholder="Good for U10s, needs 8 cones"></label>
       <p class="muted small">Every coach, Lee and Ligia will see it, with your name on it.</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="submit" class="j-btn j-btn-dark">Add to library</button><button type="button" class="j-btn j-btn-line" id="ji-add-cancel">Cancel</button></div></form>`
@@ -144,7 +149,7 @@ export async function renderIdeas(ui) {
       if (title.length < 2) return toast('Give it a short name.')
       if (!topic) return toast('Choose a group for it.')
       const btn = f.querySelector('[type="submit"]'); btn.disabled = true
-      const r = await post('ideasLinkAdd', { url, title, topic, note: f.note.value.trim() })
+      const r = await post('ideasLinkAdd', { url, title, topic, place: f.place.value, note: f.note.value.trim() })
       btn.disabled = false
       if (!r.ok) return toast(r.data.error)
       coachLinks = [{ ...r.data.link, canRemove: true }, ...coachLinks]
@@ -160,11 +165,13 @@ export async function renderIdeas(ui) {
       <div id="ji-add-box" hidden></div>
       <label class="ji-search"><span class="sr-only">Search</span><input class="j-input" id="ji-q" type="search" placeholder="Search: passing, 1v1, warm up, finishing…" value="${esc(S.q)}" autocomplete="off"></label>
       <div class="ji-chips" role="group" aria-label="Where to look">${SOURCES.map(([id, label]) => `<button type="button" class="j-chip" data-src="${id}" aria-pressed="${S.source === id}">${esc(label)}</button>`).join('')}</div>
+      <div class="ji-chips" role="group" aria-label="Where it is filmed">${PLACES.map(([id, label]) => `<button type="button" class="j-chip" data-place="${id}" aria-pressed="${S.place === id}">${esc(label)}</button>`).join('')}</div>
       <div class="ji-chips" role="group" aria-label="Topic"><button type="button" class="j-chip" data-topic="" aria-pressed="${!S.topic}">All topics</button>${TOPICS.map(([id, label]) => `<button type="button" class="j-chip" data-topic="${id}" aria-pressed="${S.topic === id}">${esc(label)}</button>`).join('')}</div>
       <div id="ji-results">${results()}</div>`
     let t
     view().querySelector('#ji-q').addEventListener('input', (e) => { clearTimeout(t); t = setTimeout(() => { S.q = norm(e.target.value).trim(); S.shown = 48; paint() }, 150) })
     view().querySelectorAll('[data-src]').forEach((b) => b.addEventListener('click', () => { S.source = b.dataset.src; S.shown = 48; view().querySelectorAll('[data-src]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); paint() }))
+    view().querySelectorAll('[data-place]').forEach((b) => b.addEventListener('click', () => { S.place = b.dataset.place; S.shown = 48; view().querySelectorAll('[data-place]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); paint() }))
     view().querySelectorAll('[data-topic]').forEach((b) => b.addEventListener('click', () => { S.topic = b.dataset.topic; S.shown = 48; view().querySelectorAll('[data-topic]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); paint() }))
     view().querySelector('#id-edit')?.addEventListener('click', edit)
     view().querySelector('#ji-add').addEventListener('click', addLink)
