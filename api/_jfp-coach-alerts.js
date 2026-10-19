@@ -71,6 +71,7 @@ async function textCoach({ coach, text, kind }) {
   return { texted: true, id: m.id }
 }
 
+export const tellCoach = (args) => tell(args)
 async function tell({ coach, subject, heading, paras, list, text, kind }) {
   let emailed = false, emailError = ''
   try { emailed = Boolean(await sendCoachNotice({ coach, subject, heading, paras, list, cta: { label: 'Open my coach portal', url: PORTAL }, kind })) } catch (e) { emailError = e.message }

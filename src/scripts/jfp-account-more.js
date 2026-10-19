@@ -31,7 +31,7 @@ export function pastMark(e, i) {
 export const unreadNotes = (D) => (D?.notes || []).filter((n) => !n.read).length
 const noteBody = (t) => esc(t).replace(/\n/g, '<br>')
 function noteCard(n, many) {
-  return `<article class="ja-card ja-news${n.read ? '' : ' is-unread'}" aria-label="${n.read ? '' : 'New: '}Note from the coach about ${esc(first(n.player))}"><p class="ja-news-meta">${n.read ? '' : '<span class="ja-tag red">New</span>'}${many ? `<span class="ja-tag grey">${esc(first(n.player))}</span>` : ''}<span>${esc(n.dateLabel)}</span></p><p class="ja-news-body is-full">${noteBody(n.text)}</p></article>`
+  return `<article class="ja-card ja-news${n.read ? '' : ' is-unread'}" aria-label="${n.read ? '' : 'New: '}${n.kind === 'homework' ? 'Homework' : 'Note'} from the coach about ${esc(first(n.player))}"><p class="ja-news-meta">${n.read ? '' : '<span class="ja-tag red">New</span>'}${n.kind === 'homework' ? '<span class="ja-tag">Homework</span>' : ''}${many ? `<span class="ja-tag grey">${esc(first(n.player))}</span>` : ''}<span>${esc(n.dateLabel)}</span>${n.due ? `<span>Due: ${esc(n.due)}</span>` : ''}</p><p class="ja-news-body is-full">${noteBody(n.text)}</p></article>`
 }
 export function notesHomeBlock(D) {
   const list = (D?.notes || []).filter((n) => !n.read)

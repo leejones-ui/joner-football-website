@@ -10,7 +10,10 @@ import { kvCommand, clean, newId, dateLabel, audit } from './_jfp-store.js'
 const KEY = 'jfp:family-notes'
 const READ = 'jfp:family-note-read'
 export const NOTE_TEXT_MAX = 1000
-export const FAMILY_NOTE_ACTIONS = new Set(['familyNotes', 'familyNoteSave', 'familyNoteDelete', 'familyNotesAll'])
+const PKEY = 'jfp:coach-pnotes'
+export const FAMILY_NOTE_ACTIONS = new Set(['familyNotes', 'familyNoteSave', 'familyNoteDelete', 'familyNotesAll', 'coachPNotes', 'coachPNoteSave', 'coachPNoteDelete', 'coachPNotesAll'])
+// A note is a plain note, or homework: something for the player to work on before next time.
+export const NOTE_KINDS = ['note', 'homework']
 
 // The Sydney calendar day a note was written (the stored time is UTC).
 const sydDay = (at) => { const d = new Date(at || 0); return Number.isNaN(d.getTime()) ? '' : new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney' }).format(d) }
@@ -39,7 +42,7 @@ export async function familyNotesFor(rowIds = [], email = '') {
   try { all = await allFamilyNotes() } catch (error) { console.error('jfp family notes read failed', error); return [] }
   let read = new Set()
   if (email) try { read = new Set(await readIds(email)) } catch {}
-  return all.filter((n) => want.has(n.rowId)).map((n) => ({ id: n.id, rowId: n.rowId, player: n.player, text: n.text, at: n.at, dateLabel: dateLabel(sydDay(n.at)), edited: Boolean(n.editedAt), read: read.has(n.id) }))
+  return all.filter((n) => want.has(n.rowId)).map((n) => ({ id: n.id, rowId: n.rowId, player: n.player, kind: n.kind === 'homework' ? 'homework' : 'note', due: n.due || '', text: n.text, at: n.at, dateLabel: dateLabel(sydDay(n.at)), edited: Boolean(n.editedAt), read: read.has(n.id) }))
 }
 
 export async function markFamilyNotesRead(email, ids = [], allowed = null) {
@@ -57,7 +60,7 @@ export async function markFamilyNotesRead(email, ids = [], allowed = null) {
 export async function familyNoteAction(res, principal, body, action, { isAdmin, access, onNew }) {
   const ok = (x) => res.status(200).json({ success: true, ...x })
   const no = (status, error) => res.status(status).json({ success: false, error })
-  const view = (n) => ({ id: n.id, rowId: n.rowId, player: n.player, group: n.groupLabel || '', text: n.text, at: n.at, dateLabel: dateLabel(sydDay(n.at)), byName: n.byName || '', edited: Boolean(n.editedAt), mine: n.by === principal.email, canEdit: isAdmin || n.by === principal.email })
+  const view = (n) => ({ id: n.id, kind: n.kind === 'homework' ? 'homework' : 'note', due: n.due || '', rowId: n.rowId, player: n.player, group: n.groupLabel || '', text: n.text, at: n.at, dateLabel: dateLabel(sydDay(n.at)), byName: n.byName || '', edited: Boolean(n.editedAt), mine: n.by === principal.email, canEdit: isAdmin || n.by === principal.email })
   if (action === 'familyNotesAll') {
     if (!isAdmin) return no(403, 'Not allowed.')
     return ok({ notes: (await allFamilyNotes()).map(view) })
@@ -84,19 +87,69 @@ export async function familyNoteAction(res, principal, body, action, { isAdmin, 
       const was = parse(await kvCommand(['HGET', KEY, id]))
       if (!was) return no(404, 'That note is gone. Refresh the page.')
       if (!isAdmin && was.by !== principal.email) return no(403, 'Only Lee, Ligia or the coach who wrote it can edit it.')
-      const rec = { ...was, text, editedAt: new Date().toISOString(), editedBy: principal.email }
+      const rec = { ...was, text, ...(body.kind ? { kind: NOTE_KINDS.includes(body.kind) ? body.kind : was.kind || 'note' } : {}), ...('due' in body ? { due: clean(body.due, 60) } : {}), editedAt: new Date().toISOString(), editedBy: principal.email }
       await kvCommand(['HSET', KEY, id, JSON.stringify(rec)])
       await audit({ by: principal.email, action: 'familyNote.edit', target: was.rowId, before: { id, text: was.text }, after: { text } })
       return ok({ note: view(rec) })
     }
     const a = await access(clean(body.rowId, 30))
     if (!a) return no(404, 'That player is not in your sessions.')
-    const rec = { id: newId('FN'), rowId: a.row.id, groupId: a.group?.id || a.row.groupId || '', groupLabel: a.group ? `${a.group.day} ${a.group.time}` : '', player: a.row.player, text, by: principal.email, byName: principal.name || '', at: new Date().toISOString() }
+    const rec = { id: newId('FN'), rowId: a.row.id, groupId: a.group?.id || a.row.groupId || '', groupLabel: a.group ? `${a.group.day} ${a.group.time}` : '', player: a.row.player, text, kind: NOTE_KINDS.includes(body.kind) ? body.kind : 'note', due: clean(body.due, 60), by: principal.email, byName: principal.name || '', at: new Date().toISOString() }
     await kvCommand(['HSET', KEY, rec.id, JSON.stringify(rec)])
     await audit({ by: principal.email, action: 'familyNote.add', target: rec.rowId, after: { id: rec.id, text } })
     // Push to the family's phones when they have it on (never blocks the save).
     if (onNew) try { await onNew(rec, a.row) } catch (error) { console.error('jfp family note push failed', error) }
     return ok({ note: view(rec) })
+  }
+  // Notes between coaches (Lee, 19 Oct 2026): private to the player's coaches, Lee and Ligia.
+  // Families never see these. Lee and Ligia can read, edit and delete every one.
+  if (action.startsWith('coachPNote')) {
+    const pall = async () => {
+      const raw = (await kvCommand(['HGETALL', PKEY])) || []
+      const out = []
+      if (Array.isArray(raw)) { for (let i = 1; i < raw.length; i += 2) { const n = parse(raw[i]); if (n) out.push(n) } }
+      else for (const v of Object.values(raw)) { const n = parse(v); if (n) out.push(n) }
+      return out.sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')))
+    }
+    const pview = (n) => ({ id: n.id, rowId: n.rowId, player: n.player, group: n.groupLabel || '', text: n.text, at: n.at, dateLabel: dateLabel(sydDay(n.at)), byName: n.byName || '', edited: Boolean(n.editedAt), mine: n.by === principal.email, canEdit: isAdmin || n.by === principal.email })
+    if (action === 'coachPNotesAll') {
+      if (!isAdmin) return no(403, 'Not allowed.')
+      return ok({ notes: (await pall()).map(pview) })
+    }
+    if (action === 'coachPNotes') {
+      const a = await access(clean(body.rowId, 30))
+      if (!a) return no(404, 'That player is not in your sessions.')
+      return ok({ notes: (await pall()).filter((n) => n.rowId === a.row.id).map(pview) })
+    }
+    if (action === 'coachPNoteDelete') {
+      const id = clean(body.id, 40)
+      const was = parse(await kvCommand(['HGET', PKEY, id]))
+      if (!was) return no(404, 'That note is already gone.')
+      if (!isAdmin && was.by !== principal.email) return no(403, 'Only Lee, Ligia or the coach who wrote it can delete it.')
+      await kvCommand(['HDEL', PKEY, id])
+      await audit({ by: principal.email, action: 'coachPNote.delete', target: was.rowId, before: { id } })
+      return ok({ deleted: id })
+    }
+    if (action === 'coachPNoteSave') {
+      const text = cleanNoteText(body.text)
+      if (text.length < 2) return no(400, 'Write the note first.')
+      const id = clean(body.id, 40)
+      if (id) {
+        const was = parse(await kvCommand(['HGET', PKEY, id]))
+        if (!was) return no(404, 'That note is gone. Refresh the page.')
+        if (!isAdmin && was.by !== principal.email) return no(403, 'Only Lee, Ligia or the coach who wrote it can edit it.')
+        const rec = { ...was, text, editedAt: new Date().toISOString(), editedBy: principal.email }
+        await kvCommand(['HSET', PKEY, id, JSON.stringify(rec)])
+        await audit({ by: principal.email, action: 'coachPNote.edit', target: was.rowId, before: { id } })
+        return ok({ note: pview(rec) })
+      }
+      const a = await access(clean(body.rowId, 30))
+      if (!a) return no(404, 'That player is not in your sessions.')
+      const rec = { id: newId('CN'), rowId: a.row.id, groupId: a.group?.id || '', groupLabel: a.group ? `${a.group.day} ${a.group.time}` : '', player: a.row.player, text, by: principal.email, byName: principal.name || '', at: new Date().toISOString() }
+      await kvCommand(['HSET', PKEY, rec.id, JSON.stringify(rec)])
+      await audit({ by: principal.email, action: 'coachPNote.add', target: rec.rowId, after: { id: rec.id } })
+      return ok({ note: pview(rec) })
+    }
   }
   return no(400, 'Unknown action.')
 }

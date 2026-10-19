@@ -5,7 +5,7 @@
 import { $, esc, api, toast, signIn, whoAmI, signOut, money, savePdf } from './jfp-common.js'
 import { renderMessages } from './jfp-portal-messages.js'
 import { renderAnnouncements } from './jfp-portal-announce.js'
-import { familyNotesModal, renderFamilyNotesPage } from './jfp-portal-fnotes.js'
+import { familyNotesModal, renderFamilyNotesPage, coachNotesModal } from './jfp-portal-fnotes.js'
 import { renderExtra } from './jfp-portal-extra.js'
 import { renderReports, writeReportFor } from './jfp-portal-reports.js'
 import { renderHours } from './jfp-portal-hours.js'
@@ -69,7 +69,7 @@ const NAV = {
   coach: [
     ['My coaching', [['program', 'Program'], ['coach', 'My sessions'], ['extra', 'Extra sessions'], ['reports', 'Player reports'], ['cancellations', 'Cancellations']]],
     ['Time and pay', [['staff', 'Cover and time off'], ['hours', 'My hours'], ['cinvoices', 'My invoices']]],
-    ['Ideas and plans', [['ideas', 'Session ideas'], ['plans', 'Session plans'], ['profile', 'My profile']]],
+    ['Ideas and plans', [['ideas', 'Session ideas'], ['plans', 'Session plans'], ['help', 'Who handles what'], ['profile', 'My profile']]],
   ],
   admin: [
     ['Overview', [['overview', 'Dashboard']]],
@@ -86,6 +86,7 @@ const ICON = {
   reports: '<path d="M6 3.5h9l3.5 3.5v13.5H6z"/><path d="M14.5 3.5V7.5h4M9 17v-3M12 17v-5.5M15 17v-2"/>',
   extra: '<circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/>',
   cinvoices: '<path d="M6 3.5h12v17l-3-2-3 2-3-2-3 2z"/><path d="M9 8.5h6M9 12h6M9 15.5h3"/>',
+  help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7M12 17h.01"/>',
   ideas: '<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/>',
   overview: '<path d="M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-4H4zM14 4v4h6V4z"/>',
   board: '<rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
@@ -229,7 +230,7 @@ async function go(tab, { quiet = false, instant = false } = {}) {
   if (!quiet && !instant) view().innerHTML = '<p class="muted">Loading</p>'
   closeSide()
   setDrawer(false)
-  const fn = JJ_TABS.has(tab) ? () => renderJJ(tab, jjUi()) : { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, accounts: renderNewAccounts, trials: renderTrials, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, cancellations: renderCancellations, coaches: renderCoaches, profile: renderProfile, staff: renderStaff, plans: renderPlans, families: renderPlayers, messages: () => renderMessages({ view, need, modal, closeModal, confirmBox }), announce: () => renderAnnouncements({ view, need, modal, closeModal, confirmBox }), hours: () => renderHours({ view, post, need, modal, closeModal, confirmBox, user: P.user }), fnotes: () => renderFamilyNotesPage({ view, post, need, modal, closeModal, confirmBox }), extra: () => renderExtra({ view, post, need, modal, closeModal, confirmBox, toast, copy, user: P.user, refreshAsks: checkAskAlerts }), reports: () => renderReports(reportsUi()), cinvoices: () => renderCoachInvoices({ view, post, need, modal, closeModal, confirmBox, user: P.user }), ideas: () => renderIdeas({ view, post, need, toast }), removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
+  const fn = JJ_TABS.has(tab) ? () => renderJJ(tab, jjUi()) : { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, accounts: renderNewAccounts, trials: renderTrials, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, cancellations: renderCancellations, coaches: renderCoaches, profile: renderProfile, staff: renderStaff, plans: renderPlans, help: renderHelp, families: renderPlayers, messages: () => renderMessages({ view, need, modal, closeModal, confirmBox }), announce: () => renderAnnouncements({ view, need, modal, closeModal, confirmBox }), hours: () => renderHours({ view, post, need, modal, closeModal, confirmBox, user: P.user }), fnotes: () => renderFamilyNotesPage({ view, post, need, modal, closeModal, confirmBox }), extra: () => renderExtra({ view, post, need, modal, closeModal, confirmBox, toast, copy, user: P.user, refreshAsks: checkAskAlerts }), reports: () => renderReports(reportsUi()), cinvoices: () => renderCoachInvoices({ view, post, need, modal, closeModal, confirmBox, user: P.user }), ideas: () => renderIdeas({ view, post, need, toast }), removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
   try { await fn() } catch (e) { console.error(e); if (!quiet) view().innerHTML = `<div class="j-box j-box-red">Something went wrong loading this page. ${esc(e.message || '')}</div>` }
   if (P.user?.role === 'admin' && (tab === 'money' || tab === 'jj-money')) prefetchOthers(tab === 'jj-money' ? 'juniors' : P.jf.programme, moneyReaders())
   if (!P.cxChecked) { P.cxChecked = true; checkCancelAlerts(); checkTrialAlerts(); checkAccountAlerts(); checkRequestAlerts(); checkAskAlerts(); checkStaffAlerts() } else cancelBanner()
@@ -3042,7 +3043,7 @@ async function renderCoach(keep = false) {
           <span class="jp-reg-tools"><select class="j-select" style="width:auto" data-date="${esc(s.id)}" aria-label="Session date">${s.dates.map((x, i) => `<option value="${esc(x.iso)}" ${x.iso === date ? 'selected' : ''}>Week ${i + 1} · ${esc(x.label)}${Object.keys(attOf(s, x.iso)).length ? ' ✓' : ''}</option>`).join('')}</select><button type="button" class="j-btn j-btn-line" data-term="${esc(s.id)}">Whole term</button></span></div>
         ${off ? '<p class="j-box j-box-grey small" style="margin-top:10px">This session has not happened yet. The register opens on the day.</p>' : ''}
         ${date <= today ? (() => { const left = s.players.filter((p) => onDate(s, p, date) && unmarked(s, p, date)).length; return left ? `<p class="j-box j-box-amber small" style="margin-top:10px"><b>${left} not marked off</b> for ${esc(s.dates.find((x) => x.iso === date)?.label || date)}</p>` : s.players.some((p) => onDate(s, p, date)) ? `<p class="small" style="margin-top:8px;color:var(--j-green,#15803d)">✓ All marked off for ${esc(s.dates.find((x) => x.iso === date)?.label || date)}</p>` : '' })() : ''}
-        <div style="margin-top:10px">${s.players.filter((p) => showP(s, p)).map((p) => `<div class="jp-player" style="cursor:default">${avatar(p.photo, p.name, 32)}<span class="nm" style="flex:1 1 auto;min-width:0">${p.juniors ? esc(p.name) : `<button type="button" class="ps-link jp-cp-name" data-cp="${esc(p.rowId)}" aria-label="About ${esc(p.name)}">${esc(p.name)}</button>`}${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}${!p.mine ? ` <span class="muted small">· ${esc(p.coach)}</span>` : ''}${(s.cancelledBy?.[date] || {})[p.rowId] ? ` <span class="j-pill j-pill-amber" title="${esc(`${s.cancelledBy[date][p.rowId].reason}, ${s.cancelledBy[date][p.rowId].notice}`)}">Cancelled by parent</span>` : ''}${p.trial ? ' <span class="j-pill j-pill-blue">Trial</span>' : ''}${p.status !== 'Confirmed' ? ` <span class="j-pill j-pill-amber">${esc(p.status)}</span>` : ''}${noteLine(p, date)}</span>
+        <div style="margin-top:10px">${s.players.filter((p) => showP(s, p)).map((p) => `<div class="jp-player" style="cursor:default">${avatar(p.photo, p.name, 32)}<span class="nm" style="flex:1 1 auto;min-width:0">${p.juniors ? esc(p.name) : `<button type="button" class="ps-link jp-cp-name" data-cp="${esc(p.rowId)}" aria-label="About ${esc(p.name)}">${esc(p.name)}</button>`}${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}${!p.mine ? ` <span class="muted small">· ${esc(p.coach)}</span>` : ''}${(s.cancelledBy?.[date] || {})[p.rowId] ? ` <span class="j-pill j-pill-amber" title="${esc(`${s.cancelledBy[date][p.rowId].reason}, ${s.cancelledBy[date][p.rowId].notice}`)}">Cancelled by parent</span>` : ''}${p.trial ? ' <span class="j-pill j-pill-blue">Trial</span>' : ''}${p.noFilm ? ' <span class="j-pill j-pill-red" title="The family said no to filming and photos">No filming</span>' : ''}${p.status !== 'Confirmed' ? ` <span class="j-pill j-pill-amber">${esc(p.status)}</span>` : ''}${noteLine(p, date)}</span>
           <span class="jp-att"><button type="button" class="p" data-att="Present" data-row="${esc(p.rowId)}" aria-pressed="${att[p.rowId] === 'Present'}" ${off}>Here</button><button type="button" class="a" data-att="Absent" data-row="${esc(p.rowId)}" ${off} aria-pressed="${['Absent', 'Notified'].includes(att[p.rowId])}" ${att[p.rowId] === 'Notified' ? 'title="The family told us they cannot make it"' : ''}>${att[p.rowId] === 'Notified' ? 'Away (told us)' : 'Away'}</button></span></div>`).join('') || '<p class="muted small">No players yet.</p>'}</div>
       </article>`
     }).join('') : `<div class="ps-table-wrap"><div class="ps-empty">${active ? 'No sessions match. <button type="button" class="ps-link" data-c-clear>Clear filters</button>' : 'No sessions yet.'}</div></div>`}`
@@ -3101,9 +3102,16 @@ async function coachPlayerModal(rowId, coachId) {
     ${rows.length ? `<dl class="j-kv">${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>` : ''}
     <div class="j-box ${p.medical ? 'j-box-amber' : 'j-box-grey'}" style="margin-top:12px"><b>Medical notes</b><p style="margin-top:4px;white-space:pre-wrap">${p.medical ? esc(p.medical) : '<span class="muted">None given.</span>'}</p></div>
     <div class="j-box j-box-grey" style="margin-top:12px"><b>What ${esc(first)} wants to work on</b><p style="margin-top:4px;white-space:pre-wrap">${p.goals ? esc(p.goals) : '<span class="muted">Not filled in yet.</span>'}</p></div>
+    <div class="j-two" style="margin-top:12px">
+      <div class="j-box ${p.waiver?.signed ? 'j-box-green' : 'j-box-amber'}"><b>Waiver</b><p style="margin-top:4px">${p.waiver?.signed ? `Signed${p.waiver.date ? ` ${esc(p.waiver.date)}` : ''}` : 'Not signed yet'}</p></div>
+      <div class="j-box ${p.waiver?.signed && p.waiver.filming === false ? 'j-box-red' : 'j-box-grey'}"><b>Filming and photos</b><p style="margin-top:4px">${!p.waiver?.signed ? 'Unknown until the waiver is signed' : p.waiver.filming ? 'Allowed' : '<b>Not allowed. Do not film or photograph.</b>'}</p></div>
+    </div>
+    <div class="j-box j-box-grey" style="margin-top:10px"><b>Attendance this term</b><p style="margin-top:4px">${p.attendance?.marked ? `Came to ${esc(p.attendance.came)} of ${esc(p.attendance.marked)} marked sessions` : 'Nothing marked yet'}${p.attendance?.sessions && p.attendance.sessions !== p.attendance.marked ? ` <span class="muted small">(${esc(p.attendance.sessions)} run, ${esc(p.attendance.sessions - p.attendance.marked)} not marked)</span>` : ''}</p></div>
     ${p.note || p.startsLabel ? `<div class="j-box j-box-amber" style="margin-top:10px"><b>Note from Lee and Ligia</b><p style="margin-top:4px">${esc([p.startsLabel, p.note].filter(Boolean).join(' · '))}</p></div>` : ''}
     ${empty ? `<p class="muted small" style="margin-top:10px">The family has not added ${esc(first)}'s football details yet. They do it in their account under Player information.</p>` : ''}
-    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-dark" id="cp-report">Write player report</button></div>`)
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-line" id="cp-coachnotes">Coach notes</button><button type="button" class="j-btn j-btn-line" id="cp-fnote">Note or homework</button><button type="button" class="j-btn j-btn-dark" id="cp-report">Write player report</button></div>`)
+  document.getElementById('cp-fnote')?.addEventListener('click', () => { closeModal(); familyNotesModal({ post, modal, closeModal, confirmBox }, { rowId, name: p.name }) })
+  document.getElementById('cp-coachnotes')?.addEventListener('click', () => { closeModal(); coachNotesModal({ post, modal, closeModal, confirmBox }, { rowId, name: p.name }) })
   document.getElementById('cp-report')?.addEventListener('click', () => writeReportFor(reportsUi(), rowId))
 }
 const reportsUi = () => ({ view, post, need, modal, closeModal, confirmBox, toast, user: P.user })
@@ -3905,11 +3913,35 @@ async function pastPlayerModal(x) {
 
 // ---------- cover, time off, session plans ----------
 
+// Who handles what (Lee, 19 Oct 2026): simple. Money goes to Ligia and Lee.
+async function renderHelp() {
+  const rows = [
+    ['Money: payments, fees, refunds, discounts, credits, "can I pay later"', 'Ligia and Lee', 'Tell the parent you will pass it on. Do not quote prices or promise anything. Ligia: ligia@jonerfootball.com.'],
+    ['Trial players, moving group, a place for a sibling, anything about joining', 'Ligia', 'Say Ligia will be in touch. Use "Trial players" to tell her how the trial went.'],
+    ['Complaints or a parent who is upset', 'Dean, then Lee', 'Stay calm, listen, do not argue. Tell Dean the same day.'],
+    ['Something goes wrong on the day: injury, no-show coach, venue problem', 'Dean', 'Call Dean first. For an injury, look after the player, then tell Dean and write a coach note on the player.'],
+    ['You cannot make a session', 'Cover and time off', 'Ask for cover or a swap as early as you can. The other coach is told straight away.'],
+    ['A player cannot come', 'Nothing to do', 'The family uses Can\'t make it. You see it in Cancellations. The place stays held.'],
+    ['Your hours, pay or invoices', 'Lee', 'Ask Lee directly.'],
+  ]
+  view().innerHTML = `<div class="jp-head"><div><h1>Who handles what</h1><p class="muted small">If a parent asks about money, the answer is always Ligia and Lee.</p></div></div>
+    <div class="j-card" style="padding:16px;margin-bottom:14px"><div style="overflow-x:auto"><table class="ps-table" style="min-width:520px"><thead><tr><th>If this comes up</th><th>Who</th><th>What to do</th></tr></thead><tbody>${rows.map(([a, b, c]) => `<tr><td>${esc(a)}</td><td><b>${esc(b)}</b></td><td>${esc(c)}</td></tr>`).join('')}</tbody></table></div></div>
+    <div class="j-card" style="padding:16px"><h2 style="margin-bottom:8px">House rules</h2><ul style="padding-left:18px;display:flex;flex-direction:column;gap:6px">
+      <li>Mark the register on the day. You cannot mark before the day of the session.</li>
+      <li>Your Here and Away taps show in the family's account.</li>
+      <li>Check the <b>No filming</b> flag on a player before you film or photograph. If it is there, do not.</li>
+      <li>Medical notes are for keeping players safe. Do not share them or take screenshots.</li>
+      <li>Notes and homework you send go straight to the family and Lee and Ligia can read them. Keep them kind and clear.</li>
+      <li>Coach notes (between coaches) are private to the player's coaches, Lee and Ligia.</li>
+      <li>Read a player report as the parent would before you press Send.</li>
+      <li>Adding a player to an extra session sends the family a payment request. Only add someone who has agreed.</li></ul></div>`
+}
+
 async function renderStaff() {
   const admin = P.user.role === 'admin'
   const d = await need(await post('staffOverview'))
   if (admin) checkStaffAlerts(true)
-  const pill = { active: ['green', 'Covered'], cancelled: ['grey', 'Cancelled'], pending: ['amber', 'Waiting for approval'], approved: ['green', 'Approved'], declined: ['red', 'Declined'] }
+  const pill = { active: ['green', 'Covered'], cancelled: ['grey', 'Cancelled'], pending: ['amber', 'Waiting for approval'], approved: ['green', 'Approved'], declined: ['red', 'Declined'], accepted: ['green', 'Agreed'] }
   const sessOpts = d.mySessions.map((s) => `<option value="${esc(s.id)}">${esc(s.label)}</option>`).join('')
   view().innerHTML = `<div class="jp-head"><div><h1>Cover and time off</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">${admin ? 'Every cover and time off request. Covers apply straight away; time off waits for you or Ligia.' : 'Need someone to take a session? Choose the date and the coach, and they get it in their My sessions straight away. Time off goes to Lee and Ligia to approve.'}</div></details></div></div>
     <div class="jp-two" style="display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
@@ -3928,10 +3960,20 @@ async function renderStaff() {
         <p class="muted small" style="margin-top:8px">Time off does not move your sessions. Arrange cover for each one on the left.</p>
       </div>
     </div>
+    <div class="j-card" style="padding:16px;margin-top:14px"><h2 style="margin-bottom:4px">Swap sessions with a coach</h2>
+      <p class="muted small" style="margin-bottom:10px">You take one of their sessions and they take one of yours. Nothing changes until they accept.</p>
+      ${d.mySessions.length ? `<div class="j-two"><label class="j-field"><span>Your session</span><select class="j-select" id="sw-g">${sessOpts}</select></label><label class="j-field"><span>Your date</span><select class="j-select" id="sw-d"></select></label></div>
+      <label class="j-field"><span>Swap with</span><select class="j-select" id="sw-c"></select></label>
+      <div class="j-two"><label class="j-field"><span>Their session</span><select class="j-select" id="sw-tg"></select></label><label class="j-field"><span>Their date</span><select class="j-select" id="sw-td"></select></label></div>
+      <label class="j-field"><span>Note <span class="muted">(optional)</span></span><input class="j-input" id="sw-n" maxlength="300"></label>
+      <button type="button" class="j-btn j-btn-dark" id="sw-go">Ask for the swap</button>` : '<p class="muted small">You have no sessions yet.</p>'}
+    </div>
+    ${(d.swaps || []).length ? `<h2 style="margin:22px 0 10px">Swaps</h2>${d.swaps.map((x) => `<div class="jp-player" style="cursor:default;align-items:center"><span><b>${esc(x.a)}</b>: ${esc(x.aLabel)}, ${esc(x.aDateLabel)}<br><b>${esc(x.b)}</b>: ${esc(x.bLabel)}, ${esc(x.bDateLabel)}${x.note ? `<br><span class="muted small">${esc(x.note)}</span>` : ''}</span><span style="display:flex;gap:6px;align-items:center"><span class="j-pill j-pill-${pill[x.status]?.[0] || 'grey'}">${esc(x.status === 'pending' ? 'Waiting for answer' : pill[x.status]?.[1] || x.status)}</span>${x.status === 'pending' && (admin || x.bCoachId === P.user.coachId) ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-sw="${esc(x.id)}" data-an="accept">Accept</button><button type="button" class="j-btn j-btn-line j-btn-sm" data-sw="${esc(x.id)}" data-an="decline">No</button>` : ''}${x.status === 'pending' && (admin || x.aCoachId === P.user.coachId) ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-sw="${esc(x.id)}" data-an="withdraw">Withdraw</button>` : ''}</span></div>`).join('')}` : ''}
     <h2 style="margin:22px 0 10px">Time off</h2>
-    ${d.timeOff.length ? d.timeOff.map((t) => `<div class="jp-player" style="cursor:default;align-items:center"><span><b>${esc(t.coach)}</b> · ${esc(t.from)}${t.to !== t.from ? ` to ${esc(t.to)}` : ''}${t.reason ? ` · <span class="muted">${esc(t.reason)}</span>` : ''}</span><span style="display:flex;gap:6px;align-items:center"><span class="j-pill j-pill-${pill[t.status]?.[0] || 'grey'}">${esc(pill[t.status]?.[1] || t.status)}</span>${admin && t.status === 'pending' ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-to="${esc(t.id)}" data-st="approved">Approve</button><button type="button" class="j-btn j-btn-line j-btn-sm" data-to="${esc(t.id)}" data-st="declined">Decline</button>` : ''}</span></div>`).join('') : '<p class="muted small">No time off requests.</p>'}
+    ${admin ? '<label class="j-field" style="max-width:520px"><span>Note to the coach <span class="muted">(optional, sent with your next Approve or Decline)</span></span><input class="j-input" id="to-note" maxlength="300"></label>' : ''}
+    ${d.timeOff.length ? d.timeOff.map((t) => `<div class="jp-player" style="cursor:default;align-items:center"><span><b>${esc(t.coach)}</b> · ${esc(t.from)}${t.to !== t.from ? ` to ${esc(t.to)}` : ''}${t.reason ? ` · <span class="muted">${esc(t.reason)}</span>` : ''}</span><span style="display:flex;gap:6px;align-items:center"><span class="j-pill j-pill-${pill[t.status]?.[0] || 'grey'}">${esc(pill[t.status]?.[1] || t.status)}</span>${admin && t.status === 'pending' ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-to="${esc(t.id)}" data-st="approved">Approve</button><button type="button" class="j-btn j-btn-line j-btn-sm" data-to="${esc(t.id)}" data-st="declined">Decline</button>` : ''}${['pending', 'approved'].includes(t.status) && t.to >= todayIso() && (admin || t.coachId === P.user.coachId) ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-to-x="${esc(t.id)}">Cancel</button>` : ''}</span></div>${t.decisionNote ? `<p class="small muted" style="margin:-4px 0 8px 12px">Note from Lee or Ligia: ${esc(t.decisionNote)}</p>` : ''}`).join('') : '<p class="muted small">No time off requests.</p>'}
     <h2 style="margin:22px 0 10px">Covers</h2>
-    ${d.covers.length ? d.covers.map((c) => `<div class="jp-player" style="cursor:default;align-items:center"><span><b>${esc(c.group)}</b> · ${esc(c.dateLabel)}<br><span class="muted small">${esc(c.coach)} covered by <b>${esc(c.cover)}</b>${c.note ? ` · ${esc(c.note)}` : ''}</span></span><span style="display:flex;gap:6px;align-items:center"><span class="j-pill j-pill-${pill[c.status]?.[0] || 'grey'}">${esc(pill[c.status]?.[1] || c.status)}</span>${c.status === 'active' && (admin || c.coachId === P.user.coachId) ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-cv-x="${esc(c.id)}">Cancel</button>` : ''}</span></div>`).join('') : '<p class="muted small">No covers.</p>'}`
+    ${d.covers.length ? d.covers.map((c) => `<div class="jp-player" style="cursor:default;align-items:center"><span><b>${esc(c.group)}</b> · ${esc(c.dateLabel)}<br><span class="muted small">${esc(c.coach)} covered by <b>${esc(c.cover)}</b>${c.note ? ` · ${esc(c.note)}` : ''}</span></span><span style="display:flex;gap:6px;align-items:center"><span class="j-pill j-pill-${pill[c.status]?.[0] || 'grey'}">${esc(pill[c.status]?.[1] || c.status)}</span>${c.status === 'active' && (admin || c.coachId === P.user.coachId) ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-cv-x="${esc(c.id)}">Cancel</button>` : ''}${c.status === 'active' && c.date >= todayIso() && (admin || c.coverCoachId === P.user.coachId) ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-cv-no="${esc(c.id)}">Can't do it</button>` : ''}</span></div>`).join('') : '<p class="muted small">No covers.</p>'}`
   const drawDates = () => {
     const s = d.mySessions.find((x) => x.id === $('cv-g').value)
     $('cv-d').innerHTML = (s?.dates || []).map((x) => `<option value="${esc(x.iso)}">${esc(x.label)}</option>`).join('') || '<option value="">No dates left this term</option>'
@@ -3940,17 +3982,52 @@ async function renderStaff() {
   if ($('cv-g')) { drawDates(); $('cv-g').addEventListener('change', drawDates) }
   $('cv-go')?.addEventListener('click', async (e) => {
     e.currentTarget.disabled = true
-    const r = await post('requestCover', { groupId: $('cv-g').value, date: $('cv-d').value, coverCoachId: $('cv-c').value, note: $('cv-n').value.trim() })
-    toast(r.ok ? `${r.data.cover.cover} is on ${r.data.cover.group}, ${r.data.cover.dateLabel}` : r.data.error)
+    const ask = { groupId: $('cv-g').value, date: $('cv-d').value, coverCoachId: $('cv-c').value, note: $('cv-n').value.trim() }
+    let r = await post('requestCover', ask)
+    if (!r.ok && r.data.code === 'clash') {
+      if (!(await confirmBox(r.data.error, { ok: 'Put them on anyway' }))) { e.currentTarget.disabled = false; return }
+      r = await post('requestCover', { ...ask, force: true })
+    }
+    toast(r.ok ? `${r.data.cover.cover} is on ${r.data.cover.group}, ${r.data.cover.dateLabel}. They have been told.` : r.data.error)
     renderStaff()
   })
+  // Swap pickers
+  const drawSwap = () => {
+    if (!$('sw-g')) return
+    const mine = d.mySessions.find((x) => x.id === $('sw-g').value)
+    $('sw-d').innerHTML = (mine?.dates || []).map((x) => `<option value="${esc(x.iso)}">${esc(x.label)}</option>`).join('')
+    const others = d.coaches.filter((c) => c.id !== (admin ? mine?.coachId : P.user.coachId))
+    const keep = $('sw-c').value
+    $('sw-c').innerHTML = others.map((c) => `<option value="${esc(c.id)}"${c.id === keep ? ' selected' : ''}>${esc(c.name)}</option>`).join('')
+    const theirs = (d.sessionsByCoach?.[$('sw-c').value]) || []
+    const keepG = $('sw-tg').value
+    $('sw-tg').innerHTML = theirs.map((x) => `<option value="${esc(x.id)}"${x.id === keepG ? ' selected' : ''}>${esc(x.label)}</option>`).join('') || '<option value="">No sessions</option>'
+    const t = theirs.find((x) => x.id === $('sw-tg').value)
+    $('sw-td').innerHTML = (t?.dates || []).map((x) => `<option value="${esc(x.iso)}">${esc(x.label)}</option>`).join('')
+  }
+  if ($('sw-g')) { drawSwap(); $('sw-g').addEventListener('change', () => { $('sw-c').value = ''; drawSwap() }); $('sw-c').addEventListener('change', () => { $('sw-tg').value = ''; drawSwap() }); $('sw-tg').addEventListener('change', drawSwap) }
+  $('sw-go')?.addEventListener('click', async (e) => {
+    const btn = e.currentTarget
+    btn.disabled = true
+    const ask = { groupId: $('sw-g').value, date: $('sw-d').value, withCoachId: $('sw-c').value, theirGroupId: $('sw-tg').value, theirDate: $('sw-td').value, note: $('sw-n').value.trim(), coachId: admin ? (d.mySessions.find((x) => x.id === $('sw-g').value)?.coachId || '') : undefined }
+    let r = await post('requestSwap', ask)
+    if (!r.ok && r.data.code === 'clash') {
+      if (!(await confirmBox(r.data.error, { ok: 'Ask anyway' }))) { btn.disabled = false; return }
+      r = await post('requestSwap', { ...ask, force: true })
+    }
+    toast(r.ok ? 'Asked. They have been told and nothing changes until they accept.' : r.data.error)
+    renderStaff()
+  })
+  view().querySelectorAll('[data-sw]').forEach((b) => b.addEventListener('click', async () => { const r = await post('answerSwap', { id: b.dataset.sw, answer: b.dataset.an }); toast(r.ok ? (b.dataset.an === 'accept' ? 'Agreed. Both sessions are updated and both coaches told.' : 'Done') : r.data.error); renderStaff() }))
+  view().querySelectorAll('[data-cv-no]').forEach((b) => b.addEventListener('click', async () => { if (!(await confirmBox("Tell them you can't cover? The session goes back to its coach, who is told.", { ok: "I can't do it" }))) return; const r = await post('declineCover', { id: b.dataset.cvNo }); toast(r.ok ? 'They have been told' : r.data.error); renderStaff() }))
+  view().querySelectorAll('[data-to-x]').forEach((b) => b.addEventListener('click', async () => { if (!(await confirmBox('Cancel this time off request?'))) return; const r = await post('cancelTimeOff', { id: b.dataset.toX }); toast(r.ok ? 'Cancelled' : r.data.error); renderStaff() }))
   $('to-go').addEventListener('click', async (e) => {
     e.currentTarget.disabled = true
     const r = await post('requestTimeOff', { coachId: $('to-c')?.value, from: $('to-f').value, to: $('to-t').value || $('to-f').value, reason: $('to-r').value.trim() })
     toast(r.ok ? (admin ? 'Time off added. Approve it below.' : 'Sent to Lee and Ligia for approval.') : r.data.error)
     renderStaff()
   })
-  view().querySelectorAll('[data-to]').forEach((b) => b.addEventListener('click', async () => { const r = await post('decideTimeOff', { id: b.dataset.to, status: b.dataset.st }); toast(r.ok ? 'Updated' : r.data.error); renderStaff() }))
+  view().querySelectorAll('[data-to]').forEach((b) => b.addEventListener('click', async () => { const r = await post('decideTimeOff', { id: b.dataset.to, status: b.dataset.st, note: $('to-note')?.value.trim() || '' }); toast(r.ok ? 'Updated' : r.data.error); renderStaff() }))
   view().querySelectorAll('[data-cv-x]').forEach((b) => b.addEventListener('click', async () => { if (!(await confirmBox('Cancel this cover? The session goes back to its coach.'))) return; const r = await post('cancelCover', { id: b.dataset.cvX }); toast(r.ok ? 'Cover cancelled' : r.data.error); renderStaff() }))
 }
 

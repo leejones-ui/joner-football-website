@@ -36,6 +36,7 @@ import { feeTied, stampFeeBasisFresh, syncRowLinks, syncLinks, repricedNote } fr
 import { staffPrincipal, sameOrigin } from './_jfp-people.js'
 import { sendAccountInvite, accountInvite, sendFamilyInvite, sendFamilyWelcome, sendPlaceOffered, sendTrialOffered, sendTermOffered, sendDeclined, sendNextTermInvite, sendFamilyInvoice, sendQuickLinkEmail } from './_jfp-email.js'
 import { nextStatuses, setNextStatus, nextPrices, recordNext, nextInterest } from './_jfp-next.js'
+import { attendanceFor } from './_jfp-attendance-view.js'
 import { allProfiles, findProfile, pickProfile, profileKey, profileView, profileSummary, cleanProfile, saveProfile, waiverPrefill, addTrialFeedback, clubSuggestions, LEVELS, PLAYING_UP, POSITIONS, FEET, YEARS } from './_jfp-profiles.js'
 import { releaseOffer, sweepExpiredOffers } from './_jfp-offers.js'
 import { emailErrorText, emailsTo } from './_jfp-email-log.js'
@@ -48,7 +49,7 @@ import { INVOICE_ACTIONS, invoiceAction } from './_jfp-coach-invoices.js'
 import { FAMILY_NOTE_ACTIONS, familyNoteAction } from './_jfp-family-notes.js'
 import { REPORT_ACTIONS, reportAction } from './_jfp-report-actions.js'
 import { pushFamilyNote } from './_jfp-push.js'
-import { noteNewPlayer, alertsStatus, newPlayerWords, registerWords } from './_jfp-coach-alerts.js'
+import { noteNewPlayer, alertsStatus, newPlayerWords, registerWords, tellCoach } from './_jfp-coach-alerts.js'
 import { stripeScan, jfpStripePayments, feeTotals } from './_jfp-stripe.js'
 import { juniorsMoneyData, juniorsRoster } from './_jfp-juniors-money.js'
 import { JJ_ACTIONS, jjAction, jjMoneyData, jjTableList } from './_jj-portal.js'
@@ -2800,6 +2801,43 @@ const listCovers = () => listHash('jfp:cover')
 const listTimeOff = () => listHash('jfp:timeoff')
 const saveCover = (c) => kvCommand(['HSET', 'jfp:cover', c.id, JSON.stringify(c)])
 const saveTimeOff = (t) => kvCommand(['HSET', 'jfp:timeoff', t.id, JSON.stringify(t)])
+const listSwaps = () => listHash('jfp:swap')
+const saveSwap = (x) => kvCommand(['HSET', 'jfp:swap', x.id, JSON.stringify(x)])
+const clockMin = (label) => { const t = to24h(label); return t ? Number(t.slice(0, 2)) * 60 + Number(t.slice(3)) : null }
+const groupLine = (config, g) => `${g.day} ${g.time}, ${locationFor(config, g.location).name}`
+
+// Is this coach already working, or off, at that time? (Lee, 19 Oct 2026: covers need a clash check.)
+// Returns a sentence, or '' when they are free.
+async function clashFor(config, groups, coachId, g, date, { ignoreCovers = [] } = {}) {
+  const coach = coachById(config, coachId)
+  const off = (await listTimeOff()).find((t) => t.coachId === coachId && t.status === 'approved' && t.from <= date && date <= t.to)
+  if (off) return `${coachLabel(coach)} has approved time off on ${dateLabel(date)}.`
+  const covers = (await listCovers()).filter((c) => c.status === 'active' && c.date === date && !ignoreCovers.includes(c.id))
+  const a0 = clockMin(g.time), a1 = a0 == null ? null : a0 + (Number(g.durationMin) || 60)
+  const sameDay = (x) => sessionDates(config, x.day).includes(date)
+  const overlaps = (x) => { const b0 = clockMin(x.time); if (a0 == null || b0 == null) return false; return b0 < a1 && a0 < b0 + (Number(x.durationMin) || 60) }
+  for (const x of groups) {
+    if (x.id === g.id || x.mode === 'closed' || !sameDay(x) || !overlaps(x)) continue
+    const theirs = x.coachId === coachId || (x.extraCoachIds || []).includes(coachId)
+    // Sessions they have handed to someone else that day do not count.
+    if (theirs && !covers.some((c) => c.groupId === x.id && c.coachId === coachId)) return `${coachLabel(coach)} already coaches ${groupLine(config, x)} then.`
+  }
+  for (const c of covers) {
+    if (c.coverCoachId !== coachId) continue
+    const x = groups.find((y) => y.id === c.groupId)
+    if (x && x.id !== g.id && overlaps(x)) return `${coachLabel(coach)} is already covering ${groupLine(config, x)} then.`
+  }
+  return ''
+}
+
+// Tell a coach (email, and a text when the text route and a mobile are set up).
+async function coverTell(config, coachId, { subject, heading, paras, list, text }) {
+  const coach = coachById(config, coachId)
+  if (!coach) return
+  try { await tellCoach({ coach, subject, heading, paras, list, text, kind: 'cover notice' }) } catch (error) { console.error('jfp cover notice failed', error) }
+}
+const askedOf = (principal) => principal.name || principal.email
+const shortDay = (iso) => dateLabel(iso).replace(/\s\d{4}$/, '')
 export const PLAN_DEFAULT = { structure: '', weeks: Array.from({ length: 10 }, (_, i) => ({ week: i + 1, title: '', focus: '', link: '' })) }
 async function getPlans() { const p = await kvGetJson('jfp:plans'); return p && Array.isArray(p.weeks) ? p : structuredClone(PLAN_DEFAULT) }
 
@@ -2828,6 +2866,9 @@ async function staffAction(req, res, principal, config, body, isAdmin, action) {
       timeOff: timeOff.filter(mine).map((t) => ({ ...t, coach: coachLabel(coachById(config, t.coachId)) })),
       coaches: config.coaches.map((c) => ({ id: c.id, name: coachLabel(c) })),
       mySessions: groups.filter((g) => g.mode !== 'closed' && (isAdmin || g.coachId === me || (g.extraCoachIds || []).includes(me))).map((g) => ({ id: g.id, coachId: g.coachId, label: `${g.day} ${g.time}, ${locationFor(config, g.location).name}`, dates: sessionDates(config, g.day).filter((d) => d >= sydneyToday()).map((d) => ({ iso: d, label: dateLabel(d) })) })),
+      swaps: (await listSwaps()).filter((x) => isAdmin || x.aCoachId === me || x.bCoachId === me).map((x) => ({ ...x, a: coachLabel(coachById(config, x.aCoachId)), b: coachLabel(coachById(config, x.bCoachId)), aLabel: byId[x.aGroupId] ? groupLine(config, byId[x.aGroupId]) : x.aGroupId, bLabel: byId[x.bGroupId] ? groupLine(config, byId[x.bGroupId]) : x.bGroupId, aDateLabel: dateLabel(x.aDate), bDateLabel: dateLabel(x.bDate) })).sort((p, q) => String(q.createdAt).localeCompare(String(p.createdAt))).slice(0, 40),
+      // Every coach's upcoming sessions, so a swap can name the other side.
+      sessionsByCoach: Object.fromEntries(config.coaches.map((c) => [c.id, groups.filter((g) => g.mode !== 'closed' && g.label !== 'Joners Juniors' && (g.coachId === c.id || (g.extraCoachIds || []).includes(c.id))).map((g) => ({ id: g.id, label: groupLine(config, g), dates: sessionDates(config, g.day).filter((d) => d >= sydneyToday()).map((d) => ({ iso: d, label: dateLabel(d) })) }))])),
       plans,
     })
   }
@@ -2877,9 +2918,19 @@ async function staffAction(req, res, principal, config, body, isAdmin, action) {
     if (!cover || cover.id === owner) return fail(res, 400, 'Choose the coach who will cover.')
     const clash = (await listCovers()).find((c) => c.status === 'active' && c.groupId === g.id && c.date === date)
     if (clash) return fail(res, 409, `${coachLabel(coachById(config, clash.coverCoachId))} is already covering that session.`)
+    const clashText = await clashFor(config, groups, cover.id, g, date)
+    if (clashText && body.force !== true) return fail(res, 409, `${clashText} Put them on anyway?`, { code: 'clash' })
     const c = { id: newId('COV'), groupId: g.id, date, coachId: owner, coverCoachId: cover.id, note: clean(body.note, 300), status: 'active', createdAt: new Date().toISOString(), by: principal.email }
     await saveCover(c)
     await audit({ by: principal.email, action: 'cover.request', target: c.id, after: { group: g.id, date, cover: cover.id } })
+    // The cover coach is told (Lee, 19 Oct 2026): who, which session, when.
+    await coverTell(config, cover.id, {
+      subject: `You are covering ${g.day} ${g.time} on ${dateLabel(date)}`, heading: 'You are covering a session',
+      paras: [`${coachLabel(coachById(config, owner))} has asked you to cover their session. It is already on your list in My sessions.${c.note ? ` Their note: ${c.note}` : ''}`, 'If you cannot do it, open Cover and time off and press "Can\'t do it" so we can sort another coach.'],
+      list: [['Session', groupLine(config, g)], ['Date', dateLabel(date)], ['Covering for', coachLabel(coachById(config, owner))]],
+      text: `JFP: you are covering ${coachLabel(coachById(config, owner))} on ${shortDay(date)}, ${g.day} ${g.time} ${locationFor(config, g.location).name}. Can't do it? Open the coach portal, Cover and time off.`,
+    })
+    if (owner !== me || isAdmin) await coverTell(config, owner, { subject: `${coachLabel(cover)} is covering ${g.day} ${g.time} on ${dateLabel(date)}`, heading: 'Your cover is set', paras: [`${coachLabel(cover)} has been told and will take ${g.day} ${g.time}, ${dateLabel(date)}.`], list: [['Session', groupLine(config, g)], ['Date', dateLabel(date)], ['Cover coach', coachLabel(cover)]], text: `JFP: ${coachLabel(cover)} is covering your ${g.day} ${g.time} on ${shortDay(date)}.` })
     await telegramAlert(`JFP cover: ${coachLabel(coachById(config, owner))} is covered by ${coachLabel(cover)}\n${g.day} ${g.time}, ${locationFor(config, g.location).name}, ${dateLabel(date)}${c.note ? `\n${c.note}` : ''}`)
     return res.status(200).json({ success: true, cover: coverView(c, config, byId) })
   }
@@ -2889,6 +2940,89 @@ async function staffAction(req, res, principal, config, body, isAdmin, action) {
     if (!isAdmin && c.coachId !== me) return fail(res, 403, 'Only the coach who asked, Lee or Ligia can cancel a cover.')
     await saveCover({ ...c, status: 'cancelled', cancelledBy: principal.email, cancelledAt: new Date().toISOString() })
     await audit({ by: principal.email, action: 'cover.cancel', target: c.id })
+    return res.status(200).json({ success: true })
+  }
+  // The cover coach cannot do it (Lee, 19 Oct 2026): the session goes back to its coach, who and Lee are told.
+  if (action === 'declineCover') {
+    const c = (await listCovers()).find((x) => x.id === clean(body.id, 40))
+    if (!c || c.status !== 'active') return fail(res, 404, 'That cover is no longer on.')
+    if (!isAdmin && c.coverCoachId !== me) return fail(res, 403, 'Only the covering coach can say they cannot do it.')
+    await saveCover({ ...c, status: 'declined', declinedBy: principal.email, declinedAt: new Date().toISOString(), declineNote: clean(body.note, 300) })
+    await audit({ by: principal.email, action: 'cover.decline', target: c.id })
+    const g = byId[c.groupId]
+    const who = coachLabel(coachById(config, c.coverCoachId))
+    await coverTell(config, c.coachId, { subject: `${who} cannot cover ${g ? `${g.day} ${g.time}` : 'your session'} on ${dateLabel(c.date)}`, heading: 'Your cover has fallen through', paras: [`${who} cannot cover. The session is back with you, so you need to find another coach (Cover and time off) or tell Lee and Ligia.`], list: [['Session', g ? groupLine(config, g) : ''], ['Date', dateLabel(c.date)]], text: `JFP: ${who} cannot cover your ${g ? `${g.day} ${g.time}` : 'session'} on ${shortDay(c.date)}. It is back with you. Find another coach or tell Lee and Ligia.` })
+    await telegramAlert(`JFP cover declined: ${who} cannot cover ${coachLabel(coachById(config, c.coachId))}\n${g ? groupLine(config, g) : c.groupId}, ${dateLabel(c.date)}\nThe session is back with its coach.`)
+    return res.status(200).json({ success: true })
+  }
+  // Two-way swap (Lee, 19 Oct 2026): A takes one of B's sessions and B takes one of A's.
+  // It waits for B to accept; then both covers go on at once.
+  if (action === 'requestSwap') {
+    const aId = isAdmin ? (clean(body.coachId, 30) || me) : me
+    const a = coachById(config, aId), b = coachById(config, clean(body.withCoachId, 30))
+    if (!a || !b || a.id === b.id) return fail(res, 400, 'Choose the coach to swap with.')
+    const ga = byId[clean(body.groupId, 80)], gb = byId[clean(body.theirGroupId, 80)]
+    if (!ga || !gb) return fail(res, 404, 'Session not found.')
+    const mineOk = (g, id) => g.coachId === id || (g.extraCoachIds || []).includes(id)
+    if (!mineOk(ga, a.id)) return fail(res, 403, 'The first session is not yours.')
+    if (!mineOk(gb, b.id)) return fail(res, 400, `That session is not ${coachLabel(b)}'s.`)
+    const da = clean(body.date, 10), db = clean(body.theirDate, 10)
+    for (const [g, d] of [[ga, da], [gb, db]]) if (!sessionDates(config, g.day).includes(d) || d < sydneyToday()) return fail(res, 400, 'Choose upcoming dates for both sessions.')
+    const live = (await listCovers()).filter((c) => c.status === 'active')
+    if (live.some((c) => (c.groupId === ga.id && c.date === da) || (c.groupId === gb.id && c.date === db))) return fail(res, 409, 'One of those sessions already has a cover.')
+    const clash = (await clashFor(config, groups, b.id, ga, da)) || (await clashFor(config, groups, a.id, gb, db))
+    if (clash && body.force !== true) return fail(res, 409, `${clash} Ask anyway?`, { code: 'clash' })
+    const x = { id: newId('SWP'), aCoachId: a.id, aGroupId: ga.id, aDate: da, bCoachId: b.id, bGroupId: gb.id, bDate: db, note: clean(body.note, 300), status: 'pending', createdAt: new Date().toISOString(), by: principal.email }
+    await saveSwap(x)
+    await audit({ by: principal.email, action: 'swap.request', target: x.id, after: { a: a.id, b: b.id } })
+    await coverTell(config, b.id, { subject: `${coachLabel(a)} asks to swap sessions with you`, heading: 'A swap is waiting for you', paras: [`${coachLabel(a)} would take your ${groupLine(config, gb)} on ${dateLabel(db)} and you would take their ${groupLine(config, ga)} on ${dateLabel(da)}.${x.note ? ` Their note: ${x.note}` : ''}`, 'Open Cover and time off in the coach portal to accept or say no. Nothing changes until you accept.'], list: [['You coach', `${groupLine(config, gb)}, ${dateLabel(db)}`], ['You would take', `${groupLine(config, ga)}, ${dateLabel(da)}`]], text: `JFP: ${coachLabel(a)} asks to swap. You'd take ${ga.day} ${ga.time} on ${shortDay(da)}, they'd take your ${gb.day} ${gb.time} on ${shortDay(db)}. Open the coach portal, Cover and time off.` })
+    await telegramAlert(`JFP swap asked: ${coachLabel(a)} and ${coachLabel(b)}\n${groupLine(config, ga)} ${dateLabel(da)} for ${groupLine(config, gb)} ${dateLabel(db)}`)
+    return res.status(200).json({ success: true, swap: x })
+  }
+  if (action === 'answerSwap') {
+    const x = (await listSwaps()).find((y) => y.id === clean(body.id, 40))
+    if (!x || x.status !== 'pending') return fail(res, 404, 'That swap is no longer waiting.')
+    const isB = x.bCoachId === me, isA = x.aCoachId === me
+    if (!isAdmin && !isA && !isB) return fail(res, 403, 'Not your swap.')
+    const a = coachById(config, x.aCoachId), b = coachById(config, x.bCoachId)
+    const ga = byId[x.aGroupId], gb = byId[x.bGroupId]
+    const answer = clean(body.answer, 10)
+    if (answer === 'withdraw') {
+      if (!isAdmin && !isA) return fail(res, 403, 'Only the coach who asked can withdraw it.')
+      await saveSwap({ ...x, status: 'cancelled', answeredBy: principal.email, answeredAt: new Date().toISOString() })
+      await coverTell(config, b.id, { subject: 'Swap withdrawn', heading: 'The swap is off', paras: [`${coachLabel(a)} withdrew the swap request.`], list: [], text: `JFP: ${coachLabel(a)} withdrew the swap request.` })
+      return res.status(200).json({ success: true })
+    }
+    if (!isAdmin && !isB) return fail(res, 403, `Only ${coachLabel(b)} can answer.`)
+    if (answer === 'decline') {
+      await saveSwap({ ...x, status: 'declined', answeredBy: principal.email, answeredAt: new Date().toISOString() })
+      await coverTell(config, a.id, { subject: `${coachLabel(b)} said no to the swap`, heading: 'Swap not accepted', paras: [`${coachLabel(b)} cannot swap. Nothing has changed: you still have your session.`], list: [], text: `JFP: ${coachLabel(b)} cannot do the swap. Nothing changed.` })
+      return res.status(200).json({ success: true })
+    }
+    if (answer !== 'accept') return fail(res, 400, 'Accept or decline.')
+    if (x.aDate < sydneyToday() || x.bDate < sydneyToday()) return fail(res, 410, 'One of those dates has passed.')
+    const live = (await listCovers()).filter((c) => c.status === 'active')
+    if (live.some((c) => (c.groupId === x.aGroupId && c.date === x.aDate) || (c.groupId === x.bGroupId && c.date === x.bDate))) return fail(res, 409, 'One of those sessions now has a cover. Ask for a new swap.')
+    const now = new Date().toISOString()
+    const c1 = { id: newId('COV'), groupId: x.aGroupId, date: x.aDate, coachId: a.id, coverCoachId: b.id, note: `Swap with ${coachLabel(b)}`, status: 'active', createdAt: now, by: principal.email, swapId: x.id }
+    const c2 = { id: newId('COV'), groupId: x.bGroupId, date: x.bDate, coachId: b.id, coverCoachId: a.id, note: `Swap with ${coachLabel(a)}`, status: 'active', createdAt: now, by: principal.email, swapId: x.id }
+    await saveCover(c1); await saveCover(c2)
+    await saveSwap({ ...x, status: 'accepted', answeredBy: principal.email, answeredAt: now, coverIds: [c1.id, c2.id] })
+    await audit({ by: principal.email, action: 'swap.accept', target: x.id })
+    await coverTell(config, a.id, { subject: `${coachLabel(b)} accepted the swap`, heading: 'Swap agreed', paras: [`You take ${groupLine(config, gb)} on ${dateLabel(x.bDate)}. ${coachLabel(b)} takes your ${groupLine(config, ga)} on ${dateLabel(x.aDate)}.`], list: [], text: `JFP: swap agreed. You take ${gb.day} ${gb.time} on ${shortDay(x.bDate)}; ${coachLabel(b)} takes your ${ga.day} ${ga.time} on ${shortDay(x.aDate)}.` })
+    await telegramAlert(`JFP swap agreed: ${coachLabel(a)} and ${coachLabel(b)}\n${groupLine(config, ga)} ${dateLabel(x.aDate)} for ${groupLine(config, gb)} ${dateLabel(x.bDate)}`)
+    return res.status(200).json({ success: true })
+  }
+  // A coach takes back their own time off request (Lee, 19 Oct 2026).
+  if (action === 'cancelTimeOff') {
+    const t = (await listTimeOff()).find((x) => x.id === clean(body.id, 40))
+    if (!t) return fail(res, 404, 'Not found.')
+    if (!isAdmin && t.coachId !== me) return fail(res, 403, 'That is not your request.')
+    if (!['pending', 'approved'].includes(t.status)) return fail(res, 400, 'That request is already closed.')
+    if (t.to < sydneyToday()) return fail(res, 400, 'Those days have passed.')
+    await saveTimeOff({ ...t, status: 'cancelled', cancelledBy: principal.email, cancelledAt: new Date().toISOString() })
+    await audit({ by: principal.email, action: 'timeoff.cancel', target: t.id })
+    if (t.status === 'approved') await telegramAlert(`JFP time off cancelled by ${coachLabel(coachById(config, t.coachId))}: ${dateLabel(t.from)}${t.to !== t.from ? ` to ${dateLabel(t.to)}` : ''}`)
     return res.status(200).json({ success: true })
   }
   if (action === 'requestTimeOff') {
@@ -2910,6 +3044,10 @@ async function staffAction(req, res, principal, config, body, isAdmin, action) {
     if (!status) return fail(res, 400, 'Approve or decline.')
     await saveTimeOff({ ...t, status, decidedBy: principal.email, decidedAt: new Date().toISOString(), decisionNote: clean(body.note, 300) })
     await audit({ by: principal.email, action: `timeoff.${status}`, target: t.id })
+    if (status !== 'cancelled') {
+      const note = clean(body.note, 300)
+      await coverTell(config, t.coachId, { subject: `Your time off was ${status}`, heading: status === 'approved' ? 'Time off approved' : 'Time off not approved', paras: [`${dateLabel(t.from)}${t.to !== t.from ? ` to ${dateLabel(t.to)}` : ''}: ${status}.${note ? ` Note: ${note}` : ''}`, status === 'approved' ? 'Remember to arrange cover for each session you will miss (Cover and time off).' : ''].filter(Boolean), list: [], text: `JFP: your time off ${dateLabel(t.from)}${t.to !== t.from ? ` to ${dateLabel(t.to)}` : ''} was ${status}.${note ? ` ${note}` : ''}` })
+    }
     return res.status(200).json({ success: true })
   }
   // On The Go planner sessions (Lee, 5 Oct 2026): each coach's own, Lee and
@@ -3145,7 +3283,7 @@ async function handle(req, res) {
     if (action === 'coachPhoto') return await saveCoachPhoto(res, principal, config, body, isAdmin)
     if (INVOICE_ACTIONS.has(action)) return await invoiceAction(res, principal, config, body, action, { isAdmin, myCoachId: principal.coachId || config.coaches.find((c) => c.email && c.email === principal.email)?.id || '', listCovers })
     if (HOURS_ACTIONS.has(action)) return await hoursAction(res, principal, config, body, action, { isAdmin, myCoachId: principal.coachId || config.coaches.find((c) => c.email && c.email === principal.email)?.id || '', listCovers })
-    if (['ideasGet', 'ideasSave', 'ideasApp', 'staffOverview', 'staffAlerts', 'requestCover', 'cancelCover', 'requestTimeOff', 'decideTimeOff', 'savePlans', 'planList', 'planSave', 'planGet', 'planDelete'].includes(action)) return await staffAction(req, res, principal, config, body, isAdmin, action)
+    if (['ideasGet', 'ideasSave', 'ideasApp', 'staffOverview', 'staffAlerts', 'requestCover', 'cancelCover', 'declineCover', 'requestSwap', 'answerSwap', 'cancelTimeOff', 'requestTimeOff', 'decideTimeOff', 'savePlans', 'planList', 'planSave', 'planGet', 'planDelete'].includes(action)) return await staffAction(req, res, principal, config, body, isAdmin, action)
 
     if (action === 'cancellations') return await cancellationsData(res, principal, config, body, isAdmin)
     if (action === 'cancelAlerts') return await cancelAlerts(res, principal, config, isAdmin)
@@ -3177,6 +3315,13 @@ async function handle(req, res) {
       const profs = await allProfiles().catch(() => [])
       const photoByRow = new Map(profs.filter((x) => x.photo).flatMap((x) => x.rowIds.map((id) => [id, x.photo])))
       for (const s of sessions) for (const p of s.players) if (photoByRow.has(p.rowId)) p.photo = photoByRow.get(p.rowId)
+      // No filming (Lee, 19 Oct 2026): a signed waiver with the media box left unticked.
+      const rowById = new Map(roster.players.map((r) => [r.id, r]))
+      for (const s of sessions) for (const p of s.players) {
+        const r = rowById.get(p.rowId); if (!r) continue
+        const wv = waiverFor(r.player, { emails: rowEmails(r), phones: [r.phone], dob: r.dob }, roster.waivers)
+        if (wv && wv.media === false) p.noFilm = true
+      }
       // The register for every date of the term (Lee, 19 Oct 2026): a past date
       // picked in the list shows what was marked, and the Whole term grid.
       await attendanceByDate(sessions, groups)
@@ -3213,7 +3358,23 @@ async function handle(req, res) {
       const info = coachInfo(r, notes, config)
       const wv = prof ? null : (w || waiverFor(r.player, { emails: rowEmails(r), phones: [r.phone], dob: r.dob }, roster.waivers))
       const medical = String(prof ? prof.medical || '' : wv ? (await waiverPrefill(wv.id).catch(() => ({}))).medical || '' : '').trim()
+      // Waiver and filming (Lee, 19 Oct 2026), and how often they have come.
+      const waiver = wv || w || waiverFor(r.player, { emails: rowEmails(r), phones: [r.phone], dob: r.dob }, roster.waivers)
+      const today = sydneyToday()
+      const past = sessionDates(config, g.day).filter((d) => d < today && (!r.startsFrom || d >= r.startsFrom))
+      const sibs = groups.filter((x) => x.id !== g.id && x.day === g.day && x.time === g.time && x.location === g.location).map((x) => x.id)
+      const ids = [g.id, ...sibs]
+      let attendance = { came: 0, marked: 0, label: '', sessions: past.length }
+      try {
+        const asks = past.flatMap((d) => ids.map((id) => [d, id]))
+        const vals = asks.length ? await kvPipeline(asks.map(([d, id]) => ['HGET', keys.attendance(id, d), r.id])) : []
+        const byDate = {}
+        asks.forEach(([d], i) => { const v = vals[i]?.result ?? vals[i]; if (v && !byDate[d]) byDate[d] = v })
+        attendance = { ...attendanceFor(past, (d) => byDate[d] || ''), sessions: past.length }
+      } catch (error) { console.error('jfp card attendance failed', error) }
       return res.status(200).json({ success: true, player: {
+        waiver: waiver ? { signed: true, date: waiver.signedDate ? dateLabel(waiver.signedDate) : '', filming: waiver.media === true } : { signed: false, date: '', filming: null },
+        attendance: { came: attendance.came, marked: attendance.marked, sessions: attendance.sessions, label: attendance.label },
         rowId: r.id, name: r.player, age: dob ? ageOn(dob, sydneyToday()) : playerAge(r, config.termStart), photo: prof?.photo || '',
         session: `${g.day} ${g.time}, ${locationFor(config, g.location).name}`, trial, trialDate: trial && trialDateOf(r) ? dateLabel(trialDateOf(r)) : '',
         club: prof?.club || w?.club || '', team: prof?.team || '', level: prof?.level || '', playingUp: prof?.playingUp || '', positions: prof?.positions || [], foot: prof?.foot || '',

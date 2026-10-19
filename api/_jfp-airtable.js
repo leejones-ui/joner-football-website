@@ -95,7 +95,7 @@ const TERM4_FIELDS = [
   'Training Kit',
 ]
 const TERM3_FIELDS = ['Player Name', 'Parent Name', 'Email', 'Parent Email 2', 'Phone Number', 'Date of Birth', 'Coach', 'Session Day', 'Session Time', 'Session Location']
-const WAIVER_FIELDS = ['Player Full Name', 'Date of Birth', 'Parent/Guardian Name', 'Parent Email', 'Parent Mobile Number', 'Current Club', 'Term', 'Waiver Version', 'Signed Date', 'Programme', 'Waiver Accepted - Full Terms', 'Internal Notes']
+const WAIVER_FIELDS = ['Player Full Name', 'Date of Birth', 'Parent/Guardian Name', 'Parent Email', 'Parent Mobile Number', 'Current Club', 'Term', 'Waiver Version', 'Signed Date', 'Programme', 'Waiver Accepted - Full Terms', 'Media Permission', 'Internal Notes']
 
 // A value inside a double-quoted Airtable formula string.
 export function fq(v) { return String(v ?? '').replace(/\\/g, '\\\\').replace(/"/g, '\\"') }
@@ -178,6 +178,8 @@ export async function loadRoster({ fresh = false, maxAgeMs = CACHE_SECONDS * 100
     email: emailsIn(text(f, 'Parent Email'))[0] || '', mobile: text(f, 'Parent Mobile Number'), club: text(f, 'Current Club'),
     term: text(f, 'Term'), version: text(f, 'Waiver Version'), signedDate: text(f, 'Signed Date'), programme: text(f, 'Programme'),
     accepted: f['Waiver Accepted - Full Terms'] === true,
+    // Filming and photos (Lee, 19 Oct 2026): an unticked box means no.
+    media: f['Media Permission'] === true,
     // Which waiver was signed online: the adult one (the player for
     // themselves) or the parent or guardian one. Older waivers say neither.
     kind: waiverKindOf(text(f, 'Internal Notes')),

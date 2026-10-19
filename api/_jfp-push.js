@@ -151,7 +151,7 @@ const first = (n) => String(n || '').split(' ')[0]
 
 export async function pushFamilyNote(rec, row) {
   const emails = new Set([...rowEmails(row), ...(await withPlayerLogins([row]))])
-  return pushTo(emails, 'notes', { title: `Note from ${first(row.player)}'s coach`, body: rec.text.slice(0, 140), url: '/jfp-account/#notes', tag: `note-${rec.id}` })
+  return pushTo(emails, 'notes', { title: `${rec.kind === 'homework' ? 'Homework' : 'Note'} from ${first(row.player)}'s coach`, body: rec.text.slice(0, 140), url: '/jfp-account/#notes', tag: `note-${rec.id}` })
 }
 
 export async function pushAnnouncement(a) {
