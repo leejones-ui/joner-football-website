@@ -1068,27 +1068,45 @@ function renderApp() {
   appFreeCard()
 }
 
-// Free access (Lee, 19 Oct 2026): a paid Term 4 place, an email for the app,
-// then Lee or Ligia set it up. Free accounts and trials see how to get it.
+// Free access (Lee, 19 Oct 2026): booked into Term 4 and paid, then the
+// account email goes into the Uscreen group JFP (PLUS) straight away and the
+// card shows how to get into the app. Free accounts and trials see how to get it.
 async function appFreeCard() {
   const box = document.getElementById('app-free')
   if (!box) return
   const r = await api('/api/jfp-account', { action: 'appAccessState' })
   const a = r.ok ? r.data.app : null
-  const head = '<p class="ja-kicker"><i></i>Booked into JFP</p><h2 class="ja-h2" style="margin-top:10px">Get your free access</h2>'
-  if (!a || !a.eligible) { box.innerHTML = `${head}<p class="ja-muted" style="margin-top:8px">Free app access comes with a paid Term 4 place. Once your term is paid, ask here.</p><div class="ja-actions"><button type="button" class="ja-btn ja-btn-line" data-go="contact" data-topic="The JF App">Ask a question</button></div>`; return }
+  const email = (a && a.accountEmail) || D.email || ''
+  const head = '<p class="ja-kicker"><i></i>Booked into Term 4</p><h2 class="ja-h2" style="margin-top:10px">Free JF App access</h2>'
+  const offer = '<p class="ja-muted" style="margin-top:8px">If you have booked into Term 4 and train with us, you get the Joner Football App free, with full PLUS access.</p>'
+  if (!a || !a.eligible) { box.innerHTML = `${head}${offer}<p class="ja-muted" style="margin-top:8px">It unlocks here once your Term 4 place is paid. Paid already? Ask Ligia and she will check it.</p><div class="ja-actions"><button type="button" class="ja-btn ja-btn-line" data-go="contact" data-topic="The JF App">Ask Ligia</button></div>`; return }
   const q = a.request
-  if (q && q.status === 'done') { box.innerHTML = `${head}<p class="ja-muted" style="margin-top:8px">Set up for <b>${esc(q.appEmail)}</b>. Download the app and sign in with that email.</p>`; return }
-  box.innerHTML = `${head}<p class="ja-muted" style="margin-top:8px">${q ? `Asked for <b>${esc(q.appEmail)}</b>. We will set it up and let you know when it is ready. Wrong email? Change it below.` : `For ${esc(a.players.join(' and '))}. Enter the email the app login will use.`}</p>
-    <label class="j-field" style="margin-top:12px"><span>Email for the app</span><input class="j-input" id="app-email" type="email" inputmode="email" autocomplete="email" value="${esc(q?.appEmail || D.email || '')}"></label>
-    <div class="ja-actions"><button type="button" class="ja-btn ja-btn-red" id="app-go">${q ? 'Update the email' : 'Get free access'}</button></div>`
-  box.querySelector('#app-go').addEventListener('click', async (e) => {
-    e.currentTarget.disabled = true
-    const res = await api('/api/jfp-account', { action: 'appAccess', appEmail: box.querySelector('#app-email').value })
-    if (!res.ok) { toast(res.data.error || 'Could not send that. Try again.'); e.currentTarget.disabled = false; return }
-    toast('Thanks. We will set it up and let you know.')
+  if (q && q.status === 'done') { box.innerHTML = `${head}<p class="ja-muted" style="margin-top:8px">You are in. Free PLUS access is on <b>${esc(q.appEmail)}</b>.</p>${appSteps(q.appEmail)}`; return }
+  if (q && q.status === 'requested') { box.innerHTML = `${head}<p class="ja-muted" style="margin-top:8px">We have your request for <b>${esc(q.appEmail)}</b> and are setting it up by hand. We will email you when it is ready, usually within a day.</p><div class="ja-actions"><button type="button" class="ja-btn ja-btn-line" id="app-go">Try again now</button></div>`; wireAppGo(box, q.appEmail); return }
+  box.innerHTML = `${head}${offer}<p class="ja-muted" style="margin-top:8px">For ${esc(a.players.join(' and '))}. Confirm the email on this account. It is the email you will sign in to the app with.</p>
+    <label class="j-field" style="margin-top:12px"><span>Your account email</span><input class="j-input" id="app-email" type="email" inputmode="email" autocomplete="email" placeholder="${esc(email)}"></label>
+    <div class="ja-actions"><button type="button" class="ja-btn ja-btn-red" id="app-go">Get my free access</button></div>`
+  wireAppGo(box)
+}
+function wireAppGo(box, fixed) {
+  box.querySelector('#app-go')?.addEventListener('click', async (e) => {
+    const btn = e.currentTarget
+    const appEmail = fixed || box.querySelector('#app-email')?.value || ''
+    btn.disabled = true; btn.textContent = 'Setting it up…'
+    const res = await api('/api/jfp-account', { action: 'appAccess', appEmail })
+    if (!res.ok) { toast(res.data.error || 'Could not do that. Try again.'); btn.disabled = false; btn.textContent = fixed ? 'Try again now' : 'Get my free access'; return }
+    const q = res.data.app && res.data.app.request
+    toast(q && q.status === 'done' ? 'Done. Your free access is on.' : 'Thanks. We will set it up and email you.')
     appFreeCard()
   })
+}
+function appSteps(email) {
+  return `<ol class="ja-steps" style="margin:14px 0 0;padding-left:20px;display:grid;gap:8px">
+      <li><b>Download the Joner Football App.</b><div class="ja-actions" style="margin-top:8px"><a class="ja-btn ja-btn-line ja-btn-sm" href="${links.appStore}" target="_blank" rel="noopener noreferrer">App Store</a><a class="ja-btn ja-btn-line ja-btn-sm" href="${links.googlePlay}" target="_blank" rel="noopener noreferrer">Google Play</a></div></li>
+      <li><b>Open it and tap Sign in</b> with <b>${esc(email)}</b>.</li>
+      <li><b>First time?</b> Look for an email from Joner Football to set your password. No email? Tap Forgot password in the app and use the same email.</li>
+      <li><b>That is it.</b> PLUS is already unlocked. Do not buy a plan in the app, you will not need one.</li>
+    </ol>`
 }
 
 // ---------- contact ----------

@@ -25,6 +25,7 @@ process.env.HOLIDAY_SIGNING_SECRET = process.env.HOLIDAY_SIGNING_SECRET || 'loca
 process.env.HOLIDAY_ADMIN_SECRET = process.env.HOLIDAY_ADMIN_SECRET || 'admin'
 process.env.STRIPE_SECRET_KEY_SYDNEY = 'sk_test_local'
 process.env.BREVO_API_KEY = 'local'
+process.env.USCREEN_API_KEY = 'local-uscreen'
 // Telegram is faked too (captured at /__telegram): the real bot is never called.
 process.env.JFP_TELEGRAM_BOT_TOKEN = 'local'
 process.env.JFP_TELEGRAM_CHAT_ID = 'local'
@@ -216,6 +217,7 @@ const telegrams = []
 // A pretend JFP roster: realistic groups, invented players. Set JFP_SEED to a
 // JSON file ({ term4, term3, waiver, ledger } record arrays) to load another,
 // for example an anonymised copy of the real roster for screenshots.
+const uscreen = { seats: 3, members: [] }
 const airtable = { term4: [], ledger: [], term3: [], waiver: [], attendance: [], dropped: [], nextHolds: [], master: [], juniors3: [], juniors4: [], juniorsNext: [], venueHistory: [], profiles: [], camps: [], applications: [], players1: [], term2: [], masterPlayers: [] }
 // JFP Camps, as the Mac import writes it: invented camps, no names (Money > Camps).
 {
@@ -256,7 +258,7 @@ if (process.env.JFP_SEED && fs.existsSync(process.env.JFP_SEED)) {
   airtable.waiver.push({ id: recId(), fields: { 'Player Full Name': 'Sasha Returning', 'Parent Email': 'returning@example.com', 'Date of Birth': '2016-06-10', 'Term': 'Term 3 2026', 'Signed Date': '2026-07-14', 'Waiver Accepted - Full Terms': true } })
   // Term 3 money for revenue by venue: two payments on Term 3 rows, one from a player no longer listed.
   // Older terms and JF Master Players (Players tab, past players): invented.
-  airtable.players1.push({ id: recId(), fields: { 'Player Name': 'Olly Oldtimer', 'Parent Name': 'Opal Oldtimer', 'Email': 'old@example.com', 'Session Day': 'Monday', 'Session Time': '4:00pm', 'Location': 'Belrose HQ', 'Coach': 'Lee', 'Status': 'Active', 'Phone Number': '0400999888' } })
+  airtable.players1.push({ id: recId(), fields: { 'Player Name': 'Olly Oldtimer', 'Parent Name': 'Opal Oldtimer', 'Email': 'old@example.com', 'Session Day': 'Monday', 'Session Time': '4:00pm', 'Location': 'Belrose HQ', 'Coach': 'Lee', 'Status': 'Active', 'Phone Number': '0400999888', 'Medical Notes': 'Asthma, inhaler in bag' } })
   airtable.term2.push({ id: recId(), fields: { 'Player Name': 'Olly Oldtimer', 'Parent Name': 'Opal Oldtimer', 'Email': 'old@example.com', 'Session Day': 'Monday', 'Session Time': '4:00pm', 'Session Location': 'Belrose HQ', 'Coach': 'Sam Yorks', 'Status': 'Active' } })
   airtable.masterPlayers.push({ id: recId(), fields: { 'Player Name': 'Olly Oldtimer', 'Parent Names from Sources': 'Opal Oldtimer', 'Source Tables': 'Players, Term 2 Players', 'Review Status': 'Matched' } }, { id: recId(), fields: { 'Player Name': 'Mia Masterlist', 'Parent Names from Sources': 'Mo Masterlist', 'Source Tables': 'JF App', 'Review Status': 'Needs review' } })
   const [riley3, sasha3] = airtable.term3
@@ -643,6 +645,28 @@ const innerFetch = async (url, init = {}) => {
     telegrams.push({ at: Date.now(), text: payload.text })
     return json({ ok: true })
   }
+  // A pretend Uscreen: the JFP group (seats) and three app videos. Fault 'uscreen' makes it fail.
+  if (u.startsWith('https://www.uscreen.io/publisher_api/v1/')) {
+    if (faults.has('uscreen')) return new Response('{"error":"down"}', { status: 503 })
+    const path = new URL(u).pathname.replace('/publisher_api/v1', '')
+    const q = new URL(u).searchParams
+    if (path === '/groups') return json(Number(q.get('page') || 1) === 1 ? [{ id: 9, name: 'Coaches', status: 'active' }, { id: 77, name: 'JFP', plan_title: 'Plus - Annual', number_of_seats: uscreen.seats, used_seats: uscreen.members.length, status: 'active' }] : [])
+    const m = path.match(/^\/groups\/(\d+)\/members$/)
+    if (m && init.method === 'POST') {
+      const b = JSON.parse(init.body)
+      if (m[1] !== '77') return json({ error: 'not found' }, 404)
+      if (uscreen.members.some((x) => x.email === b.email)) return json({ errors: { email: ['is already a member'] } }, 422)
+      if (uscreen.members.length >= uscreen.seats) return json({ errors: { base: ['No seats left'] } }, 422)
+      uscreen.members.push({ email: b.email, name: b.name, role: b.role }); log('uscreen', `JFP group +${b.email}`)
+      return json({ id: 5000 + uscreen.members.length, email: b.email, name: b.name, role: 'member' }, 201)
+    }
+    if (path === '/contents') return json(Number(q.get('page') || 1) === 1 ? [
+      { id: 1, content_type: 'video', release_stage: 'published', title: 'Fast Feet Warm Up', short_description: 'Quick feet with the ball.', duration: 300, permalink: 'fast-feet', main_poster_url: 'https://img.local/1.jpg', categories: [{ id: 1, title: 'Speed & Agility' }], tags: ['warm-up'] },
+      { id: 2, content_type: 'video', release_stage: 'published', title: '1v1 Defending at Speed', short_description: 'Defend a runner.', duration: 600, permalink: 'one-v-one', main_poster_url: '', categories: [], tags: ['1v1 defending'] },
+      { id: 3, content_type: 'video', release_stage: 'scheduled', title: 'Not out yet', duration: 60, permalink: 'soon', categories: [], tags: [] },
+    ] : [])
+    return json({ error: 'not mocked' }, 404)
+  }
   if (u.startsWith('https://oauth2.googleapis.com/token')) return json({ access_token: 'local', expires_in: 3600 })
   // The Joners Juniors sign-up tab: its own pretend sheet.
   if (u.includes('sheets.googleapis.com') && u.includes('/local-jj-sheet')) {
@@ -851,6 +875,7 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/__stripe-pis') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify([...offIntents.values()])) }
   if (url.pathname === '/__stripe-saved') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ customers: [...customers.values()], paymentMethods: [...paymentMethods.values()], setupIntents: [...setupIntents.values()] })) }
   if (url.pathname === '/__pushes') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(pushes)) }
+  if (url.pathname === '/__uscreen') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(uscreen)) }
   if (url.pathname === '/__emails') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(emails)) }
   if (url.pathname === '/__telegram') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(telegrams)) }
   if (url.pathname === '/__airtable') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(airtable)) }

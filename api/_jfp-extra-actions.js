@@ -10,7 +10,7 @@ import { siteUrl } from './_holiday-store.js'
 import { queueAnnounce, announceSettings } from './_jfp-extra-announce.js'
 import { coachAsks, replyExtra, coachAskView } from './_jfp-extras.js'
 import {
-  allSlots, getSlot, saveSlot, cancelSlot, reserveExtraPlace, setBookingCharge, liveBookings, removeBooking, markBooking, marksFor, staffView, extraMinutes, cleanExtraPrices, newExtraPrice,
+  allSlots, getSlot, saveSlot, weeklyDates, KIND_LABEL, kindOf, cancelSlot, reserveExtraPlace, setBookingCharge, liveBookings, removeBooking, markBooking, marksFor, staffView, extraMinutes, cleanExtraPrices, newExtraPrice,
 } from './_jfp-extra.js'
 
 export const EXTRA_ACTIONS = new Set(['extraList', 'extraSave', 'extraSaveMany', 'extraCancel', 'extraAttach', 'extraRemove', 'extraMark', 'extraSearch', 'extraPrices', 'extraAnnounce', 'extraAsks', 'extraAskReply'])
@@ -100,19 +100,30 @@ export async function extraAction(req, res, principal, config, body, action, isA
   if (!isAdmin && !principal.coachId) return no(res, 403, 'Not allowed.')
   if (action === 'extraList') return ok(res, await listFor(config, principal, isAdmin, body))
 
+  // A new weekly slot is a series: made the many-sessions way, one each week.
+  if (action === 'extraSave' && body.slot?.kind === 'weekly' && !body.slot?.id) {
+    body = { ...body, dates: [body.slot.date], times: [body.slot.time] }
+    action = 'extraSaveMany'
+  }
   if (action === 'extraSave') {
     const out = await saveSlot({ config, principal, isAdmin, input: body.slot || {} })
     if (out.error) return no(res, 400, out.error)
     // Lee and Ligia hear when a coach opens a session themselves.
-    if (out.created && !isAdmin) await telegramAlert(`Extra session opened by Coach ${coachLabel(coachById(config, out.slot.coachId))}: ${dateLabel(out.slot.date)} ${out.slot.time}, ${out.slot.location}, ${out.slot.capacity} place${out.slot.capacity === 1 ? '' : 's'}, ${formatAud(out.slot.priceCents)} (${out.slot.visibility}).`).catch(() => {})
+    if (out.created && !isAdmin) await telegramAlert(`Extra session opened by Coach ${coachLabel(coachById(config, out.slot.coachId))}: ${dateLabel(out.slot.date)} ${out.slot.time}, ${out.slot.location}, ${out.slot.capacity} place${out.slot.capacity === 1 ? '' : 's'}, ${formatAud(out.slot.priceCents)} (${KIND_LABEL[kindOf(out.slot)]}).`).catch(() => {})
     if (out.created) await announcePublic(config, [out.slot])
     return ok(res, { slot: forCoach(staffView(config, out.slot, await listPayreqs()), isAdmin) })
   }
   // Several sessions in one go (Lee, 19 Oct 2026): the same session on each
   // picked date, at each picked start time. All are checked before any is made.
   if (action === 'extraSaveMany') {
-    const base = body.slot || {}
-    const dates = [...new Set((Array.isArray(body.dates) ? body.dates : []).map((d) => clean(d, 10)))].sort()
+    let base = body.slot || {}
+    let dates = [...new Set((Array.isArray(body.dates) ? body.dates : []).map((d) => clean(d, 10)))].sort()
+    // Weekly slot: the first date picked, then the same day every week to the end of term.
+    if (base.kind === 'weekly') {
+      dates = weeklyDates(config, dates[0])
+      base = { ...base, seriesId: `XW-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}` }
+    }
+    if (base.kind === 'weekly' && !dates.length) return no(res, 400, 'Pick the first date, before the end of term. A weekly slot runs each week to the end of term.')
     const times = [...new Set((Array.isArray(body.times) ? body.times : [base.time]).map((t) => clean(t, 10)).filter(Boolean))]
     if (!dates.length) return no(res, 400, 'Pick at least one date.')
     if (!times.length) return no(res, 400, 'Pick a start time, like 4:30pm.')
@@ -124,7 +135,7 @@ export async function extraAction(req, res, principal, config, body, action, isA
       made.push(out.slot)
     }
     const s0 = made[0]
-    if (!isAdmin) await telegramAlert(`${made.length} extra sessions opened by Coach ${coachLabel(coachById(config, s0.coachId))}: ${made.map((x) => `${dateLabel(x.date)} ${x.time}`).join(', ')}, ${s0.location}, ${s0.visibility}.`)
+    if (!isAdmin) await telegramAlert(`${made.length} extra sessions opened by Coach ${coachLabel(coachById(config, s0.coachId))} (${KIND_LABEL[kindOf(s0)]}): ${made.map((x) => `${dateLabel(x.date)} ${x.time}`).join(', ')}, ${s0.location}.`).catch(() => {})
     await announcePublic(config, made)
     const payreqs = await listPayreqs()
     return ok(res, { slots: made.map((x) => forCoach(staffView(config, x, payreqs), isAdmin)) })

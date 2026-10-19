@@ -536,7 +536,8 @@ async function renderBoard(refresh) {
       ${P.ttView === 'staff' ? '<div class="jp-legend" style="margin-left:auto"><span><i class="i-due"></i>Unpaid</span><span><i class="i-paid"></i>Paid</span><span><i class="i-part"></i>Part paid</span><span><i class="i-session"></i>Session by session</span><span><i class="i-trial"></i>Trial</span><span><b style="color:#B42318;font-size:10px">W</b> no waiver</span></div>' : ''}
     </div>
     ${P.ttView === 'parent' ? '<p class="muted small" style="margin-bottom:8px">What parents see: places left, never names.</p>' : ''}
-    <div class="jp-tt-wrap">${ttGrid(groups)}</div>
+    <div class="jp-tt-wrap">${ttGrid(groups, P.ttView === 'parent' ? [] : boardExtrasShown(B, 0))}</div>
+    ${P.ttView === 'parent' ? '' : boardExtrasList(B)}
     ${B.unassigned.length && P.ttView === 'staff' ? `<div class="jp-day"><h2>Not in a group</h2></div><div class="jp-group">${B.unassigned.map((p) => playerRowHtml(p, '')).join('')}<p class="muted small" style="margin-top:8px">These rows have no session, or a session with no group (for the split morning groups, a coach with no group at that time). Move them onto a group.</p></div>` : ''}`
   $('b-refresh').addEventListener('click', () => renderBoard('hard'))
   $('b-loc').addEventListener('click', (e) => { const b = e.target.closest('[data-loc]'); if (b) { P.loc = b.dataset.loc; renderBoard(false) } })
@@ -548,14 +549,35 @@ async function renderBoard(refresh) {
   if (P.sel && P.ttView === 'staff') { const g = P.board.groups.find((x) => x.id === P.sel); if (g) groupSide(g) }
 }
 
-function ttGrid(groups) {
-  const cols = DAYS.filter((d) => groups.some((g) => g.day === d))
+// Extra sessions on the Timetable (Lee, 19 Oct 2026): one-offs, weekly slots
+// and private links, this week in the grid and four weeks in a list below.
+function boardExtrasShown(B, week) {
+  return (B.extras || []).filter((x) => (week == null || x.week === week) && (!P.loc || x.locationId === P.loc) && (!P.coachFilter || x.coachId === P.coachFilter) && (!P.day || x.day === P.day))
+}
+const XKIND = { oneoff: ['blue', 'One-off'], weekly: ['green', 'Weekly slot'], private: ['violet', 'Private link'] }
+function ttExtra(x) {
+  const [c, l] = XKIND[x.kind] || XKIND.oneoff
+  return `<section class="jp-blk jp-blk-extra" style="--lc:${locColor(x.locationId)}" data-tab="extra" title="Open Extra sessions"><div class="jp-blk-head"><b>${esc(x.time)}</b> <span class="j-pill j-pill-${c}" style="font-size:10px;padding:0 6px">${esc(l)}</span><span class="n">${x.players.length}/${x.capacity}</span></div>
+    <div class="sub">${esc(x.coachName)} · ${esc(x.title)} · ${esc(x.durationMin)} min · ${esc(x.dateLabel.replace(/\s\d{4}$/, ''))}</div>
+    ${P.ttView === 'staff' ? x.players.map((n) => `<div class="jp-nm"><span class="nmx">${esc(n)}</span></div>`).join('') : ''}${x.players.length < x.capacity ? `<div class="jp-open">${x.capacity - x.players.length} open</div>` : ''}</section>`
+}
+function boardExtrasList(B) {
+  const all = boardExtrasShown(B, null)
+  if (!(B.extras || []).length) return ''
+  const weeks = ['This week', 'Next week', 'In 2 weeks', 'In 3 weeks']
+  return `<div class="jp-day"><h2>Extra sessions</h2></div><p class="muted small" style="margin-bottom:8px">One-offs, weekly slots and private links coaches have opened. This week's are in the timetable above too. Private links never show to families.</p>
+    ${weeks.map((w, i) => { const list = all.filter((x) => x.week === i); return list.length ? `<h3 style="font-size:15px;margin:10px 0 6px">${w}</h3><div class="jp-board" style="margin-bottom:10px">${list.map(ttExtra).join('')}</div>` : '' }).join('') || '<p class="muted small">None match these filters.</p>'}`
+}
+
+function ttGrid(groups, extras = []) {
+  const cols = DAYS.filter((d) => groups.some((g) => g.day === d) || extras.some((x) => x.day === d))
   if (!cols.length) return '<div class="j-empty">No groups match.</div>'
-  const periods = PERIODS.filter(([p]) => groups.some((g) => g.period === p))
+  const periods = PERIODS.filter(([p]) => groups.some((g) => g.period === p) || extras.some((x) => x.period === p))
+  const cell = (d, p) => [...groups.filter((g) => g.day === d && g.period === p).map((g) => [g.sortTime, ttBlock(g)]), ...extras.filter((x) => x.day === d && x.period === p).map((x) => [x.sortTime, ttExtra(x)])].sort((a, b) => String(a[0]).localeCompare(String(b[0]))).map((x) => x[1]).join('')
   // One day: its groups side by side, morning then afternoon.
-  if (P.day) return periods.map(([p, label]) => `<div class="j-tt-row" style="margin:6px 0 8px">${esc(P.day)} ${esc(label.toLowerCase())}</div><div class="jp-board" style="margin-bottom:14px">${groups.filter((g) => g.period === p).sort((a, b) => a.sortTime.localeCompare(b.sortTime)).map(ttBlock).join('')}</div>`).join('')
+  if (P.day) return periods.map(([p, label]) => `<div class="j-tt-row" style="margin:6px 0 8px">${esc(P.day)} ${esc(label.toLowerCase())}</div><div class="jp-board" style="margin-bottom:14px">${cell(P.day, p)}</div>`).join('')
   return `<div class="jp-tt" style="--cols:${cols.length}">${cols.map((d) => `<div class="j-tt-day">${esc(d)}</div>`).join('')}
-    ${periods.map(([p, label]) => `<div class="j-tt-row">${esc(label)}</div>${cols.map((d) => `<div class="j-tt-cell">${groups.filter((g) => g.day === d && g.period === p).sort((a, b) => a.sortTime.localeCompare(b.sortTime)).map(ttBlock).join('')}</div>`).join('')}`).join('')}</div>`
+    ${periods.map(([p, label]) => `<div class="j-tt-row">${esc(label)}</div>${cols.map((d) => `<div class="j-tt-cell">${cell(d, p)}</div>`).join('')}`).join('')}</div>`
 }
 
 function dotFor(p) {
@@ -2961,9 +2983,13 @@ async function renderCoach(keep = false) {
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' })
   const weekAgo = new Date(Date.now() - 6 * 864e5).toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' })
   const lastRun = (s) => { const x = s.dates.filter((v) => v.iso <= today).at(-1)?.iso; return x && x >= weekAgo && s.players.some((p) => !(p.trialDate && p.trialDate !== x) && !attOf(s, x)[p.rowId]) ? x : '' }
-  const dateOf = (s) => (s.dates.some((x) => x.iso === P.coachDate[s.id]) ? P.coachDate[s.id] : lastRun(s) || s.nextDate)
+  // A week picked: that week's date for every session (never a date from another week).
+  const dateOf = (s) => (s.dates.some((x) => x.iso === P.coachDate[s.id]) ? P.coachDate[s.id] : P.regWeek ? s.nextDate : lastRun(s) || s.nextDate)
   const early = (date) => !admin && date > today
-  const flagOf = (s, p, date) => ({ trial: Boolean(p.trial), cancelled: Boolean((s.cancelledBy?.[date] || {})[p.rowId]), unconfirmed: p.status !== 'Confirmed' })
+  // Not marked off (Lee, 19 Oct 2026): the session has happened (today or before) and the player has no Here or Away.
+  const unmarked = (s, p, date) => date <= today && !attOf(s, date)[p.rowId]
+  const flagOf = (s, p, date) => ({ trial: Boolean(p.trial), cancelled: Boolean((s.cancelledBy?.[date] || {})[p.rowId]), unconfirmed: p.status !== 'Confirmed', unmarked: unmarked(s, p, date) })
+  const onDate = (s, p, date) => !p.trialDate || p.trialDate === date
   const showP = (s, p) => { const date = dateOf(s); return (!p.trialDate || p.trialDate === date) && (!q || `${p.name} ${p.coach || ''}`.toLowerCase().includes(q)) && (!F.flag || flagOf(s, p, date)[F.flag]) }
   const order = (s) => `${DAYS.indexOf(s.day)}${s.sortTime || ''}`
   d.sessions.sort((a, b) => order(a).localeCompare(order(b)) || a.location.localeCompare(b.location))
@@ -2971,7 +2997,10 @@ async function renderCoach(keep = false) {
   const active = ['q', 'day', 'loc', 'flag'].filter((k) => F[k]).length
   const flagCount = (k) => d.sessions.reduce((t, s) => t + s.players.filter((p) => { const date = dateOf(s); return (!p.trialDate || p.trialDate === date) && flagOf(s, p, date)[k] }).length, 0)
   const days = DAYS.filter((x) => d.sessions.some((s) => s.day === x)).map((x) => ({ id: x, label: x }))
-  const weeks = [['', 'Next sessions'], [weekStart(0), 'This week'], [weekStart(1), 'Next week'], [weekStart(2), 'Week after']]
+  // The blank option is "Next sessions" (each session's next date); the rest are whole weeks.
+  const weeks = [[weekStart(-1), `Previous week (${weekLabel(weekStart(-1))})`], [weekStart(0), `This week (${weekLabel(weekStart(0))})`], [weekStart(1), `Next week (${weekLabel(weekStart(1))})`], [weekStart(2), `Week after (${weekLabel(weekStart(2))})`]]
+  const unmarkedN = d.sessions.reduce((t, s) => { const date = dateOf(s); return t + s.players.filter((p) => onDate(s, p, date) && unmarked(s, p, date)).length }, 0)
+  const unmarkedS = d.sessions.filter((s) => { const date = dateOf(s); return s.players.some((p) => onDate(s, p, date) && unmarked(s, p, date)) }).length
   const dayChips = days.length > 1 ? `<div class="ps-chips" aria-label="Day"><button type="button" class="ps-chip" data-cday="" aria-pressed="${!F.day}">All days <b>${d.sessions.length}</b></button>${days.map((x) => `<button type="button" class="ps-chip" data-cday="${esc(x.id)}" aria-pressed="${F.day === x.id}">${esc(x.id.slice(0, 3))}${weekDate(x.id) ? ` ${esc(weekDate(x.id))}` : ''} <b>${d.sessions.filter((s) => s.day === x.id).length}</b></button>`).join('')}</div>` : ''
   const playerCount = sessions.reduce((t, s) => t + s.players.length, 0)
   const locs = [...new Set(d.sessions.map((s) => s.location))].sort().map((x) => ({ id: x, label: x }))
@@ -2981,13 +3010,14 @@ async function renderCoach(keep = false) {
     </div>
     <div class="ps-tools" role="search">
       ${admin ? psSelect('c-pick', [{ id: 'all', label: 'Whole program (every coach)' }, ...P.coaches.map((c) => ({ id: c.id, label: `Coach ${c.name}` }))], P.coachId, 'Coach').replace(/<option value="">[^<]*<\/option>/, '') : ''}
-      ${psSelect('c-week', weeks.map(([id, label]) => ({ id, label })), P.regWeek, 'Week').replace(/<option value="">[^<]*<\/option>/, `<option value="" ${P.regWeek ? '' : 'selected'}>Next sessions</option>`)}
+      ${psSelect('c-week', weeks.map(([id, label]) => ({ id, label })), P.regWeek, 'Next sessions', 'Week')}
       ${psSearch('c-q', 'Search players…', F.q, 'Search players in these sessions')}
       ${locs.length > 1 ? psSelect('c-loc', locs, F.loc, 'Venue') : ''}
       ${psToolsMore('c', { hasMore: false, active })}
     </div>
     ${dayChips}
-    ${psChips([['trial', 'Trials', 'violet'], ['cancelled', 'Cancelled by parent', 'orange'], ['unconfirmed', 'Not confirmed', 'grey']].map(([v, l, c]) => ({ key: 'flag', value: v, label: l, color: c, count: flagCount(v) })), (k, v) => F[k] === v)}
+    ${admin ? `<p class="j-box ${unmarkedN ? 'j-box-amber' : 'j-box-green'} small" style="margin:8px 0">${unmarkedN ? `<b>${unmarkedN} player${unmarkedN === 1 ? '' : 's'} not marked off</b> in ${unmarkedS} session${unmarkedS === 1 ? '' : 's'} that ${unmarkedS === 1 ? 'has' : 'have'} happened${P.regWeek ? ` (week of ${esc(weekLabel(P.regWeek))})` : ''}. <button type="button" class="ps-link" data-chip="flag:unmarked">${F.flag === 'unmarked' ? 'Show everyone' : 'Show only these'}</button>` : `Every player is marked off for the sessions that have happened${P.regWeek ? ` in the week of ${esc(weekLabel(P.regWeek))}` : ''}.`}</p>` : ''}
+    ${psChips([['unmarked', 'Not marked off', 'red'], ['trial', 'Trials', 'violet'], ['cancelled', 'Cancelled by parent', 'orange'], ['unconfirmed', 'Not confirmed', 'grey']].map(([v, l, c]) => ({ key: 'flag', value: v, label: l, color: c, count: flagCount(v) })), (k, v) => F[k] === v)}
     
     ${trialCards(d.trials || [])}
     ${sessions.length ? sessions.map((s) => {
@@ -3000,6 +3030,7 @@ async function renderCoach(keep = false) {
         <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><div><h3 style="font-size:17px">${esc(s.day)} ${esc(s.time)} · ${esc(s.location)}</h3><p class="muted small">${all && s.coachName ? `<b>Coach ${esc(s.coachName)}</b> · ` : ''}${esc(s.label)}${s.minAge != null ? ` · ages ${s.minAge} to ${s.maxAge}` : ''} · ${s.durationMin} min · ${s.players.length} player${s.players.length === 1 ? '' : 's'}</p></div>
           <span class="jp-reg-tools"><select class="j-select" style="width:auto" data-date="${esc(s.id)}" aria-label="Session date">${s.dates.map((x, i) => `<option value="${esc(x.iso)}" ${x.iso === date ? 'selected' : ''}>Week ${i + 1} · ${esc(x.label)}${Object.keys(attOf(s, x.iso)).length ? ' ✓' : ''}</option>`).join('')}</select><button type="button" class="j-btn j-btn-line" data-term="${esc(s.id)}">Whole term</button></span></div>
         ${off ? '<p class="j-box j-box-grey small" style="margin-top:10px">This session has not happened yet. The register opens on the day.</p>' : ''}
+        ${date <= today ? (() => { const left = s.players.filter((p) => onDate(s, p, date) && unmarked(s, p, date)).length; return left ? `<p class="j-box j-box-amber small" style="margin-top:10px"><b>${left} not marked off</b> for ${esc(s.dates.find((x) => x.iso === date)?.label || date)}</p>` : s.players.some((p) => onDate(s, p, date)) ? `<p class="small" style="margin-top:8px;color:var(--j-green,#15803d)">✓ All marked off for ${esc(s.dates.find((x) => x.iso === date)?.label || date)}</p>` : '' })() : ''}
         <div style="margin-top:10px">${s.players.filter((p) => showP(s, p)).map((p) => `<div class="jp-player" style="cursor:default">${avatar(p.photo, p.name, 32)}<span class="nm" style="flex:1 1 auto;min-width:0">${p.juniors ? esc(p.name) : `<button type="button" class="ps-link jp-cp-name" data-cp="${esc(p.rowId)}" aria-label="About ${esc(p.name)}">${esc(p.name)}</button>`}${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}${!p.mine ? ` <span class="muted small">· ${esc(p.coach)}</span>` : ''}${(s.cancelledBy?.[date] || {})[p.rowId] ? ` <span class="j-pill j-pill-amber" title="${esc(`${s.cancelledBy[date][p.rowId].reason}, ${s.cancelledBy[date][p.rowId].notice}`)}">Cancelled by parent</span>` : ''}${p.trial ? ' <span class="j-pill j-pill-blue">Trial</span>' : ''}${p.status !== 'Confirmed' ? ` <span class="j-pill j-pill-amber">${esc(p.status)}</span>` : ''}${noteLine(p, date)}</span>
           <span class="jp-att"><button type="button" class="p" data-att="Present" data-row="${esc(p.rowId)}" aria-pressed="${att[p.rowId] === 'Present'}" ${off}>Here</button><button type="button" class="a" data-att="Absent" data-row="${esc(p.rowId)}" ${off} aria-pressed="${['Absent', 'Notified'].includes(att[p.rowId])}" ${att[p.rowId] === 'Notified' ? 'title="The family told us they cannot make it"' : ''}>${att[p.rowId] === 'Notified' ? 'Away (told us)' : 'Away'}</button></span></div>`).join('') || '<p class="muted small">No players yet.</p>'}</div>
       </article>`
@@ -3035,6 +3066,8 @@ async function renderCoach(keep = false) {
       if (date === sess.nextDate) sess.attendance = day
     }
     if (r.data.airtable === 'failed') toast('Saved here. Airtable attendance did not update; it will not affect the session.')
+    // Keep the "not marked off" counts right (Lee and Ligia check these).
+    if (admin || F.flag === 'unmarked') { const y = window.scrollY; renderCoach(true).then(() => window.scrollTo(0, y)) }
   }))
 }
 
@@ -3290,7 +3323,7 @@ async function renderFamilies(keep = false) {
 
 // ---------- Players: search, filters, a full record, and adding one ----------
 
-const PL = { term: '', acct: '', q: '', status: '', group: '', coach: '', waiver: '', place: '', level: '', pos: '', data: null, at: 0 }
+const PL = { term: '', acct: '', kit: '', q: '', status: '', group: '', coach: '', waiver: '', place: '', level: '', pos: '', data: null, at: 0 }
 
 // Accounts with no session (round 2 item 8): profiles families made in My
 // account, or kept from before, with no Term 4 row. Add to a group is the
@@ -3338,6 +3371,12 @@ function plMatch(p) {
   if (PL.acct === 'in' && !['active', 'signedin'].includes(p.account?.status)) return false
   if (PL.acct === 'never' && !['never', 'invited'].includes(p.account?.status)) return false
   if (PL.acct === 'invited' && p.account?.status !== 'invited') return false
+  // Kit (Lee, 19 Oct 2026): what the family told us in My account. Best Teams
+  // sells the kit on its own site, so an order there is not seen here.
+  if (PL.kit === 'ordered' && p.kit !== 'Ordered') return false
+  if (PL.kit === 'has' && p.kit !== 'Already has one') return false
+  if (PL.kit === 'yes' && !p.kit) return false
+  if (PL.kit === 'no' && p.kit) return false
   if (PL.place === 'in' && !p.inGroup) return false
   if (PL.place === 'out' && p.inGroup) return false
   if (PL.level === 'none' && p.profile?.level) return false
@@ -3672,7 +3711,7 @@ function psPayBadge(p) {
 
 // ---------- players ----------
 
-const PL_MORE = ['waiver', 'acct', 'place', 'level', 'pos']
+const PL_MORE = ['waiver', 'acct', 'kit', 'place', 'level', 'pos']
 async function renderPlayers(keep = false) {
   // Read from Airtable again whenever the tab is opened after half a minute,
   // so a change made in Airtable shows here without a page reload. Typing in
@@ -3695,6 +3734,7 @@ async function renderPlayers(keep = false) {
     ['status', 'noprice', 'No fee set', n((p) => p.feeAud == null), 'grey'],
     ['waiver', 'no', 'No waiver', n((p) => !p.waiver.onFile), 'red'],
     ['acct', 'never', 'Never signed in', n((p) => ['never', 'invited'].includes(p.account?.status)), 'grey'],
+    ['kit', 'no', 'Kit not confirmed', n((p) => !p.kit), 'orange'],
     ['place', 'out', 'Not in a group', n((p) => !p.inGroup), 'orange'],
     ['place', 'acct', 'No session yet', (d.accounts || []).length, 'grey'],
     ['place', 'removed', 'Removed', removedN, 'grey'],
@@ -3710,6 +3750,7 @@ async function renderPlayers(keep = false) {
       ${psSelect('pl-coach', d.coaches, PL.coach, 'Coach')}
       <span class="ps-more-filters" ${PL.moreOpen ? '' : 'hidden'} id="pl-morebox">
         ${psSelect('pl-waiver', [{ id: 'yes', label: 'Waiver on file' }, { id: 'no', label: 'No waiver' }], PL.waiver, 'Waiver')}
+        ${psSelect('pl-kit', [{ id: 'yes', label: 'Kit confirmed (any)' }, { id: 'ordered', label: 'Ordered the kit' }, { id: 'has', label: 'Already has a kit' }, { id: 'no', label: 'Kit not confirmed' }], PL.kit, 'Kit')}
         ${psSelect('pl-acct', [{ id: 'in', label: 'Signed in themselves' }, { id: 'never', label: 'Never signed in' }, { id: 'invited', label: 'Invited, not signed in' }], PL.acct, 'Account')}
         ${psSelect('pl-place', [{ id: 'in', label: 'In a group' }, { id: 'out', label: 'Not in a group' }, { id: 'acct', label: `Accounts with no session (${(d.accounts || []).length})` }, { id: 'removed', label: `Removed (${removedN})` }], PL.place, 'In a group?')}
         ${psSelect('pl-level', [...PROFILE_OPTIONS.levels.map((x) => ({ id: x, label: x })), { id: 'none', label: 'Level not known' }], PL.level, 'Level')}
@@ -3726,10 +3767,10 @@ async function renderPlayers(keep = false) {
   const redraw = () => renderPlayers(true)
   wirePlTerm()
   $('pl-q').addEventListener('input', (e) => { PL.q = e.target.value; const at = e.target.selectionStart; redraw(); const i = $('pl-q'); i.focus(); i.setSelectionRange(at, at) })
-  for (const [id, key] of [['pl-status', 'status'], ['pl-group', 'group'], ['pl-coach', 'coach'], ['pl-waiver', 'waiver'], ['pl-acct', 'acct'], ['pl-place', 'place'], ['pl-level', 'level'], ['pl-pos', 'pos']]) {
+  for (const [id, key] of [['pl-status', 'status'], ['pl-group', 'group'], ['pl-coach', 'coach'], ['pl-waiver', 'waiver'], ['pl-acct', 'acct'], ['pl-kit', 'kit'], ['pl-place', 'place'], ['pl-level', 'level'], ['pl-pos', 'pos']]) {
     $(id).addEventListener('change', (e) => { PL[key] = e.target.value; redraw() })
   }
-  const clear = () => { Object.assign(PL, { q: '', status: '', group: '', coach: '', waiver: '', acct: '', place: '', level: '', pos: '' }); redraw() }
+  const clear = () => { Object.assign(PL, { q: '', status: '', group: '', coach: '', waiver: '', acct: '', kit: '', place: '', level: '', pos: '' }); redraw() }
   $('pl-clear')?.addEventListener('click', clear)
   $('pl-clear2')?.addEventListener('click', clear)
   $('pl-morefilters').addEventListener('click', () => { PL.moreOpen = !PL.moreOpen; redraw() })
@@ -3801,19 +3842,19 @@ async function renderPlayersPast(keep = false) {
     const hit = list.filter((m) => has(m.player, m.parents, m.sources))
     total = list.length; shown = hit.length
     head = '<th>Player</th><th>Parents</th><th>Found in</th><th>Review</th>'
-    rows = hit.slice(0, 500).map((m) => `<tr><td><b>${esc(m.player)}</b></td><td>${esc(m.parents)}</td><td class="muted small">${esc(m.sources)}</td><td>${m.review ? psBadge(/match|ok|done/i.test(m.review) ? 'green' : 'grey', m.review) : ''}</td></tr>`).join('')
+    rows = hit.slice(0, 500).map((m) => `<tr><td><button type="button" class="ps-link" data-plh='${esc(JSON.stringify({ name: m.player, refs: [{ term: 'master', rowId: m.rowId }] }))}'><b>${esc(m.player)}</b></button></td><td>${esc(m.parents)}</td><td class="muted small">${esc(m.sources)}</td><td>${m.review ? psBadge(/match|ok|done/i.test(m.review) ? 'green' : 'grey', m.review) : ''}</td></tr>`).join('')
   } else if (t === 'all') {
     const list = r.people || []
     const hit = list.filter((p) => has(p.player, p.parent, p.email, p.session, p.coach))
     total = list.length; shown = hit.length
     head = '<th>Player</th><th>Terms</th><th>Last session</th><th>Parent</th>'
-    rows = hit.slice(0, 500).map((p) => `<tr><td><b>${esc(p.player)}</b>${p.current ? ` ${psBadge('green', 'Current')}` : ''}</td><td class="small">${p.terms.map(esc).join(', ')}</td><td class="small">${esc(p.session)}${p.coach ? `<br><span class="muted">${esc(p.coach)}</span>` : ''}</td><td class="small">${esc(p.parent)}<br><span class="muted">${esc(p.email)}</span></td></tr>`).join('')
+    rows = hit.slice(0, 500).map((p) => `<tr><td><button type="button" class="ps-link" data-plh='${esc(JSON.stringify({ name: p.player, email: p.email, current: p.current, refs: p.refs || [] }))}'><b>${esc(p.player)}</b></button>${p.current ? ` ${psBadge('green', 'Current')}` : ''}</td><td class="small">${p.terms.map(esc).join(', ')}</td><td class="small">${esc(p.session)}${p.coach ? `<br><span class="muted">${esc(p.coach)}</span>` : ''}</td><td class="small">${esc(p.parent)}<br><span class="muted">${esc(p.email)}</span></td></tr>`).join('')
   } else {
     const list = r.rows || []
     const hit = list.filter((p) => has(p.player, p.parent, p.email, p.session, p.coach))
     total = list.length; shown = hit.length
     head = '<th>Player</th><th>Session</th><th>Status</th><th>Parent</th>'
-    rows = hit.slice(0, 500).map((p) => `<tr><td><b>${esc(p.player)}</b></td><td class="small">${esc(p.session)}${p.coach ? `<br><span class="muted">${esc(p.coach)}</span>` : ''}</td><td class="small">${esc(p.status)}</td><td class="small">${esc(p.parent)}<br><span class="muted">${esc(p.email)}</span></td></tr>`).join('')
+    rows = hit.slice(0, 500).map((p) => `<tr><td><button type="button" class="ps-link" data-plh='${esc(JSON.stringify({ name: p.player, email: p.email, refs: [{ term: p.term || t, rowId: p.rowId }] }))}'><b>${esc(p.player)}</b></button></td><td class="small">${esc(p.session)}${p.coach ? `<br><span class="muted">${esc(p.coach)}</span>` : ''}</td><td class="small">${esc(p.status)}</td><td class="small">${esc(p.parent)}<br><span class="muted">${esc(p.email)}</span></td></tr>`).join('')
   }
   const title = t === 'master' ? 'JF Master Players' : t === 'all' ? 'All players, past and present' : (PLH.terms || []).find((x) => x.id === t)?.label || 'Past players'
   view().innerHTML = `${psHead({ title, count: shown === total ? total : `${shown} of ${total}` })}
@@ -3828,7 +3869,27 @@ async function renderPlayersPast(keep = false) {
     ${shown > 500 ? `<p class="muted small">Showing the first 500. Search to narrow it down.</p>` : ''}`
   wirePlTerm()
   $('pl-q').addEventListener('input', (e) => { PL.q = e.target.value; const at = e.target.selectionStart; renderPlayersPast(true); const i = $('pl-q'); i.focus(); i.setSelectionRange(at, at) })
+  view().querySelectorAll('[data-plh]').forEach((b) => b.addEventListener('click', () => { try { pastPlayerModal(JSON.parse(b.dataset.plh)) } catch { toast('Could not open that player.') } }))
   $('plh-refresh').addEventListener('click', async () => { PLH.data[t] = { at: Date.now(), r: await need(await post('playersHistory', { term: t, fresh: true })) }; renderPlayersPast(true) })
+}
+
+// A past player (Lee, 19 Oct 2026): what Airtable has on them, term by term.
+// Read only. Medical notes are left out; they stay in Airtable.
+async function pastPlayerModal(x) {
+  const box = modal(`<h2 style="margin-bottom:4px">${esc(x.name)}</h2><p class="muted small">${esc(x.email || '')}${x.current ? ' · in this term' : ''}</p><div id="plh-body" style="margin-top:12px"><p class="muted">Reading Airtable…</p></div>`, { wide: true })
+  const r = await post('playerRecords', { refs: x.refs })
+  const body = box.querySelector('#plh-body')
+  if (!body) return
+  if (!r.ok) { body.innerHTML = `<p class="j-err">${esc(r.data.error || 'Could not read Airtable just now.')}</p>`; return }
+  const recs = r.data.records || []
+  const cur = x.current && PL.data ? PL.data.players.find((p) => x.refs.some((f) => f.term === 'current' && f.rowId === p.rowId)) : null
+  body.innerHTML = `${cur ? '<p style="margin-bottom:10px"><button type="button" class="j-btn j-btn-dark j-btn-sm" id="plh-cur">Open their Term 4 details</button></p>' : ''}
+    ${recs.map((rec) => `<details class="j-card" style="padding:12px 14px;margin-bottom:10px" ${recs.length === 1 || rec === recs[0] ? 'open' : ''}><summary><b>${esc(rec.label)}</b>${rec.created ? ` <span class="muted small">· added ${esc(new Date(rec.created).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }))}</span>` : ''}</summary>
+      ${rec.error ? `<p class="j-err">${esc(rec.error)}</p>` : `<div style="margin-top:8px">${rec.fields.map(([k, v]) => `<div class="j-kv"><span>${esc(k)}</span><span style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(v)}</span></div>`).join('') || '<p class="muted small">Nothing filled in.</p>'}</div>`}</details>`).join('') || '<p class="muted">No Airtable record found for this player.</p>'}
+    <p class="muted small">From Airtable, read only. Medical notes are not shown here.</p>
+    <p style="margin-top:12px"><button type="button" class="j-btn j-btn-sm" id="plh-close">Close</button></p>`
+  body.querySelector('#plh-close').addEventListener('click', closeModal)
+  body.querySelector('#plh-cur')?.addEventListener('click', () => { closeModal(); plDetail(cur) })
 }
 
 // ---------- cover, time off, session plans ----------

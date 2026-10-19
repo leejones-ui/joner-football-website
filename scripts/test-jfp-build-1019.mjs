@@ -258,7 +258,7 @@ await test('the public booking page lists public extra sessions in the next 7 da
   assert.ok(!g2.data.extras.some((x) => x.id === later.slot.id), 'more than a week away is not shown yet')
 })
 
-await test('free JF App access: only a paid Term 4 place can ask; Lee sees the list and marks it set up; Uscreen untouched', async () => {
+await test('free JF App access: paid Term 4 only, the account email only, then it puts them in the Uscreen group JFP by itself', async () => {
   const st = await acct(stranger, 'appAccessState')
   assert.equal(st.data.app.eligible, false)
   assert.equal((await acct(stranger, 'appAccess', { appEmail: 'kid@example.com' })).status, 403)
@@ -267,14 +267,27 @@ await test('free JF App access: only a paid Term 4 place can ask; Lee sees the l
   await ok(lee, 'recordPayment', { rowIds: [ava.rowId], amountCents: Math.round((ava.feeAud || 850) * 100), method: 'cash' })
   const fs = await acct(fam, 'appAccessState')
   assert.equal(fs.data.app.eligible, true, JSON.stringify(fs.data))
+  assert.equal(fs.data.app.accountEmail, 'pat.ashdown@example.com')
   assert.equal((await acct(fam, 'appAccess', { appEmail: 'not an email' })).status, 400)
-  const r = await acct(fam, 'appAccess', { appEmail: 'Ava.Plays@example.com' })
-  assert.equal(r.status, 200); assert.equal(r.data.app.request.appEmail, 'ava.plays@example.com')
+  const other = await acct(fam, 'appAccess', { appEmail: 'ava.plays@example.com' })
+  assert.equal(other.status, 400, 'a different email is refused'); assert.match(other.data.error, /pat\.ashdown@example\.com/)
+  assert.equal((await (await fetch(`${B}/__uscreen`)).json()).members.length, 0, 'nothing sent to Uscreen for a refused email')
+  // Uscreen down: the request waits for Lee or Ligia, and Lee is told.
+  await fetch(`${B}/__fail?what=uscreen&on=1`)
+  const down = await acct(fam, 'appAccess', { appEmail: ' Pat.Ashdown@example.com ' })
+  assert.equal(down.status, 200); assert.equal(down.data.app.request.status, 'requested')
+  await fetch(`${B}/__fail?what=uscreen&on=0`)
+  const r = await acct(fam, 'appAccess', { appEmail: 'pat.ashdown@example.com' })
+  assert.equal(r.status, 200); assert.equal(r.data.app.request.status, 'done', JSON.stringify(r.data))
+  const us = await (await fetch(`${B}/__uscreen`)).json()
+  assert.deepEqual(us.members.map((m) => [m.email, m.role]), [['pat.ashdown@example.com', 'member']])
+  // Asking again changes nothing and adds no second member.
+  const again = await acct(fam, 'appAccess', { appEmail: 'pat.ashdown@example.com' })
+  assert.equal(again.data.already, true)
+  assert.equal((await (await fetch(`${B}/__uscreen`)).json()).members.length, 1)
   assert.equal((await portal(sam, 'appAccessList')).status, 403)
   const l = await ok(lee, 'appAccessList')
-  assert.ok(l.list.some((x) => x.appEmail === 'ava.plays@example.com' && x.status === 'requested'))
-  await ok(lee, 'appAccessMark', { parentEmail: 'pat.ashdown@example.com', status: 'done' })
-  assert.equal((await acct(fam, 'appAccessState')).data.app.request.status, 'done')
+  assert.ok(l.list.some((x) => x.appEmail === 'pat.ashdown@example.com' && x.status === 'done' && /auto/.test(x.doneBy)))
 })
 
 await test('Players tab: who has signed in themselves, who never has, and invites', async () => {
@@ -292,6 +305,79 @@ await test('Players tab: who has signed in themselves, who never has, and invite
   await signIn(cy, 'cy.never@example.com')
   const c2 = (await ok(lee, 'playersList', { fresh: true })).players.find((p) => p.name === 'Cara Neverlogged')
   assert.equal(c2.account.status, 'active'); assert.equal(c2.account.signIns, 2); assert.equal(c2.account.selfSignup, false)
+})
+
+
+await test('extra session kinds: private never public, one-off public, weekly slot each week to the end of term; full ones leave the public list', async () => {
+  const price = (await ok(sam, 'extraList')).prices[0].id
+  const base = { time: '1:15pm', capacity: 1, location: 'Belrose HQ', priceId: price }
+  const priv = (await ok(sam, 'extraSave', { slot: { ...base, date: day(2), kind: 'private' } })).slot
+  // Old clients that only send visibility: 'public' still make a one-off.
+  const one = (await ok(sam, 'extraSave', { slot: { ...base, time: '2:15pm', date: day(2), visibility: 'public' } })).slot
+  assert.equal(priv.kind, 'private'); assert.equal(priv.visibility, 'private')
+  assert.equal(one.kind, 'oneoff'); assert.equal(one.visibility, 'public')
+  // Anything not clearly public is private.
+  const odd = (await ok(sam, 'extraSave', { slot: { ...base, time: '3:15pm', date: day(2), kind: 'banana', visibility: 'banana' } })).slot
+  assert.equal(odd.visibility, 'private')
+  const wk = await ok(sam, 'extraSaveMany', { slot: { ...base, time: '6:00pm', kind: 'weekly', capacity: 2 }, dates: [day(1)], times: ['6:00pm'] })
+  assert.ok(wk.slots.length >= 1 && wk.slots.length <= 10, String(wk.slots.length))
+  assert.ok(wk.slots.every((x) => x.kind === 'weekly' && x.visibility === 'public' && x.seriesId === wk.slots[0].seriesId))
+  for (let i = 1; i < wk.slots.length; i += 1) assert.equal((Date.parse(wk.slots[i].date) - Date.parse(wk.slots[i - 1].date)) / 86400000, 7)
+  const c = client()
+  await c.call('/api/jfp-access', { password: 'term4' })
+  const g = (await c.call('/api/jfp-groups')).data.extras
+  const ids = g.map((x) => x.id)
+  assert.ok(!ids.includes(priv.id) && !ids.includes(odd.id), 'private links never on the booking page')
+  assert.ok(ids.includes(one.id)); assert.ok(ids.includes(wk.slots[0].id))
+  assert.match(g.find((x) => x.id === wk.slots[0].id).weekly, /^Every /)
+  const bookable = (await acct(stranger, 'overview')).data
+  const seen = JSON.stringify(bookable || {})
+  assert.ok(!seen.includes(priv.id), 'private links never in another family\'s account')
+  // A coach fills a public one with their own player: it leaves the public list.
+  await ok(sam, 'extraAttach', { slotId: one.id, name: 'Sienna Sample', email: 'sienna.sample@example.com' })
+  const g2 = (await c.call('/api/jfp-groups')).data.extras.map((x) => x.id)
+  assert.ok(!g2.includes(one.id), 'a full session is not shown publicly')
+  // Lee's Timetable shows every kind this week and the next three.
+  const b = await ok(lee, 'board')
+  const kinds = new Set(b.extras.filter((x) => [priv.id, one.id, wk.slots[0].id].includes(x.id)).map((x) => x.kind))
+  assert.deepEqual([...kinds].sort(), ['oneoff', 'private', 'weekly'])
+  assert.ok(b.extras.find((x) => x.id === one.id).players.includes('Sienna Sample'))
+  assert.equal((await portal(sam, 'board')).status, 403)
+})
+
+await test('register: the whole program for last week, and who is not marked off', async () => {
+  const mon = (n) => { const t = new Date(`${new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' })}T00:00:00Z`); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7) + 7 * n); return t.toISOString().slice(0, 10) }
+  const last = await ok(lee, 'coachSessions', { coachId: 'all', week: mon(-1) })
+  const end = new Date(Date.parse(`${mon(-1)}T00:00:00Z`) + 6 * 86400000).toISOString().slice(0, 10)
+  assert.ok(last.sessions.every((s) => s.nextDate >= mon(-1) && s.nextDate <= end), 'every session on its date last week')
+})
+
+await test('session ideas: the drill library, programs and app videos for coaches; Lee edits quick links', async () => {
+  const d = await ok(sam, 'ideasGet')
+  assert.ok(d.library.length >= 9 && d.library.every((t) => t.topic && t.links.length))
+  assert.ok(d.library.flatMap((t) => t.links).every((l) => /^https:\/\//.test(l.url) && l.platform))
+  assert.ok(d.programs.some((p) => p.name === 'JFP 2' && p.sessions.length >= 6))
+  assert.ok(d.guide.steps.length >= 5)
+  assert.ok(!/c\x75nt/i.test(JSON.stringify(d)))
+  const a = await ok(sam, 'ideasApp')
+  assert.deepEqual(a.videos.map((v) => v.title), ['Fast Feet Warm Up', '1v1 Defending at Speed'], 'published videos only')
+  assert.equal(a.videos[0].url, 'https://app.jonerfootball.com/programs/fast-feet'); assert.equal(a.videos[0].min, 5)
+  assert.equal((await portal(sam, 'ideasSave', { ideas: [] })).status, 403)
+  const fresh = client()
+  assert.notEqual((await portal(fresh, 'ideasGet')).status, 200, 'signed out: nothing')
+})
+
+await test('past players open: their Airtable records, never medical notes; Lee and Ligia only', async () => {
+  const all = await ok(lee, 'playersHistory', { term: 'all' })
+  const olly = all.people.find((p) => p.player === 'Olly Oldtimer')
+  assert.ok(olly.refs.length >= 2, JSON.stringify(olly.refs))
+  const r = await ok(lee, 'playerRecords', { refs: olly.refs })
+  assert.ok(r.records.length >= 2 && r.records.every((x) => x.fields && x.label))
+  assert.ok(r.records.some((x) => x.fields.some(([k, v]) => k === 'Player Name' && v === 'Olly Oldtimer')))
+  assert.ok(!/medical/i.test(JSON.stringify(r)))
+  assert.equal((await portal(sam, 'playerRecords', { refs: olly.refs })).status, 403)
+  const bad = await ok(lee, 'playerRecords', { refs: [{ term: 'term2', rowId: 'nope' }, { term: 'elsewhere', rowId: olly.refs[0].rowId }] })
+  assert.equal(bad.records.length, 0)
 })
 
 console.log(`${passed} passed`)

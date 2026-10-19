@@ -1246,3 +1246,40 @@ a.sr-only[href="#main-content"]:focus { position: fixed !important; top: 16px; l
 .tr-key span { white-space: nowrap; }
 .tr-key b { font-weight: 700; }
 .jp-att button:disabled { opacity: .45; cursor: not-allowed; }
+
+/* Session ideas (Lee, 19 Oct 2026): search across the JF App and Lee's drill library. */
+.ji-quick { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 14px; }
+.ji-search { display: block; margin-bottom: 10px; }
+.ji-search .j-input { width: 100%; min-height: 48px; font-size: 16px; }
+.ji-chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 6px; scrollbar-width: thin; }
+.ji-chips .j-chip { flex: 0 0 auto; min-height: 40px; }
+.ji-sec { margin-top: 20px; }
+.ji-sec-h { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.ji-sec-h h2 { font-size: 18px; margin: 0; }
+.ji-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 12px; }
+.ji-card { display: flex; flex-direction: column; padding: 0; overflow: hidden; text-decoration: none; color: inherit; min-width: 0; }
+.ji-card:hover { border-color: var(--j-focus); }
+.ji-img { position: relative; display: block; aspect-ratio: 16 / 9; background: #1d1d1b; overflow: hidden; }
+.ji-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ji-instagram { background: linear-gradient(135deg, #833ab4, #fd1d1d 60%, #fcb045); }
+.ji-x { background: #111; }
+.ji-plat { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 20px; letter-spacing: .02em; }
+.ji-badge { position: absolute; left: 8px; top: 8px; background: rgba(0, 0, 0, .72); color: #fff; font-size: 11px; font-weight: 700; padding: 3px 7px; border-radius: 999px; }
+.ji-badge.ji-app { background: #d71920; }
+.ji-min { position: absolute; right: 8px; bottom: 8px; background: rgba(0, 0, 0, .72); color: #fff; font-size: 11px; padding: 2px 6px; border-radius: 6px; }
+.ji-bd { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px 12px; min-width: 0; }
+.ji-bd b { font-size: 14px; line-height: 1.3; overflow-wrap: anywhere; }
+.ji-bd .muted { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ji-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.ji-tags i { font-style: normal; font-size: 11px; border: 1px solid var(--j-line); border-radius: 999px; padding: 1px 7px; }
+.ji-prog { padding: 0; margin-bottom: 10px; }
+.ji-prog summary { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 14px 16px; cursor: pointer; min-height: 48px; }
+.ji-sess { padding: 10px 16px; border-top: 1px solid var(--j-line); }
+.ji-sess ul { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 4px; }
+.ji-sess a { color: var(--j-focus); overflow-wrap: anywhere; }
+.ji-plan { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 12px; }
+.ji-kick { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--j-ink-2); margin: 0 0 8px; }
+.ji-steps { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+.ji-steps li b { display: block; }
+/* Extra sessions on the Timetable: dashed, so they read apart from term groups. */
+.jp-blk-extra { border-style: dashed; cursor: pointer; }

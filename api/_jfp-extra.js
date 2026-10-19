@@ -11,6 +11,14 @@
 // session's player charges (api/_jfp-charges.js, kind 'extra',
 // ref 'extra:<slotId>'); this file holds the sessions and the places.
 //
+// Three kinds (Lee, 19 Oct 2026), chosen when the session is made:
+//   oneoff   public, on the date(s) picked: the booking page and My account
+//   private  a link only, for a player booked with the coach. Never listed
+//            anywhere public (Dean and Sienna, 19 Oct 2026)
+//   weekly   a permanent weekly slot: public, one session each week to the
+//            end of term, all sharing a seriesId
+// Lee and Ligia see every kind on the Timetable (board).
+//
 // KV: hash jfp:extra, slot id -> slot. Attendance: jfp:att:<slotId>:<date>.
 import crypto from 'node:crypto'
 import { kvCommand, clean, newId, coachById, coachLabel, sydneyToday, to24h, dateLabel, formatAud, audit, locationFor, validEmail } from './_jfp-store.js'
@@ -42,6 +50,19 @@ export const liveBookings = (s) => (s.bookings || []).filter((b) => b.status !==
 export const placesLeft = (s) => Math.max(0, s.capacity - liveBookings(s).length)
 export function startMs(s) { const t = to24h(s.time); return t ? sydneyWallToUtcMs(s.date, t) : 0 }
 export const endMs = (s) => startMs(s) + (Number(s.durationMin) || 60) * 60000
+export const KIND_LABEL = { oneoff: 'One-off', private: 'Private link', weekly: 'Weekly slot' }
+// Older slots have no kind: public ones were one-offs.
+export const kindOf = (s) => (s.visibility !== 'public' ? 'private' : s.kind === 'weekly' ? 'weekly' : 'oneoff')
+// The dates of a weekly slot: the first date, then every 7 days to the end of
+// term (and never more than EXTRA_DAYS_AHEAD out).
+export function weeklyDates(config, first, today = sydneyToday()) {
+  if (!ISO.test(first || '')) return []
+  const termEnd = config?.termStart ? addDays(config.termStart, (Number(config.weeks) || 10) * 7 - 1) : ''
+  const last = [termEnd, addDays(today, EXTRA_DAYS_AHEAD)].filter(Boolean).sort()[0]
+  const out = []
+  for (let d = first; d <= last && out.length < 20; d = addDays(d, 7)) out.push(d)
+  return out
+}
 
 // ---------- what each person sees ----------
 
@@ -51,7 +72,7 @@ const linkFor = (s) => `https://jonerfootball.com/jfp-account/#extra?slot=${enco
 export function staffView(config, s, payreqs = []) {
   const coach = coachById(config, s.coachId)
   return {
-    ...s, token: undefined,
+    ...s, token: undefined, kind: kindOf(s), kindLabel: KIND_LABEL[kindOf(s)],
     coachName: coachLabel(coach), dateLabel: dateLabel(s.date), placesLeft: placesLeft(s), priceLabel: formatAud(s.priceCents),
     link: linkFor(s), past: endMs(s) < Date.now(),
     bookings: liveBookings(s).map((b) => {
@@ -67,14 +88,17 @@ export function familyView(config, s) {
     id: s.id, coachId: s.coachId, coachName: coachLabel(coachById(config, s.coachId)), date: s.date, dateLabel: dateLabel(s.date),
     time: s.time, durationMin: s.durationMin, location: loc.name, address: loc.address || '', capacity: s.capacity, placesLeft: placesLeft(s),
     priceCents: s.priceCents, priceLabel: formatAud(s.priceCents), label: s.title || s.priceLabel, visibility: s.visibility, note: s.publicNote || '',
+    weekly: kindOf(s) === 'weekly', dayName: new Date(`${s.date}T12:00:00Z`).toLocaleDateString('en-AU', { weekday: 'long', timeZone: 'UTC' }),
     createdAt: s.createdAt || '',
   }
 }
 
-// Open future slots. publicOnly for anyone browsing; a private one only with its token.
+// Open future slots. publicOnly for anyone browsing; a private one only with
+// its token. Public lists leave out full sessions, so a session a coach filled
+// with their own player never shows to other families.
 export async function listExtraSlots({ config, publicOnly = true, coachId = '' }) {
   const now = Date.now()
-  return (await allSlots()).filter((s) => s.status === 'open' && startMs(s) > now && (!publicOnly || s.visibility === 'public') && (!coachId || s.coachId === coachId)).map((s) => familyView(config, s))
+  return (await allSlots()).filter((s) => s.status === 'open' && startMs(s) > now && (!publicOnly || (s.visibility === 'public' && placesLeft(s) > 0)) && (!coachId || s.coachId === coachId)).map((s) => familyView(config, s))
 }
 export async function getExtraSlot({ config, id, token = '' }) {
   const s = await getSlot(id)
@@ -114,17 +138,20 @@ export async function saveSlot({ config, principal, isAdmin, input }) {
   // Paid bookings keep the price they were charged.
   if (before && liveBookings(before).some((b) => b.payreqId) && priceCents !== before.priceCents) return { error: 'Players are already charged for this session, so its price cannot change. Make a new session instead.' }
   if (!(durationMin >= 15 && durationMin <= 240)) return { error: 'Length: 15 minutes to 4 hours.' }
-  const visibility = input.visibility === 'public' ? 'public' : 'private'
+  // The kind decides who can see it. Anything not clearly public is private.
+  const kind = ['oneoff', 'private', 'weekly'].includes(input.kind) ? input.kind : before ? kindOf(before) : input.visibility === 'public' ? 'oneoff' : 'private'
+  const visibility = kind === 'private' ? 'private' : 'public'
   const slot = {
     id: before?.id || newId('XS'), coachId, date, time, durationMin, location, capacity,
     priceId: picked?.id || before?.priceId || '', priceCents, priceLabel,
     title: clean(input.title, 60) || priceLabel, publicNote: clean(input.publicNote, 200), note: clean(input.note, 300),
-    visibility, token: before?.token || crypto.randomBytes(12).toString('base64url'),
+    visibility, kind, ...(input.seriesId || before?.seriesId ? { seriesId: clean(input.seriesId, 40) || before.seriesId } : {}),
+    token: before?.token || crypto.randomBytes(12).toString('base64url'),
     status: 'open', bookings: before?.bookings || [],
     createdBy: before?.createdBy || principal.email, createdAt: before?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString(),
   }
   await putSlot(slot)
-  await audit({ by: principal.email, action: before ? 'extra.edit' : 'extra.create', target: slot.id, after: { coach: coachId, date, time, visibility, capacity, cents: priceCents } })
+  await audit({ by: principal.email, action: before ? 'extra.edit' : 'extra.create', target: slot.id, after: { coach: coachId, date, time, kind, visibility, capacity, cents: priceCents } })
   return { slot, created: !before }
 }
 
@@ -225,4 +252,22 @@ export async function markBooking({ config, principal, isAdmin, slotId, bookingI
 // actually have a player booked.
 export function extraMinutes(slots, coachId, fromIso, toIso) {
   return slots.filter((s) => s.coachId === coachId && s.status === 'open' && s.date >= fromIso && s.date <= toIso && liveBookings(s).length).reduce((t, s) => t + (Number(s.durationMin) || 60), 0)
+}
+
+// Lee and Ligia's Timetable (board): every open extra session from this
+// Monday for four weeks, whatever its kind (Lee, 19 Oct 2026). Admin only.
+export async function boardExtras(config, today = sydneyToday()) {
+  const d = new Date(`${today}T12:00:00Z`)
+  const mon = addDays(today, -((d.getUTCDay() + 6) % 7))
+  const end = addDays(mon, 27)
+  return (await allSlots()).filter((s) => s.status === 'open' && s.date >= mon && s.date <= end).map((s) => {
+    const loc = locationFor(config, s.location)
+    return {
+      id: s.id, date: s.date, dateLabel: dateLabel(s.date), day: new Date(`${s.date}T12:00:00Z`).toLocaleDateString('en-AU', { weekday: 'long', timeZone: 'UTC' }),
+      time: s.time, sortTime: to24h(s.time), period: (to24h(s.time) || '12:00') < '12:00' ? 'am' : 'pm', durationMin: s.durationMin,
+      locationId: loc.id, locationName: loc.name, coachId: s.coachId, coachName: coachLabel(coachById(config, s.coachId)),
+      kind: kindOf(s), kindLabel: KIND_LABEL[kindOf(s)], title: s.title || s.priceLabel || 'Extra session', capacity: s.capacity,
+      players: liveBookings(s).map((b) => b.name), week: Math.floor((Date.parse(`${s.date}T00:00:00Z`) - Date.parse(`${mon}T00:00:00Z`)) / (7 * 86400000)),
+    }
+  })
 }

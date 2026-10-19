@@ -8,6 +8,13 @@ import { psHelp } from './jfp-portal-ps.js'
 import { esc } from './jfp-common.js'
 import { calendar } from './jfp-portal-cal.js'
 
+const KINDS = [['private', 'Private link'], ['oneoff', 'One-off'], ['weekly', 'Weekly slot']]
+const KIND_HELP = {
+  private: 'Only for a player booked with you. It never shows on the public booking page or to other families. They book with the link you send.',
+  oneoff: 'Public, on the dates you pick only. Families book it on the booking page and in My account. Lee and Ligia see it on the Timetable.',
+  weekly: 'A permanent slot: public, the same day and time every week to the end of term. Pick the first date. Lee and Ligia see it on the Timetable.',
+}
+
 const S = { coachId: '', data: null }
 const tel = (m) => { const d = String(m || '').replace(/\D/g, ''); return d.startsWith('04') ? `+61${d.slice(1)}` : d }
 const smsHref = (mobile, text) => `sms:${tel(mobile)}${/iPhone|iPad|Macintosh/.test(navigator.userAgent) ? '&' : '?'}body=${encodeURIComponent(text)}`
@@ -39,7 +46,7 @@ export async function renderExtra(ui) {
     <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start">
       <div><b>${esc(s.dateLabel.replace(/\s\d{4}$/, ''))}, ${esc(s.time)}</b> <span class="muted small">${esc(s.durationMin)} min</span><br>
         <span class="small">${esc(s.location)}${admin ? ` · ${esc(s.coachName)}` : ''} · ${esc(s.title)}${admin && s.priceLabel ? ` · ${esc(s.priceLabel)} each` : ''}</span><br>
-        <span class="j-pill j-pill-${s.visibility === 'public' ? 'blue' : 'violet'}">${s.visibility === 'public' ? 'Public: in My account' : 'Private: link only'}</span>
+        <span class="j-pill j-pill-${s.kind === 'private' ? 'violet' : s.kind === 'weekly' ? 'green' : 'blue'}">${s.kind === 'private' ? 'Private link: never public' : s.kind === 'weekly' ? 'Weekly slot: public' : 'One-off: public'}</span>
         <span class="j-pill j-pill-grey">${s.capacity - s.placesLeft} of ${s.capacity} booked</span></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         <button type="button" class="j-btn j-btn-line j-btn-sm" data-x-copy="${esc(s.id)}">Copy link</button>
@@ -171,6 +178,8 @@ function slotForm(ui, d, s, done) {
   const priceText = (p) => (d.admin ? `${p.label} · ${p.priceLabel} · ${p.durationMin} min` : `${p.label} · ${p.durationMin} min`)
   const maxIso = new Date(Date.now() + 120 * 86400000).toISOString().slice(0, 10)
   const timeBox = (v) => `<span class="xf-time"><input class="j-input" type="time" data-xf-time value="${esc(v)}" step="300">${s ? '' : '<button type="button" class="j-btn j-btn-ghost j-btn-sm" data-xf-time-rm aria-label="Remove this time">Remove</button>'}</span>`
+  // The kind (Lee, 19 Oct 2026): one-off, private link, or a permanent weekly slot.
+  const kind0 = s ? (s.kind || (s.visibility === 'public' ? 'oneoff' : 'private')) : 'private'
   const box = modal(`<h2 style="margin-bottom:10px">${s ? 'Edit extra session' : 'New extra sessions'}</h2>
     ${d.admin ? `<label class="j-field"><span>Coach</span><select class="j-select" id="xf-coach">${d.coaches.map((c) => `<option value="${esc(c.id)}" ${(s?.coachId || S.coachId) === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>` : ''}
     <div class="j-field"><span>${s ? 'Date' : 'Dates <span class="muted">(tap as many as you like)</span>'}</span><div id="xf-cal"></div></div>
@@ -180,7 +189,7 @@ function slotForm(ui, d, s, done) {
     <label class="j-field"><span>Places</span><input class="j-input" id="xf-cap" inputmode="numeric" value="${esc(s?.capacity || 1)}"></label></div>
     <label class="j-field"><span>Where</span><select class="j-select" id="xf-loc">${venues.map((v) => `<option ${s?.location === v ? 'selected' : ''}>${esc(v)}</option>`).join('')}<option value="__other" ${s && !venues.includes(s.location) ? 'selected' : ''}>Somewhere else</option></select></label>
     <label class="j-field" id="xf-other-wrap" ${s && !venues.includes(s.location) ? '' : 'hidden'}><span>Place</span><input class="j-input" id="xf-other" value="${esc(s && !venues.includes(s.location) ? s.location : '')}"></label>
-    <div class="j-field"><span>Who can book</span><div class="jp-seg" id="xf-vis"><button type="button" data-v="private" aria-pressed="${s?.visibility !== 'public'}">Private: only with the link</button><button type="button" data-v="public" aria-pressed="${s?.visibility === 'public'}">Public: in My account</button></div></div>
+    <div class="j-field"><span>What kind of session</span><div class="jp-seg xf-kinds" id="xf-vis">${KINDS.filter(([v]) => !s || v !== 'weekly' || kind0 === 'weekly').map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${kind0 === v}">${esc(l)}</button>`).join('')}</div><p class="muted small" id="xf-kind-help" style="margin-top:6px">${esc(KIND_HELP[kind0])}</p></div>
     ${s ? '' : `<div class="j-field" id="xf-who"><span>Who is it for? <span class="muted">(private, booked with you)</span></span>
       <input class="j-input" id="xf-q" placeholder="Type the player's name" autocomplete="off">
       <div id="xf-res"></div>
@@ -201,7 +210,7 @@ function slotForm(ui, d, s, done) {
     if (s) return
     const n = cal.get().length * new Set(times()).size
     const nm = vis === 'private' ? whoName() : ''
-    go.textContent = nm ? `Create and send to ${nm.split(' ')[0]}` : n > 1 ? `Open ${n} sessions` : 'Open the session'
+    go.textContent = vis === 'weekly' ? 'Open the weekly slot' : nm ? `Create and send to ${nm.split(' ')[0]}` : n > 1 ? `Open ${n} sessions` : 'Open the session'
   }
   const cal = calendar(box.querySelector('#xf-cal'), { multi: !s, selected: [s?.date || ''], min: todayIso(), max: maxIso, onChange: count })
   box.querySelector('#xf-times').addEventListener('click', (e) => {
@@ -210,10 +219,10 @@ function slotForm(ui, d, s, done) {
     if (rm && box.querySelectorAll('[data-xf-time]').length > 1) { rm.closest('.xf-time').remove(); count() }
   })
   box.querySelector('#xf-times').addEventListener('change', count)
-  let vis = s?.visibility === 'public' ? 'public' : 'private'
+  let vis = kind0
   const whoBox = box.querySelector('#xf-who')
   const showWho = () => { if (whoBox) whoBox.hidden = vis !== 'private'; count() }
-  box.querySelector('#xf-vis').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (!b) return; vis = b.dataset.v; box.querySelectorAll('#xf-vis [data-v]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); showWho() })
+  box.querySelector('#xf-vis').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (!b) return; vis = b.dataset.v; box.querySelectorAll('#xf-vis [data-v]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); box.querySelector('#xf-kind-help').textContent = KIND_HELP[vis]; showWho() })
   if (whoBox) {
     let t
     const pickHtml = () => (who ? `<div class="xf-picked"><span><b>${esc(who.name)}</b><br><span class="muted small">${esc(who.group)}${who.hasEmail ? '' : ' · no email on file, add it below'}</span></span><button type="button" class="j-btn j-btn-line j-btn-sm" id="xf-unpick">Change</button></div>` : '')
@@ -255,11 +264,11 @@ function slotForm(ui, d, s, done) {
     const slot = {
       id: s?.id || '', coachId: box.querySelector('#xf-coach')?.value || '', date: dates[0], time: ts[0],
       priceId: box.querySelector('#xf-price').value, durationMin: Number(box.querySelector('#xf-min').value), capacity: Number(box.querySelector('#xf-cap').value),
-      location: loc === '__other' ? box.querySelector('#xf-other').value : loc, visibility: vis, title: box.querySelector('#xf-title').value,
+      location: loc === '__other' ? box.querySelector('#xf-other').value : loc, kind: vis, visibility: vis === 'private' ? 'private' : 'public', title: box.querySelector('#xf-title').value,
     }
     go.disabled = true
-    const many = !s && dates.length * ts.length > 1
-    const r = many ? await post('extraSaveMany', { slot, dates, times: ts }) : await post('extraSave', { slot })
+    const many = !s && (vis === 'weekly' || dates.length * ts.length > 1)
+    const r = many ? await post('extraSaveMany', { slot, dates: vis === 'weekly' ? [dates[0]] : dates, times: ts }) : await post('extraSave', { slot })
     if (!r.ok) { go.disabled = false; err.textContent = r.data.error; err.hidden = false; if (many && /were made/.test(r.data.error || '')) done(); return }
     const made = many ? r.data.slots : [r.data.slot]
     const n = made.length
@@ -276,7 +285,7 @@ function slotForm(ui, d, s, done) {
       sentBox(ui, first.booking, first.slot, n, bad ? (bad.data.error || bad.data.chargeError) : '')
       return done()
     }
-    closeModal(); toast(s ? 'Saved' : `${n > 1 ? `${n} sessions open` : 'Open'}: ${vis === 'public' ? 'families can book in My account' : 'copy the link or add a player'}`); done()
+    closeModal(); toast(s ? 'Saved' : vis === 'weekly' ? `Weekly slot open: ${n} weeks, on the booking page and in My account` : `${n > 1 ? `${n} sessions open` : 'Open'}: ${vis === 'private' ? 'private, copy the link or add a player' : 'families can book on the booking page and in My account'}`); done()
   })
 }
 

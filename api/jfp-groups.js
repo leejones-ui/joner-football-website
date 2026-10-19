@@ -31,7 +31,7 @@ export async function weekExtras(config, nowMs = Date.now()) {
   const until = new Date(nowMs + WEEK_MS).toISOString().slice(0, 10)
   try {
     return (await listExtraSlots({ config, publicOnly: true })).filter((s) => s.date <= until).sort((a, b) => `${a.date}${to24h(a.time)}`.localeCompare(`${b.date}${to24h(b.time)}`)).slice(0, 12)
-      .map((s) => ({ id: s.id, date: s.date, dateLabel: s.dateLabel, time: s.time, durationMin: s.durationMin, location: s.location, kind: sessionKind(s.capacity), coach: s.coachName ? `Coach ${s.coachName}` : '', placesLeft: s.placesLeft, full: s.placesLeft <= 0 }))
+      .map((s) => ({ id: s.id, date: s.date, dateLabel: s.dateLabel, time: s.time, durationMin: s.durationMin, location: s.location, kind: sessionKind(s.capacity), coach: s.coachName ? `Coach ${s.coachName}` : '', placesLeft: s.placesLeft, full: s.placesLeft <= 0, ...(s.weekly ? { weekly: `Every ${s.dayName}` } : {}) }))
   } catch (error) { console.error('jfp week extras failed', error.message); return [] }
 }
 
@@ -95,6 +95,17 @@ export default async function handler(req, res) {
     const secret = process.env.CRON_SECRET
     if (!secret || String(req.headers?.authorization || '') !== `Bearer ${secret}`) return res.status(401).json({ success: false })
     try { const now = process.env.JFP_TEST_CLOCK === '1' && Number(req.query.now) ? Number(req.query.now) : Date.now(); return res.status(200).json({ success: true, ...(await pushTick(now)) }) } catch (error) { console.error('jfp push tick failed', error); return res.status(500).json({ success: false }) }
+  }
+  // Check the JF App link: the Uscreen group JFP (seats left) and the app video
+  // list for Session ideas. Read only; ?refresh=1 reloads the video list.
+  if (req.method === 'GET' && req.query?.uscreenCheck) {
+    const secret = process.env.CRON_SECRET
+    if (!secret || String(req.headers?.authorization || '') !== `Bearer ${secret}`) return res.status(401).json({ success: false })
+    try {
+      const { findJfpGroup, appCatalog } = await import('./_jfp-uscreen.js')
+      const [group, cat] = await Promise.all([findJfpGroup().catch((e) => ({ error: e.message })), appCatalog({ refresh: req.query.refresh === '1' })])
+      return res.status(200).json({ success: true, group, videos: cat.videos.length, catalogAt: cat.at, sample: cat.videos.slice(0, 2).map((v) => ({ title: v.title, cats: v.cats, url: v.url, img: Boolean(v.img) })) })
+    } catch (error) { console.error('jfp uscreen check failed', error); return res.status(500).json({ success: false, error: error.message }) }
   }
   // Nightly money check (about 9pm Sydney): Stripe against Airtable, read only (_jfp-nightly.js).
   if (req.method === 'GET' && req.query?.nightly) {

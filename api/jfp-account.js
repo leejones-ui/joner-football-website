@@ -989,10 +989,10 @@ export default async function handler(req, res) {
     if (body.action === 'appAccess' || body.action === 'appAccessState') {
       const config = await getConfig()
       const fam = familyFor(parent.email, await loadRoster(), config.termStart)
-      if (body.action === 'appAccessState') return res.status(200).json({ success: true, app: familyAppView(await appAccessOf(parent.email), eligiblePlayers(fam)) })
+      if (body.action === 'appAccessState') return res.status(200).json({ success: true, app: familyAppView(await appAccessOf(parent.email), eligiblePlayers(fam), parent.email.toLowerCase()) })
       const out = await requestAppAccess({ parent, fam, body, notify: telegramAlert })
       if (!out.ok) return fail(res, out.status, out.error)
-      return res.status(200).json({ success: true, already: Boolean(out.already), app: familyAppView(out.record, eligiblePlayers(fam)) })
+      return res.status(200).json({ success: true, already: Boolean(out.already), app: familyAppView(out.record, eligiblePlayers(fam), parent.email.toLowerCase()) })
     }
     if (body.action === 'sessionsSeen') return await markSessionsSeen(res, parent, body)
     // Book an extra session: hold the place, make the charge, then pay (money engineer).

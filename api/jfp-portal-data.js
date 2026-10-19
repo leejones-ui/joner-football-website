@@ -7,7 +7,8 @@
 //
 // Staff changes write straight into Airtable Term 4 Players, so Lee's
 // dashboard always matches, and every change is recorded in the audit log.
-import { playersHistory, HISTORY_TERMS } from './_jfp-players-history.js'
+import { playersHistory, HISTORY_TERMS, playerRecords } from './_jfp-players-history.js'
+import { boardExtras } from './_jfp-extra.js'
 import { listAppAccess, markAppAccess } from './_jfp-app-access.js'
 import { accountMaps, accountFor } from './_jfp-account-status.js'
 import crypto from 'node:crypto'
@@ -27,6 +28,7 @@ import {
   getTerm4Fields, findDroppedBySource, createDroppedRow, updateDroppedRow, getDroppedRow, deleteTerm4Row, RESTORABLE,
   listLedger, createLedgerRow, listJuniors, listVenueHistory, PAINT_MAX_AGE_MS,
   findLedgerByPayment, listPreviousTerm, getPreviousTermRow, updatePreviousTermRow, previousTermSpec,
+  TABLES,
 } from './_jfp-airtable.js'
 import { listCancels, staffView, noticeSummary } from './_jfp-cancel.js'
 import { repairJfpBooking, effectsSummary, EFFECTS, payEffectsFor } from './_jfp-finalise.js'
@@ -2804,7 +2806,14 @@ async function staffAction(req, res, principal, config, body, isAdmin, action) {
       await audit({ by: principal.email, action: 'ideas.save', target: 'config', after: { count: list.length } })
       return res.status(200).json({ success: true, ideas: list })
     }
-    return res.status(200).json({ success: true, ideas: Array.isArray(config.sessionIdeas) ? config.sessionIdeas : SESSION_IDEAS, admin: isAdmin })
+    const { default: lib } = await import('./_jfp-ideas-library.js')
+    return res.status(200).json({ success: true, ideas: Array.isArray(config.sessionIdeas) ? config.sessionIdeas : SESSION_IDEAS, admin: isAdmin, library: lib.library, programs: lib.programs, guide: lib.guide })
+  }
+  // The JF App's videos for the Session ideas search (read from Uscreen, cached 12 hours).
+  if (action === 'ideasApp') {
+    const { appCatalog } = await import('./_jfp-uscreen.js')
+    const cat = await appCatalog()
+    return res.status(200).json({ success: true, at: cat.at, videos: cat.videos })
   }
   // Lee and Ligia: covers and time off asked for since they last opened Cover
   // and time off (Lee, 19 Oct 2026: "This is key"). Time off still waiting
@@ -3101,7 +3110,7 @@ async function handle(req, res) {
     if (action === 'coachPhoto') return await saveCoachPhoto(res, principal, config, body, isAdmin)
     if (INVOICE_ACTIONS.has(action)) return await invoiceAction(res, principal, config, body, action, { isAdmin, myCoachId: principal.coachId || config.coaches.find((c) => c.email && c.email === principal.email)?.id || '', listCovers })
     if (HOURS_ACTIONS.has(action)) return await hoursAction(res, principal, config, body, action, { isAdmin, myCoachId: principal.coachId || config.coaches.find((c) => c.email && c.email === principal.email)?.id || '', listCovers })
-    if (['ideasGet', 'ideasSave', 'staffOverview', 'staffAlerts', 'requestCover', 'cancelCover', 'requestTimeOff', 'decideTimeOff', 'savePlans', 'planList', 'planSave', 'planGet', 'planDelete'].includes(action)) return await staffAction(req, res, principal, config, body, isAdmin, action)
+    if (['ideasGet', 'ideasSave', 'ideasApp', 'staffOverview', 'staffAlerts', 'requestCover', 'cancelCover', 'requestTimeOff', 'decideTimeOff', 'savePlans', 'planList', 'planSave', 'planGet', 'planDelete'].includes(action)) return await staffAction(req, res, principal, config, body, isAdmin, action)
 
     if (action === 'cancellations') return await cancellationsData(res, principal, config, body, isAdmin)
     if (action === 'cancelAlerts') return await cancelAlerts(res, principal, config, isAdmin)
@@ -3285,7 +3294,7 @@ async function handle(req, res) {
     // Auto charges and saved payment methods (claude/card-on-file, _jfp-saved-pay.js).
     if (SAVED_PAY_ACTIONS.has(action)) return await savedPayAction(req, res, principal, config, body, action)
     switch (action) {
-      case 'board': await sweepExpiredOffers(principal); return res.status(200).json({ success: true, ...(await boardData(config, { fresh: body.fresh === true })), coaches: coachList(config), locations: config.locations.map((l) => ({ id: l.id, name: l.name })) })
+      case 'board': await sweepExpiredOffers(principal); return res.status(200).json({ success: true, ...(await boardData(config, { fresh: body.fresh === true })), extras: await boardExtras(config).catch(() => []), coaches: coachList(config), locations: config.locations.map((l) => ({ id: l.id, name: l.name })) })
       case 'familyInvites': return await familyInvites(req, res, principal, config, body)
       case 'inviteAccount': return await inviteAccount(req, res, principal, config, body)
       case 'emailLog': return await emailLogFor(res, body)
@@ -3301,6 +3310,10 @@ async function handle(req, res) {
         const out = await playersHistory({ body, roster: await loadRoster(), termLabel: config.term })
         if (out.error) return fail(res, 400, out.error)
         return res.status(200).json({ success: true, terms: HISTORY_TERMS, ...out })
+      }
+      case 'playerRecords': {
+        if (!isAdmin) return fail(res, 403, 'Only Lee or Ligia can see past players.')
+        return res.status(200).json({ success: true, records: await playerRecords({ refs: body.refs, termLabel: config.term, currentTable: TABLES.term4 }) })
       }
       case 'addPlayerNoGroup': return await addPlayerNoGroup(req, res, principal, config, body)
       case 'addFamily': return await addFamily(req, res, principal, config, body)
