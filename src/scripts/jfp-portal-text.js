@@ -36,7 +36,9 @@ export function textComposer({ modal, toast, rowIds = [], requestId = '', parent
   const count = () => { const n = area.value.length; box.querySelector('#tx-count').textContent = `${n} characters${n > 160 ? `, ${Math.ceil(n / 153)} texts` : ''}`; const a = box.querySelector('#tx-phone'); if (a) a.href = smsHref(mobile, area.value) }
   area.addEventListener('input', count)
   count()
-  const status = (cls, html) => { box.querySelector('#tx-status').innerHTML = `<div class="j-box j-box-${cls} small">${html}</div>` }
+  // Always in view (Lee, 19 Oct 2026: "when i click, nothing happens"): on a
+  // phone the status box can sit off screen above the buttons.
+  const status = (cls, html) => { const s = box.querySelector('#tx-status'); s.innerHTML = `<div class="j-box j-box-${cls} small" role="status">${html}</div>`; s.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' }) }
   box.querySelector('#tx-send').addEventListener('click', async (e) => {
     const btn = e.currentTarget
     btn.disabled = true
@@ -46,11 +48,13 @@ export function textComposer({ modal, toast, rowIds = [], requestId = '', parent
       btn.disabled = false
       btn.textContent = 'Send from 0404 780 351'
       status(r.data.code === 'route' ? 'amber' : 'red', esc(r.data.error || 'Could not send.'))
+      toast(`Not sent: ${r.data.error || 'Could not send.'}`, 9000)
       return
     }
     btn.textContent = 'Sent to the office Mac'
     area.readOnly = true
     toast('Text on its way from 0404 780 351')
+    status('grey', '<b>Waiting for the office Mac.</b> It goes in the next minute.')
     // Follow it until the office Mac reports back (about two minutes).
     const id = r.data.message.id
     for (let i = 0; i < 40 && document.body.contains(box); i += 1) {
