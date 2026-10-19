@@ -858,6 +858,12 @@ async function editPlayer(res, principal, config, body) {
       const v = Number(f.feeAud)
       if (!Number.isFinite(v) || v < 0 || v > 20000) return fail(res, 400, 'Enter the fee in dollars, for example 750.')
       fields['Term 4 Fee'] = Math.round(v * 100) / 100
+      // The status follows the numbers (Lee, 19 Oct 2026: Niki Brown stayed
+      // "Paid" at A$425 of A$850). A row marked Paid with no amount on it
+      // (paid in Stripe, not recorded yet) keeps its mark.
+      const paidC = cents(row.paidAud), feeC = Math.round(v * 100)
+      const status = feeC > 0 && paidC >= feeC ? 'Paid' : paidC > 0 ? 'Partially Paid' : 'Unpaid'
+      if (!isSessionType(row.paymentType) && !/trial/i.test(row.paymentType || '') && row.paymentStatus !== 'N/A' && !(row.paymentStatus === 'Paid' && paidC === 0) && status !== row.paymentStatus) { fields['Term 4 Payment Status'] = status; before.paymentStatus = row.paymentStatus }
     }
     before.feeAud = row.feeAud
   }
@@ -1279,7 +1285,9 @@ export async function moneyData(config, { since, fresh = false, quick = false, p
       // not on the row yet (Ligia's links, Sept 2026): record it, so the
       // amount shows, the ledger has it and the venues add up.
       else if (unrecorded > 0 && (owe > 0 || !fee)) { status = 'stripe'; applied = Math.min(unrecorded, owe || unrecorded); unrecorded -= applied }
-      else if (markedPaid) status = 'paid'
+      // Marked Paid by hand counts only with no amount on the row: an amount
+      // under the fee is part paid, whatever the mark says (Niki Brown, 19 Oct 2026).
+      else if (markedPaid && !(fee > 0 && paid > 0)) status = 'paid'
       else if (paid > 0) status = 'part'
       else if (fee > 0) status = 'unpaid'
       else status = 'unpriced'

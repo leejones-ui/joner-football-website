@@ -40,8 +40,9 @@ export const PREPAY_MAX = 20
 const NO_AMOUNT = /trial|scholar|sponsor|free|comp|plan|n\/a/i
 function termOwing(r) {
   if (isSessionType(r.paymentType) || NO_AMOUNT.test(r.paymentType || '')) return 0
-  if (['Paid', 'N/A'].includes(r.paymentStatus)) return 0
   const fee = cents(r.feeAud), paid = cents(r.paidAud)
+  // Marked Paid with an amount under the fee still owes the rest (Niki Brown, 19 Oct 2026).
+  if (r.paymentStatus === 'N/A' || (r.paymentStatus === 'Paid' && !(paid > 0 && paid < fee))) return 0
   return fee > 0 && fee > paid ? fee - paid : 0
 }
 

@@ -891,6 +891,15 @@ const server = http.createServer(async (req, res) => {
     redis(['SET', 'jfp:roster-cleared', String(Date.now())]); redis(['DEL', 'jfp:roster-cache'])
     res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ ids: made.map((r) => r.id) }))
   }
+  // Test-only: change fields on a pretend Airtable row (a status set by hand).
+  if (url.pathname === '/__airtable-set') {
+    const p = JSON.parse(await readBody(req) || '{}')
+    const r = (airtable[p.table] || []).find((x) => x.id === p.id)
+    if (!r) { res.writeHead(404); return res.end('no such row') }
+    Object.assign(r.fields, p.fields || {})
+    redis(['SET', 'jfp:roster-cleared', String(Date.now())]); redis(['DEL', 'jfp:roster-cache'])
+    res.writeHead(200, { 'content-type': 'application/json' }); return res.end('{"ok":true}')
+  }
   if (url.pathname === '/__calls') {
     const out = { ...calls }
     if (url.searchParams.get('reset') === '1') for (const k of Object.keys(calls)) delete calls[k]

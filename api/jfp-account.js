@@ -111,7 +111,7 @@ function paymentLine(row, openReq, owed) {
   // Pros and casuals pay for the sessions they come to (billed from Money).
   if (isProType(row.paymentType)) return { state: 'sessions', label: 'Pro sessions, paid by the session' }
   if (isSessionType(row.paymentType)) return { state: 'sessions', label: 'Session by session' }
-  if (row.paymentStatus === 'Paid') return { state: 'paid', label: 'Paid' }
+  if (row.paymentStatus === 'Paid' && !(Number(row.paidAud) > 0 && Number(row.paidAud) < Number(row.feeAud))) return { state: 'paid', label: 'Paid' }
   // Legacy rows can carry sibling splits and agreed plans, so no amount is
   // shown until staff raise a payment request.
   return { state: 'arranged', label: 'Payment arranged with Joner Football' }

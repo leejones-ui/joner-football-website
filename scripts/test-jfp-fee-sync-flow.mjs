@@ -253,4 +253,19 @@ await test('a trial player priced for the term on a family invoice is no longer 
   assert.equal((await row(g.rowIds[0]))['Term 4 Payment Type'], 'JFP Trial')
 })
 
+await test('marked Paid by hand at A$425 of A$850: Money and the account say A$425 owing; Edit puts the status right (Niki Brown, 19 Oct 2026)', async () => {
+  const f = await family('Halfpaid', ['Nia'], [850])
+  const [rid] = f.rowIds
+  await ok('recordPayment', { rowIds: [rid], amountCents: 42500, method: 'bank' })
+  await fetch(`${B}/__airtable-set`, { method: 'POST', body: JSON.stringify({ table: 'term4', id: rid, fields: { 'Term 4 Payment Status': 'Paid' } }) })
+  const p = (await ok('money', { fresh: true })).money.players.find((x) => x.rowId === rid)
+  assert.deepEqual([p.status, p.owingCents], ['part', 42500])
+  const d = await f.account()
+  assert.match(JSON.stringify(d), /A\$425 to pay/, 'the family is asked for the rest')
+  await ok('editPlayer', { rowId: rid, fields: { feeAud: 850 } })
+  assert.equal((await row(rid))['Term 4 Payment Status'], 'Partially Paid')
+  await ok('editPlayer', { rowId: rid, fields: { feeAud: 425 } })
+  assert.equal((await row(rid))['Term 4 Payment Status'], 'Paid', 'a fee lowered to what was paid is paid')
+})
+
 console.log(`\n${passed} fee sync checks passed`)
