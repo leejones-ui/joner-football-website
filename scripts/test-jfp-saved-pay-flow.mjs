@@ -509,7 +509,10 @@ await test('coaches never send an amount: a price they type is refused or ignore
   const made = await coach('extraSave', { slot: { date: XDAY, time: '4:00pm', capacity: 5, location: 'Belrose HQ', priceId, priceCents: 99, amountCents: 99, visibility: 'private' } })
   assert.equal(made.status, 200, JSON.stringify(made.data))
   slot = made.data.slot
-  assert.equal(slot.priceCents, 12000, "the coach's typed price is ignored: Lee's price list")
+  // Coaches never see prices (Lee, 19 Oct 2026), so read the stored price as Lee.
+  assert.equal(slot.priceCents, undefined, 'a coach is not shown the price')
+  const stored = (await ok('extraList')).slots.find((x) => x.id === slot.id)
+  assert.equal(stored.priceCents, 12000, "the coach's typed price is ignored: Lee's price list")
   const a = await coach('extraAttach', { slotId: slot.id, rowId: rows.nia, amountCents: 1, priceCents: 1 })
   assert.equal(a.status, 200, JSON.stringify(a.data))
   niaExtra = await payreq(a.data.booking.payreqId); niaBooking = a.data.booking.id
