@@ -124,7 +124,7 @@ async function openSent(ui, id) {
     ${reportCardHtml(r, S.data.form)}
     ${recips ? `<h3 style="font-size:15px;margin:14px 0 6px">Who it went to</h3><ul class="jm-hist">${recips}</ul>` : ''}
     <p class="j-err" id="rp-err" hidden></p><div id="rp-tap"></div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-dark" id="rp-pdf">Save PDF to this device</button></div>`, { wide: true })
+    <div class="jp-modal-foot" style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-dark" id="rp-pdf">Save PDF to this device</button></div>`, { wide: true })
   wirePdfButton(ui, box, () => id)
 }
 
@@ -187,7 +187,7 @@ async function openEditor(ui, rowId) {
     <label class="j-field"><span>Next term reminder <span class="muted">(optional)</span></span>
       <textarea class="j-textarea" id="rp-next" rows="3" maxlength="${form.reminderMax}" placeholder="For example, Term 1 starts the week of 2 February. Keep your spot in My account.">${esc(f.reminder)}</textarea></label>
     <p class="j-err" id="rp-err" hidden></p><div id="rp-tap"></div>
-    <div style="display:flex;gap:8px;justify-content:space-between;margin-top:12px;flex-wrap:wrap">
+    <div class="jp-modal-foot" style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap">
       <button type="button" class="j-btn j-btn-ghost" data-close>Close</button>
       <span style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="j-btn j-btn-line" id="rp-pdf">Save PDF to this device</button><button type="button" class="j-btn j-btn-dark" id="rp-next-step">Check and send</button></span>
     </div></div>
@@ -272,7 +272,7 @@ async function openEditor(ui, rowId) {
       ${missing ? `<p class="small" style="margin-bottom:10px">${missing} of ${form.attrs.length} ratings are blank. They show as "Not rated".</p>` : ''}
       <label class="j-check" style="display:flex;gap:8px;align-items:flex-start;margin-bottom:12px"><input type="checkbox" id="rp-ok" ${recipients.length ? '' : 'disabled'}><span>I have checked this is ${esc(st.player)}'s report and it is ready to send.</span></label>
       <p class="j-err" id="rp-err2" hidden></p>
-      <div style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap"><button type="button" class="j-btn j-btn-line" id="rp-back">Back to the report</button>
+      <div class="jp-modal-foot" style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap"><button type="button" class="j-btn j-btn-line" id="rp-back">Back to the report</button>
         <button type="button" class="j-btn j-btn-dark" id="rp-send" disabled>Send report</button></div>`
     c.querySelector('#rp-back').addEventListener('click', () => { c.hidden = true; $('#rp-edit').hidden = false })
     const ok = c.querySelector('#rp-ok'); const send = c.querySelector('#rp-send')

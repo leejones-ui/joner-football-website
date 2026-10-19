@@ -333,7 +333,11 @@ const installCard = () => standalone() ? '' : `<button type="button" class="ja-i
 function moreSheet() {
   const sheet = openSheet({ title: 'More', subtitle: '' })
   sheet.sheet.classList.add('ja-more-sheet')
-  const groups = nav().slice(1)
+  // Phones: the My JFP pages not on the bottom bar (Announcements, Coach
+  // notes, Player reports) are listed here too, so every page is reachable.
+  const [mine, ...rest] = nav()
+  const left = { ...mine, items: mine.items.filter((it) => !BAR.some(([k]) => k === it.key)) }
+  const groups = left.items.length ? [left, ...rest] : rest
   sheet.body.innerHTML = installCard() + groups.map((g) => `<div class="ja-more-group"><p class="ja-nav-label">${esc(g.label)}</p><div class="ja-mlist">${g.items.map(moreRow).join('')}</div></div>`).join('')
   sheet.foot.innerHTML = '<button type="button" class="ja-btn ja-btn-line ja-btn-block" id="ja-signout2">Sign out</button>'
 }

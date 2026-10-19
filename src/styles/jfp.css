@@ -154,13 +154,13 @@ body:has(.jfp) { background: var(--j-bg) !important; color: var(--j-ink) !import
 
 /* sheet: bottom sheet on phones, side panel on desktop */
 .j-scrim { position: fixed; inset: 0; background: rgba(16, 24, 40, .45); z-index: 60; }
-.j-sheet { position: fixed; z-index: 61; background: var(--j-surface); display: flex; flex-direction: column; box-shadow: var(--j-shadow-lg); left: 0; right: 0; bottom: 0; max-height: 94vh; border-radius: 20px 20px 0 0; }
+.j-sheet { position: fixed; z-index: 61; background: var(--j-surface); display: flex; flex-direction: column; box-shadow: var(--j-shadow-lg); left: 0; right: 0; bottom: 0; max-height: 94vh; max-height: 94dvh; border-radius: 20px 20px 0 0; }
 /* Desktop: a centred dialog, not a 520px column pinned to the right edge.
    The apply flow is a multi-step form with waiver text, so it needs reading
    width. Phones keep the bottom sheet above. (Lee, 8 Oct 2026) */
 @media (min-width: 760px) {
   .j-sheet { left: 50%; right: auto; top: 50%; bottom: auto; transform: translate(-50%, -50%);
-    width: min(680px, calc(100vw - 64px)); max-height: 88vh; border-radius: 18px; }
+    width: min(680px, calc(100vw - 64px)); max-height: 88vh; max-height: 88dvh; border-radius: 18px; }
   .j-sheet .j-sheet-head { padding: 20px 26px 14px; }
   .j-sheet .j-sheet-body { padding: 24px 26px; }
   .j-sheet .j-sheet-foot { padding: 16px 26px; }
@@ -255,7 +255,7 @@ body:has(.jfp) { background: var(--j-bg) !important; color: var(--j-ink) !import
 .jp-table th { text-align: left; font-size: 12px; color: var(--j-muted); font-weight: 650; padding: 10px 12px; border-bottom: 1px solid var(--j-line); white-space: nowrap; }
 .jp-table td { padding: 10px 12px; border-bottom: 1px solid var(--j-line-2); vertical-align: top; }
 .jp-scroll { overflow-x: auto; border: 1px solid var(--j-line); border-radius: 14px; background: var(--j-surface); }
-.jp-modal { position: fixed; z-index: 70; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(560px, calc(100vw - 24px)); max-height: calc(100vh - 32px); overflow-y: auto; background: var(--j-surface); border-radius: 18px; box-shadow: var(--j-shadow-lg); padding: 20px; }
+.jp-modal { position: fixed; z-index: 70; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(560px, calc(100vw - 24px)); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow-y: auto; overscroll-behavior: contain; background: var(--j-surface); border-radius: 18px; box-shadow: var(--j-shadow-lg); padding: 20px; }
 .jp-menu { position: fixed; z-index: 72; background: var(--j-surface); border: 1px solid var(--j-line); border-radius: 12px; box-shadow: var(--j-shadow-lg); padding: 6px; min-width: 220px; }
 .jp-menu button { display: block; width: 100%; text-align: left; border: 0; background: transparent; padding: 9px 10px; border-radius: 8px; font-size: 14px; }
 .jp-menu button:hover { background: var(--j-grey-bg); }
@@ -732,5 +732,16 @@ body.has-picks .j-toast { bottom: calc(92px + env(safe-area-inset-bottom)); }
 .rp-dots button[aria-pressed="true"] { background: #CC0000; border-color: #CC0000; color: #fff; }
 @media (max-width: 640px) {
   .rp-grid, .rp-rates { grid-template-columns: 1fr; }
-  .rp-dots button { width: 38px; height: 38px; }
+}
+
+/* Mobile usability (Lee, 18 Oct 2026): a pop-up's main buttons stay pinned to
+   its bottom edge while the form scrolls, so Send is always in reach. Pop-ups
+   size to the visible screen (dvh), not the screen behind the browser bars. */
+.jp-modal-foot { position: sticky; bottom: -20px; z-index: 2; margin: 12px -20px -20px; padding: 12px 20px calc(12px + env(safe-area-inset-bottom)); background: var(--j-surface); border-top: 1px solid var(--j-line); }
+@media (max-width: 640px) { .rp-dots button { width: 44px; height: 44px; } .rp-rate-in { gap: 6px; } }
+@media (max-width: 640px) {
+  .jp-modal-foot { flex-wrap: nowrap !important; align-items: stretch; }
+  .jp-modal-foot > span { flex: 1; display: flex; gap: 8px; flex-wrap: nowrap !important; }
+  .jp-modal-foot .j-btn { white-space: normal; padding-left: 10px; padding-right: 10px; }
+  .jp-modal-foot > span > .j-btn, .jp-modal-foot > .j-btn:last-child { flex: 1; }
 }

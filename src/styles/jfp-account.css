@@ -874,3 +874,10 @@ body:has(.ja[data-theme="light"]) { background: #F5F5F3 !important; }
 .ja .rp-card { margin-top: 10px; }
 .jfp.ja .ja-report.is-unread { box-shadow: 0 0 0 1.5px var(--ja-red) inset; }
 .ja .ja-report-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+
+/* Mobile usability (Lee, 19 Oct 2026): with the keyboard open the bottom tab
+   bar would sit over the field being typed in, so it steps aside until the
+   field loses focus. */
+@media (pointer: coarse) and (max-width: 959px) {
+  .ja:has(input:not([type=checkbox]):not([type=radio]):focus, textarea:focus, select:focus) .ja-tabs { display: none; }
+}
