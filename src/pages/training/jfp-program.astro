@@ -291,7 +291,7 @@ const sanityPage = await fetchSanityPage('jfp-program')
     </section>
 
     <nav class="sticky top-0 z-30 border-y border-white/10 bg-joner-black/92 backdrop-blur">
-      <div class="mx-auto flex max-w-7xl gap-6 overflow-x-auto px-4 py-4 font-heading text-xs uppercase tracking-[0.22em] text-white sm:px-6 lg:px-8 no-scrollbar">
+      <div class="jfp-subnav mx-auto flex max-w-7xl gap-6 overflow-x-auto px-4 py-0.5 font-heading text-xs uppercase tracking-[0.22em] text-white sm:px-6 lg:px-8 no-scrollbar">
         <a href="#pathway" class="shrink-0 hover:text-joner-red">Pathway</a>
         <a href="#program" class="shrink-0 hover:text-joner-red">Program</a>
         <a href="#what-you-get" class="shrink-0 hover:text-joner-red">What You Get</a>
@@ -834,6 +834,9 @@ const sanityPage = await fetchSanityPage('jfp-program')
         transform: translateY(-50%);
       }
     }
+
+    /* Section nav: each link is a full 44px tap target; the bar keeps its 48px height */
+    .jfp-subnav > a { display: inline-flex; align-items: center; min-height: 44px; }
 
     /* Glass button (matches design spec) */
     .btn-glass {
