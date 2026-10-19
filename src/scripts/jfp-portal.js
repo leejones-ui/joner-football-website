@@ -36,6 +36,7 @@ import { findExisting, removedView, wireRemoved, removedCount } from './jfp-port
 // Card / direct debit on file and auto-charge (claude/card-on-file).
 import { savedPayTag, savedPayDetail, mountAutoChargeEdit, mountSavedPaySettings } from './jfp-portal-autocharge.js'
 import { mountHermesSettings } from './jfp-portal-hermes.js'
+import { mountCredits } from './jfp-portal-credits.js'
 
 // jf: the Money programme switch, the Joners Juniors filters and the holiday picked.
 const P = { jf: { programme: 'jfp', term: '', status: '', q: '', period: '' }, user: null, tab: '', board: null, loc: '', day: '', coachFilter: '', ttView: 'staff', sel: '', groups: null, coachId: '', coachDate: {}, reqFilter: 'pending', linkFilter: 'open', linkProg: 'all', pricing: null }
@@ -2603,8 +2604,12 @@ async function renderMoney(pre) {
     <p class="jm-count" id="m-count"></p>
     <div id="m-scope"></div>
     <div id="m-bank"></div>
-    <div id="m-unmatched"></div>`
+    <div id="m-unmatched"></div>
+    <div id="m-credits"></div>`
   const scope = () => moneyScope(m, f.loc)
+  // Credits owed to families (Lee, 20 Oct 2026): read on their own.
+  P.moneyOpen = P.moneyOpen || new Set()
+  mountCredits($('m-credits'), { post, modal, closeModal, toast, players: m.players.map((p) => ({ rowId: p.rowId, player: p.player })), open: P.moneyOpen })
   // Bank transfers to check: read on their own, and they follow the venue too.
   const family = (p) => m.players.filter((x) => x.familyKey === p.familyKey).map((x) => x.rowId)
   const bankUi = {

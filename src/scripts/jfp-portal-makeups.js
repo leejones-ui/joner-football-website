@@ -15,7 +15,7 @@ export async function renderMakeups(ui) {
   const shown = d.makeups.filter((m) => (S.filter === 'open' ? open(m) : S.filter === 'all' ? true : m.status === S.filter))
   const count = (f) => d.makeups.filter((m) => (f === 'open' ? open(m) : m.status === f)).length
   view().innerHTML = `${psHead({ title: 'Make-ups and credits', count: `${count('open')} open`, primary: '<button type="button" class="j-btn j-btn-dark" id="mk-new">Cancel a session</button>' })}
-    <p class="muted small" style="margin-bottom:10px">Only for emergencies, like a sick or missing coach. Free make-ups must be used by the end of this term (${esc(d.termEndLabel)}). Credits come off next term. Families see both in My account.</p>
+    <p class="muted small" style="margin-bottom:10px">Only for emergencies, like a sick or missing coach. Free make-ups must be used by the end of this term (${esc(d.termEndLabel)}). Credits come off the family's next payment by themselves (see Money, Credits owed). Families see both in My account.</p>
     <div class="j-chips" style="margin-bottom:10px">${[['open', 'Open'], ['requested', 'Family asked'], ['booked', 'Booked'], ['used', 'Used'], ['applied', 'Applied'], ['all', 'All']].map(([k, l]) => `<button type="button" class="j-chip" data-f="${k}" aria-pressed="${S.filter === k}">${l}${k === 'open' ? ` (${count('open')})` : ''}</button>`).join('')}</div>
     <div class="ps-table-wrap"><table class="ps-table"><thead><tr><th>Player</th><th>Missed session</th><th>What they have</th><th>Status</th><th></th></tr></thead><tbody>
     ${shown.map((m) => `<tr><td><b>${esc(m.player)}</b></td><td>${esc(m.group)}<br><span class="muted small">${esc(m.dateLabel)} · ${esc(m.reason)}</span></td>

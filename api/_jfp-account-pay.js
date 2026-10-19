@@ -23,6 +23,7 @@
 // prepaid stay on the payment request (prepay.dates), so the account never
 // offers the same date twice.
 import { stampFeeBasis } from './_jfp-fee-sync.js'
+import { applyCredits, returnCredits } from './_jfp-credits.js'
 import {
   clean, formatAud, newId, savePayreq, getPayreq, listPayreqs, audit, kvCommand, locationFor, dateLabel, sydneyToday, closeCheckout,
   isSessionType, isProType, withPerSession, rowEmails,
@@ -66,7 +67,7 @@ export function perSessionFor(config, r, group) {
 export function prepayDates({ config, row, group, payreqs, cancels = [], nowMs = Date.now() }) {
   if (!row.groupId && !group) return []
   const time = rowTime(row, group)
-  const taken = new Set(payreqs.filter((q) => q.prepay?.rowId === row.id && (q.status === 'paid' || isOpen(q))).flatMap((q) => q.prepay.dates || []))
+  const taken = new Set(payreqs.filter((q) => q.prepay?.rowId === row.id && (q.status === 'paid' || q.paidWithCredit || isOpen(q))).flatMap((q) => q.prepay.dates || []))
   const told = new Set(cancels.filter((c) => c.rowId === row.id).map((c) => c.date))
   return rowSessionDates(config, row, group)
     .filter((d) => !taken.has(d) && !told.has(d))
@@ -182,6 +183,22 @@ export async function payOwed({ config, parent, fam, byGroup, cancels, site, bod
       } }])
       await bustRosterCache()
     }
+    // Credit owed to the family comes off first (Lee, 20 Oct 2026).
+    const used = await applyCredits([r.id], { by: parent.email, what: 'a payment from My account', limitCents: q.amountCents }).catch((error) => { console.error('jfp credit use failed', error); return [] })
+    const credit = used.reduce((t, x) => t + x.cents, 0)
+    if (credit) {
+      Object.assign(r, (await getTerm4Row(r.id).catch(() => null)) || {})
+      Object.assign(q, { amountCents: Math.max(0, q.amountCents - credit), creditCents: credit, creditUsed: used })
+      for (const pl of q.places || []) { pl.owingCents = Math.max(0, pl.owingCents - credit); pl.creditCents = credit; pl.label = `${pl.label}, ${formatAud(credit)} credit used` }
+      await bustRosterCache()
+      if (!q.amountCents) {
+        // Nothing to pay. Kept (closed) so prepaid dates stay taken.
+        delete q.restoreFields
+        await savePayreq({ ...q, status: 'cancelled', paidWithCredit: true, cancelReason: 'paid with credit', cancelledAt: new Date().toISOString() })
+        await audit({ by: parent.email, action: 'credit.covered', target: q.id, after: { row: r.id, cents: credit } })
+        return no(409, `Your credit of ${formatAud(credit)} covers this, so there is nothing to pay. Your account updates within a few minutes.`, 'credit')
+      }
+    }
     // What the place owes as the link is made: a later fee change moves it (_jfp-fee-sync.js).
     if (!q.prepay) stampFeeBasis(q, new Map([[r.id, r]]), all)
     await savePayreq(q)
@@ -208,7 +225,10 @@ export async function cancelOwed({ parent, fam, body }) {
     if (closed === 'complete') return no(409, 'This payment has gone through and is being processed. Refresh in a minute.', 'processing')
     if (closed === 'error') return no(503, 'Could not close the payment page. Try again in a minute.')
     await savePayreq({ ...q, status: 'cancelled', cancelledBy: parent.email, cancelledAt: new Date().toISOString(), cancelReason: 'Family chose again in My account' })
-    if (q.restoreFields?.length) { await updateTerm4Rows(q.restoreFields); await bustRosterCache() }
+    if (q.restoreFields?.length) {
+      await updateTerm4Rows(q.restoreFields); await bustRosterCache()
+      if (q.creditUsed?.length) await returnCredits(q, { by: parent.email, why: 'family chose again' })
+    }
     await audit({ by: parent.email, action: 'payreq.account.cancel', target: q.id, after: { row: rowId, cents: q.amountCents } })
     return { ok: true }
   } finally { await kvCommand(['DEL', lock]).catch(() => {}) }

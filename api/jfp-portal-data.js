@@ -33,6 +33,9 @@ import {
 import { listCancels, staffView, noticeSummary } from './_jfp-cancel.js'
 import { repairJfpBooking, effectsSummary, EFFECTS, payEffectsFor } from './_jfp-finalise.js'
 import { feeTied, stampFeeBasisFresh, syncRowLinks, syncLinks, repricedNote } from './_jfp-fee-sync.js'
+// Credits come off by themselves (Lee, 20 Oct 2026).
+import { applyCredits, creditsView, giveCredit, returnCredits } from './_jfp-credits.js'
+const CREDIT_REASONS = new Set(['balance', 'term-after-trial', 'admin-add', 'application', 'waitlist', 'family', 'sessions'])
 import { staffPrincipal, sameOrigin } from './_jfp-people.js'
 import { sendAccountInvite, accountInvite, sendFamilyInvite, sendFamilyWelcome, sendPlaceOffered, sendTrialOffered, sendTermOffered, sendDeclined, sendNextTermInvite, sendFamilyInvoice, sendQuickLinkEmail } from './_jfp-email.js'
 import { nextStatuses, setNextStatus, nextPrices, recordNext, nextInterest } from './_jfp-next.js'
@@ -474,6 +477,7 @@ export async function addPlayer(req, res, principal, config, body) {
     payreq = await createPayreq({ req, principal, config, group: null, rows: [{ id: rowId, name }], email, parentName, amountCents: prep.owedCents, reason: 'sessions', afterpay: false, restoreFields: [{ id: rowId, fields: { 'Term 4 Fee': 0, 'Term 4 Payment Status': 'Unpaid' } }], programme: isPro ? 'pro' : '', ownContact })
     payreq.places = [{ rowId, name, label: `${prep.owed.length} session${prep.owed.length > 1 ? 's' : ''} at ${formatAud(perSession)}, ${owedWhat}`, feeCents: prep.owedCents, paidCents: 0, owingCents: prep.owedCents }]
     payreq.groupLabel = 'Session by session'
+    creditPlaces(payreq)
     await savePayreq(payreq)
     // Auto charge counts these as billed by hand.
     await audit({ by: principal.email, action: 'player.sessions', target: rowId, after: { rows: [{ id: rowId, sessions: prep.owed.length, per: perSession }], what: owedWhat, mode: 'link', withAdd: true } })
@@ -710,6 +714,7 @@ export async function addFamily(req, res, principal, config, body) {
     payreq.places = linked.map((x) => ({ rowId: x.rowId, name: x.v.name, label: `${x.where}${x.what ? `, ${x.what}` : ''}`, feeCents: x.amountCents, paidCents: 0, owingCents: x.amountCents }))
     payreq.groupLabel = [...new Set(linked.map((x) => x.where))].join(' · ')
     payreq.familyAdd = famId
+    creditPlaces(payreq)
     await savePayreq(payreq)
   }
   // ONE email to the parent: every child, then the steps.
@@ -748,6 +753,14 @@ export function payreqUrl(req, q) { return `${siteUrl(req)}/jfp-account/?pay=${e
 const EXPIRING = new Set(['application', 'waitlist', 'trial'])
 
 export async function createPayreq({ req, principal, config, group, rows, email, parentName, amountCents, reason, requestId, product = '', startDate = '', afterpay = true, trialDate = '', creditCents = 0, restoreFields = null, programme = '', ownContact = false }) {
+  // Owed credits come off first (Lee, 20 Oct 2026): the row's fee comes down
+  // and this link asks for less. Never on a trial, a quick link or a charge.
+  let creditUsed = []
+  if (CREDIT_REASONS.has(reason) && amountCents > 0) {
+    creditUsed = await applyCredits(rows.map((r) => r.id), { by: principal.email, what: reason === 'sessions' ? 'sessions billed' : 'the payment link', limitCents: amountCents }).catch((error) => { console.error('jfp credit use failed', error); return [] })
+  }
+  const creditTotal = creditUsed.reduce((t, x) => t + x.cents, 0)
+  if (creditTotal) amountCents = Math.max(0, amountCents - creditTotal)
   const q = {
     id: newId('PAY'),
     email, parentName,
@@ -761,7 +774,8 @@ export async function createPayreq({ req, principal, config, group, rows, email,
     groupId: group?.id || '',
     groupLabel: group ? groupSummary(group, config) : '',
     amountCents, reason, requestId: requestId || '',
-    product, productLabel: product ? productFor(product).label : '', startDate, trialDate, creditCents,
+    product, productLabel: product ? productFor(product).label : '', startDate, trialDate, creditCents: creditCents + creditTotal,
+    ...(creditTotal ? { creditUsed } : {}),
     afterpay: afterpay !== false,
     ...(restoreFields ? { restoreFields } : {}),
     status: 'open',
@@ -773,7 +787,18 @@ export async function createPayreq({ req, principal, config, group, rows, email,
   // What each row owes as the link is made: a later fee change moves the
   // link from here (_jfp-fee-sync.js). A failed read only means no basis.
   await stampFeeBasisFresh(q).catch((error) => console.error('jfp fee basis failed', q.id, error.message))
+  // The credit covered all of it: nothing to pay, so the link is closed.
+  if (creditTotal && !amountCents) Object.assign(q, { status: 'cancelled', paidWithCredit: true, cancelReason: 'paid with credit', cancelledAt: new Date().toISOString() })
   await savePayreq(q)
+  return q
+}
+// Callers set a link's places from what was owing before the credit: take
+// each place's credit off so the places add up to what the link asks for.
+function creditPlaces(q) {
+  for (const c of q.creditUsed || []) {
+    const p = (q.places || []).find((x) => x.rowId === c.rowId)
+    if (p) { p.creditCents = c.cents; p.owingCents = Math.max(0, (p.owingCents || 0) - c.cents); p.label = `${p.label}, ${formatAud(c.cents)} credit used` }
+  }
   return q
 }
 
@@ -1921,12 +1946,12 @@ async function sendPaymentLink(req, res, principal, config, body) {
     pdf = await feePdf(req, config, q)
     const roster = await loadRoster()
     const needWaiver = rows.some((r) => !waiverFor(r.player, { emails: [email], phones: [r.phone], dob: r.dob }, roster.waivers))
-    if (reason === 'term-after-trial' && group) sent = await trySend('term offered', () => sendTermOffered({ to: email, parentName: rows[0].parent, playerNames: rows.map((r) => r.player), group, config, url: payreqUrl(req, q), amountCents, startDate: chosen?.from || '', creditCents: credit, self: w.self, attachment: pdf.attachment }))
-    else sent = await trySend('payment link', () => sendFamilyInvite({ to: email, parentName: rows[0].parent, playerNames: rows.map((r) => r.player), group, config, url: payreqUrl(req, q), needs: { details: false, waiver: needWaiver, payment: true }, amountCents, trial: reason === 'trial' && Boolean(group), startDate: chosen?.from || '', product: chosen?.product || '', self: w.self, attachment: pdf.attachment }))
+    if (reason === 'term-after-trial' && group) sent = await trySend('term offered', () => sendTermOffered({ to: email, parentName: rows[0].parent, playerNames: rows.map((r) => r.player), group, config, url: payreqUrl(req, q), amountCents: q.amountCents, startDate: chosen?.from || '', creditCents: credit, self: w.self, attachment: pdf.attachment }))
+    else sent = await trySend('payment link', () => sendFamilyInvite({ to: email, parentName: rows[0].parent, playerNames: rows.map((r) => r.player), group, config, url: payreqUrl(req, q), needs: { details: false, waiver: needWaiver, payment: true }, amountCents: q.amountCents, trial: reason === 'trial' && Boolean(group), startDate: chosen?.from || '', product: chosen?.product || '', self: w.self, attachment: pdf.attachment }))
     if (sent.emailed) await savePayreq({ ...q, emailedAt: new Date().toISOString() })
   }
   await audit({ by: principal.email, action: 'payreq.create', target: q.id, after: { rows: ids, cents: amountCents, product: chosen?.product || 'balance', emailed: sent.emailed } })
-  return res.status(200).json({ success: true, payreq: { id: q.id, url: payreqUrl(req, q), amountLabel: formatAud(amountCents) }, emailed: sent.emailed, emailTo: sent.emailed ? email : '', emailError: sent.emailError ? `The link is made, but the email to ${email} did not send. ${sent.emailError} Copy the link and send it yourself.` : '', pdfWarning: pdfWarningOf(sent, pdf) })
+  return res.status(200).json({ success: true, payreq: { id: q.id, url: payreqUrl(req, q), amountLabel: formatAud(q.amountCents) }, emailed: sent.emailed, emailTo: sent.emailed ? email : '', emailError: sent.emailError ? `The link is made, but the email to ${email} did not send. ${sent.emailError} Copy the link and send it yourself.` : '', pdfWarning: pdfWarningOf(sent, pdf) })
 }
 
 // The PDF tax invoice, for Lee and Ligia to download (Money > Invoices, a
@@ -2024,18 +2049,19 @@ async function familyInvoice(req, res, principal, config, body) {
   const q = await createPayreq({ req, principal, config, group: null, rows: owing.map((x) => ({ id: x.row.id, name: x.row.player })), email, parentName: rows[0].row.parent, amountCents, reason: 'family', afterpay: body.afterpay !== false, programme: programmeOfRows(owing.map((x) => x.row)), ownContact: fw.self })
   q.places = owing.map((x) => ({ rowId: x.row.id, name: x.row.player, label: placeLabel(x.row), feeCents: x.feeCents, paidCents: x.paidCents, owingCents: x.owingCents }))
   q.groupLabel = [...new Set(q.places.map((x) => x.label))].join(' · ')
+  creditPlaces(q)
   await savePayreq(q)
   let sent = { emailed: false }, pdf = {}
   if (body.sendEmail === true) {
     pdf = await feePdf(req, config, q)
     const roster = await loadRoster()
     const needWaiver = owing.some((x) => !waiverFor(x.row.player, { emails: rowEmails(x.row), phones: [x.row.phone], dob: x.row.dob }, roster.waivers))
-    sent = await trySend('family invoice', () => sendFamilyInvoice({ to: email, parentName: rows[0].row.parent, places: q.places, config, url: payreqUrl(req, q), amountCents, needWaiver, self: fw.self, attachment: pdf.attachment }))
+    sent = await trySend('family invoice', () => sendFamilyInvoice({ to: email, parentName: rows[0].row.parent, places: q.places, config, url: payreqUrl(req, q), amountCents: q.amountCents, needWaiver, self: fw.self, attachment: pdf.attachment }))
     if (sent.emailed) await savePayreq({ ...q, emailedAt: new Date().toISOString() })
   }
   const emailed = sent.emailed
   await audit({ by: principal.email, action: 'payreq.create', target: q.id, after: { rows: q.term4Ids, cents: amountCents, product: 'family', emailed, replaced: openLinks.map((x) => x.id) } })
-  return res.status(200).json({ success: true, payreq: { id: q.id, url: payreqUrl(req, q), amountCents, amountLabel: formatAud(amountCents) }, emailed, emailTo: emailed ? email : '', emailError: sent.emailError ? `The invoice link is made, but the email to ${email} did not send. ${sent.emailError}` : '', pdfWarning: pdfWarningOf(sent, pdf), replaced: openLinks.length })
+  return res.status(200).json({ success: true, payreq: { id: q.id, url: payreqUrl(req, q), amountCents: q.amountCents, amountLabel: formatAud(q.amountCents) }, emailed, emailTo: emailed ? email : '', emailError: sent.emailError ? `The invoice link is made, but the email to ${email} did not send. ${sent.emailError}` : '', pdfWarning: pdfWarningOf(sent, pdf), replaced: openLinks.length })
 }
 
 // Session by session (Lee, 12 Oct 2026): bill the sessions a player came to,
@@ -2111,16 +2137,17 @@ async function sessionInvoice(req, res, principal, config, body) {
   const q = await createPayreq({ req, principal, config, group: null, rows: rows.map((x) => ({ id: x.row.id, name: x.row.player })), email, parentName: rows[0].row.parent, amountCents, reason: 'sessions', afterpay: false, restoreFields, programme: programmeOfRows(rows.map((x) => x.row)), ownContact: sw.self })
   q.places = rows.filter((x) => x.cents > 0).map((x) => { const n = x.sessions - x.covered; return { rowId: x.row.id, name: x.row.player, label: `${n} session${n > 1 ? 's' : ''} at ${formatAud(x.per)}${x.covered ? ` (${x.covered} more prepaid)` : ''}${what ? `, ${what}` : ''}`, feeCents: x.cents, paidCents: 0, owingCents: x.cents } })
   q.groupLabel = 'Session by session'
+  creditPlaces(q)
   await savePayreq(q)
   let sent = { emailed: false }, pdf = {}
   if (body.sendEmail === true) {
     pdf = await feePdf(req, config, q)
-    sent = await trySend('sessions invoice', () => sendFamilyInvoice({ to: email, parentName: rows[0].row.parent, places: q.places, config, url: payreqUrl(req, q), amountCents, needWaiver: false, sessions: true, self: sw.self, attachment: pdf.attachment }))
+    sent = await trySend('sessions invoice', () => sendFamilyInvoice({ to: email, parentName: rows[0].row.parent, places: q.places, config, url: payreqUrl(req, q), amountCents: q.amountCents, needWaiver: false, sessions: true, self: sw.self, attachment: pdf.attachment }))
     if (sent.emailed) await savePayreq({ ...q, emailedAt: new Date().toISOString() })
   }
   const emailed = sent.emailed
   await audit({ by: principal.email, action: 'payreq.create', target: q.id, after: { rows: ids, cents: amountCents, product: 'sessions', emailed } })
-  return res.status(200).json({ success: true, payreq: { id: q.id, url: payreqUrl(req, q), amountCents, amountLabel: formatAud(amountCents) }, emailed, emailTo: emailed ? email : '', emailError: sent.emailError ? `The link is made, but the email to ${email} did not send. ${sent.emailError}` : '', pdfWarning: pdfWarningOf(sent, pdf) })
+  return res.status(200).json({ success: true, payreq: { id: q.id, url: payreqUrl(req, q), amountCents: q.amountCents, amountLabel: formatAud(q.amountCents) }, emailed, emailTo: emailed ? email : '', emailError: sent.emailError ? `The link is made, but the email to ${email} did not send. ${sent.emailError}` : '', pdfWarning: pdfWarningOf(sent, pdf) })
 }
 
 function splitEven(total, n) {
@@ -2452,6 +2479,8 @@ async function cancelLink(q, principal, why, { keepPlace = false } = {}) {
     const still = []
     for (const x of q.restoreFields) if (await getTerm4Row(x.id)) still.push(x)
     if (still.length) await updateTerm4Rows(still)
+    // The fee is back as it was, so a credit used on this link is owed again.
+    if (q.creditUsed?.length) await returnCredits(q, { by: principal.email, why })
   }
   const released = ['application', 'waitlist', 'trial', 'admin-add'].includes(q.reason) ? await releaseOffer(q, principal, why) : 0
   await audit({ by: principal.email, action: 'payreq.cancel', target: q.id, after: { released, why } })
@@ -2548,7 +2577,7 @@ async function decideRequest(req, res, principal, config, body) {
   const emailed = sent.emailed
   for (const [i, id] of ids.entries()) await noteNewPlayer({ config, group, rowId: id, player: r.players[i]?.name || '', kind: trial ? 'trial' : 'offered' }).catch((e) => console.error('jfp coach news failed', e))
   await audit({ by: principal.email, action: trial ? 'request.trial' : 'request.offer', target: r.id, after: { group: group.id, payreq: q.id, rows: ids, cents: amountCents, emailed } })
-  return res.status(200).json({ success: true, status: 'offered', payreq: { id: q.id, url: payreqUrl(req, q), amountCents, amountLabel: formatAud(amountCents) }, emailed, emailTo: emailed ? r.email : '', emailError: sent.emailError ? `The offer is made, but the email to ${r.email} did not send. ${sent.emailError} Copy the link and send it yourself.` : '' })
+  return res.status(200).json({ success: true, status: 'offered', payreq: { id: q.id, url: payreqUrl(req, q), amountCents: q.amountCents, amountLabel: formatAud(q.amountCents) }, emailed, emailTo: emailed ? r.email : '', emailError: sent.emailError ? `The offer is made, but the email to ${r.email} did not send. ${sent.emailError} Copy the link and send it yourself.` : '' })
 }
 
 // ---------- money ----------
@@ -3624,6 +3653,14 @@ async function handle(req, res) {
     }
 
     // ---------- Lee and Ligia ----------
+    // Money > Credits (Lee, 20 Oct 2026): what is owed to families, and
+    // giving one by hand. Lee or Ligia only, never Hermes.
+    if (action === 'creditsList') return res.status(200).json({ success: true, ...(await creditsView()) })
+    if (action === 'creditGive') {
+      if (principal?.via === 'hermes') return fail(res, 403, 'Only Lee or Ligia can give a credit, in the portal.')
+      const out = await giveCredit({ principal, rowId: body.rowId, cents: body.cents, reason: body.reason })
+      return out.status === 200 ? res.status(200).json({ success: true, credit: out.credit }) : fail(res, out.status, out.error)
+    }
     // Joners Juniors: Dashboard, Players, Settings and their changes (_jj-portal.js).
     if (JJ_ACTIONS.has(action)) return await jjAction(req, res, principal, config, body, action)
     // Announcements to families, one way (Lee, 17 Oct 2026; _jfp-announce.js).

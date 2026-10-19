@@ -178,7 +178,7 @@ export async function familyMakeups(rowIds, config) {
   return list.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))).map((m) => {
     const status = liveStatus(m, config, today)
     const b = m.booked && byId.get(m.booked.groupId)
-    return { id: m.id, rowId: m.rowId, player: m.player, kind: m.kind, status, dateLabel: dateLabel(m.date), reason: m.reason, cents: m.cents || 0, expiresLabel: m.expiresOn ? dateLabel(m.expiresOn) : '', bookedLabel: b ? `${b.day} ${b.time}, ${locationFor(config, b.location).name}, ${dateLabel(m.booked.date)}` : '', canAsk: m.kind === 'makeup' && status === 'owed' }
+    return { id: m.id, rowId: m.rowId, player: m.player, kind: m.kind, status, dateLabel: dateLabel(m.date), reason: m.reason, cents: m.cents || 0, given: m.given === true, partUsed: (m.uses || []).length > 0, expiresLabel: m.expiresOn ? dateLabel(m.expiresOn) : '', bookedLabel: b ? `${b.day} ${b.time}, ${locationFor(config, b.location).name}, ${dateLabel(m.booked.date)}` : '', canAsk: m.kind === 'makeup' && status === 'owed' }
   })
 }
 

@@ -69,6 +69,9 @@ import { finaliseJfpBooking } from './_jfp-finalise.js'
 import { sendFamilyNotice } from './_jfp-email.js'
 import { telegramAlert } from './_jfp-notify.js'
 import { listCharges, getCharge, chargeStatus } from './_jfp-charges.js'
+// Cancelled sessions and credits (Lee, 20 Oct 2026).
+import { sessionOffMap } from './_jfp-makeups.js'
+import { creditByRow, useCredit } from './_jfp-credits.js'
 
 export const CONSENT_VERSION = 'jfp-auto-charge-v3 (16 Oct 2026)'
 // v3 also covers "any other amount we agree with you in writing before
@@ -377,6 +380,8 @@ const SKIP = {
   'open-link': 'On a pay ahead link not paid yet',
   prepaid: 'Prepaid from My account: one comes off, nothing charged',
   'no-price': 'No price per session set',
+  cancelled: 'Session cancelled, not charged',
+  credit: 'Paid with credit, nothing charged',
 }
 const WAIT = {
   register: 'Register not marked',
@@ -384,7 +389,7 @@ const WAIT = {
   'register-odd': 'Register says told us, but there is no cancellation',
 }
 // Kept for good (the date is settled); the others are looked at again next run.
-const PERMANENT = new Set(['covered', 'billed', 'told', 'prepaid'])
+const PERMANENT = new Set(['covered', 'billed', 'told', 'prepaid', 'cancelled', 'credit'])
 
 // "2 days ahead", "30 hours ahead".
 export function aheadLabel(minutes) {
@@ -429,6 +434,7 @@ export async function planAutoCharges({ config, nowMs = Date.now(), fresh = true
   const byGroup = Object.fromEntries(groups.map((g) => [g.id, g]))
   const rows = roster.players.filter((r) => r.holdsPlace && r.groupId && byGroup[r.groupId] && !/trial/i.test(r.paymentType || '') && !isTest(r.player))
   const methods = await methodsFor(rows.flatMap(rowEmails))
+  const [off, credits] = await Promise.all([sessionOffMap(), creditByRow().catch(() => new Map())])
   const items = []
   for (const r of rows) {
     const m = methodForRow(r, methods)
@@ -464,6 +470,8 @@ export async function planAutoCharges({ config, nowMs = Date.now(), fresh = true
     const onOpen = new Set(pre.filter((q) => ['open', 'checkout'].includes(q.status)).flatMap((q) => q.prepay.dates || []))
     const billed = billedUpTo(events, r.id)
     let undated = Math.max(0, prepaidOf(r.notes) - ahead.size)
+    // Credit owed to the family: comes off the sessions in date order.
+    let credit = credits.get(r.id) || 0
     const recs = await kvPipeline(dates.map((d) => ['GET', K.charge(r.id, d)]))
     const marks = await kvPipeline(dates.map((d) => ['HGET', keys.attendance(group.id, d), r.id]))
     dates.forEach((d, i) => {
@@ -475,6 +483,8 @@ export async function planAutoCharges({ config, nowMs = Date.now(), fresh = true
         return
       }
       if (covered.has(d)) return items.push({ ...x, action: 'skip', reason: 'covered' })
+      // We cancelled the session: never charged, whatever the register says.
+      if (off.has(`${group.id}|${d}`)) return items.push({ ...x, action: 'skip', reason: 'cancelled' })
       if (billed && d <= billed) return items.push({ ...x, action: 'skip', reason: 'billed', reasonLabel: `Already billed by hand (sessions up to ${dateLabel(billed)})` })
       // Told us 24 hours or more before: never charged, whatever the register says.
       const c = cancels.find((y) => y.rowId === r.id && y.date === d && y.status === 'active')
@@ -491,6 +501,11 @@ export async function planAutoCharges({ config, nowMs = Date.now(), fresh = true
       if (onOpen.has(d)) return items.push({ ...x, action: 'skip', reason: 'open-link' })
       if (undated > 0) { undated -= 1; return items.push({ ...x, action: 'skip', reason: 'prepaid' }) }
       if (!per) return items.push({ ...x, action: 'skip', reason: 'no-price' })
+      if (credit >= per) { credit -= per; return items.push({ ...x, action: 'skip', reason: 'credit', creditCents: per, reasonLabel: `Paid with credit (${formatAud(per)}), nothing charged` }) }
+      if (credit > 0) {
+        const c2 = credit; credit = 0
+        return items.push({ ...x, action: 'charge', amountCents: per - c2, amountLabel: formatAud(per - c2), creditCents: c2, note: `${note}, ${formatAud(c2)} credit used` })
+      }
       items.push({ ...x, action: 'charge', note })
     })
   }
@@ -568,7 +583,11 @@ async function billRow(rec, q, word) {
   const r = await getTerm4Row(rec.rowId)
   if (!r) throw new Error(`Airtable row missing: ${rec.rowId}`)
   if (String(r.notes || '').includes(q.id)) return r
-  const fee = (isSessionType(r.paymentType) ? cents(r.feeAud) : cents(r.paidAud)) + rec.amountCents
+  // Credit planned for this session: used now. Less left than planned (used
+  // elsewhere since): the rest stays on the fee for the family to pay.
+  const planned = rec.creditCents > 0 ? rec.creditCents : 0
+  const used = planned ? await useCredit(rec.rowId, planned, { by: 'auto-charge', what: `Session on ${dateLabel(rec.date)}` }) : 0
+  const fee = (isSessionType(r.paymentType) ? cents(r.feeAud) : cents(r.paidAud)) + rec.amountCents + (planned - used)
   const paid = cents(r.paidAud)
   await updateTerm4Rows([{ id: r.id, fields: {
     'Term 4 Fee': fee / 100,
@@ -711,7 +730,7 @@ export async function chargeOne(item) {
   const at = new Date().toISOString()
   let rec = item.retry || null
   if (!rec) {
-    const fresh = { ...(item.type === 'payreq' ? { type: 'payreq', key: item.key, chargeId: item.chargeId || '', invoiceId: item.invoiceId || '', what: item.what || '' } : {}), rowId: item.rowId || '', date: item.date, player: item.player, email: item.email, parentName: item.parentName || '', self: item.self === true, amountCents: item.amountCents, method: item.method, programme: item.programme, status: 'charging', at, payreqId: item.payreqId || newId('PAY'), tries: 0, ...(item.by ? { by: item.by } : {}), ...(item.agreed ? { agreed: item.agreed } : {}) }
+    const fresh = { ...(item.type === 'payreq' ? { type: 'payreq', key: item.key, chargeId: item.chargeId || '', invoiceId: item.invoiceId || '', what: item.what || '' } : {}), rowId: item.rowId || '', date: item.date, player: item.player, email: item.email, parentName: item.parentName || '', self: item.self === true, amountCents: item.amountCents, ...(item.creditCents > 0 ? { creditCents: item.creditCents } : {}), method: item.method, programme: item.programme, status: 'charging', at, payreqId: item.payreqId || newId('PAY'), tries: 0, ...(item.by ? { by: item.by } : {}), ...(item.agreed ? { agreed: item.agreed } : {}) }
     if ((await kvCommand(['SET', K.charge(keyOf(fresh), item.date), JSON.stringify(fresh), 'NX'])) !== 'OK') return { status: 'already' }
     rec = await saveRec(fresh)
   }
@@ -779,6 +798,22 @@ async function settleSkip(item) {
   const rec = { ...(item.type === 'payreq' ? { type: 'payreq', key: item.key, chargeId: item.chargeId || '', what: item.what || '' } : {}), rowId: item.rowId, date: item.date, player: item.player, email: item.email, amountCents: item.amountCents || 0, method: item.method, programme: item.programme, status: 'skipped', reason: item.reason, error: item.reasonLabel, at: new Date().toISOString() }
   if ((await kvCommand(['SET', K.charge(keyOf(rec), item.date), JSON.stringify(rec), 'NX'])) !== 'OK') return false
   await saveRec(rec)
+  if (item.reason === 'credit' && item.creditCents > 0) {
+    const used = await useCredit(item.rowId, item.creditCents, { by: 'auto-charge', what: `Session on ${dateLabel(item.date)}` })
+    const r = await getTerm4Row(item.rowId)
+    if (r) {
+      // The session goes on the fee and the credit comes off it, as credits
+      // do everywhere (never counted as money paid). A shortfall stays owing.
+      const fee = (isSessionType(r.paymentType) ? cents(r.feeAud) : cents(r.paidAud)) + (item.creditCents - used)
+      const paid = cents(r.paidAud)
+      await updateTerm4Rows([{ id: r.id, fields: {
+        'Term 4 Fee': fee / 100,
+        'Term 4 Payment Status': paid >= fee ? 'Paid' : paid > 0 ? 'Partially Paid' : 'Unpaid',
+        'Term 4 Notes': appendNote(r.notes, `Session on ${item.date}: ${formatAud(used)} credit used, nothing charged (auto-charge).`),
+      } }])
+      await bustRosterCache()
+    }
+  }
   if (item.reason === 'prepaid') {
     const r = await getTerm4Row(item.rowId)
     if (r && prepaidOf(r.notes) > 0) {

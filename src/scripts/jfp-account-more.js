@@ -151,7 +151,7 @@ export function loginSheet(p, D, reload) {
 
 // ---------- make-ups and credits (Lee, 19 Oct 2026) ----------
 // After we cancel a session for an emergency: a free make-up to use this term,
-// or a credit for next term. The family sees it here and can ask for the make-up.
+// or a credit that comes off the next payment. The family sees it here and can ask for the make-up.
 const money = (c) => `A$${(c / 100).toFixed(2).replace(/\.00$/, '')}`
 export function makeupsHomeBlock(D) {
   const list = (D?.makeups || []).filter((m) => !['used', 'applied'].includes(m.status))
@@ -159,7 +159,9 @@ export function makeupsHomeBlock(D) {
   const many = new Set(list.map((m) => m.player)).size > 1
   const line = (m) => {
     const who = many ? `${esc(first(m.player))}: ` : ''
-    if (m.kind === 'credit') return `${who}a credit${m.cents ? ` of ${esc(money(m.cents))}` : ''} for the session we cancelled on ${esc(m.dateLabel)}. It comes off next term, and Ligia will apply it.`
+    // Credits come off the next payment by themselves (Lee, 20 Oct 2026).
+    if (m.kind === 'credit' && !m.cents) return `${who}a credit for the session we cancelled on ${esc(m.dateLabel)}. We will let you know its value, then it comes off your next payment.`
+    if (m.kind === 'credit') return `${who}${m.partUsed ? `${esc(money(m.cents))} credit left` : `a credit of ${esc(money(m.cents))}`}${m.given || m.partUsed ? '' : ` for the session we cancelled on ${esc(m.dateLabel)}`}. It comes off your next payment automatically.`
     if (m.status === 'booked') return `${who}your free make-up is booked: ${esc(m.bookedLabel)}.`
     if (m.status === 'requested') return `${who}you have asked for a make-up. Ligia will get back to you with a session.`
     if (m.status === 'expired') return `${who}the free make-up for ${esc(m.dateLabel)} was not used this term. Contact Ligia and she will sort it.`
