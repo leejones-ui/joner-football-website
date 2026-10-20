@@ -87,7 +87,8 @@ export function owedItems({ config, players, payreqs, byGroup, cancels = [], now
       if (payreqs.some((q) => isOpen(q) && !q.quick && (q.term4Ids || []).includes(r.id))) continue
       const group = byGroup[r.groupId] || null
       const where = placeLabel(config, r, group)
-      const base = { rowId: r.id, playerKey: p.key, player: p.name, group: where, needsWaiver: !p.waiver }
+      // An agent's player signs their own waiver: the agent can pay first (Lee, 20 Oct 2026).
+      const base = { rowId: r.id, playerKey: p.key, player: p.name, group: where, needsWaiver: !p.waiver && !r.agentId }
       const term = termOwing(r)
       if (term) { out.push({ ...base, kind: 'term', amountCents: term, amountLabel: formatAud(term), title: `Pay ${formatAud(term)} for ${config.term}, ${where}` }); continue }
       if (!isSessionType(r.paymentType)) continue
@@ -131,7 +132,7 @@ export async function payOwed({ config, parent, fam, byGroup, cancels, site, bod
     // Any open request for this place already: that one, never a second.
     const open = all.find((q) => isOpen(q) && !q.quick && (q.term4Ids || []).includes(rowId))
     if (open) return { ok: true, payreqId: open.id, reused: true }
-    if (!p.waiver) return no(400, 'Sign the waiver first, then pay.', 'waiver')
+    if (!p.waiver && !p.term4.some((r) => r.id === rowId && r.agentId)) return no(400, 'Sign the waiver first, then pay.', 'waiver')
     const row = (await getTerm4Row(rowId)) || listed
     // Fresh money fields from Airtable; the group as the roster placed it.
     const r = { ...listed, ...row, groupId: listed.groupId, emails: listed.emails }

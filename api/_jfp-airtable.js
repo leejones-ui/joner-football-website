@@ -141,6 +141,8 @@ function term4Row({ id, fields: f }) {
     prepaidSessions: Number(tagOf(notes, 'PREPAID')) || 0,
     // The player is their own contact (no parent): [CONTACT:self] in the notes.
     ownContact: tagOf(notes, 'CONTACT') === 'self',
+    // Paid for by an agent (Lee, 20 Oct 2026): [AGENT:<id>], see _jfp-agents.js.
+    agentId: tagOf(notes, 'AGENT'),
     // First session for a player who starts later in the term (staff set it).
     startsFrom: /^\d{4}-\d{2}-\d{2}$/.test(tagOf(notes, 'STARTS')) ? tagOf(notes, 'STARTS') : '',
     onlineBookingId: tagOf(notes, ONLINE_TAG),

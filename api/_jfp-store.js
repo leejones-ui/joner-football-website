@@ -764,6 +764,8 @@ export function paidSiblings(rosterPlayers, email, names = []) {
   return (rosterPlayers || []).filter((r) => {
     const n = normName(r.player)
     if (!r.holdsPlace || !rowEmails(r).includes(e) || !n || mine.has(n) || seen.has(n)) return false
+    // An agent's players share the agent's email but are not brothers and sisters.
+    if (r.agentId) return false
     if (!(r.paymentStatus === 'Paid' || Number(r.paidAud) > 0)) return false
     seen.add(n)
     return true

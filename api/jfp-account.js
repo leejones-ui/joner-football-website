@@ -33,6 +33,7 @@ import { withPayreqLease } from './_jfp-finalise.js'
 import { familyProfiles, findProfile, pickProfile, profileKey, profileView, cleanProfile, saveProfile, savePhoto, waiverPrefill, DOB_MIN, dobMax, clubSuggestions, LEVELS, PLAYING_UP, POSITIONS, FEET, YEARS } from './_jfp-profiles.js'
 import { markToldAway, clearToldAway } from './_jfp-away.js'
 import { asksComing, comingDates, saveComing, clearComing } from './_jfp-coming.js'
+import { agentFor } from './_jfp-agents.js'
 import { coachPhotoUrl } from './jfp-groups.js'
 import { listCancels, submitCancel, withdrawCancel, rowSessionDates, rowTime, noticeFor, coachesFor, coverCoachFor, familyView, cancelId, REASONS, NOTE_MAX } from './_jfp-cancel.js'
 import { loadRoster, familyFor, createWaiverRows, waiverFields, bustRosterCache, updateTerm4Rows } from './_jfp-airtable.js'
@@ -189,6 +190,8 @@ async function overview(res, parent, body = {}, opts = {}) {
     waiver: p.waiver ? { onFile: true, signedDate: p.waiver.signedDate, term: p.waiver.term, kind: p.waiver.kind || '' } : { onFile: false },
     // A place staff have confirmed but not yet given a day and time.
     placeNoSession: p.term4.some((r) => r.holdsPlace && !r.groupId),
+    // An agent pays for this player: the player signs their own waiver.
+    ...(agentPlayer(p) ? { byAgent: true } : {}),
     ownContact: p.term4.length > 0 && p.term4.every((r) => r.ownContact),
     enrolments: p.term4.filter((r) => r.holdsPlace && r.groupId).map((r) => {
       const g = byGroup[r.groupId] || { day: r.day, time: r.time, location: r.location, durationMin: 60 }
@@ -237,7 +240,8 @@ async function overview(res, parent, body = {}, opts = {}) {
   }
   const rowsById = new Map(fam.players.flatMap((p) => p.term4).map((r) => [r.id, r]))
   const todo = mine.filter((q) => ['open', 'checkout'].includes(q.status)).map((q) => {
-    const blockers = q.playerKeys.filter((k) => !fam.players.find((p) => p.key === k)?.waiver)
+    // An agent's players sign their own waivers: the agent can pay first (Lee, 20 Oct 2026).
+    const blockers = q.playerKeys.filter((k) => { const p = fam.players.find((x) => x.key === k); return !p?.waiver && !agentPlayer(p) })
     return {
       needsKit: kitRequired(q), kit: kitDone(q, rowsById),
       id: q.id, amountLabel: formatAud(q.amountCents), players: q.playerNames, reason: q.reason, group: q.groupLabel || '', needsWaiver: blockers.length > 0, expiresAt: q.expiresAt || '',
@@ -293,6 +297,8 @@ async function overview(res, parent, body = {}, opts = {}) {
     playerMinAge: PLAYER_MIN_AGE,
     push: await pushView(readEmail).then((x) => ({ available: Boolean(x.available), key: x.key || '' })).catch((error) => { console.error('jfp push view failed', error); return { available: false, key: '' } }),
     parentName: fam.parentName || juniors?.parentName || '',
+    // An agent's account (Lee, 20 Oct 2026): their players, never "family".
+    ...(await agentView(parent.email, fam)),
     // The player is their own contact (no parent): the page talks to them.
     self: !juniors?.children?.length && ((fam.players.length > 0 && fam.players.every((p) => p.term4.length > 0 && p.term4.every((r) => r.ownContact))) || (!fam.players.some((p) => p.term4.length) && open.length > 0 && open.every((o) => o.self))),
     // Anyone can have an account (round 2 item 8): where to book a first session.
@@ -462,7 +468,7 @@ async function withdrawSession(res, parent, body) {
   return res.status(200).json({ success: true, already: out.already })
 }
 
-async function signWaiver(res, parent, body) {
+async function signWaiver(res, parent, body, { asPlayer = false } = {}) {
   const config = await getConfig()
   const roster = await loadRoster({ fresh: true })
   const fam = withDobs(familyFor(parent.email, roster, config.termStart), dobsFrom(await listApplications(), parent.email), config.termStart)
@@ -496,6 +502,8 @@ async function signWaiver(res, parent, body) {
     const p = fam.players.find((f) => f.key === clean(x.key, 80)) || (o ? { key: o.key, name: o.name, dob: o.profile.dob || '', waiver: null, term4: [] } : null)
     if (!p) return fail(res, 404, 'We could not find that player on your account.')
     if (p.waiver) continue
+    // An agent never signs for their players (Lee, 20 Oct 2026).
+    if (agentPlayer(p) && !asPlayer) return fail(res, 403, `${p.name} signs their own waiver (a parent signs if they are under 18). Give them a login from Your players.`, { code: 'agent' })
     // The date of birth staff saved on the player information counts too.
     const prof = p.term4.length ? pickProfile(profs, { key: profileKey(p.name, p.term4[0].email || parent.email), rowIds: p.term4.map((r) => r.id) }) : null
     const dob = p.dob || (ISO.test(prof?.dob || '') ? prof.dob : '') || clean(x.dob, 10)
@@ -749,6 +757,15 @@ async function payOwed(req, res, parent, body) {
   return pay(req, res, parent, { payreqId: out.payreqId })
 }
 
+// A player whose place an agent pays for (_jfp-agents.js).
+const agentPlayer = (p) => Boolean(p?.term4?.length) && p.term4.some((r) => r.agentId)
+async function agentView(email, fam) {
+  const a = await agentFor(email).catch(() => null)
+  const rows = fam.players.flatMap((p) => p.term4)
+  if (!a && !(rows.length && rows.every((r) => r.agentId))) return {}
+  return { agent: { name: a?.name || fam.parentName || '', company: a?.company || '' } }
+}
+
 async function pay(req, res, parent, body) {
   const found = await getPayreq(body.payreqId)
   if (!found || !ownsPayreq(found, familyFor(parent.email, await loadRoster(), (await getConfig()).termStart), parent.email)) return fail(res, 404, 'We could not find that payment.')
@@ -762,7 +779,7 @@ async function pay(req, res, parent, body) {
   const config = await getConfig()
   const roster = await loadRoster({ fresh: true })
   const fam = familyFor(parent.email, roster, config.termStart)
-  const missing = q.playerKeys.filter((k) => !fam.players.find((p) => p.key === k)?.waiver)
+  const missing = q.playerKeys.filter((k) => { const p = fam.players.find((x) => x.key === k); return !p?.waiver && !agentPlayer(p) })
   if (missing.length) return fail(res, 400, 'Sign the waiver for each player first.', { code: 'waiver' })
   if (kitRequired(q) && !kitDone(q, new Map(fam.players.flatMap((p) => p.term4).map((r) => [r.id, r])))) return fail(res, 400, 'Confirm the JF playing kit first. It is required for every player.', { code: 'kit' })
   // Paying again after going back from Stripe: close the first page before
@@ -945,8 +962,10 @@ async function playerView(login) {
   const fam = familyFor(login.parentEmail, await loadRoster(), config.termStart)
   const rows = (fam.players.find((p) => p.key === login.playerKey)?.term4 || []).filter((r) => r.holdsPlace)
   const rowIds = new Set(rows.map((r) => r.id))
+  // An agent's player signs their own waiver here (Lee, 20 Oct 2026).
+  const byAgent = rows.some((r) => r.agentId)
   const players = d.players.filter((p) => p.key === login.playerKey).map((p) => ({
-    key: p.key, name: p.name, age: p.age, self: true, photo: p.photo, adult: p.adult, needsDob: false, waiver: { onFile: true }, placeNoSession: p.placeNoSession, noSession: p.noSession, ownContact: true, login: '',
+    key: p.key, name: p.name, age: p.age, self: true, photo: p.photo, adult: p.adult, needsDob: byAgent ? p.needsDob : false, waiver: byAgent ? p.waiver : { onFile: true }, placeNoSession: p.placeNoSession, noSession: p.noSession, ownContact: true, login: '', ...(byAgent ? { agentPlayer: true } : {}),
     enrolments: p.enrolments.map(({ payment, sessionPay, paidDates, openDates, ...e }) => e),
   }))
   return { c: 200, d: {
@@ -956,7 +975,7 @@ async function playerView(login) {
     reports: await reportsSummary(login.email, login),
     push: d.push, term: d.term, termStart: d.termStart, weeks: d.weeks, venues: d.venues, reasons: d.reasons, noteMax: d.noteMax,
     todo: [], owed: [], paid: [], requests: [], bookings: [], juniors: null, nextTerm: null, keep: { name: d.keep?.name || '', open: false, players: [] }, extras: null,
-  }, rowIds }
+  }, rowIds, byAgent }
 }
 
 async function playerAction(req, res, login, body) {
@@ -971,6 +990,13 @@ async function playerAction(req, res, login, body) {
   if (a === 'cancelSession') {
     if (!v.rowIds?.has(clean(body.rowId, 30))) return fail(res, 404, 'That session is not yours.')
     return await cancelSession(res, { email: login.parentEmail }, body)
+  }
+  // An agent's player signs their own waiver, for themselves only.
+  if (a === 'signWaiver') {
+    if (!v.byAgent) return fail(res, 403, 'Ask your parent to do this from their account.', { code: 'parent-only' })
+    const mine = (Array.isArray(body.players) ? body.players : []).filter((x) => x?.key === login.playerKey)
+    if (!mine.length) return fail(res, 404, 'That player is not you.')
+    return await signWaiver(res, { email: login.parentEmail }, { ...body, players: mine }, { asPlayer: true })
   }
   if (a === 'comingSession') {
     if (!v.rowIds?.has(clean(body.rowId, 30))) return fail(res, 404, 'That session is not yours.')

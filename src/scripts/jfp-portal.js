@@ -823,7 +823,7 @@ function detailsModal(p, g) {
       <dt>Type</dt><dd>${esc(p.type || 'Not set')}</dd>
       <dt>Payment</dt><dd>${esc(p.paymentStatus)} · paid ${esc(money(p.paidCents))} of ${esc(money(p.feeCents))}</dd>
       <dt>Waiver</dt><dd>${p.waiver ? `On file${waiverKindLabel(p.waiverKind)}` : 'Not found'}</dd>
-      <dt>${p.ownContact ? 'Contact' : 'Parent'}</dt><dd>${p.ownContact ? 'The player (own contact)' : esc(p.parent || '')}</dd>
+      <dt>${p.ownContact ? 'Contact' : p.agent ? 'Agent' : 'Parent'}</dt><dd>${p.ownContact ? 'The player (own contact)' : esc(p.agent || p.parent || '')}</dd>
       <dt>Email</dt><dd>${p.email ? `<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>` : 'None'}</dd>
       <dt>Mobile</dt><dd>${p.phone ? `<a href="tel:${esc(p.phone)}">${esc(p.phone)}</a>` : 'None'}</dd>
       ${p.linkNotes || p.notes ? `<dt>Notes</dt><dd><button type="button" class="j-btn j-btn-line j-btn-sm" data-notes-row="${esc(p.rowId)}">Show notes</button></dd>` : ''}
@@ -865,7 +865,7 @@ function paidModal(p) {
 async function linkModal(p, g) {
   const pr = await pricing()
   const owing = Math.max(0, p.feeCents - p.paidCents)
-  const w = contactWords({ self: p.ownContact, players: [p.name], parent: p.parent })
+  const w = contactWords({ self: p.ownContact, players: [p.name], parent: p.parent, agent: Boolean(p.agent) })
   const box = modal(`<h2 style="margin-bottom:6px">Payment link</h2><p class="muted small" style="margin-bottom:12px">${esc(p.name)}${g ? ` · ${esc(g.day)} ${esc(g.time)}` : ''}. ${w.self ? `${esc(w.contact)} signs in with their own email, signs the waiver if needed, then pays.` : 'The family signs in with their email, signs the waiver if needed, then pays.'}</p>
     ${p.payreq ? `<div class="j-box j-box-grey" style="margin-bottom:12px">A link for ${esc(p.payreq.amountLabel)} is already open. To change its amount, use Payment links. A new link here leaves the old one open. <button type="button" class="j-btn j-btn-line j-btn-sm" data-inv-pdf="${esc(p.payreq.id)}">Invoice PDF</button></div>` : ''}
     <div class="jp-seg" id="ln-mode" style="margin-bottom:12px"><button type="button" data-m="price" aria-pressed="true">From the price list</button><button type="button" data-m="owing" aria-pressed="false">What is owing${owing ? ` (${esc(money(owing))})` : ''}</button></div>
@@ -3672,7 +3672,7 @@ function plRow(p) {
   const football = [f.level, (f.positions || []).map((x) => POS_SHORT[x] || x).join('/')].filter(Boolean).join(' · ')
   const fee = p.feeAud != null ? `${money0(p.feeAud)}${p.balanceAud ? ` · ${money0(p.balanceAud)} owing` : ''}` : 'No fee set'
   return `<tr data-pl="${esc(p.rowId)}" tabindex="0" aria-label="${esc(p.name)}, open details">
-    <td data-col="who"><div class="ps-who">${avatar(p.profile?.photo, p.name, 32)}<div><b>${esc(p.name)}</b>${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}${p.pro ? ' <span class="ps-tag pink">Pro</span>' : ''}${savedPayTag(p)}<span class="ps-sub">${p.ownContact ? 'Own contact' : esc(p.parent || 'No parent name')}</span></div></div></td>
+    <td data-col="who"><div class="ps-who">${avatar(p.profile?.photo, p.name, 32)}<div><b>${esc(p.name)}</b>${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}${p.pro ? ' <span class="ps-tag pink">Pro</span>' : ''}${savedPayTag(p)}<span class="ps-sub">${p.ownContact ? 'Own contact' : p.agent ? `Agent: ${esc(p.agent)}` : esc(p.parent || 'No parent name')}</span></div></div></td>
     <td data-col="group">${p.inGroup ? esc(p.groupLabel) : psBadge('orange', 'Not in a group')}${p.coach ? `<span class="ps-sub">${esc(p.coach)}</span>` : ''}</td>
     <td data-col="pay">${psPayBadge(p)}<span class="ps-sub">${esc(fee)}</span></td>
     <td data-col="football">${club || football ? `${esc(club || '')}${football ? `<span class="ps-sub">${esc(football)}</span>` : ''}` : '<span class="muted">Not on file</span>'}</td>
@@ -3682,7 +3682,7 @@ function plRow(p) {
 }
 
 function plDetail(p) {
-  const w = contactWords({ self: p.ownContact, players: [p.name], parent: p.parent })
+  const w = contactWords({ self: p.ownContact, players: [p.name], parent: p.parent, agent: Boolean(p.agent) })
   const row = (k, v) => (v ? `<div class="j-kv"><span>${esc(k)}</span><span>${esc(v)}</span></div>` : '')
   const born = p.dob ? new Date(`${p.dob}T00:00:00Z`).toLocaleDateString('en-AU', { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric' }) : ''
   modal(`<div style="display:flex;gap:14px;align-items:center;margin-bottom:14px">${avatar(p.profile?.photo, p.name, 64)}<div><h2 style="margin-bottom:2px">${esc(p.name)}</h2>
@@ -3724,7 +3724,7 @@ function plDetail(p) {
     ${row('Type', p.paymentType)}
     ${savedPayDetail(p, row)}
     <h3 style="margin-top:14px">${p.ownContact ? 'Contact (the player)' : 'Family'}</h3>
-    ${p.ownContact ? row('Contact', 'The player is their own contact') : row('Parent', p.parent)}
+    ${p.ownContact ? row('Contact', 'The player is their own contact') : p.agent ? row('Agent', `${p.agent} (pays for this player)`) : row('Parent', p.parent)}
     ${row('Email', p.email || 'no email')}
     ${row('Mobile', p.phone)}
     <div class="jpf-acts jpf-acts-left"><button type="button" class="j-btn j-btn-line" id="pd-invite" ${p.email ? '' : 'disabled title="No email on this player"'}>Account invite</button></div>
@@ -3763,7 +3763,7 @@ async function sendAccountInviteFor(p, btn) {
       tb.className = 'j-btn j-btn-line j-btn-sm'
       tb.style.marginLeft = '8px'
       tb.textContent = r.ok ? 'Text them too' : 'Text the invite instead'
-      tb.addEventListener('click', () => { const self = Boolean(p.ownContact); closeModal(); textComposer({ modal, toast, rowIds: [p.rowId], parent: p.parent, mobile: p.phone, text: inviteText({ parent: p.parent, player: p.name, email: p.email, self }), title: self ? `Text ${p.name.split(' ')[0]}` : 'Text the family', self, to: self ? p.name : '' }) })
+      tb.addEventListener('click', () => { const self = Boolean(p.ownContact); closeModal(); textComposer({ modal, toast, rowIds: [p.rowId], parent: p.parent, mobile: p.phone, text: inviteText({ parent: p.parent, player: p.name, email: p.email, self }), title: self ? `Text ${p.name.split(' ')[0]}` : p.agent ? 'Text the agent' : 'Text the family', self, to: self ? p.name : '' }) })
       out.append(tb)
     }
   }
@@ -3954,6 +3954,7 @@ async function renderPlayers(keep = false) {
   view().querySelectorAll('[data-acct-add]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); acctAddToGroup(acctShown(d)[Number(b.dataset.acctAdd)]) }))
   $('ps-more').addEventListener('click', (e) => menu(e.currentTarget, [
     { key: 'family', label: '+ Add a family', run: () => familyModal(famUI()) },
+    { key: 'agent', label: '+ Add an agent', run: () => familyModal({ ...famUI(), agent: true }) },
     { key: 'invite', label: 'Send account invites', run: () => renderFamilies() },
     { key: 'app', label: 'JF App access', run: () => appAccessModal() },
     '-',

@@ -35,9 +35,9 @@ function groupOptions(groups, selected, noGroup) {
 }
 
 // One child: group, name, date of birth, how they pay.
-export function childBlockHtml(px, n, { groups, groupId = '', noGroup = false, removable = true }) {
+export function childBlockHtml(px, n, { groups, groupId = '', noGroup = false, removable = true, noun = 'Child' }) {
   return `<section class="jpf-child" data-child-block="${esc(px)}" style="border:1px solid var(--j-line,#e5e7eb);border-radius:12px;padding:12px 14px;margin:12px 0">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h3 style="margin:0" data-child-title>Child ${n}</h3>${removable ? `<button type="button" class="j-btn j-btn-ghost j-btn-sm" data-child-rm="${esc(px)}">Remove</button>` : ''}</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h3 style="margin:0" data-child-title>${esc(noun)} ${n}</h3>${removable ? `<button type="button" class="j-btn j-btn-ghost j-btn-sm" data-child-rm="${esc(px)}">Remove</button>` : ''}</div>
     <div class="j-two"><label class="j-field"><span>Full name</span><input class="j-input" id="${px}-name" autocomplete="off"></label>
     <label class="j-field"><span>Date of birth <span class="muted">(optional)</span></span><input class="j-input" id="${px}-dob" type="date"></label></div>
     <label class="j-field"><span>Group</span><select class="j-select" id="${px}-group">${groupOptions(groups, groupId, noGroup)}</select></label>
@@ -51,7 +51,7 @@ export function childBlockHtml(px, n, { groups, groupId = '', noGroup = false, r
 }
 
 // Wires one child block. read() gives the child's part of addFamily, or { error }.
-export function wireChild(box, px, ui, pr, { groups, onChange = () => {} }) {
+export function wireChild(box, px, ui, pr, { groups, onChange = () => {}, agent = false }) {
   const $ = (id) => box.querySelector(`#${px}-${id}`)
   const group = () => groups.find((g) => g.id === $('group').value) || null
   $('qwrap').innerHTML = quoteHtml(px, { defaultQuote: pr.defaultQuote, run: pr.runs?.noGroup })
@@ -82,7 +82,7 @@ export function wireChild(box, px, ui, pr, { groups, onChange = () => {} }) {
     quote.show(['sessions', 'pro'].includes(pay))
     $('trial-wrap').hidden = pay !== 'trial'
     if (pay === 'pro' && pr.defaultQuote && !prefilled && !$('per').value.trim()) { prefilled = true; $('per').value = dollars(pr.defaultQuote.perCents); quote.set(pr.defaultQuote.tiers) }
-    $('hint').textContent = pay === 'link' ? 'Goes on the one family payment, at this price.' : ['sessions', 'pro'].includes(pay) ? 'Pays from the family account: the next session, more ahead, or the rest of the term.' : pay === 'trial' ? 'No payment. The coach sees it as a trial.' : pay === 'none' ? 'Nothing to pay until you set a price.' : ''
+    $('hint').textContent = pay === 'link' ? `Goes on the one ${agent ? 'agent' : 'family'} payment, at this price.` : ['sessions', 'pro'].includes(pay) ? `Pays from the ${agent ? "agent's" : 'family'} account: the next session, more ahead, or the rest of the term.` : pay === 'trial' ? 'No payment. The coach sees it as a trial.' : pay === 'none' ? 'Nothing to pay until you set a price.' : ''
     onChange()
   }
   $('group').addEventListener('change', () => { drawPrice(); watch() })
@@ -92,7 +92,7 @@ export function wireChild(box, px, ui, pr, { groups, onChange = () => {} }) {
   watch()
   const read = () => {
     const name = $('name').value.trim()
-    if (name.length < 3) return { error: "Enter each child's full name." }
+    if (name.length < 3) return { error: agent ? "Enter each player's full name." : "Enter each child's full name." }
     const payment = $('pay').value
     const g = group()
     const out = { groupId: g?.id || '', player: { name, dob: $('dob').value }, payment }
@@ -124,15 +124,16 @@ export function wireChild(box, px, ui, pr, { groups, onChange = () => {} }) {
 }
 
 // The children list inside a form: add, remove, renumber, read all.
-export function childList(box, ui, pr, { mount, groups, groupId = '', noGroup = false, start = 0, firstNumber = 1, onChange = () => {} }) {
+export function childList(box, ui, pr, { mount, groups, groupId = '', noGroup = false, start = 0, firstNumber = 1, onChange = () => {}, agent = false }) {
+  const noun = agent ? 'Player' : 'Child'
   const kids = []
   let seq = 0
-  const renumber = () => { mount.querySelectorAll('[data-child-title]').forEach((h, i) => { h.textContent = `Child ${i + firstNumber}` }); onChange() }
+  const renumber = () => { mount.querySelectorAll('[data-child-title]').forEach((h, i) => { h.textContent = `${noun} ${i + firstNumber}` }); onChange() }
   const add = () => {
     seq += 1
     const px = `${mount.id}-k${seq}`
-    mount.insertAdjacentHTML('beforeend', childBlockHtml(px, kids.length + firstNumber, { groups, groupId, noGroup }))
-    kids.push({ px, ...wireChild(box, px, ui, pr, { groups, onChange }) })
+    mount.insertAdjacentHTML('beforeend', childBlockHtml(px, kids.length + firstNumber, { groups, groupId, noGroup, noun }))
+    kids.push({ px, ...wireChild(box, px, ui, pr, { groups, onChange, agent }) })
     renumber()
     box.querySelector(`#${px}-name`)?.focus()
   }
@@ -150,15 +151,17 @@ export function childList(box, ui, pr, { mount, groups, groupId = '', noGroup = 
 
 // Send it. children already read. Returns true when done (the form closes).
 export async function submitFamily(ui, body, { onBusy = () => {} } = {}) {
-  let r = await ui.post('addFamily', body)
+  const action = body.agent ? 'addAgent' : 'addFamily'
+  const what = body.agent ? 'the players' : 'the family'
+  let r = await ui.post(action, body)
   if (r.status === 409 && r.data.code === 'full') {
     // The confirm replaces the form: after it, anything wrong is a toast.
     if (!(await ui.confirmBox(esc(r.data.error), { ok: 'Add anyway' }))) return { ok: false, closed: true }
-    r = await ui.post('addFamily', { ...body, force: true })
-    if (!r.ok) { ui.toast(r.data.error || 'Could not add the family.'); return { ok: false, closed: true } }
+    r = await ui.post(action, { ...body, force: true })
+    if (!r.ok) { ui.toast(r.data.error || `Could not add ${what}.`); return { ok: false, closed: true } }
   }
   onBusy(false)
-  if (!r.ok) return { ok: false, error: r.data.error || 'Could not add the family.', rowId: r.data.code === 'duplicate' ? r.data.rowId : '' }
+  if (!r.ok) return { ok: false, error: r.data.error || `Could not add ${what}.`, rowId: r.data.code === 'duplicate' ? r.data.rowId : '' }
   ui.closeModal()
   familyDone(ui, r.data, body)
   ui.after?.()
@@ -171,6 +174,7 @@ function familyText({ parent, names, url, amountLabel }) {
 
 // What staff see after: every child, the one payment link, Copy and Text.
 export function familyDone(ui, d, body) {
+  if (body.agent) return agentDone(ui, d, body)
   const names = d.rows.map((x) => x.name)
   const url = d.payreq?.url || ''
   const sent = d.emailed ? `One email sent to ${esc(d.emailTo)}.` : d.emailError ? `<b>The email did not send:</b> ${esc(d.emailError)}` : 'No email sent.'
@@ -186,9 +190,32 @@ export function familyDone(ui, d, body) {
   })
 }
 
+function agentText({ agent, names, url, amountLabel }) {
+  return `Hi ${firstName(agent)}, it's Lee from Joner Football. ${both(names.map(firstName))} ${names.length > 1 ? 'are' : 'is'} booked in. Sign in at ${url} with your email to see ${names.length > 1 ? 'your players' : 'your player'}${amountLabel ? ` and pay ${amountLabel} in one payment` : ''}. We send you a 6 digit code, no password needed.`
+}
+// Add an agent, done: every player, the one payment link, Copy and Text.
+function agentDone(ui, d, body) {
+  const a = body.agent
+  const names = d.rows.map((x) => x.name)
+  const url = d.payreq?.url || ''
+  const sent = d.emailed ? `One email sent to ${esc(d.emailTo)}.` : d.emailError ? `<b>The email did not send:</b> ${esc(d.emailError)}` : 'No email sent.'
+  const box = ui.modal(`<h2 style="margin-bottom:6px">${names.length > 1 ? `${names.length} players added` : 'Player added'}</h2>
+    <p class="muted small" style="margin-bottom:10px">One agent account for ${esc(a.name)} (${esc(a.email)}). ${sent}${d.pdfWarning ? ` <b>${esc(d.pdfWarning)}</b>` : ''}${d.profileError ? ` <b>${esc(d.profileError)}</b>` : ''}</p>
+    <ul class="jm-hist" style="margin-bottom:12px">${d.rows.map((x) => `<li><span><b>${esc(x.name)}</b><small>${esc(x.where)}${x.amountLabel ? ` · ${esc(x.amountLabel)} on the agent payment` : ''}</small></span></li>`).join('')}</ul>
+    <p class="muted small" style="margin-bottom:10px">Waivers: each player signs their own, not the agent. The agent gives each player a login from their account.</p>
+    ${url ? `<label class="j-field"><span>Agent payment link, ${esc(d.payreq.amountLabel)} for every player</span><input class="j-input" value="${esc(url)}" readonly></label>` : ''}
+    <div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Close</button>${url ? '<button type="button" class="j-btn j-btn-line" id="ad-copy">Copy link</button>' : ''}<button type="button" class="j-btn j-btn-dark" id="ad-text" ${a.mobile ? '' : 'disabled title="No mobile entered"'}>Text the agent</button></div>`)
+  box.querySelector('#ad-copy')?.addEventListener('click', () => ui.copy(url))
+  box.querySelector('#ad-text').addEventListener('click', () => {
+    ui.closeModal()
+    ui.textComposer({ modal: ui.modal, toast: ui.toast, rowIds: d.rows.map((x) => x.rowId), parent: a.name, mobile: a.mobile, text: agentText({ agent: a.name, names, url: url || 'jonerfootball.com/jfp-account', amountLabel: d.payreq?.amountLabel || '' }), title: 'Text the agent' })
+  })
+}
+
 // Players tab > Add a family: the parent first, then two children (more if
 // needed), no group required.
 export async function familyModal(ui) {
+  if (ui.agent) return agentModal(ui)
   const pr = await ui.pricing()
   const groups = familyGroups(await ui.board(), ui.isJJ)
   const box = ui.modal(`<h2 style="margin-bottom:4px">Add a family</h2>
@@ -244,6 +271,76 @@ export async function familyModal(ui) {
     busy = false
     if (out.ok || out.closed) return
     $('fa-go').disabled = false; relabel()
+    err.textContent = out.error; err.hidden = false
+  })
+}
+
+// Players tab > Add an agent (Lee, 20 Oct 2026): "loads of pro players work
+// under that agent ... I invoice the agent who pays for the players'
+// sessions". The agent first (or one already on file), then the players.
+// One agent account, one email and one payment; no sibling rate; each player
+// signs their own waiver.
+async function agentModal(ui) {
+  const [pr, board, list] = await Promise.all([ui.pricing(), ui.board(), ui.post('agentsList')])
+  const groups = familyGroups(board, ui.isJJ)
+  const agents = list.ok ? list.data.agents || [] : []
+  const box = ui.modal(`<h2 style="margin-bottom:4px">Add an agent</h2>
+    <p class="muted small" style="margin-bottom:12px">For an agent who pays for their players: one agent account, one email and one payment for every player with a price. The agent signs in and sees every player, their dates and every payment. Each player keeps their own group and price. No sibling rate. Each player signs their own waiver.</p>
+    ${agents.length ? `<label class="j-field"><span>Agent already on file? <span class="muted">(adds more players to their account)</span></span><select class="j-select" id="ag-pick"><option value="">New agent</option>${agents.map((a, i) => `<option value="${i}">${esc(a.name)}${a.company ? `, ${esc(a.company)}` : ''} (${a.players.length} player${a.players.length === 1 ? '' : 's'})</option>`).join('')}</select></label>` : ''}
+    <h3>Agent</h3>
+    <div class="j-two"><label class="j-field"><span>Agent name</span><input class="j-input" id="ag-name" autocomplete="off"></label>
+    <label class="j-field"><span>Agent mobile</span><input class="j-input" id="ag-mobile" type="tel" inputmode="tel" autocomplete="off"></label></div>
+    <div class="j-two"><label class="j-field"><span>Agent email <span class="muted">(they sign in with this)</span></span><input class="j-input" id="ag-email" type="email" inputmode="email" autocomplete="off"></label>
+    <label class="j-field"><span>Agency <span class="muted">(optional)</span></span><input class="j-input" id="ag-company" autocomplete="off"></label></div>
+    <label class="j-field"><span>Find an existing player <span class="muted">(Term 4, removed players, Term 3 or waivers)</span></span><input class="j-input" id="ag-search" placeholder="Start typing a name" autocomplete="off"></label>
+    <div id="ag-results"></div>
+    <h3 style="margin-top:12px">Players</h3>
+    <div id="ag-kids"></div>
+    <button type="button" class="j-btn j-btn-line j-btn-sm" id="ag-more">+ Add another player</button>
+    <label class="j-check" style="margin-top:10px"><input type="checkbox" id="ag-afterpay" checked> <span>Afterpay allowed on the agent payment</span></label>
+    <label class="j-check"><input type="checkbox" id="ag-send" checked> <span>Email the agent now: every player and one payment</span></label>
+    <p class="j-err" id="ag-err" hidden></p>
+    <div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="ag-go">Add the players</button></div>`, { wide: true })
+  const $ = (id) => box.querySelector(`#${id}`)
+  let list2 = null
+  const relabel = () => { const n = list2 ? list2.count() : 0; const go = $('ag-go'); if (!go.disabled) go.textContent = `Add ${n} ${n === 1 ? 'player' : 'players'}${$('ag-send').checked ? ' and email the agent' : ''}` }
+  list2 = childList(box, ui, pr, { mount: $('ag-kids'), groups, noGroup: true, start: 1, onChange: () => relabel(), agent: true })
+  $('ag-more').addEventListener('click', () => list2.add())
+  $('ag-pick')?.addEventListener('change', (e) => {
+    const a = agents[Number(e.target.value)]
+    for (const [id, k] of [['ag-name', 'name'], ['ag-email', 'email'], ['ag-mobile', 'mobile'], ['ag-company', 'company']]) $(id).value = a ? a[k] || '' : ''
+  })
+  // A picked player fills the next empty player (never the agent's details).
+  findExisting(box, { post: ui.post, toast: ui.toast, input: $('ag-search'), results: $('ag-results'), form: { fill: (x) => {
+    let k = list2.kids.find((c) => !box.querySelector(`#${c.px}-name`).value.trim())
+    if (!k) { list2.add(); k = list2.kids.at(-1) }
+    const name = box.querySelector(`#${k.px}-name`)
+    name.value = x.name || ''
+    name.dataset.fromRemoved = x.fromRemoved || ''
+    name.dataset.removedName = x.name || ''
+    if (x.dob) box.querySelector(`#${k.px}-dob`).value = x.dob
+    const gsel = box.querySelector(`#${k.px}-group`)
+    if (x.removed?.groupId && [...gsel.options].some((o) => o.value === x.removed.groupId)) { gsel.value = x.removed.groupId; gsel.dispatchEvent(new Event('change')) }
+    relabel()
+  } } })
+  $('ag-send').addEventListener('change', relabel)
+  relabel()
+  let busy = false
+  $('ag-go').addEventListener('click', async () => {
+    if (busy) return
+    const err = $('ag-err'); err.hidden = true
+    const agent = { name: $('ag-name').value.trim(), email: $('ag-email').value.trim(), mobile: $('ag-mobile').value.trim(), company: $('ag-company').value.trim() }
+    if (agent.name.length < 2) { err.textContent = "Enter the agent's name."; err.hidden = false; return }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(agent.email)) { err.textContent = "Enter the agent's email. They sign in with it."; err.hidden = false; return }
+    const children = list2.read()
+    const bad = children.find((c) => c.error)
+    if (bad) { err.textContent = bad.error; err.hidden = false; return }
+    if (!children.length) { err.textContent = 'Add at least one player.'; err.hidden = false; return }
+    busy = true; $('ag-go').disabled = true; $('ag-go').textContent = 'Adding'
+    const out = await submitFamily(ui, { agent, children, sendEmail: $('ag-send').checked, afterpay: $('ag-afterpay').checked })
+    busy = false
+    if (out.ok || out.closed) return
+    $('ag-go').disabled = false; relabel()
     err.textContent = out.error; err.hidden = false
   })
 }

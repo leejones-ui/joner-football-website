@@ -242,7 +242,7 @@ function nav() {
       { key: 'home', label: 'Home', icon: 'home' },
       { key: 'sessions', label: 'Sessions', icon: 'calendar' },
       { key: 'fees', label: 'Fees', icon: 'card', dot: feesOwing() > 0 },
-      { key: 'family', label: solo() ? 'My profile' : 'Family', icon: 'user', dot: familyCount() > 0 },
+      { key: 'family', label: solo() ? 'My profile' : D?.agent ? 'My players' : 'Family', icon: 'user', dot: familyCount() > 0 },
       { key: 'news', label: 'Announcements', icon: 'bell', count: unreadNews() },
       notesItem,
       reportsItem,
@@ -301,7 +301,8 @@ function toggleNav(label) {
 const FAMILY_BAR = [['home', 'Home', 'home'], ['sessions', 'Sessions', 'calendar'], ['fees', 'Fees', 'card'], ['family', 'Family', 'user']]
 const PLAYER_BAR = [['home', 'Home', 'home'], ['sessions', 'Sessions', 'calendar'], ['notes', 'Notes', 'whistle'], ['videos', 'Videos', 'play']]
 let BAR = FAMILY_BAR
-const unsignedWaivers = () => (D ? [...D.players, ...(D.juniors?.children || [])].filter((p) => !p.waiver?.onFile) : [])
+// An agent's players sign their own waivers (Lee, 20 Oct 2026): never in the agent's list.
+const unsignedWaivers = () => (D ? [...D.players, ...(D.juniors?.children || [])].filter((p) => !p.waiver?.onFile && !(p.byAgent && !D.playerLogin)) : [])
 function familyCount() { return infoGaps().length + unsignedWaivers().length }
 const badge = (n) => n ? `<span class="badge" aria-label="${n} to sort">${n}</span>` : ''
 // Announcements (Lee, 17 Oct 2026): a red number counts the ones not opened yet.
@@ -352,7 +353,7 @@ function accountSheet() {
   const sheet = openSheet({ title: who || 'Your account', subtitle: D?.email ? `Signed in as ${D.email}` : '' })
   sheet.body.innerHTML = `<div class="ja-more-group"><p class="ja-nav-label">Look</p>${themeSwitch()}</div>
     <div class="ja-more-group"><p class="ja-nav-label">Your account</p><div class="ja-mlist">
-      ${D?.playerLogin ? '' : moreRow({ key: 'family', label: solo() ? 'My profile' : 'Your family', icon: 'user', dot: familyCount() > 0 })}
+      ${D?.playerLogin ? '' : moreRow({ key: 'family', label: solo() ? 'My profile' : D?.agent ? 'Your players' : 'Your family', icon: 'user', dot: familyCount() > 0 })}
       ${D?.playerLogin ? '' : moreRow({ key: 'fees', label: 'Fees and receipts', icon: 'card', dot: feesOwing() > 0 })}
       ${moreRow({ key: 'contact', label: 'Contact us', icon: 'chat' })}
     </div></div>${installCard()}`
@@ -460,14 +461,14 @@ function todoCards() {
   const ahead = (D.owed || []).filter((o) => o.kind === 'prepay').map((o) => aheadBlock(D, o, { pane: 'home', compact: true }))
   // Players whose waiver is not part of a payment card above: step 1, first.
   const inCards = new Set([...D.todo.flatMap((t) => t.players), ...(D.owed || []).map((o) => o.player)])
-  const waivers = D.players.filter((p) => !p.waiver.onFile && !inCards.has(p.name)).map((p) => ({ title: p.adult ? (D.self || solo() ? 'Sign your waiver' : `Sign ${first(p.name)}'s waiver`) : `Sign ${first(p.name)}'s waiver`, sub: 'Every JFP player needs one on file. It takes two minutes.', btn: `<button type="button" class="ja-btn ja-btn-light ja-btn-sm" data-waiver-player="${esc(p.key)}">Sign</button>` }))
+  const waivers = D.players.filter((p) => !p.waiver.onFile && !inCards.has(p.name) && !(p.byAgent && !D.playerLogin)).map((p) => ({ title: p.adult ? (D.self || solo() ? 'Sign your waiver' : `Sign ${first(p.name)}'s waiver`) : `Sign ${first(p.name)}'s waiver`, sub: 'Every JFP player needs one on file. It takes two minutes.', btn: `<button type="button" class="ja-btn ja-btn-light ja-btn-sm" data-waiver-player="${esc(p.key)}">Sign</button>` }))
   const info = infoGaps().map(({ p, missing }) => {
     const need = missing.filter((m) => m !== 'check the details')
     const what = need.length ? `Add ${need.length > 1 ? `${need.slice(0, -1).join(', ')} and ${need.at(-1)}` : need[0]}.` : 'Check what your waiver told us and save.'
-    const mine = p.self || D.self
+    const mine = !D.agent && (p.self || D.self)
     return { title: mine ? 'Your player details' : `${first(p.name)}'s player information`, sub: `${what} It helps us put ${mine ? 'you' : first(p.name)} in the right group.`, btn: '<button type="button" class="ja-btn ja-btn-light ja-btn-sm" data-go="info">Update</button>' }
   })
-  return stepList('To do first', waivers.length === 1 ? 'Sign the waiver' : 'Sign the waivers', waivers) + pays.join('') + ahead.join('') + jjTodoCards() + depositCards(D, { compact: true, self: Boolean(D.self || solo()) }) + stepList('Then', info.length === 1 ? 'Update player details' : `${info.length} player details to update`, info)
+  return stepList('To do first', waivers.length === 1 ? 'Sign the waiver' : 'Sign the waivers', waivers) + agentWaiverSteps() + pays.join('') + ahead.join('') + jjTodoCards() + depositCards(D, { compact: true, self: Boolean(D.self || solo()) }) + stepList('Then', info.length === 1 ? 'Update player details' : `${info.length} player details to update`, info)
 }
 // One line on Home instead of a stack of cards (redesign, 17 Oct 2026):
 // "N things to sort", red when there is money to pay. Tapping it opens the
@@ -475,11 +476,30 @@ function todoCards() {
 function todoSummary() {
   const pay = oweList(D).length + (D.juniors?.todo || []).length
   const ahead = (D.owed || []).filter((o) => o.kind === 'prepay').length
-  const waivers = D.players.filter((p) => !p.waiver.onFile).length
+  const waivers = D.players.filter((p) => !p.waiver.onFile && !(p.byAgent && !D.playerLogin)).length + agentWaiting().length
   const info = infoGaps().length
   const deposit = depositCards(D, { compact: true, self: Boolean(D.self || solo()) }) ? 1 : 0
   const bits = [pay && `${pay} to pay`, waivers && `${waivers} waiver${waivers > 1 ? 's' : ''}`, info && `${info} player detail${info > 1 ? 's' : ''}`, deposit && 'next term', ahead && !pay && 'pay ahead']
   return { n: pay + waivers + info + deposit + (pay ? 0 : ahead), pay, line: bits.filter(Boolean).join(' · ') }
+}
+// An agent's account (Lee, 20 Oct 2026): each player signs their own waiver
+// from their own login. The agent's step is to give them one.
+const agentWaiting = () => (D?.agent && !D.playerLogin ? D.players.filter((p) => p.byAgent && !p.waiver?.onFile && !p.login) : [])
+function agentWaiverSteps() {
+  if (!D?.agent || D.playerLogin) return ''
+  const rows = D.players.filter((p) => p.byAgent && !p.waiver?.onFile).map((p) => ({
+    title: `${first(p.name)}'s waiver`,
+    sub: p.login ? `${first(p.name)} has a login (${p.login}) and signs it there. A parent signs if they are under 18.` : `${first(p.name)} signs it, not you (a parent signs if they are under 18). Give them a login and they sign it there.`,
+    btn: p.login ? '' : `<button type="button" class="ja-btn ja-btn-light ja-btn-sm" data-login-set="${esc(p.key)}">Give a login</button>`,
+  }))
+  return stepList('Waivers', rows.length === 1 ? 'The player signs their waiver' : 'Players sign their own waivers', rows)
+}
+function agentWaiverSheet(p) {
+  const sheet = openSheet({ title: `${first(p.name)}'s waiver`, subtitle: 'The player signs it, not the agent' })
+  sheet.body.innerHTML = `<p>Every JFP player needs a waiver on file. ${esc(first(p.name))} signs their own, or a parent signs if they are under 18.</p><p style="margin-top:10px">${p.login ? `${esc(first(p.name))} already has a login (${esc(p.login)}). Ask them to sign in and sign it there.` : `Give ${esc(first(p.name))} their own login with their own email. They sign in and sign the waiver there. They only see their own sessions, never your payments.`}</p>`
+  sheet.foot.innerHTML = p.login ? '<button type="button" class="ja-btn ja-btn-line" data-close-sheet>Close</button>' : `<button type="button" class="ja-btn ja-btn-red" data-login-set="${esc(p.key)}">Give ${esc(first(p.name))} a login</button>`
+  sheet.foot.querySelector('[data-close-sheet]')?.addEventListener('click', () => closeSheet())
+  sheet.foot.querySelector('[data-login-set]')?.addEventListener('click', () => closeSheet(true))
 }
 function todoStrip() {
   const t = todoSummary()
@@ -487,7 +507,7 @@ function todoStrip() {
   return `<button type="button" class="ja-strip${t.pay ? ' is-pay' : ''}" data-todo-open><span class="n">${t.n}</span><span class="ja-mr-tx"><b>${t.n === 1 ? '1 thing to sort' : `${t.n} things to sort`}</b><small>${esc(t.line)}</small></span>${ic('right', 'ja-mr-go')}</button>`
 }
 function todoSheet() {
-  const sheet = openSheet({ title: 'To sort', subtitle: 'Waivers first, then payments, then player details.' })
+  const sheet = openSheet({ title: 'To sort', subtitle: D.agent && !D.playerLogin ? 'Payments first, then player logins and details.' : 'Waivers first, then payments, then player details.' })
   sheet.sheet.classList.add('ja-todo-sheet')
   sheet.body.innerHTML = `<div class="ja-stack">${todoCards()}</div>`
   return sheet
@@ -569,10 +589,17 @@ function renderHome() {
   el.innerHTML = `${head}
     <div class="ja-home">
       <div class="ja-stack"><p class="ja-label">Next up</p>${nextBlock}${doneBlock}</div>
-      <div class="ja-stack">${D.playerLogin ? '' : strip ? `<p class="ja-label">To do</p>${strip}` : `<div class="ja-strip is-done">${ic('check')}<span class="ja-mr-tx"><b>All sorted</b><small>Nothing to sign or pay right now.</small></span></div>`}${reportsHomeBlock(D)}${makeupsHomeBlock(D)}${notesHomeBlock(D)}${newsBlock()}
+      <div class="ja-stack">${D.playerLogin ? playerWaiverStep() : strip ? `<p class="ja-label">To do</p>${strip}` : `<div class="ja-strip is-done">${ic('check')}<span class="ja-mr-tx"><b>All sorted</b><small>Nothing to sign or pay right now.</small></span></div>`}${reportsHomeBlock(D)}${makeupsHomeBlock(D)}${notesHomeBlock(D)}${newsBlock()}
         ${jjHomeCard()}${notBooked.length ? `<div class="ja-card"><p class="ja-small ja-muted">${notBooked.map((p) => p.placeNoSession ? `<b class="ja-ink">${esc(p.name)}</b> has a place. We will confirm the day and time.` : `<b class="ja-ink">${esc(p.name)}</b> is not booked this term. <a class="ja-link" href="${links.booking}">See the timetable</a>`).join('<br>')}</p></div>` : ''}${requestsBlock()}</div>
     </div>
     ${D.playerLogin ? '' : promos}${watch}`
+}
+
+// An agent's player, signed in with their own login: their waiver (Lee, 20 Oct 2026).
+function playerWaiverStep() {
+  const p = D.players.find((x) => x.agentPlayer && !x.waiver?.onFile)
+  if (!p) return ''
+  return stepList('To do first', 'Sign your waiver', [{ title: 'Sign your waiver', sub: 'Every JFP player needs one on file. Under 18? A parent or guardian signs it here with you.', btn: `<button type="button" class="ja-btn ja-btn-light ja-btn-sm" data-waiver-player="${esc(p.key)}">Sign</button>` }])
 }
 
 function requestsBlock() {
@@ -1645,9 +1672,11 @@ document.addEventListener('click', async (e) => {
   if (wt) {
     const td = D.todo.find((x) => x.id === wt.dataset.waiverFor)
     const keys = D.players.filter((p) => !p.waiver.onFile && td.players.includes(p.name)).map((p) => p.key)
-    return waiverSheet(keys.length ? keys : D.players.filter((p) => !p.waiver.onFile).map((p) => p.key))
+    return waiverSheet(keys.length ? keys : D.players.filter((p) => !p.waiver.onFile && !(p.byAgent && !D.playerLogin)).map((p) => p.key))
   }
   const wp = t.closest('[data-waiver-player]')
+  const wpp = wp && D.players.find((p) => p.key === wp.dataset.waiverPlayer)
+  if (wpp?.byAgent && !D.playerLogin) return agentWaiverSheet(wpp)
   if (wp) {
     // From the More sheet: every waiver still to sign, one sheet (children first).
     if (wp.closest('.ja-tiles')) { closeSheet(true); return waiverSheet(unsignedWaivers().map((p) => p.key)) }

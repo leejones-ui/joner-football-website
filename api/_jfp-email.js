@@ -296,7 +296,8 @@ ${kitLine(config)}`
 // what they pay, then the steps in the order the account shows them: a waiver
 // for each child, one payment for everyone, then each child's details.
 // children: [{ name, where, pay, link (on the one payment), waiver (still to sign), sessions }]
-export function familyWelcome({ to, parentName, children, config, url, amountCents = 0, attachment }) {
+export function familyWelcome({ to, parentName, children, config, url, amountCents = 0, attachment, agent = false }) {
+  if (agent) return agentWelcome({ to, parentName, children, config, url, amountCents, attachment })
   const names = children.map((c) => c.name)
   const w = contactWords({ self: false, players: names, parent: parentName })
   const firsts = children.map((c) => String(c.name).trim().split(/\s+/)[0])
@@ -320,10 +321,34 @@ ${kitLine(config)}`
   const subject = `${both(firsts)}: your ${config.term} ${children.length > 1 ? 'places' : 'place'}`
   return { subject, html: shell({ preheader: amountCents > 0 ? `${formatAud(amountCents)} for ${children.length} player${children.length > 1 ? 's' : ''}` : config.term, heading: children.length > 1 ? 'Your family is booked in' : 'Your JFP place', body }) }
 }
+// Add an agent (Lee, 20 Oct 2026): the agent pays for their players. Players
+// sign their own waivers, so the agent's steps are pay and check details.
+export function agentWelcome({ to, parentName, children, config, url, amountCents = 0, attachment }) {
+  const w = contactWords({ agent: true, players: children.map((c) => c.name), parent: parentName })
+  const firsts = children.map((c) => String(c.name).trim().split(/\s+/)[0])
+  const both = (list) => (list.length > 1 ? `${list.slice(0, -1).join(', ')} and ${list.at(-1)}` : list[0] || '')
+  const li = (html) => `<li style="margin:0 0 6px;">${html}</li>`
+  const steps = []
+  if (amountCents > 0) steps.push(li(`Pay <b>${esc(formatAud(amountCents))}</b> in one payment for ${esc(both(children.filter((c) => c.link).map((c) => String(c.name).trim().split(/\s+/)[0])))}. Card, Apple Pay or Afterpay.`))
+  if (children.some((c) => c.sessions)) steps.push(li(`Session by session: pay ahead for ${esc(both(children.filter((c) => c.sessions).map((c) => String(c.name).trim().split(/\s+/)[0])))} in your account, or we bill the sessions after they happen.`))
+  const unsigned = children.filter((c) => c.waiver).map((c) => String(c.name).trim().split(/\s+/)[0])
+  if (unsigned.length) steps.push(li(`Waivers: each player signs their own (a parent signs for a player under 18). Give ${esc(both(unsigned))} ${unsigned.length > 1 ? 'their own logins' : 'their own login'} from your account and they sign it there.`))
+  steps.push(li(`Check each player's details: club, position and who to call in an emergency.`))
+  const body = `${p(`Hi ${esc(w.hi)}, ${esc(both(firsts))} ${children.length > 1 ? 'are' : 'is'} booked in with Joner Football for ${esc(config.term)}.`)}
+${rows([...children.map((c) => [esc(c.name), `${esc(c.where)}<br><span style="color:#6B7280;font-weight:400;font-size:13px;">${esc(c.pay)}</span>`]), ...(amountCents > 0 ? [['Total to pay', esc(formatAud(amountCents))]] : [])])}
+${p(`<b>One account for your players.</b> Sign in with this email address and you will see ${children.length > 1 ? 'every player' : 'your player'}, their dates and every payment.`)}
+${p('<b>When you sign in</b>')}
+<ol style="margin:0 0 14px;padding-left:20px;font-size:15px;line-height:1.6;color:#374151;">${steps.join('')}</ol>
+${button(amountCents > 0 ? 'Sign in and pay' : 'Sign in to your account', url)}
+${pdfLine(attachment)}
+${howToSignIn(to)}`
+  const subject = `${children.length > 1 ? `${children.length} players` : both(firsts)}: ${config.term} with Joner Football`
+  return { subject, html: shell({ preheader: amountCents > 0 ? `${formatAud(amountCents)} for ${children.length} player${children.length > 1 ? 's' : ''}` : config.term, heading: children.length > 1 ? 'Your players are booked in' : 'Your player is booked in', body }) }
+}
 export async function sendFamilyWelcome({ to, parentName, children, ...rest }) {
   const { subject, html } = familyWelcome({ to, parentName, children, ...rest })
   const w = contactWords({ self: false, players: children.map((c) => c.name), parent: parentName })
-  return send({ to: [{ email: to, name: w.toName }], subject, html, replyTo: 'ligia@jonerfootball.com', kind: 'family add', attachment: rest.attachment })
+  return send({ to: [{ email: to, name: w.toName }], subject, html, replyTo: 'ligia@jonerfootball.com', kind: rest.agent ? 'agent add' : 'family add', attachment: rest.attachment })
 }
 
 // One invoice for the whole family: each place and its price, one total.

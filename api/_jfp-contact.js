@@ -40,7 +40,7 @@ const join = (names) => (names.length > 1 ? `${names.slice(0, -1).join(', ')} an
 // Every wording that changes between "the family" and the player, in one
 // place. self: the player is their own contact. players: the player names
 // (one for a self contact). parent: the parent name on the row, if any.
-export function contactWords({ self = false, players = [], parent = '' } = {}) {
+export function contactWords({ self = false, players = [], parent = '', agent = false } = {}) {
   const names = (Array.isArray(players) ? players : [players]).map((x) => String(x?.name ?? x ?? '').trim()).filter(Boolean)
   const firsts = names.map(firstName)
   const one = firsts[0] || ''
@@ -68,6 +68,31 @@ export function contactWords({ self = false, players = [], parent = '' } = {}) {
       has: 'you have',
       waiverLine: 'sign your waiver',
       greetingName: one,
+    }
+  }
+  // An agent pays for their players (Lee, 20 Oct 2026): never "the family".
+  if (agent) {
+    return {
+      self: false,
+      agent: true,
+      toName: String(parent || '').trim(),
+      hi: firstName(parent) || 'there',
+      contact: firstName(parent) || 'the agent',
+      emailWho: 'Email the agent',
+      textWho: firstName(parent) ? `Text ${firstName(parent)}` : 'Text the agent',
+      addAndEmail: 'Add and email the agent',
+      theContact: 'the agent',
+      contactNoun: 'agent',
+      emailLabel: "Agent's email (they sign in with this)",
+      mobileLabel: "Agent's mobile",
+      noEmail: 'This player has no agent email in Airtable.',
+      sessionsOf: one ? `${join(firsts)}'s sessions` : 'Your players\' sessions',
+      whose: one ? `${join(firsts)}'s` : 'your players\'',
+      whoseCap: one ? `${join(firsts)}'s` : 'Your players\'',
+      who: join(names) || 'your player',
+      has: `${join(names) || 'your player'} ${names.length > 1 ? 'have' : 'has'}`,
+      waiverLine: 'get the player waiver signed',
+      greetingName: firstName(parent),
     }
   }
   return {

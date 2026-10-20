@@ -7,6 +7,7 @@
 //
 // Staff changes write straight into Airtable Term 4 Players, so Lee's
 // dashboard always matches, and every change is recorded in the audit log.
+import { agentFor, saveAgent, allAgents, agentsView, withAgentTag } from './_jfp-agents.js'
 import { asksComing, comingByGroup } from './_jfp-coming.js'
 import { playersHistory, HISTORY_TERMS, playerRecords } from './_jfp-players-history.js'
 import { boardExtras } from './_jfp-extra.js'
@@ -30,6 +31,7 @@ import {
   listLedger, createLedgerRow, listJuniors, listVenueHistory, PAINT_MAX_AGE_MS,
   findLedgerByPayment, listPreviousTerm, getPreviousTermRow, updatePreviousTermRow, previousTermSpec,
   TABLES,
+  familyFor,
 } from './_jfp-airtable.js'
 import { listCancels, staffView, noticeSummary } from './_jfp-cancel.js'
 import { repairJfpBooking, effectsSummary, EFFECTS, payEffectsFor } from './_jfp-finalise.js'
@@ -390,6 +392,13 @@ function sessionsLine(payment, perSession) {
   return `${what}${perSession ? ` at ${formatAud(perSession)} a session` : ''}.`
 }
 
+// The agent a new row belongs to: the Add an agent form's, else the agent
+// whose email it is (a player added later with Add a player).
+async function agentIdFor(family, email) {
+  if (family?.agent) return family.agent.id
+  return email ? (await agentFor(email).catch(() => null))?.id || '' : ''
+}
+
 // One player into a group, checked, nothing written yet (round 2, 14 Oct
 // 2026: shared by Add a player and Add a family). { ok, ... } or
 // { status, error, code?, rowId? }. family: { size } when several children
@@ -416,7 +425,8 @@ async function prepGroupAdd({ principal, config, group, body, roster, family = n
   const typed = Number(body.amountCents)
   const amountCents = custom ? (Number.isInteger(typed) && typed > 0 ? typed : custom.cents) : fromPrice.amountCents
   // In a family add the other children are the siblings, so the sibling rate is allowed.
-  const sibErr = custom || (family && family.size > 1) ? null : await siblingGuard(product, email, [name])
+  // An agent's players are never siblings (Lee, 20 Oct 2026).
+  const sibErr = custom || (family && family.size > 1 && !family.agent) ? null : await siblingGuard(product, email, [name])
   if (sibErr) return { status: 400, error: sibErr }
   const isTrial = payment === 'trial' || (!custom && product === 'trial')
   // A paid trial goes on the one family payment like any other price (Lee,
@@ -428,9 +438,10 @@ async function prepGroupAdd({ principal, config, group, body, roster, family = n
   const addId = newId('ADD')
   const today = sydneyToday()
   const type = isTrial ? 'JFP Trial' : isPro ? PRO_TYPE : payment === 'sessions' ? SESSION_TYPE : price.type
-  let notes = `Added by ${principal.name} in the JFP portal${family ? ' (Add a family)' : ''}${isTrial && from ? `. Trial offered for ${from}` : ''}${age != null ? `, age ${age}` : ''}${!custom && price.fixedSessions && !isTrial && !perSessionPay ? `, half term from ${from} (${price.sessions} sessions)` : !custom && price.proRata && !isTrial && !perSessionPay ? `, from ${from} (${price.sessions} of ${price.of} sessions, pro rata)` : ''}${custom && !perSessionPay ? `, ${custom.name}` : ''}${payment === 'offline' ? `. Paid offline (${clean(body.method, 30) || 'not stated'})` : ''}. [${ADMIN_TAG}:${addId}]${body.note ? `\n${clean(body.note, 500)}` : ''}${perSessionPay ? `\n${sessionsLine(payment, perSession)}` : ''}`
+  let notes = `Added by ${principal.name} in the JFP portal${family?.agent ? ' (Add an agent)' : family ? ' (Add a family)' : ''}${isTrial && from ? `. Trial offered for ${from}` : ''}${age != null ? `, age ${age}` : ''}${!custom && price.fixedSessions && !isTrial && !perSessionPay ? `, half term from ${from} (${price.sessions} sessions)` : !custom && price.proRata && !isTrial && !perSessionPay ? `, from ${from} (${price.sessions} of ${price.of} sessions, pro rata)` : ''}${custom && !perSessionPay ? `, ${custom.name}` : ''}${payment === 'offline' ? `. Paid offline (${clean(body.method, 30) || 'not stated'})` : ''}. [${ADMIN_TAG}:${addId}]${body.note ? `\n${clean(body.note, 500)}` : ''}${perSessionPay ? `\n${sessionsLine(payment, perSession)}` : ''}`
   if (perSession) notes = withPerSession(notes, perSession)
   notes = withQuote(withOwnContact(notes, ownContact), read.v.quoteTiers)
+  notes = withAgentTag(notes, await agentIdFor(family, email))
   // Starting later in the term (Lee, 14 Oct 2026): the family's dates, the
   // register, billing and the coach's alert all count from that session.
   const groupDates = sessionDates(config, group.day)
@@ -511,7 +522,8 @@ export async function addPlayer(req, res, principal, config, body) {
 async function playersList(req, res, config, body = {}) {
   // Player information (club, level, positions) is read with the list, so the
   // tab can filter on it when placing players. A failed read only hides it.
-  const [roster, groups, profiles, trialFb] = await Promise.all([loadRoster({ fresh: body.fresh === true }), listGroups(), allProfiles().catch((e) => { console.error('jfp profiles read failed', e); return null }), trialFeedbackAll()])
+  const [roster, groups, profiles, trialFb, agents] = await Promise.all([loadRoster({ fresh: body.fresh === true }), listGroups(), allProfiles().catch((e) => { console.error('jfp profiles read failed', e); return null }), trialFeedbackAll(), allAgents().catch(() => [])])
+  const agentById = new Map(agents.map((a) => [a.id, a]))
   const byGroup = Object.fromEntries(groups.map((g) => [g.id, g]))
   // placeInGroups resolves each row's groupId the same way the Timetable does,
   // including the coach-split morning squads. A groupId that is not a real
@@ -536,6 +548,8 @@ async function playersList(req, res, config, body = {}) {
       profile: profileSummary(prof),
       trial: /trial/i.test(r.paymentType), trialDate: trialDateOf(r), trialFeedback: trialFb[r.id] || null,
       parent: r.parent || '',
+      // Paid for by an agent (Lee, 20 Oct 2026): the parent fields are the agent's.
+      ...(r.agentId ? { agent: agentById.get(r.agentId)?.name || r.parent || 'Agent' } : {}),
       email: r.email || '',
       phone: r.phone || '',
       // No parent: the player is their own contact (wording, emails, texts).
@@ -607,9 +621,10 @@ async function prepNoGroupAdd({ principal, config, body, roster, family = null, 
   const perSessionPay = payment === 'sessions' || payment === 'pro'
   const note = clean(body.note, 300)
   const what = custom ? custom.name : chosen ? productFor(chosen.product).label : ''
-  let notes = `Added by ${principal.name} in the JFP portal ${family ? 'Add a family' : 'Players tab'}, with no session yet.${note ? ` ${note}` : ''}${what && !perSessionPay ? ` ${what}.` : ''}${payment === 'offline' ? ` Paid offline (${clean(body.method, 30) || 'not stated'}).` : ''}${perSessionPay ? ` ${sessionsLine(payment, perSession)}` : ''}`
+  let notes = `Added by ${principal.name} in the JFP portal ${family?.agent ? 'Add an agent' : family ? 'Add a family' : 'Players tab'}, with no session yet.${note ? ` ${note}` : ''}${what && !perSessionPay ? ` ${what}.` : ''}${payment === 'offline' ? ` Paid offline (${clean(body.method, 30) || 'not stated'}).` : ''}${perSessionPay ? ` ${sessionsLine(payment, perSession)}` : ''}`
   if (perSession) notes = withPerSession(notes, perSession)
   notes = withQuote(withOwnContact(notes, ownContact), read.v.quoteTiers)
+  notes = withAgentTag(notes, await agentIdFor(family, email))
   const fee = perSessionPay ? 0 : ['link', 'offline'].includes(payment) ? amountCents / 100 : feeAud
   const fields = {
     'Player Name': name,
@@ -677,11 +692,14 @@ export async function addFamily(req, res, principal, config, body) {
   const kids = Array.isArray(body.children) ? body.children : []
   if (!kids.length) return fail(res, 400, 'Add at least one child.')
   if (kids.length > FAMILY_MAX) return fail(res, 400, `Add up to ${FAMILY_MAX} children at a time.`)
-  const p = body.parent && typeof body.parent === 'object' ? body.parent : {}
+  // Add an agent (Lee, 20 Oct 2026): the same, with the agent as the contact.
+  const asAgent = body.agent && typeof body.agent === 'object'
+  const p = asAgent ? body.agent : body.parent && typeof body.parent === 'object' ? body.parent : {}
   const email = p.email ? validEmail(p.email) : ''
-  if (!email) return fail(res, 400, 'Add the parent email. The whole family signs in with it, one account for every child.')
+  if (!email) return fail(res, 400, asAgent ? "Add the agent's email. They sign in with it, one account for every player." : 'Add the parent email. The whole family signs in with it, one account for every child.')
   const parentName = clean(p.name, 100)
-  if (parentName.length < 2) return fail(res, 400, "Enter the parent's name.")
+  if (parentName.length < 2) return fail(res, 400, asAgent ? "Enter the agent's name." : "Enter the parent's name.")
+  if (asAgent && familyFor(email, await loadRoster(), config.termStart).players.some((x) => x.term4.some((r) => r.holdsPlace && !r.agentId))) return fail(res, 409, `${email} is already a family's email, with their own players. Use the agent's own email.`)
   const seen = new Set()
   for (const k of kids) {
     const n = normName(k?.player?.name || k?.name || '')
@@ -690,23 +708,24 @@ export async function addFamily(req, res, principal, config, body) {
   }
   const roster = await loadRoster({ fresh: true })
   const groups = Object.fromEntries((await listGroups()).map((g) => [g.id, g]))
+  const agent = asAgent ? await saveAgent(principal, { name: parentName, email, mobile: p.mobile, company: p.company }) : null
   const preps = []
   for (const [i, k] of kids.entries()) {
     const childBody = { ...k, parent: { name: parentName, email, mobile: p.mobile || '' }, ownContact: false, sendEmail: false, force: body.force === true }
     const group = k.groupId ? groups[clean(k.groupId, 60)] : null
-    if (k.groupId && !group) return fail(res, 404, `Child ${i + 1}: that group was not found. Refresh and try again.`, { child: i })
+    if (k.groupId && !group) return fail(res, 404, `${asAgent ? 'Player' : 'Child'} ${i + 1}: that group was not found. Refresh and try again.`, { child: i })
     const prep = group
-      ? await prepGroupAdd({ principal, config, group, body: childBody, roster, family: { size: kids.length } })
-      : await prepNoGroupAdd({ principal, config, body: childBody, roster, family: { size: kids.length } })
+      ? await prepGroupAdd({ principal, config, group, body: childBody, roster, family: { size: kids.length, agent } })
+      : await prepNoGroupAdd({ principal, config, body: childBody, roster, family: { size: kids.length, agent } })
     if (!prep.ok) {
-      const who = clean(k.player?.name || k.name, 80) || `Child ${i + 1}`
+      const who = clean(k.player?.name || k.name, 80) || `${asAgent ? 'Player' : 'Child'} ${i + 1}`
       return fail(res, prep.status, prep.error.includes(who) ? prep.error : `${who}: ${prep.error}`, { child: i, ...(prep.code ? { code: prep.code } : {}), ...(prep.rowId ? { rowId: prep.rowId } : {}) })
     }
     preps.push(prep)
   }
   const famId = newId('FAM')
   const backs = await Promise.all(kids.map((k) => removedSource(k)))
-  const ids = await writeGroupAdds(preps.map((x, i) => ({ ...x, fields: { ...x.fields, 'Term 4 Notes': backNote(`${x.fields['Term 4 Notes']}\nFamily add ${famId}: ${preps.map((y) => y.v.name).join(', ')}.`, backs[i]) } })))
+  const ids = await writeGroupAdds(preps.map((x, i) => ({ ...x, fields: { ...x.fields, 'Term 4 Notes': backNote(`${x.fields['Term 4 Notes']}\n${agent ? `Agent add ${famId} (${parentName}, agent)` : `Family add ${famId}`}: ${preps.map((y) => y.v.name).join(', ')}.`, backs[i]) } })))
   const added = preps.map((x, i) => ({ ...x, rowId: ids[i], where: x.group ? groupSummary(x.group, config) : 'Group to be confirmed' }))
   for (const [i, x] of added.entries()) await markAddedBack(principal, backs[i], { rowId: x.rowId, where: x.group ? x.where : '' })
   const profiles = []
@@ -733,21 +752,21 @@ export async function addFamily(req, res, principal, config, body) {
       waiver: !waiverFor(x.v.name, { emails: [email], phones: [x.v.mobile], dob: x.v.dob }, roster.waivers),
       sessions: x.perSessionPay, link: x.payment === 'link' && x.amountCents > 0,
     }))
-    sent = await trySend('add family', () => sendFamilyWelcome({ to: email, parentName, children, config, url: payreq ? payreqUrl(req, payreq) : `${siteUrl(req)}/jfp-account/`, amountCents: payreq?.amountCents || 0, attachment: pdf.attachment }))
+    sent = await trySend(agent ? 'add agent' : 'add family', () => sendFamilyWelcome({ to: email, parentName, children, agent: Boolean(agent), config, url: payreq ? payreqUrl(req, payreq) : `${siteUrl(req)}/jfp-account/`, amountCents: payreq?.amountCents || 0, attachment: pdf.attachment }))
     if (sent.emailed && payreq) await savePayreq({ ...payreq, emailedAt: new Date().toISOString() })
     if (sent.emailed && !payreq) await kvCommand(['HSET', 'jfp:acct-only-invited', email, new Date().toISOString()])
   }
   // Each group's coach hears about their new player, as with any add.
   for (const x of added.filter((y) => y.group)) await noteNewPlayer({ config, group: x.group, rowId: x.rowId, player: x.v.name, kind: 'added' }).catch((e) => console.error('jfp coach news failed', e))
   for (const x of added) await audit({ by: principal.email, action: x.group ? 'player.add' : 'player.add.nogroup', target: x.rowId, after: { name: x.v.name, group: x.group?.id || '', payment: x.payment, family: famId, payreq: payreq?.id || '', cents: x.payment === 'link' || x.payment === 'offline' ? x.amountCents : 0, perSessionCents: x.v.perSession || undefined, quote: x.v.quoteTiers.length ? x.v.quoteTiers : undefined, priceId: x.custom?.id || undefined } })
-  await audit({ by: principal.email, action: 'family.add', target: famId, after: { email, rows: ids, payreq: payreq?.id || '', cents: payreq?.amountCents || 0, emailed: sent.emailed } })
+  await audit({ by: principal.email, action: agent ? 'agent.add' : 'family.add', target: famId, after: { email, ...(agent ? { agentId: agent.id } : {}), rows: ids, payreq: payreq?.id || '', cents: payreq?.amountCents || 0, emailed: sent.emailed } })
   const profileError = profiles.find((x) => x.profileError)?.profileError || ''
   return res.status(200).json({
-    success: true, familyId: famId,
+    success: true, familyId: famId, ...(agent ? { agentId: agent.id } : {}),
     rows: added.map((x) => ({ rowId: x.rowId, name: x.v.name, where: x.where, payment: x.payment, amountLabel: x.payment === 'link' ? formatAud(x.amountCents) : '' })),
     payreq: payreq ? { id: payreq.id, url: payreqUrl(req, payreq), amountLabel: formatAud(payreq.amountCents) } : null,
     emailed: sent.emailed, emailTo: sent.emailed ? email : '', pdfWarning: pdfWarningOf(sent, pdf),
-    emailError: sent.emailError ? `The family was added, but the email to ${email} did not send. ${sent.emailError}` : '',
+    emailError: sent.emailError ? `${agent ? 'The players were' : 'The family was'} added, but the email to ${email} did not send. ${sent.emailError}` : '',
     ...(profileError ? { profileError } : {}),
   })
 }
@@ -3806,6 +3825,9 @@ async function handle(req, res) {
       }
       case 'addPlayerNoGroup': return await addPlayerNoGroup(req, res, principal, config, body)
       case 'addFamily': return await addFamily(req, res, principal, config, body)
+      // Add an agent (Lee, 20 Oct 2026): addFamily with the agent as the contact.
+      case 'addAgent': return await addFamily(req, res, principal, config, { ...body, agent: body.agent || {} })
+      case 'agentsList': return res.status(200).json({ success: true, agents: agentsView(await allAgents(), (await loadRoster()).players) })
       case 'movePlayer': return await movePlayer(res, principal, config, body)
       case 'removePlayer': return await removePlayer(res, principal, config, body)
       case 'editPlayer': return await editPlayer(res, principal, config, body)
