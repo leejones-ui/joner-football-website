@@ -1323,3 +1323,5 @@ a.sr-only[href="#main-content"]:focus { position: fixed !important; top: 16px; l
 .jp-pnote span { background: color-mix(in srgb, var(--j-focus) 8%, transparent); border-radius: 6px; padding: 3px 7px; overflow-wrap: anywhere; }
 .ji-place { position: absolute; right: 8px; top: 8px; background: #1f2937; color: #fff; font-size: 11px; font-weight: 700; padding: 3px 7px; border-radius: 999px; }
 .ji-place.ji-field { background: #15803d; }
+.ji-yt { margin-top: 10px; }
+.ji-yt .ji-kick { margin-bottom: 6px; }

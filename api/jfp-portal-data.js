@@ -2880,7 +2880,32 @@ function coverView(c, config, groupsById) {
 // spreadsheet goes here once Lee sends the link.
 const SESSION_IDEAS = [
   { label: 'The JF App', url: 'https://apps.apple.com/au/app/joner-football-app/id6737069275', note: 'Drills and full sessions to follow. Android: search Joner Football in Google Play.' },
-  { label: 'Joner Football on YouTube', url: 'https://www.youtube.com/@jonerfootball', note: 'Free drills, Shorts and full sessions.' },
+]
+// Lee's YouTube playlists for coaches (20 Oct 2026, read from
+// youtube.com/@jonerfootball/playlists). Replaces the one channel button.
+// Shorts, viral clips, boot reviews, tour vlogs and subtitled copies left out.
+const YT_PLAYLISTS = [
+  { label: "Full training sessions", id: 'PLM3cVo2QYr-MExQg_Ezv5faZ2NQsnQK2_', count: 84 },
+  { label: "Team and group training", id: 'PLM3cVo2QYr-N6FRyqwgLPXfrxmOds2LG2', count: 40 },
+  { label: "Training sessions", id: 'PLM3cVo2QYr-Pycw3USE_ihe8tnN7bCWaO', count: 48 },
+  { label: "Live training sessions", id: 'PLM3cVo2QYr-OY0d1ei2Giq142JvMk1ySo', count: 30 },
+  { label: "Joner HQ indoor training", id: 'PLM3cVo2QYr-OSRsMVRkYFb89yPGzzL23x', count: 18, place: 'hq' },
+  { label: "Inside training: pro training", id: 'PLM3cVo2QYr-O4bEy1AE1ox9mROWf__T4u', count: 10 },
+  { label: "How I coach series", id: 'PLM3cVo2QYr-M5FFwqWvHNfpVw4Bf5hVvY', count: 22 },
+  { label: "Coaching the coaches", id: 'PLM3cVo2QYr-M5EEw6F8WsgUFqMLkRWnFx', count: 3 },
+  { label: "Voice over series", id: 'PLM3cVo2QYr-OVvJWFLopY52pBxMcnpKbo', count: 17 },
+  { label: "Joner's favourite drills", id: 'PLM3cVo2QYr-O_YGlCBuZyRsBEkpWYzu4I', count: 12 },
+  { label: "1v1, 2v2 and 3v3 drills", id: 'PLM3cVo2QYr-OCG_5_5hA8pFn5k3534x2v', count: 7 },
+  { label: "Speed and agility", id: 'PLM3cVo2QYr-N56aL6P38LQz4V_U-k4TSU', count: 21 },
+  { label: "Shooting drills", id: 'PLM3cVo2QYr-OVQrqULUIi8FuU72egkD50', count: 42 },
+  { label: "Defending sessions", id: 'PLM3cVo2QYr-N2VyAwy7V2Dx6M9Vb-j94h', count: 14 },
+  { label: "Ball mastery skills", id: 'PLM3cVo2QYr-PuexAAWLHNP7m4nQXyF8Az', count: 15 },
+  { label: "Ball mastery drills", id: 'PLM3cVo2QYr-N3U9xxR54OnCMrOWCDlb_k', count: 3 },
+  { label: "Tekkers Tuesdays", id: 'PLM3cVo2QYr-PCae0QiGRPfiPIqnIasL3K', count: 10 },
+  { label: "For beginners", id: 'PLM3cVo2QYr-MCd6BYXPlmMVbxY5OwDj3h', count: 15 },
+  { label: "No equipment drills", id: 'PLM3cVo2QYr-OVVb5EcJIBA3eYUXmtmicO', count: 43 },
+  { label: "Train on your own", id: 'PLM3cVo2QYr-M3PCHsYFDrd1uvg9SDGL5s', count: 20 },
+  { label: "Game analysis", id: 'PLM3cVo2QYr-Mcy8x1tgqyy-cWuWfJ9J5e', count: 5 },
 ]
 
 // The Session ideas topics a coach can file a link under (match TOPICS in jfp-portal-ideas.js).
@@ -2926,7 +2951,7 @@ async function staffAction(req, res, principal, config, body, isAdmin, action) {
       return res.status(200).json({ success: true, ideas: list })
     }
     const { default: lib } = await import('./_jfp-ideas-library.js')
-    return res.status(200).json({ success: true, ideas: Array.isArray(config.sessionIdeas) ? config.sessionIdeas : SESSION_IDEAS, admin: isAdmin, library: lib.library, programs: lib.programs, guide: lib.guide })
+    return res.status(200).json({ success: true, ideas: (Array.isArray(config.sessionIdeas) ? config.sessionIdeas : SESSION_IDEAS).filter((x) => !/youtube\.com\/@jonerfootball\/?$/.test(x.url)), playlists: YT_PLAYLISTS.map((x) => ({ ...x, url: `https://www.youtube.com/playlist?list=${x.id}` })), admin: isAdmin, library: lib.library, programs: lib.programs, guide: lib.guide })
   }
   // Links any coach adds to the Session ideas library (Lee, 20 Oct 2026: "a
   // passing drill they have seen on insta"). Filed under a topic; the coach

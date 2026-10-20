@@ -86,6 +86,8 @@ export async function renderIdeas(ui) {
       <div class="j-card" style="padding:16px"><p class="ji-kick">Every session</p><ol class="ji-steps">${guide.steps.map((s) => `<li><b>${esc(s.t)}</b><span class="muted small">${esc(s.d)}</span></li>`).join('')}</ol></div>
       <div class="j-card" style="padding:16px"><p class="ji-kick">A 10 week block</p><ol class="ji-steps">${guide.topics.map((t) => `<li><b>${esc(t)}</b></li>`).join('')}</ol><p class="muted small" style="margin-top:8px">The first three set the base. Sessions 7 to 10 need to be challenging and add pressure.</p></div></div>`
 
+  // YouTube playlists (Lee, 20 Oct 2026), in place of the one channel button.
+  const playlists = () => (d.playlists || []).length ? `<div class="ji-yt"><p class="ji-kick">Joner Football on YouTube</p><div class="ji-quick">${d.playlists.map((x) => `<a class="j-btn j-btn-line j-btn-sm" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${x.place === 'hq' ? 'HQ: ' : ''}${esc(x.label)} <span class="muted">${x.count}</span> ↗</a>`).join('')}<a class="j-btn j-btn-ghost j-btn-sm" href="https://www.youtube.com/@jonerfootball/playlists" target="_blank" rel="noopener noreferrer">All playlists ↗</a></div></div>` : ''
   const quick = () => `<div class="ji-quick">${d.ideas.map((x) => `<a class="j-btn j-btn-line j-btn-sm" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer" title="${esc(x.note || '')}">${esc(x.label)} ↗</a>`).join('')}${d.admin ? '<button type="button" class="j-btn j-btn-ghost j-btn-sm" id="id-edit">Edit quick links</button>' : ''}</div>`
 
   const results = () => {
@@ -161,6 +163,7 @@ export async function renderIdeas(ui) {
   const read = () => {
     view().innerHTML = `<div class="jp-head"><div><h1>Session ideas</h1><p class="muted small" style="margin-top:4px">Drills, videos and full sessions to take into your groups. Search the JF App and Lee's drill library together.</p></div></div>
       ${quick()}
+      ${playlists()}
       <div class="ji-addrow"><button type="button" class="j-btn j-btn-dark j-btn-sm" id="ji-add">+ Add a link</button><span class="muted small">Seen a good drill on Instagram, TikTok or YouTube? Add it to a group for every coach.</span></div>
       <div id="ji-add-box" hidden></div>
       <label class="ji-search"><span class="sr-only">Search</span><input class="j-input" id="ji-q" type="search" placeholder="Search: passing, 1v1, warm up, finishing…" value="${esc(S.q)}" autocomplete="off"></label>
