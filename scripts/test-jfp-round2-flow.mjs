@@ -99,6 +99,21 @@ await test('Add a family: three children, own groups and prices, one email, one 
   assert.equal((await auditOf('family.add')).find((x) => x.target === fam.familyId).after.rows.length, 3)
 })
 
+await test('Add a family: two paid trials on ONE family payment, a typed price counts', async () => {
+  const P2 = { name: 'Tia Trialfam', email: 'tia.trialfam@example.com', mobile: '0400 777 000' }
+  const from = pr.dates?.Tuesday?.[1]?.value || ''
+  const r = await ok('addFamily', { parent: P2, sendEmail: true, children: [
+    { groupId: G1.id, player: { name: 'Ty Trialfam' }, payment: 'link', product: 'trial', amountCents: 8500, ...(from ? { startDate: from } : {}) },
+    { groupId: G1.id, player: { name: 'Vi Trialfam' }, payment: 'link', product: 'trial', amountCents: 6000 },
+  ] })
+  const q = await payreq(r.payreq.id)
+  assert.equal(q.amountCents, 14500, 'one payment: both trials, at the typed prices')
+  assert.deepEqual(q.places.map((x) => x.owingCents), [8500, 6000])
+  assert.ok(q.places.every((x) => /Trial session/.test(x.label)))
+  const [a, b] = await Promise.all(r.rows.map((x) => row(x.rowId)))
+  assert.equal(a['Term 4 Payment Type'], 'JFP Trial'); assert.equal(b['Term 4 Fee'], 60)
+})
+
 await test('the same family again: refused before anything is written, naming the child already there', async () => {
   const n = (await at()).term4.length
   const r = await portal('addFamily', { parent: PARENT, children: [{ groupId: G1.id, player: { name: 'Ari Family' }, payment: 'none' }, { groupId: G2.id, player: { name: 'New Kid Family' }, payment: 'none' }] })

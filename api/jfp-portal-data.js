@@ -418,7 +418,9 @@ async function prepGroupAdd({ principal, config, group, body, roster, family = n
   const sibErr = custom || (family && family.size > 1) ? null : await siblingGuard(product, email, [name])
   if (sibErr) return { status: 400, error: sibErr }
   const isTrial = payment === 'trial' || (!custom && product === 'trial')
-  if (family && payment === 'link' && isTrial) return { status: 400, error: `A paid trial has its own link. Choose a free trial for ${name}, or add ${name} on their own.` }
+  // A paid trial goes on the one family payment like any other price (Lee,
+  // 20 Oct 2026: "adding them individually just takes me longer ... custom
+  // quoting is so important"), at the amount typed.
   const isPro = payment === 'pro' || custom?.programme === 'pro'
   const perSessionPay = payment === 'sessions' || payment === 'pro'
   const coach = coachById(config, group.coachId)
@@ -458,7 +460,7 @@ async function prepGroupAdd({ principal, config, group, body, roster, family = n
     'Term 4 Notes': notes,
     ...(payment === 'offline' ? { 'Term 4 Fee Reconciliation': 'Non-Stripe — verified' } : {}),
   }
-  return { ok: true, v: read.v, group, fields, twin, amountCents, owed, owedCents, isTrial, isPro, perSessionPay, product, from, custom, payment, what: custom ? custom.name : isTrial ? 'Trial session' : `${productFor(product).label}${price.proRata && from ? `, ${price.sessions} of ${price.of} sessions from ${dateLabel(from)}` : price.fixedSessions && from ? `, ${price.sessions} sessions from ${dateLabel(from)}` : ''}` }
+  return { ok: true, v: read.v, group, fields, twin, amountCents, owed, owedCents, isTrial, isPro, perSessionPay, product, from, custom, payment, what: custom ? custom.name : isTrial ? `Trial session${from ? `, ${dateLabel(from)}` : ''}` : `${productFor(product).label}${price.proRata && from ? `, ${price.sessions} of ${price.of} sessions from ${dateLabel(from)}` : price.fixedSessions && from ? `, ${price.sessions} sessions from ${dateLabel(from)}` : ''}` }
 }
 
 export async function addPlayer(req, res, principal, config, body) {
