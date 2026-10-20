@@ -1328,3 +1328,15 @@ a.sr-only[href="#main-content"]:focus { position: fixed !important; top: 16px; l
 .ji-place.ji-field { background: #15803d; }
 .ji-yt { margin-top: 10px; }
 .ji-yt .ji-kick { margin-bottom: 6px; }
+
+/* Trial tracker (20 Oct 2026) */
+.tt-pipe { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+.tt-step { flex: 1 1 92px; min-width: 0; border: 1px solid var(--ps-line, rgba(127,127,127,.25)); border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; }
+.tt-step b { font-size: 20px; line-height: 1; }
+.tt-step span { font-size: 12px; opacity: .75; }
+.tt-step.tt-paid b { color: #16a34a; } .tt-step.tt-lost b, .tt-step.tt-missed b { color: #dc2626; }
+.tt-steps { list-style: none; display: flex; flex-wrap: wrap; gap: 4px; margin: 10px 0 0; padding: 0; }
+.tt-steps li { font-size: 12px; padding: 2px 8px; border-radius: 99px; border: 1px solid var(--ps-line, rgba(127,127,127,.3)); opacity: .55; }
+.tt-steps li.on { opacity: 1; background: rgba(22,163,74,.14); border-color: rgba(22,163,74,.45); }
+.tt-steps li.miss, .tt-steps li.lost { opacity: 1; background: rgba(220,38,38,.12); border-color: rgba(220,38,38,.45); }
+.tt-steps.stuck li:not(.on) { border-style: dashed; }

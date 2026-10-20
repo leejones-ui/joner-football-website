@@ -1474,11 +1474,16 @@ async function renderTrials(keep = false) {
   P.trialNew = d.newCount; renderNav()
   P.trialF = P.trialF || 'open'
   const open = (x) => ['new', 'waiting', 'upcoming'].includes(x.state)
-  const list = d.items.filter((x) => P.trialF === 'all' || (P.trialF === 'open' ? open(x) : !open(x)))
-  const count = (f) => d.items.filter((x) => f === 'all' || (f === 'open' ? open(x) : !open(x))).length
+  // Tracker (Lee, 20 Oct 2026): booked, came, feedback, offered, followed up, then paid or lost.
+  const pass = (x, f) => f === 'all' || (f === 'open' ? open(x) : f === 'stuck' ? x.track?.stuck : f === 'paid' ? x.track?.outcome === 'paid' : f === 'lost' ? x.track?.outcome === 'lost' : !open(x))
+  const list = d.items.filter((x) => pass(x, P.trialF))
+  const count = (f) => d.items.filter((x) => pass(x, f)).length
+  const PC = d.pipeline || {}
+  const pipe = `<div class="tt-pipe" aria-label="Where every trial is up to">${[['booked', 'Booked'], ['missed', 'Did not come'], ['came', 'Came'], ['feedback', 'Coach feedback'], ['offered', 'Place offered'], ['followed', 'Followed up'], ['paid', 'Paid'], ['lost', 'Lost']].filter(([k]) => k !== 'missed' || PC.missed).map(([k, l]) => `<div class="tt-step tt-${k}"><b>${PC[k] || 0}</b><span>${l}</span></div>`).join('')}</div>${PC.stuck ? `<p class="j-box j-box-amber small" style="margin:0 0 12px"><b>${PC.stuck} trial${PC.stuck === 1 ? '' : 's'} need${PC.stuck === 1 ? 's' : ''} a follow up.</b> The trial was 5 or more days ago and nothing has happened since. <button type="button" class="ps-link" data-tf-stuck>Show ${PC.stuck === 1 ? 'it' : 'them'}</button></p>` : ''}`
   view().innerHTML = `
-    ${psHead({ title: 'Trial feedback', count: list.length }).replace('</h1>', '</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">What the coach said after each trial. Accept for the group, move them to another group, or decline. A red number on the menu means new feedback.</div></details>')}
-    <div class="ps-tools"><div class="ps-seg" id="tf-f" role="group" aria-label="Show">${[['open', 'To decide'], ['done', 'Decided'], ['all', 'All']].map(([v, l]) => `<button type="button" data-f="${v}" aria-pressed="${P.trialF === v}">${l} ${count(v)}</button>`).join('')}</div></div>
+    ${psHead({ title: 'Trial feedback', count: list.length }).replace('</h1>', '</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Every trial from booked to paid or lost. Came comes from the coach\'s register on the trial day, Paid from their Term 4 row. Press Followed up after you or Ligia talk to the family. A trial needs a follow up when it was 5 or more days ago with no answer and no follow up in the last week. A red number on the menu means new feedback.</div></details>')}
+    ${pipe}
+    <div class="ps-tools"><div class="ps-seg" id="tf-f" role="group" aria-label="Show">${[['open', 'To decide'], ['stuck', 'Needs a follow up'], ['done', 'Decided'], ['paid', 'Paid'], ['lost', 'Lost'], ['all', 'All']].map(([v, l]) => `<button type="button" data-f="${v}" aria-pressed="${P.trialF === v}">${l} ${count(v)}</button>`).join('')}</div></div>
     ${list.length ? list.map(trialCard).join('') : '<div class="ps-table-wrap"><div class="ps-empty">Nothing here.</div></div>'}`
   function trialCard(x) {
     const [c, l] = TRIAL_STATE[x.state] || ['grey', x.state]
@@ -1494,6 +1499,7 @@ async function renderTrials(keep = false) {
         <p class="muted small" style="margin-top:6px">${esc(f.byName || f.by || 'Coach')}, ${esc(new Date(f.at).toLocaleString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }))}</p></div>`
         : `<p class="muted small" style="margin-top:8px">${x.state === 'upcoming' ? 'The coach is asked for feedback after the trial.' : 'No feedback from the coach yet. They are asked on their My sessions page.'}</p>`}
       ${x.family.length && !dec ? `<p class="small" style="margin-top:8px"><span class="j-pill j-pill-blue">Family</span> Also with us: ${esc(x.family.map((o) => `${o.name}, ${o.group}`).join('; '))}</p>` : ''}
+      ${trackRow(x)}
       ${dec ? `<p class="small" style="margin-top:8px">${esc(TRIAL_STATE[dec.decision]?.[1] || dec.decision)}${decGroup ? ` to ${esc(decGroup.day)} ${esc(decGroup.time)}, ${esc(decGroup.locationName)}` : ''} by ${esc(dec.byName || dec.by)}, ${esc(new Date(dec.at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }))}. <button type="button" class="ps-link" data-tf-undo="${esc(x.rowId)}">Undo</button></p>` : ''}
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
         ${!dec || dec.decision === 'seen' ? `${x.groupId ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-tf-accept="${esc(x.rowId)}">Accept for this group</button>` : ''}
@@ -1501,8 +1507,20 @@ async function renderTrials(keep = false) {
         <button type="button" class="j-btn j-btn-line j-btn-sm" data-tf-move="${esc(x.rowId)}">Move to another group</button>
         <button type="button" class="j-btn j-btn-line j-btn-sm" data-tf-decline="${esc(x.rowId)}">Decline</button>` : ''}
         <button type="button" class="j-btn j-btn-line j-btn-sm" data-tf-text="${esc(x.rowId)}">Text</button>
+        ${x.track?.outcome === 'open' ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-tf-follow="${esc(x.rowId)}">Followed up</button>` : ''}
         ${x.state === 'new' ? `<button type="button" class="j-btn j-btn-ghost j-btn-sm" data-tf-seen="${esc(x.rowId)}">Mark as read</button>` : ''}
       </div></article>`
+  }
+  function trackRow(x) {
+    const t = x.track
+    if (!t) return ''
+    const missed = x.came === 'missed'
+    const steps = (d.steps || []).map(([k, l]) => `<li class="${t.done[k] ? 'on' : ''}${k === 'came' && missed ? ' miss' : ''}">${esc(k === 'came' && missed ? 'Did not come' : l)}</li>`).join('')
+    const end = t.outcome === 'lost' ? '<li class="lost">Lost</li>' : ''
+    const fu = x.followUp
+    return `<ol class="tt-steps${t.stuck ? ' stuck' : ''}">${steps}${end}</ol>
+      ${t.stuck ? `<p class="small" style="margin-top:6px;color:var(--j-amber-ink, #b45309)"><b>Needs a follow up.</b> Trial ${t.daysSince} days ago.</p>` : ''}
+      ${fu ? `<p class="small" style="margin-top:6px">Followed up by ${esc(fu.byName || fu.by)}, ${esc(new Date(fu.at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }))}: <b>${esc((d.outcomes || {})[fu.outcome] || fu.outcome)}</b>${fu.note ? ` · ${esc(fu.note)}` : ''} <button type="button" class="ps-link" data-tf-funudo="${esc(x.rowId)}">Undo</button></p>` : ''}`
   }
   const item = (id) => d.items.find((x) => x.rowId === id)
   const decide = async (rowId, decision, groupId = '') => { const r = await post('trialDecide', { rowId, decision, groupId }); if (!r.ok) toast(r.data.error); return r.ok }
@@ -1532,6 +1550,24 @@ async function renderTrials(keep = false) {
     // The page redraws once more with the latest money; land on the card after that too.
     const land = () => document.querySelector('.jf-fam')?.scrollIntoView({ block: 'start' })
     land(); setTimeout(land, 1500); setTimeout(land, 4000)
+  }))
+  view().querySelector('[data-tf-stuck]')?.addEventListener('click', () => { P.trialF = 'stuck'; renderTrials(true) })
+  view().querySelectorAll('[data-tf-funudo]').forEach((b) => b.addEventListener('click', async () => { const r = await post('trialFollowUp', { rowId: b.dataset.tfFunudo, outcome: 'undo' }); if (!r.ok) return toast(r.data.error); P.trialData = null; renderTrials() }))
+  view().querySelectorAll('[data-tf-follow]').forEach((b) => b.addEventListener('click', () => {
+    const x = item(b.dataset.tfFollow)
+    const box = modal(`<h2 style="margin-bottom:4px">Followed up</h2><p class="muted small" style="margin-bottom:12px">${esc(x.name)} · trial in ${esc(x.group)}. Only you and Ligia see this. Nothing is sent.</p>
+      <div class="j-field"><span>How did it go?</span><div class="ps-seg" id="tfu-o" role="group">${Object.entries(d.outcomes || {}).map(([k, l], i) => `<button type="button" data-o="${esc(k)}" aria-pressed="${i === 0}">${esc(l)}</button>`).join('')}</div></div>
+      <label class="j-field"><span>Note <span class="muted">(optional)</span></span><textarea class="j-input" id="tfu-n" rows="3" maxlength="300" placeholder="e.g. Called mum, deciding after school holidays"></textarea></label>
+      <p class="j-err" id="tfu-err" hidden></p>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="tfu-go">Save</button></div>`)
+    let outcome = Object.keys(d.outcomes || {})[0] || 'thinking'
+    box.querySelector('#tfu-o').addEventListener('click', (e) => { const o = e.target.closest('[data-o]'); if (!o) return; outcome = o.dataset.o; box.querySelectorAll('[data-o]').forEach((y) => y.setAttribute('aria-pressed', String(y === o))) })
+    box.querySelector('#tfu-go').addEventListener('click', async (e) => {
+      e.currentTarget.disabled = true
+      const r = await post('trialFollowUp', { rowId: x.rowId, outcome, note: box.querySelector('#tfu-n').value })
+      if (!r.ok) { e.currentTarget.disabled = false; const er = box.querySelector('#tfu-err'); er.textContent = r.data.error; er.hidden = false; return }
+      closeModal(); P.trialData = null; renderTrials()
+    })
   }))
   view().querySelectorAll('[data-tf-seen]').forEach((b) => b.addEventListener('click', async () => { if (await decide(b.dataset.tfSeen, 'seen')) renderTrials() }))
   view().querySelectorAll('[data-tf-undo]').forEach((b) => b.addEventListener('click', async () => { if (await decide(b.dataset.tfUndo, 'undo')) renderTrials() }))

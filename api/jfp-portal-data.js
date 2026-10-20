@@ -78,6 +78,7 @@ import { feePdfAttachment, docForPayreq, docForInvoice, pdfDownload } from './_j
 import { invoiceRefOf } from './_jfp-bank-match.js'
 // Saved card or bank account, auto-charge after each session (claude/card-on-file).
 import { accountAlerts, newAccountsData } from './_jfp-new-accounts.js'
+import { followUpsAll, saveFollowUp, cameFrom, trialStage, pipelineCounts, STEPS, OUTCOMES } from './_jfp-trial-track.js'
 import { withAgent, inAgent, agentState, setAgentEnabled, listHeld, takeHeld, heldView } from './_jfp-agent.js'
 import { sendHeldEmail } from './_jfp-email.js'
 import { SAVED_PAY_ACTIONS, savedPayAction, withSavedPay, autoChargeActiveFor } from './_jfp-saved-pay.js'
@@ -2746,10 +2747,11 @@ async function trialDecisionsAll() {
   return out
 }
 async function trialsData(config, { fresh = false } = {}) {
-  const [roster, groups, fb, dec] = await Promise.all([loadRoster({ fresh }), listGroups(), trialFeedbackAll(), trialDecisionsAll()])
+  const [roster, groups, fb, dec, fups] = await Promise.all([loadRoster({ fresh }), listGroups(), trialFeedbackAll(), trialDecisionsAll(), followUpsAll()])
   const byId = Object.fromEntries(groups.map((g) => [g.id, g]))
   const today = sydneyToday()
-  const ids = new Set([...roster.players.filter((r) => r.holdsPlace && /trial/i.test(r.paymentType)).map((r) => r.id), ...Object.keys(fb)])
+  // Tracker (20 Oct 2026): decided and followed-up trials stay on after they turn into a place.
+  const ids = new Set([...roster.players.filter((r) => r.holdsPlace && /trial/i.test(r.paymentType)).map((r) => r.id), ...Object.keys(fb), ...Object.keys(dec), ...Object.keys(fups)])
   const items = []
   for (const id of ids) {
     const r = roster.players.find((x) => x.id === id)
@@ -2770,11 +2772,15 @@ async function trialsData(config, { fresh = false } = {}) {
       family: r.email ? roster.players.filter((o) => o.id !== r.id && o.holdsPlace && normName(o.player) !== normName(r.player) && rowEmails(o).some((e) => rowEmails(r).includes(e)) && byId[o.groupId]).map((o) => ({ name: o.player, group: `${byId[o.groupId].day} ${byId[o.groupId].time}` })) : [],
       feedback: f, decision: decided,
       state: decided ? decided.decision : f ? 'new' : date && date > today ? 'upcoming' : 'waiting',
+      holdsPlace: r.holdsPlace === true, followUp: fups[id] || null, came: '', _gid: r.groupId,
     })
   }
+  // The register on the trial date, then where each trial is up to.
+  const marks = await Promise.all(items.map((x) => (x.trialDate && x.trialDate <= today && x._gid ? kvCommand(['HGET', keys.attendance(x._gid, x.trialDate), x.rowId]).catch(() => null) : null)))
+  items.forEach((x, i) => { x.came = cameFrom(marks[i], x.trialDate, today); x.track = trialStage(x, today); delete x._gid })
   const order = { new: 0, waiting: 1, upcoming: 2 }
   items.sort((a, b) => (order[a.state] ?? 3) - (order[b.state] ?? 3) || (b.feedback?.at || '').localeCompare(a.feedback?.at || '') || (a.trialDate || '').localeCompare(b.trialDate || ''))
-  return { items, newCount: items.filter((x) => x.state === 'new').length }
+  return { items, newCount: items.filter((x) => x.state === 'new').length, pipeline: pipelineCounts(items), steps: STEPS, outcomes: OUTCOMES }
 }
 async function decideTrial(res, principal, body) {
   const row = await rowOr404(res, body.rowId); if (!row) return
@@ -3884,6 +3890,7 @@ async function handle(req, res) {
       case 'trials': return res.status(200).json({ success: true, ...(await trialsData(config, { fresh: body.fresh === true })) })
       case 'trialCount': return res.status(200).json({ success: true, newCount: (await trialsData(config)).newCount })
       case 'trialDecide': return await decideTrial(res, principal, body)
+      case 'trialFollowUp': { const r = await saveFollowUp(principal, body); return r.error ? fail(res, 400, r.error) : res.status(200).json({ success: true, ...r }) }
       case 'requests': {
         await sweepExpiredOffers(principal)
         const [list, groups, roster, profiles] = await Promise.all([listApplications(), listGroups(), loadRoster(), allProfiles().catch((e) => { console.error('jfp profiles read failed', e); return null })])
