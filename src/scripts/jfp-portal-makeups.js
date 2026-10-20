@@ -1,6 +1,7 @@
 // Make-ups and credits (Lee, 19 Oct 2026): cancel one group's session for an
 // emergency (coach sick or no-show), then look after the free make-ups and
-// credits it creates. Nothing here charges, refunds or emails anyone.
+// credits it creates. Nothing here charges or refunds; families are emailed
+// only when Lee or Ligia press Email the families (20 Oct 2026).
 import { esc, toast } from './jfp-common.js'
 import { psHead } from './jfp-portal-ps.js'
 
@@ -23,7 +24,7 @@ export async function renderMakeups(ui) {
       <td><span class="j-pill j-pill-${PILL[m.status]?.[0] || 'grey'}">${esc(PILL[m.status]?.[1] || m.status)}</span>${m.bookedLabel ? `<br><span class="muted small">${esc(m.bookedLabel)}</span>` : ''}</td>
       <td style="white-space:nowrap">${actions(m)}</td></tr>`).join('') || '<tr><td colspan="5"><div class="ps-empty">Nothing here yet.</div></td></tr>'}
     </tbody></table></div>
-    ${d.cancelled.length ? `<h2 style="margin:22px 0 8px">Cancelled sessions</h2>${d.cancelled.map((o) => `<div class="jp-player" style="cursor:default;align-items:center"><span><b>${esc(o.group)}</b> · ${esc(o.dateLabel)}<br><span class="muted small">${esc(o.reason)} · ${esc(o.count)} player${o.count === 1 ? '' : 's'} · ${o.kind === 'makeup' ? 'free make-ups' : o.kind === 'credit' ? 'credits' : 'nothing owed'}</span></span><button type="button" class="j-btn j-btn-line j-btn-sm" data-undo="${esc(o.groupId)}|${esc(o.date)}">Undo</button></div>`).join('')}` : ''}`
+    ${d.cancelled.length ? `<h2 style="margin:22px 0 8px">Cancelled sessions</h2>${d.cancelled.map((o) => `<div class="jp-player" style="cursor:default;align-items:center"><span><b>${esc(o.group)}</b> · ${esc(o.dateLabel)}<br><span class="muted small">${esc(o.reason)} · ${esc(o.count)} player${o.count === 1 ? '' : 's'} · ${o.kind === 'makeup' ? 'free make-ups' : o.kind === 'credit' ? 'credits' : 'nothing owed'}</span></span>${o.emailedAt ? `<span class="ps-tag">Families emailed</span>` : `<button type="button" class="j-btn j-btn-line j-btn-sm" data-ec-mail="${esc(o.groupId)}|${esc(o.date)}">Email families</button>`}<button type="button" class="j-btn j-btn-line j-btn-sm" data-undo="${esc(o.groupId)}|${esc(o.date)}">Undo</button></div>`).join('')}` : ''}`
   function actions(m) {
     const b = (op, label, line = true) => `<button type="button" class="j-btn ${line ? 'j-btn-line' : 'j-btn-dark'} j-btn-sm" data-op="${op}" data-id="${esc(m.id)}">${label}</button>`
     if (m.kind === 'makeup' && ['owed', 'requested'].includes(m.status)) return b('book', 'Book it', false) + ' ' + b('convert', 'Make it a credit') + ' ' + b('cancel', 'Remove')
@@ -35,6 +36,15 @@ export async function renderMakeups(ui) {
   }
   view().querySelectorAll('[data-f]').forEach((b) => b.addEventListener('click', () => { S.filter = b.dataset.f; renderMakeups(ui) }))
   view().querySelector('#mk-new').addEventListener('click', () => cancelModal(ui, d, () => renderMakeups(ui)))
+  view().querySelectorAll('[data-ec-mail]').forEach((b) => b.addEventListener('click', () => {
+    const o = d.cancelled.find((x) => `${x.groupId}|${x.date}` === b.dataset.ecMail)
+    const box = modal(`<h2 style="margin-bottom:4px">Email the families</h2><p class="muted small" style="margin-bottom:10px">${esc(o.group)} · ${esc(o.dateLabel)}. Every family in the group gets this once. You can change the words.</p>
+      <textarea class="j-input" rows="5" maxlength="1200" id="ec-words">${esc(o.words)}</textarea>
+      <p class="muted small" id="ec-sent" style="margin-top:6px">Texts from the portal are not set up yet.</p><p class="j-err" id="ec-err2" hidden></p>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button type="button" class="j-btn j-btn-line" id="ec-done">Close</button><button type="button" class="j-btn j-btn-dark" id="ec-email">Email the families</button></div>`)
+    emailButton(ui, box, o.groupId, o.date)
+    box.querySelector('#ec-done').addEventListener('click', () => { closeModal(); renderMakeups(ui) })
+  }))
   view().querySelectorAll('[data-undo]').forEach((b) => b.addEventListener('click', async () => {
     const [groupId, date] = b.dataset.undo.split('|')
     if (!(await confirmBox('Undo this cancellation? The make-ups and credits made for it are removed.', { ok: 'Undo it' }))) return
@@ -71,11 +81,30 @@ function cancelModal(ui, d, done) {
     const r = await post('emergencyCancel', { groupId: box.querySelector('#ec-g').value, date: box.querySelector('#ec-d').value, reason: box.querySelector('#ec-r').value, kind: box.querySelector('#ec-k').value })
     b.disabled = false
     if (!r.ok) { const er = box.querySelector('#ec-err'); er.textContent = r.data.error || 'Could not cancel.'; er.hidden = false; return }
-    box.innerHTML = `<h2 style="margin-bottom:6px">Session cancelled</h2><p>${esc(r.data.players)} player${r.data.players === 1 ? '' : 's'} now see it in My account. The register for that date is closed. Parents have not been messaged.</p>
-      <p class="muted small" style="margin:10px 0 4px">Message you can paste into Messages:</p><textarea class="j-input" rows="5" readonly id="ec-words">${esc(r.data.words)}</textarea>
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button type="button" class="j-btn j-btn-line" id="ec-copy">Copy message</button><button type="button" class="j-btn j-btn-dark" id="ec-done">Done</button></div>`
-    box.querySelector('#ec-copy').addEventListener('click', async () => { try { await navigator.clipboard.writeText(r.data.words); toast('Copied') } catch { box.querySelector('#ec-words').select() } })
+    const gid = box.querySelector('#ec-g').value, date = box.querySelector('#ec-d').value
+    box.innerHTML = `<h2 style="margin-bottom:6px">Session cancelled</h2><p>${esc(r.data.players)} player${r.data.players === 1 ? '' : 's'} now see it in My account. The register for that date is closed. Parents have not been messaged yet.</p>
+      <p class="muted small" style="margin:10px 0 4px">Message to the families (you can change it):</p><textarea class="j-input" rows="5" maxlength="1200" id="ec-words">${esc(r.data.words)}</textarea>
+      <p class="muted small" id="ec-sent" style="margin-top:6px">Email goes to every family in the group, once. Texts from the portal are not set up yet: copy the message into Messages for those.</p>
+      <p class="j-err" id="ec-err2" hidden></p>
+      <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:10px"><button type="button" class="j-btn j-btn-line" id="ec-copy">Copy message</button><button type="button" class="j-btn j-btn-dark" id="ec-email">Email the families</button><button type="button" class="j-btn j-btn-line" id="ec-done">Done</button></div>`
+    box.querySelector('#ec-copy').addEventListener('click', async () => { try { await navigator.clipboard.writeText(box.querySelector('#ec-words').value); toast('Copied') } catch { box.querySelector('#ec-words').select() } })
+    emailButton(ui, box, gid, date)
     box.querySelector('#ec-done').addEventListener('click', () => { closeModal(); done() })
+  })
+}
+
+// Email the families (Lee, 20 Oct 2026): a second tap confirms, then it sends once.
+function emailButton(ui, box, gid, date) {
+  const b = box.querySelector('#ec-email')
+  let armed = false
+  b.addEventListener('click', async () => {
+    const er = box.querySelector('#ec-err2')
+    if (!armed) { armed = true; b.textContent = 'Yes, send the email'; er.hidden = true; return }
+    b.disabled = true
+    const r = await ui.post('emergencyEmail', { groupId: gid, date, text: box.querySelector('#ec-words').value })
+    if (!r.ok) { b.disabled = false; armed = false; b.textContent = 'Email the families'; er.textContent = r.data.error || 'Could not send.'; er.hidden = false; return }
+    b.remove()
+    box.querySelector('#ec-sent').textContent = `Emailed ${r.data.sent} of ${r.data.families} famil${r.data.families === 1 ? 'y' : 'ies'}.`
   })
 }
 

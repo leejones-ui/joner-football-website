@@ -39,7 +39,7 @@ const CREDIT_REASONS = new Set(['balance', 'term-after-trial', 'admin-add', 'app
 import { staffPrincipal, sameOrigin } from './_jfp-people.js'
 import { sendAccountInvite, accountInvite, sendFamilyInvite, sendFamilyWelcome, sendPlaceOffered, sendTrialOffered, sendTermOffered, sendDeclined, sendNextTermInvite, sendFamilyInvoice, sendQuickLinkEmail } from './_jfp-email.js'
 import { nextStatuses, setNextStatus, nextPrices, recordNext, nextInterest } from './_jfp-next.js'
-import { MAKEUP_ADMIN_ACTIONS, emergencyCancel, emergencyUncancel, makeupsList, makeupUpdate, sessionOffMap, guestsFor, guestAllowed, markGuestUsed } from './_jfp-makeups.js'
+import { MAKEUP_ADMIN_ACTIONS, emergencyCancel, emergencyUncancel, emergencyEmail, makeupsList, makeupUpdate, sessionOffMap, guestsFor, guestAllowed, markGuestUsed } from './_jfp-makeups.js'
 import { attendanceFor } from './_jfp-attendance-view.js'
 import { allProfiles, findProfile, pickProfile, profileKey, profileView, profileSummary, cleanProfile, saveProfile, waiverPrefill, addTrialFeedback, clubSuggestions, LEVELS, PLAYING_UP, POSITIONS, FEET, YEARS } from './_jfp-profiles.js'
 import { releaseOffer, sweepExpiredOffers } from './_jfp-offers.js'
@@ -3744,7 +3744,7 @@ async function handle(req, res) {
 
     if (!isAdmin) return fail(res, 403, 'Not allowed.')
     if (MAKEUP_ADMIN_ACTIONS.has(action)) {
-      const out = action === 'emergencyCancel' ? await emergencyCancel({ principal, config, body }) : action === 'emergencyUncancel' ? await emergencyUncancel({ principal, body }) : action === 'makeupUpdate' ? await makeupUpdate({ principal, config, body }) : { status: 200, ...(await makeupsList({ config })) }
+      const out = action === 'emergencyCancel' ? await emergencyCancel({ principal, config, body }) : action === 'emergencyUncancel' ? await emergencyUncancel({ principal, body }) : action === 'emergencyEmail' ? await emergencyEmail({ principal, config, body }) : action === 'makeupUpdate' ? await makeupUpdate({ principal, config, body }) : { status: 200, ...(await makeupsList({ config })) }
       const { status, error, ...rest } = out
       return status === 200 ? res.status(200).json({ success: true, ...rest }) : fail(res, status, error)
     }

@@ -149,6 +149,18 @@ await test('emergency cancel: the register closes, the family is owed a make-up,
   assert.ok(c.players >= 1); assert.match(c.words, /free make-up/)
   const dup = await portal(lee, 'emergencyCancel', { groupId: THU, date, reason: 'Coach sick', kind: 'makeup' })
   assert.equal(dup.status, 409)
+  // Email the families (20 Oct 2026): once, by Lee or Ligia, with their words; coaches cannot.
+  assert.equal((await portal(sam, 'emergencyEmail', { groupId: THU, date, text: 'Sorry, the session is off today because of rain.' })).status, 403)
+  assert.equal((await portal(lee, 'emergencyEmail', { groupId: THU, date, text: 'short' })).status, 400)
+  const before = (await emails()).length
+  const em = await ok(lee, 'emergencyEmail', { groupId: THU, date, text: 'Sorry, the session is off today because of rain.\nYou have a free make-up.' })
+  assert.ok(em.sent >= 1 && em.sent === em.families, JSON.stringify(em))
+  const out = (await emails()).slice(before)
+  assert.equal(out.length, em.sent)
+  assert.ok(out.every((e) => /^Session cancelled: /.test(e.subject)))
+  assert.equal((await portal(lee, 'emergencyEmail', { groupId: THU, date, text: 'Sorry, the session is off today because of rain.' })).status, 409, 'only once')
+  assert.ok((await ok(lee, 'makeupsList')).cancelled.find((o) => o.groupId === THU && o.date === date).emailedAt)
+  assert.ok((await ok(lee, 'makeupsList')).reasons.includes('Rain or bad weather'))
   const cs = await ok(sam, 'coachSessions')
   assert.ok(cs.sessions.find((s) => s.id === THU).offDates[date])
   const mk = await portal(sam, 'markAttendance', { groupId: THU, date, rowId: 'x', status: 'Present' })

@@ -16,11 +16,13 @@
 import { kvCommand, clean, newId, audit, dateLabel, sydneyToday, sessionDates, listGroups, locationFor, rowEmails } from './_jfp-store.js'
 import { loadRoster } from './_jfp-airtable.js'
 import { telegramAlert } from './_jfp-notify.js'
+import { sendFamilyNotice } from './_jfp-email.js'
 
 const MK = 'jfp:makeups'
 const OFF = 'jfp:session-off'
-export const MAKEUP_ADMIN_ACTIONS = new Set(['emergencyCancel', 'emergencyUncancel', 'makeupsList', 'makeupUpdate'])
-export const REASONS = ['Coach sick', 'Coach did not turn up', 'Other emergency']
+export const MAKEUP_ADMIN_ACTIONS = new Set(['emergencyCancel', 'emergencyUncancel', 'emergencyEmail', 'makeupsList', 'makeupUpdate'])
+// Rain and venue problems (Lee, 20 Oct 2026).
+export const REASONS = ['Coach sick', 'Coach did not turn up', 'Rain or bad weather', 'Venue problem', 'Other emergency']
 export const KINDS = ['makeup', 'credit', 'none']
 const parse = (s) => { try { return JSON.parse(s) } catch { return null } }
 const offKey = (g, d) => `${g}|${d}`
@@ -94,6 +96,36 @@ export async function emergencyCancel({ principal, config, body }) {
   return { status: 200, off, players: rows.length, words: familyWords(config, g, date, kind, reason) }
 }
 
+// One tap to tell every family in the cancelled session (Lee, 20 Oct 2026:
+// "rain or venue problems"). Lee or Ligia press it, with the words they see
+// and can edit. Email only: texts from the portal are not set up yet. Once per
+// cancellation, so a second tap cannot email families twice.
+export async function emergencyEmail({ principal, config, body }) {
+  const key = offKey(clean(body.groupId, 80), clean(body.date, 10))
+  const off = parse(await kvCommand(['HGET', OFF, key]))
+  if (!off) return { status: 404, error: 'That session is not cancelled.' }
+  if (off.emailedAt) return { status: 409, error: `Families were already emailed on ${dateLabel(off.emailedAt.slice(0, 10))}.` }
+  const text = clean(body.text, 1200)
+  if (text.length < 20) return { status: 400, error: 'Write the message first.' }
+  const g = (await listGroups()).find((x) => x.id === off.groupId)
+  if (!g) return { status: 404, error: 'Group not found.' }
+  // Claim it before sending, so two taps cannot both send.
+  const claimed = { ...off, emailedAt: new Date().toISOString(), emailedBy: principal.email }
+  if (Number(await kvCommand(['HSETNX', 'jfp:session-off-mailed', key, claimed.emailedAt])) !== 1) return { status: 409, error: 'These families have already been emailed. Refresh the page.' }
+  const roster = await loadRoster()
+  const rows = roster.players.filter((r) => r.groupId === g.id && r.holdsPlace && !(r.startsFrom && off.date < r.startsFrom))
+  const to = new Map()
+  for (const r of rows) for (const e of rowEmails(r)) if (e && !to.has(e)) to.set(e, r.parent || '')
+  const site = process.env.PUBLIC_SITE_URL || 'https://jonerfootball.com'
+  let sent = 0
+  for (const [email, name] of to) {
+    try { await sendFamilyNotice({ to: email, name, subject: `Session cancelled: ${g.day} ${g.time}, ${dateLabel(off.date)}`, heading: 'Session cancelled', paras: text.split(/\n+/).filter(Boolean), cta: { label: 'Open My account', url: `${site}/jfp-account/` }, kind: 'session cancelled' }); sent += 1 } catch (error) { console.error('jfp cancel email failed', error) }
+  }
+  await kvCommand(['HSET', OFF, key, JSON.stringify({ ...claimed, emailed: sent })])
+  await audit({ by: principal.email, action: 'session.emergencyEmail', target: key, after: { families: sent } })
+  return { status: 200, sent, families: to.size }
+}
+
 export async function emergencyUncancel({ principal, body }) {
   const key = offKey(clean(body.groupId, 80), clean(body.date, 10))
   const off = parse(await kvCommand(['HGET', OFF, key]))
@@ -102,6 +134,7 @@ export async function emergencyUncancel({ principal, body }) {
   if (mine.some((m) => !['owed', 'cancelled'].includes(m.status))) return { status: 409, error: 'A family has already asked for or been given a make-up or credit. Change those first.' }
   for (const m of mine) await kvCommand(['HDEL', MK, m.id])
   await kvCommand(['HDEL', OFF, key])
+  await kvCommand(['HDEL', 'jfp:session-off-mailed', key])
   await audit({ by: principal.email, action: 'session.emergencyUncancel', target: key })
   return { status: 200 }
 }
@@ -117,7 +150,7 @@ export async function makeupsList({ config }) {
   }
   return {
     makeups: list.map(view).sort((a, c) => String(c.createdAt).localeCompare(String(a.createdAt))),
-    cancelled: offs.map((o) => ({ ...o, group: byId.get(o.groupId) ? groupLine(config, byId.get(o.groupId)) : o.groupId, dateLabel: dateLabel(o.date) })).sort((a, c) => String(c.date).localeCompare(String(a.date))),
+    cancelled: offs.map((o) => ({ ...o, group: byId.get(o.groupId) ? groupLine(config, byId.get(o.groupId)) : o.groupId, dateLabel: dateLabel(o.date), words: byId.get(o.groupId) && !o.emailedAt ? familyWords(config, byId.get(o.groupId), o.date, o.kind, o.reason) : '' })).sort((a, c) => String(c.date).localeCompare(String(a.date))),
     groups: groups.filter((g) => g.mode !== 'closed' && g.label !== 'Joners Juniors').map((g) => ({ id: g.id, label: groupLine(config, g), dates: sessionDates(config, g.day).map((d) => ({ iso: d, label: dateLabel(d) })) })),
     reasons: REASONS, termEnd: termEnd(config), termEndLabel: dateLabel(termEnd(config)),
   }
