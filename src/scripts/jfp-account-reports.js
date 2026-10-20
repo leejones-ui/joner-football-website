@@ -1,10 +1,12 @@
 // Player reports in My account (Lee, 18 Oct 2026): every report a coach has
 // sent this family, newest first, to read and save as a PDF. A player with
 // their own login sees only their own. Opening the tab marks them as read.
+// Progress over the terms (Lee, 20 Oct 2026) sits on top: one card a player.
 import { esc, api, toast } from './jfp-common.js'
 import { ic } from './jfp-account-icons.js'
 import { first, pageHead } from './jfp-account-ui.js'
 import { reportCardHtml, reportDate, savePdfOnDevice } from './jfp-report-view.js'
+import { progressHtml } from './jfp-account-progress.js'
 
 export const unreadReports = (D) => (D?.reports || []).filter((r) => r.unread).length
 
@@ -23,7 +25,7 @@ export async function renderReports(el, D, after) {
   const list = r.data.reports || []
   const form = r.data.form
   const many = new Set(list.map((x) => x.player)).size > 1
-  el.innerHTML = `${head}<div class="ja-stack">${list.length ? list.map((x) => `<article class="ja-card ja-report${x.read ? '' : ' is-unread'}" data-rid="${esc(x.id)}">
+  el.innerHTML = `${head}<div class="ja-stack">${list.length ? progressHtml(r.data.progress) : ''}${list.length ? list.map((x) => `<article class="ja-card ja-report${x.read ? '' : ' is-unread'}" data-rid="${esc(x.id)}">
       <p class="ja-news-meta">${x.read ? '' : '<span class="ja-tag red">New</span>'}${many ? `<span class="ja-tag">${esc(first(x.player))}</span>` : ''}<span>${esc(x.title)} · sent ${esc(reportDate(x.sentAt))}</span></p>
       ${reportCardHtml(x, form)}
       <div class="ja-report-actions"><button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-rpdf="${esc(x.id)}">Save the PDF</button><span data-rtap></span></div>

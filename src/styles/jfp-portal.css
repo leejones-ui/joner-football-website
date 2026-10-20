@@ -1359,3 +1359,11 @@ a.sr-only[href="#main-content"]:focus { position: fixed !important; top: 16px; l
 .abs-mail { margin-top: 8px; border: 1px dashed var(--j-line); border-radius: 10px; padding: 10px 12px; overflow-wrap: anywhere; }
 .abs-mail-list { margin: 0 0 8px; padding-left: 18px; display: grid; gap: 4px; }
 .abs-name { font-weight: 700; text-align: left; padding: 0; }
+/* Progress over the terms (Lee, 20 Oct 2026): last report's level under each
+   skill on the coach's report form. */
+.pgr-intro { margin: 0 0 8px; padding: 8px 10px; border-radius: 8px; background: var(--j-grey-bg, #F2F2EF); color: var(--j-ink-2, #2B2B2E); }
+.pgr-last { display: block; margin-top: 2px; font-size: 12px; color: var(--j-muted, #6b7280); }
+.pgr-ch { display: inline-block; min-width: 18px; padding: 0 4px; margin-left: 4px; border-radius: 999px; text-align: center; font-weight: 700; }
+.pgr-ch.up { color: var(--j-green, #067647); background: var(--j-green-bg, #E8F7EE); }
+.pgr-ch.down { color: var(--j-amber, #9A5B00); background: var(--j-amber-bg, #FFF4DC); }
+.pgr-ch.same { color: var(--j-grey, #475467); background: var(--j-grey-bg, #F2F2EF); }
