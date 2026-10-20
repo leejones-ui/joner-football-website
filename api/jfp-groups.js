@@ -23,6 +23,14 @@ async function runReportTick() {
     },
   } })
 }
+// Missing players (20 Oct 2026): the Monday email to Ligia, off until config.absenceDigest.
+// Run from the evening push tick and the hourly sweep; it goes once, Monday from 7am Sydney.
+async function runAbsenceTick(nowMs) {
+  const { absenceDigestTick } = await import('./_jfp-absence.js')
+  const { sendStaffNotice, cancelStaffTo } = await import('./_jfp-email.js')
+  const cfg = await getConfig()
+  return absenceDigestTick({ config: cfg, nowMs, send: (m) => sendStaffNotice({ to: cancelStaffTo(cfg), ...m, kind: 'absence digest' }) })
+}
 import { reconcileStripe } from './jfp-portal-data.js'
 // Auto-charge after each session (claude/card-on-file).
 import { cronAutoCharges } from './_jfp-saved-pay.js'
@@ -112,7 +120,9 @@ export default async function handler(req, res) {
       // Player reports due in week 9 (20 Oct 2026): off until config.reportReminders.
       let reports = null
       try { reports = await runReportTick() } catch (error) { console.error('jfp report tick failed', error); reports = { error: true } }
-      return res.status(200).json({ success: true, ...push, reports }) } catch (error) { console.error('jfp push tick failed', error); return res.status(500).json({ success: false }) }
+      let absence = null
+      try { absence = await runAbsenceTick(now) } catch (error) { console.error('jfp absence digest failed', error); absence = { error: true } }
+      return res.status(200).json({ success: true, ...push, reports, absence }) } catch (error) { console.error('jfp push tick failed', error); return res.status(500).json({ success: false }) }
   }
   // Check the JF App link: the Uscreen group JFP (seats left) and the app video
   // list for Session ideas. Read only; ?refresh=1 reloads the video list.
@@ -151,6 +161,7 @@ export default async function handler(req, res) {
       const now = process.env.JFP_TEST_CLOCK === '1' && Number(req.query.now) ? Number(req.query.now) : Date.now()
       await invoiceReminders(await getConfig(), { nowMs: now, sendCoach: sendCoachNotice, claimOnce })
     } catch (error) { console.error('jfp coach invoice reminders failed', error) }
+    try { await runAbsenceTick(process.env.JFP_TEST_CLOCK === '1' && Number(req.query.now) ? Number(req.query.now) : Date.now()) } catch (error) { console.error('jfp absence digest failed', error) }
     try { await sweepExpiredOffers({ email: 'hourly check' }); return res.status(200).json({ success: true, stripe: stripe ? { recorded: stripe.recorded, failed: stripe.failed?.length || 0, busy: Boolean(stripe.busy) } : null }) } catch (error) { console.error('jfp offer sweep failed', error); return res.status(500).json({ success: false }) }
   }
   res.setHeader('Cache-Control', 'no-store')
