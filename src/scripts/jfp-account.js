@@ -422,6 +422,7 @@ function ticket({ p, e, next }) {
       <div class="ja-next-where"><span class="ja-mr-ic">${ic('pin')}</span><span><b>${esc(e.location)}</b><small>${esc(e.durationMin || 60)} min</small></span></div>
       <div class="ja-next-act">
         ${e.maps ? `<a class="ja-btn ja-btn-line" href="${esc(e.maps)}" target="_blank" rel="noopener noreferrer">${ic('pin')}Directions</a>` : ''}
+        ${e.asksComing && !next.cancelled ? comingBtn(e, next.iso, (e.coming || []).includes(next.iso), fmt(next.startMs, { weekday: 'short', day: 'numeric', month: 'short' }), p).replace('ja-btn-sm ', '') : ''}
         <button type="button" class="ja-btn ja-btn-line" data-cancel-open="${esc(e.rowId)}" data-cancel-player="${esc(p.key)}" data-cancel-date="${esc(next.iso)}">${ic('xcircle')}Can't make it</button>
       </div>
     </div>
@@ -618,20 +619,25 @@ function renderSessions() {
       const ahead = rows.filter((r) => r.s)
       const all = expanded.has(e.rowId)
       const shown = all ? rows : ahead.slice(0, 3)
+      // I'm coming (Lee, 20 Oct 2026): session by session and Pro places tell the coach which weeks they will be at.
+      const comingSet = new Set(e.coming || [])
       const date = ({ label, i, s, c }) => {
         const [dow, dd, mon] = label.split(' ')
+        const yes = Boolean(e.asksComing && s && !c && comingSet.has(s.iso))
         const isNext = label === nextLabel
         const pm = mark(e.isoDates?.[i] || s?.iso, Boolean(s) && !c)
         const cls = !s ? 'is-past' : c ? 'is-off' : isNext ? 'is-next' : ''
         const right = !s ? pastMark(e, i)
           : c ? `<button type="button" class="ja-btn ja-btn-line ja-btn-sm" data-cancel-undo="${esc(c.id)}">Undo</button>`
+          : e.asksComing ? `<span class="ja-yn">${comingBtn(e, s.iso, yes, `${dow} ${dd} ${mon}`, p)}<button type="button" class="ja-btn ja-btn-ghost ja-btn-sm" data-cancel-open="${esc(e.rowId)}" data-cancel-player="${esc(p.key)}" data-cancel-date="${esc(s.iso)}" aria-label="${esc(`${first(p.name)} can't make ${dow} ${dd} ${mon}`)}">Can't make it</button></span>`
           : `<button type="button" class="ja-btn ${isNext ? 'ja-btn-line' : 'ja-btn-ghost'} ja-btn-sm" data-cancel-open="${esc(e.rowId)}" data-cancel-player="${esc(p.key)}" data-cancel-date="${esc(s.iso)}" aria-label="${esc(`${first(p.name)} can't make ${dow} ${dd} ${mon}`)}">Can't make it</button>`
-        const aria = `${p.name}, ${dow} ${dd} ${mon}, ${e.time}, ${e.location}${!s ? ', done' : c ? ', you told us they cannot make it' : isNext ? ', next session' : ''}`
+        const aria = `${p.name}, ${dow} ${dd} ${mon}, ${e.time}, ${e.location}${!s ? ', done' : c ? ', you told us they cannot make it' : isNext ? ', next session' : ''}${yes ? ', coming' : ''}`
         return `<li class="ja-date ${cls}" aria-label="${esc(aria)}"><span class="d"><b>${esc(dd)}</b><i>${esc(mon)}</i></span><span class="w"><b>${esc(dow)} ${esc(e.time)}${isNext ? '<span class="ja-tag">Next</span>' : ''}${c ? '<span class="ja-tag amber">You told us</span>' : ''}${pm}</b>Week ${i + 1}${isNext && s ? ` · ${esc(countdown(s.startMs))}` : ''}${c ? `, ${esc(c.reason)}` : ''}</span>${right}</li>`
       }
       return `<section class="ja-card ja-scard" data-enrol="${esc(e.rowId)}">
         <div class="ja-enrol-head"><img src="${esc(photoFor(e))}" alt="" loading="lazy"><div><h2>${esc(p.name)}</h2><p>${esc(e.day)}s ${esc(e.time)} · ${esc(e.location)} · ${esc(e.durationMin || 60)} min</p>${e.payment ? `<p style="margin-top:6px">${payDot(e.payment)}</p>` : ''}</div></div>
         ${e.sessionPay ? `<p class="ja-small ja-muted" style="margin-top:10px">Paid: paid ahead. Not paid yet: billed after the session, or pay ahead now.</p>` : ''}
+        ${comingBar(e)}
         ${done.length && !all ? attendanceLine(e) || `<p class="ja-done-line">${ic('check')}<span>${done.length} done this term</span></p>` : ''}
         <ol class="ja-dates">${shown.map(date).join('')}</ol>
         ${rows.length > shown.length || all ? `<p class="ja-more-dates"><button type="button" class="ja-btn ja-btn-line ja-btn-sm" data-expand="${esc(e.rowId)}" aria-expanded="${all}">${all ? 'Show less' : `Show all ${rows.length} weeks`}</button></p>` : ''}
@@ -641,6 +647,36 @@ function renderSessions() {
 }
 let sessKid = 'all'
 const expanded = new Set()
+
+// I'm coming: a toggle per date, and one tap for every week still to come.
+function comingBtn(e, iso, yes, when, p) {
+  return `<button type="button" class="ja-btn ja-btn-sm ja-coming" data-coming="${esc(e.rowId)}" data-coming-date="${esc(iso)}" aria-pressed="${yes}" aria-label="${esc(yes ? `${first(p.name)} is coming ${when}. Tap to take it back` : `${first(p.name)} is coming ${when}`)}">${yes ? `${ic('check')}Coming` : "I'm coming"}</button>`
+}
+function comingOpen(e) {
+  const told = new Set((e.cancelled || []).map((c) => c.date))
+  return (e.sessions || []).filter((s) => !told.has(s.iso)).map((s) => s.iso)
+}
+function comingBar(e) {
+  if (!e.asksComing) return ''
+  const open = comingOpen(e)
+  if (!open.length) return ''
+  const said = new Set(e.coming || [])
+  const left = open.filter((d) => !said.has(d))
+  return `<div class="ja-coming-bar"><p class="ja-small"><b>Which weeks can you make?</b> You pay by the session, so tap <b>I'm coming</b> or <b>Can't make it</b> for each date. Your coach uses it to plan.</p>
+    <p class="ja-small ja-muted" style="margin-top:4px">${said.size ? `Coming to ${said.size} of ${open.length} week${open.length === 1 ? '' : 's'} still to come.` : 'Nothing picked yet.'}</p>
+    ${left.length > 1 ? `<div class="ja-actions" style="margin-top:8px"><button type="button" class="ja-btn ja-btn-line ja-btn-sm" data-coming-all="${esc(e.rowId)}">${ic('check')}I'm coming to all ${left.length} weeks left</button></div>` : ''}</div>`
+}
+async function comingSave(btn, rowId, dates, on) {
+  const en = D.players.flatMap((p) => p.enrolments).find((x) => x.rowId === rowId)
+  if (!en) return
+  btn.disabled = true
+  const r = await api('/api/jfp-account', { action: 'comingSession', rowId, dates, on })
+  btn.disabled = false
+  if (!r.ok) return toast(r.data?.error || 'Could not save that. Try again.')
+  en.coming = r.data.coming || []
+  toast(on ? (dates.length > 1 ? `Saved. Your coach can see you are coming to ${r.data.dates.length} weeks.` : 'Saved. Your coach can see you are coming.') : 'Taken back.')
+  renderSessions(); renderHome()
+}
 
 // ---------- player information ----------
 
@@ -1565,6 +1601,10 @@ document.addEventListener('click', async (e) => {
     toast('Thanks. Now you can pay.')
     return load()
   }
+  const cm = t.closest('[data-coming]')
+  if (cm) return comingSave(cm, cm.dataset.coming, [cm.dataset.comingDate], cm.getAttribute('aria-pressed') !== 'true')
+  const ca = t.closest('[data-coming-all]')
+  if (ca) { const en = D.players.flatMap((p) => p.enrolments).find((x) => x.rowId === ca.dataset.comingAll); if (en) { const said = new Set(en.coming || []); return comingSave(ca, en.rowId, comingOpen(en).filter((d) => !said.has(d)), true) } return }
   const cx = t.closest('[data-cancel-open]')
   if (cx) {
     const p = D.players.find((x) => x.key === cx.dataset.cancelPlayer)

@@ -921,3 +921,13 @@ body:has(.ja[data-theme="light"]) { background: #F5F5F3 !important; }
 .ja .ja-prog-list .ar.down { color: var(--j-amber); background: var(--j-amber-bg); }
 .ja .ja-prog-list .ar.same { color: var(--ja-muted); background: rgb(var(--ja-ov) / .07); }
 .ja .ja-prog .sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* I'm coming (Lee, 20 Oct 2026): session by session and Pro places say which
+   weeks they will be at. Pressed is green with a tick. */
+.ja-yn { display: inline-flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.ja .ja-coming { background: var(--ja-panel-2); color: var(--ja-hi); border: 1px solid var(--ja-line); }
+.ja .ja-coming[aria-pressed="true"] { background: var(--ja-green); color: #04210F; border-color: transparent; }
+.ja .ja-coming svg { width: 15px; height: 15px; }
+.ja-coming-bar { margin-top: 12px; padding: 12px 14px; border-radius: 14px; background: var(--ja-panel-2); border: 1px solid var(--ja-line); }
+@media (max-width: 560px) { .ja-date > .ja-yn { grid-column: 2; justify-self: start; justify-content: flex-start; } }
+@media (max-width: 300px) { .ja-date > .ja-yn { grid-column: 1; } }

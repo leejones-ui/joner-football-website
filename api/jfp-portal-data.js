@@ -7,6 +7,7 @@
 //
 // Staff changes write straight into Airtable Term 4 Players, so Lee's
 // dashboard always matches, and every change is recorded in the audit log.
+import { asksComing, comingByGroup } from './_jfp-coming.js'
 import { playersHistory, HISTORY_TERMS, playerRecords } from './_jfp-players-history.js'
 import { boardExtras } from './_jfp-extra.js'
 import { listAppAccess, markAppAccess } from './_jfp-app-access.js'
@@ -2677,7 +2678,7 @@ function coachSessions(config, groups, roster, coachId, date, juniors = {}, note
     const players = isJuniorsGroup(g) ? (juniors[g.id] || []).map((p) => ({ rowId: p.rowId, name: p.name, age: p.age, coach: me?.name || '', mine: true, trial: false, status: 'Confirmed', juniors: true })) : roster.players.filter((r) => r.groupId === g.id && r.holdsPlace && !isTestName(r.player)).map((r) => {
       const c = coachByAirtableName(config, r.coach)
       const trial = /trial/i.test(r.paymentType)
-      return { rowId: r.id, name: r.player, age: playerAge(r, config.termStart), coach: c?.name || r.coach || '', mine: !c || c.id === coachId || !(g.extraCoachIds || []).length, trial, trialDate: trial ? trialDateOf(r) : '', status: r.confirmation, ...coachInfo(r, notes, config) }
+      return { rowId: r.id, name: r.player, age: playerAge(r, config.termStart), coach: c?.name || r.coach || '', mine: !c || c.id === coachId || !(g.extraCoachIds || []).length, trial, trialDate: trial ? trialDateOf(r) : '', status: r.confirmation, ...(asksComing(r) ? { bySession: true } : {}), ...coachInfo(r, notes, config) }
     }).sort((a, b) => Number(b.mine) - Number(a.mine) || a.name.localeCompare(b.name))
     const loc = locationFor(config, g.location)
     const next = dates.find((d) => d >= (date || sydneyToday())) || dates.at(-1)
@@ -3591,6 +3592,12 @@ async function handle(req, res) {
         s.cancelledBy = {}
         for (const r of away) if (r.groupId === s.id) (s.cancelledBy[r.date] ||= {})[r.rowId] = { reason: r.reason, notice: r.noticeLabel }
       }
+      // I'm coming (Lee, 20 Oct 2026): session by session and Pro players say
+      // which dates they will be at. Its own key, never the register.
+      const today0 = sydneyToday()
+      const comingAsks = sessions.filter((s) => s.players.some((p) => p.bySession)).flatMap((s) => s.dates.filter((d) => d.iso >= today0).map((d) => [s.id, d.iso]))
+      const coming = await comingByGroup(comingAsks).catch(() => ({}))
+      for (const s of sessions) s.comingBy = coming[s.id] || {}
       // Notes between coaches on each player, for the sessions this coach runs,
       // helps on or is covering (Lee, 20 Oct 2026: a cover coach sees them).
       const me = principal.coachId

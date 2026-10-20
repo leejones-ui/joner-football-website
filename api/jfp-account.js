@@ -32,6 +32,7 @@ import { syncLinks, syncLink, NOTHING_OWING, PAID_ELSEWHERE } from './_jfp-fee-s
 import { withPayreqLease } from './_jfp-finalise.js'
 import { familyProfiles, findProfile, pickProfile, profileKey, profileView, cleanProfile, saveProfile, savePhoto, waiverPrefill, DOB_MIN, dobMax, clubSuggestions, LEVELS, PLAYING_UP, POSITIONS, FEET, YEARS } from './_jfp-profiles.js'
 import { markToldAway, clearToldAway } from './_jfp-away.js'
+import { asksComing, comingDates, saveComing, clearComing } from './_jfp-coming.js'
 import { coachPhotoUrl } from './jfp-groups.js'
 import { listCancels, submitCancel, withdrawCancel, rowSessionDates, rowTime, noticeFor, coachesFor, coverCoachFor, familyView, cancelId, REASONS, NOTE_MAX } from './_jfp-cancel.js'
 import { loadRoster, familyFor, createWaiverRows, waiverFields, bustRosterCache, updateTerm4Rows } from './_jfp-airtable.js'
@@ -227,6 +228,13 @@ async function overview(res, parent, body = {}, opts = {}) {
     players.push({ key: o.key, name: o.name, age, self: o.self, adult: age != null ? age >= 18 : o.self, photo: o.profile.photo || '', needsDob: !o.profile.dob, waiver: { onFile: false }, placeNoSession: false, ownContact: o.self, enrolments: [], noSession: true })
   }
   for (const p of players) if (!p.enrolments.length && !p.placeNoSession) p.noSession = true
+  // I'm coming (Lee, 20 Oct 2026): session by session and Pro places say which dates they will be at.
+  for (const p of players) for (const e of p.enrolments) {
+    const r = famRows.get(e.rowId)
+    if (!asksComing(r)) continue
+    e.asksComing = true
+    e.coming = [...await comingDates(r, (e.sessions || []).map((x) => x.iso)).catch(() => new Set())]
+  }
   const rowsById = new Map(fam.players.flatMap((p) => p.term4).map((r) => [r.id, r]))
   const todo = mine.filter((q) => ['open', 'checkout'].includes(q.status)).map((q) => {
     const blockers = q.playerKeys.filter((k) => !fam.players.find((p) => p.key === k)?.waiver)
@@ -419,11 +427,31 @@ async function cancelSession(res, parent, body) {
   if (!out.ok) return fail(res, out.status, out.error, out.code ? { code: out.code } : {})
   // The register shows them Away (told us) for that date.
   if (out.record.status === 'active') await markToldAway({ config, group, rec: out.record }).catch((e) => console.error('jfp told-away failed', e))
+  // Can't make it wins over an earlier I'm coming.
+  if (out.record.status === 'active') await clearComing(row, out.record.date).catch(() => {})
   // Who heard (round 3): the coach taking the session and Ligia (staff).
   // A coach who is also on the staff email counts as told by that one.
   const d = out.record.deliveries || {}
   const coachTold = (out.record.coachIds || []).some((id) => d[`coach:${id}`] === 'sent' || (d[`coach:${id}`] === 'skipped' && Boolean(coachById(config, id)?.email) && d.staff === 'sent'))
   return res.status(200).json({ success: true, already: out.already, cancellation: familyView(out.record), told: toldCoaches(config, out.record), toldWho: { coach: coachTold, staff: d.staff === 'sent' } })
+}
+
+// I'm coming: one date or several. Only this family's own session by session
+// or Pro places, and only dates still to come (not started, not cancelled by
+// us). Dates they said they can't make are skipped: Undo that first.
+async function comingSession(res, parent, body) {
+  const config = await getConfig()
+  const [roster, groups, cancels, offMap] = await Promise.all([loadRoster(), listGroups(), listCancels(), sessionOffMap()])
+  const fam = familyFor(parent.email, roster, config.termStart)
+  const row = fam.players.flatMap((p) => p.term4).find((r) => r.id === clean(body.rowId, 30) && r.holdsPlace && r.groupId)
+  if (!row) return fail(res, 404, 'That session is not yours.')
+  const g = groups.find((x) => x.id === row.groupId) || null
+  const nowMs = Date.now()
+  const open = rowSessionDates(config, row, g).filter((d) => !offMap.has(`${row.groupId}|${d}`) && (noticeFor({ date: d, time: rowTime(row, g), nowMs })?.startMs || 0) > nowMs)
+  const told = cancels.filter((c) => c.rowId === row.id && c.status === 'active').map((c) => c.date)
+  const out = await saveComing({ by: parent.email, row, dates: body.dates ?? body.date, on: body.on !== false, open, told })
+  if (out.status !== 200) return fail(res, out.status, out.error)
+  return res.status(200).json({ success: true, dates: out.dates, skipped: out.skipped, coming: [...await comingDates(row, open)] })
 }
 
 async function withdrawSession(res, parent, body) {
@@ -944,6 +972,10 @@ async function playerAction(req, res, login, body) {
     if (!v.rowIds?.has(clean(body.rowId, 30))) return fail(res, 404, 'That session is not yours.')
     return await cancelSession(res, { email: login.parentEmail }, body)
   }
+  if (a === 'comingSession') {
+    if (!v.rowIds?.has(clean(body.rowId, 30))) return fail(res, 404, 'That session is not yours.')
+    return await comingSession(res, { email: login.parentEmail }, body)
+  }
   if (a === 'withdrawCancel') {
     const c = (await listCancels()).find((x) => x.id === clean(body.id, 40))
     if (!c || !v.rowIds?.has(c.rowId)) return fail(res, 404, 'That session is not yours.')
@@ -1003,6 +1035,7 @@ export default async function handler(req, res) {
     if (['jjPay', 'jjRequestPay', 'jjNextChoice'].includes(body.action)) return await juniorsAction(req, res, parent, body)
     if (body.action === 'makeupRequest') { const fam2 = familyFor(parent.email, await loadRoster(), (await getConfig()).termStart); const out = await makeupRequest({ rowIds: fam2.players.flatMap((p) => p.term4.map((r) => r.id)), body, config: await getConfig() }); return out.status === 200 ? res.status(200).json({ success: true }) : fail(res, out.status, out.error) }
     if (body.action === 'cancelSession') return await cancelSession(res, parent, body)
+    if (body.action === 'comingSession') return await comingSession(res, parent, body)
     if (body.action === 'withdrawCancel') return await withdrawSession(res, parent, body)
     if (body.action === 'requestExtra') return await requestExtra(res, parent, body)
     if (body.action === 'holidayAccess') return await holidayAccess(res, parent)
