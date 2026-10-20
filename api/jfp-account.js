@@ -55,6 +55,7 @@ import { pushView, saveSub, dropSub, setPrefs } from './_jfp-push.js'
 import { roleFor } from './_jfp-people.js'
 import { familyNotesFor, markFamilyNotesRead } from './_jfp-family-notes.js'
 import { reportsForFamily, familyView as reportFamilyView, readSetFor, markReportsRead, getReport, REPORT_ATTRS, REPORT_SCALE } from './_jfp-reports.js'
+import { progressByPlayer } from './_jfp-progress.js'
 import { submitExtra, listExtras, familyExtraView, analysisPrice, extraSlots, DAYS as EXTRA_DAYS, TIMES as EXTRA_TIMES, TYPES as EXTRA_TYPES } from './_jfp-extras.js'
 // Saved card or bank account for session payments (claude/card-on-file).
 import { SAVED_PAY_FAMILY, savedPayFamily } from './_jfp-saved-pay.js'
@@ -885,7 +886,8 @@ async function reportsSummary(email, login) {
 }
 async function reportsAction(res, email, login, body) {
   const { list, read, scope } = await myReports(email, login)
-  if (body.action === 'reports') return res.status(200).json({ success: true, reports: list.map((r) => reportFamilyView(r, read)), form: { attrs: REPORT_ATTRS, scale: REPORT_SCALE } })
+  // Progress over the terms (Lee, 20 Oct 2026): from the same sent-only list.
+  if (body.action === 'reports') return res.status(200).json({ success: true, reports: list.map((r) => reportFamilyView(r, read)), progress: progressByPlayer(list), form: { attrs: REPORT_ATTRS, scale: REPORT_SCALE } })
   if (body.action === 'reportRead') return res.status(200).json({ success: true, read: await markReportsRead(scope.email, body.ids, new Set(list.map((r) => r.id))) })
   // reportPdf: only a report this family can see.
   const id = clean(body.id, 40)

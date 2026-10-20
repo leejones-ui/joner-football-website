@@ -3,7 +3,8 @@
 // ever sees, writes and sends reports for players in their own groups. Lee
 // and Ligia can report on any JFP player.
 //   reportHome        the players this person can report on, and their reports
-//   reportStart       { rowId } a draft to carry on with, or a new card filled in
+//   reportStart       { rowId } a draft to carry on with, or a new card filled in,
+//                     plus last: the levels on the player's last sent report
 //   reportSave        { id?, rowId, fields } save a draft
 //   reportGet         { id }
 //   reportPdf         { id } the PDF, to save on this device
@@ -11,11 +12,12 @@
 //   reportSend        { id, confirm: true, expect: [{ role, name }], again? }
 //   reportDelete      { id } a draft only
 //   reportWithdraw    { id, on } Lee and Ligia: out of (or back into) the family account
-import { clean, ageOn, sydneyToday, coachById, coachLabel, locationFor } from './_jfp-store.js'
+import { clean, ageOn, sydneyToday, coachById, coachLabel, locationFor, normName, rowEmails } from './_jfp-store.js'
 import { REPORT_ATTRS, REPORT_SCALE, REPORT_PROGRAMS, FEEDBACK_MAX, REMINDER_MAX, getReport, listReports, saveDraft, deleteDraft, sendReport, withdrawReport, recipientsFor, recipientView, staffView, prefill, termParts } from './_jfp-reports.js'
 import { renderReportPdf, reportFilename } from './_jfp-report-pdf.js'
 import { sendPlayerReport } from './_jfp-email.js'
 import { siteUrl } from './_holiday-store.js'
+import { lastLevelsFor } from './_jfp-progress.js'
 
 export const REPORT_ACTIONS = new Set(['reportHome', 'reportStart', 'reportSave', 'reportGet', 'reportPdf', 'reportRecipients', 'reportSend', 'reportDelete', 'reportWithdraw'])
 
@@ -66,11 +68,15 @@ export async function reportAction(req, res, principal, config, body, action, de
     const a = await access(clean(body.rowId, 30))
     if (!a) return no(res, 404, 'That player is not in your groups.')
     const tp = termParts(config.term)
-    const drafts = (await listReports()).filter((x) => x.status === 'draft' && x.rowId === a.row.id && x.termNo === tp.termNo && x.year === tp.year)
+    const all = await listReports()
+    const drafts = all.filter((x) => x.status === 'draft' && x.rowId === a.row.id && x.termNo === tp.termNo && x.year === tp.year)
     const own = drafts.find((x) => x.createdBy === me) || (isAdmin ? drafts[0] : null)
-    if (own) return ok(res, { report: view(own), resumed: true })
+    // Progress (Lee, 20 Oct 2026): the levels on this player's last sent
+    // report, shown next to each rating. Only after access() said yes.
+    const last = lastLevelsFor(all, { rowId: a.row.id, playerKey: normName(a.row.player), emails: rowEmails(a.row), excludeId: own?.id || '' })
+    if (own) return ok(res, { report: view(own), resumed: true, last })
     const fill = prefill({ config, row: a.row, group: a.group, principal: p })
-    return ok(res, { report: { id: '', status: 'new', rowId: a.row.id, player: a.row.player, session: `${a.group.day} ${a.group.time}, ${locationFor(config, a.group.location).name}`, ...fill }, resumed: false })
+    return ok(res, { report: { id: '', status: 'new', rowId: a.row.id, player: a.row.player, session: `${a.group.day} ${a.group.time}, ${locationFor(config, a.group.location).name}`, ...fill }, resumed: false, last })
   }
 
   if (action === 'reportSave') {

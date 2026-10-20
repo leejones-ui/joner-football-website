@@ -9,6 +9,7 @@ import { mountReportDue } from './jfp-portal-reportdue.js'
 import { esc } from './jfp-common.js'
 import { psHelp } from './jfp-portal-ps.js'
 import { savePdfOnDevice, reportCardHtml, reportDate as dateLabel } from './jfp-report-view.js'
+import { lastIntro, lastTag, refreshTag } from './jfp-portal-progress.js'
 
 const S = { tab: 'write', q: '', data: null }
 const LOCAL = 'jfpReportDraft.portal.v1'
@@ -159,6 +160,7 @@ async function openEditor(ui, rowId) {
   if (!out.ok) return toast(out.data.error || 'Could not open that player.')
   const form = S.data?.form || (await ui.need(await post('reportHome', {}))).form
   const rep = out.data.report
+  const last = out.data.last || null
   const st = {
     id: rep.id || '', rowId, player: rep.player, dirty: false, saving: null, timer: 0, sending: false,
     f: { program: rep.program, termNo: rep.termNo, year: rep.year, reportDate: rep.reportDate, location: rep.location, coachName: rep.coachName, ratings: { ...rep.ratings }, feedback: rep.feedback || '', reminder: rep.reminder || '' },
@@ -184,7 +186,8 @@ async function openEditor(ui, rowId) {
       <label class="j-field"><span>Coach</span><input class="j-input" id="rp-coach" maxlength="60" value="${esc(f.coachName)}"></label></div>
     <h3 style="font-size:15px;margin:10px 0 2px">Ratings</h3>
     <p class="muted small" style="margin-bottom:8px">${form.scale.map((s, i) => `${i + 1} ${esc(s)}`).join(' · ')}. Tap again to clear.</p>
-    <div class="rp-rates" id="rp-rates">${form.attrs.map((a) => `<div class="rp-rate-in" data-k="${esc(a.k)}"><span>${esc(a.l)}</span><span class="rp-dots">${[1, 2, 3, 4, 5].map((n) => `<button type="button" data-n="${n}" aria-label="${esc(a.l)}: ${n}, ${esc(form.scale[n - 1])}" aria-pressed="${(f.ratings[a.k] || 0) === n}">${n}</button>`).join('')}</span></div>`).join('')}</div>
+    ${lastIntro(last, dateLabel)}
+    <div class="rp-rates" id="rp-rates">${form.attrs.map((a) => `<div class="rp-rate-in" data-k="${esc(a.k)}"><span>${esc(a.l)}${lastTag(last, a.k, form.scale, f.ratings[a.k] || 0)}</span><span class="rp-dots">${[1, 2, 3, 4, 5].map((n) => `<button type="button" data-n="${n}" aria-label="${esc(a.l)}: ${n}, ${esc(form.scale[n - 1])}" aria-pressed="${(f.ratings[a.k] || 0) === n}">${n}</button>`).join('')}</span></div>`).join('')}</div>
     <label class="j-field" style="margin-top:12px"><span style="display:flex;justify-content:space-between;gap:8px;align-items:center">Coach feedback <span style="display:flex;gap:8px;align-items:center"><button type="button" class="j-btn j-btn-line j-btn-sm" id="rp-mic" hidden>Speak</button><small class="muted" id="rp-count"></small></span></span>
       <textarea class="j-textarea" id="rp-fb" rows="8" maxlength="${form.feedbackMax}" placeholder="What ${esc(first(st.player))} did well, what to work on next, and how">${esc(f.feedback)}</textarea></label>
     <label class="j-field"><span>Next term reminder <span class="muted">(optional)</span></span>
@@ -238,6 +241,7 @@ async function openEditor(ui, rowId) {
     const row = b.closest('[data-k]'); const k = row.dataset.k; const n = Number(b.dataset.n)
     f.ratings[k] = f.ratings[k] === n ? 0 : n
     row.querySelectorAll('[data-n]').forEach((x) => x.setAttribute('aria-pressed', String(Number(x.dataset.n) === f.ratings[k])))
+    refreshTag(row, last, k, form.scale, f.ratings[k])
     changed()
   })
   mic($('#rp-mic'), $('#rp-fb'), (text) => { f.feedback = text.slice(0, form.feedbackMax); $('#rp-fb').value = f.feedback; count(); changed() })

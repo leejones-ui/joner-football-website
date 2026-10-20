@@ -890,3 +890,34 @@ body:has(.ja[data-theme="light"]) { background: #F5F5F3 !important; }
 .ja-coach-chip small { font-size: 11px; opacity: .7; }
 .ja-cp-sec { margin-top: 14px; }
 .ja-cp-list { margin: 4px 0 0; padding-left: 18px; display: grid; gap: 4px; }
+
+/* Progress over the terms (Lee, 20 Oct 2026): one card a player on Player
+   reports. Phone first; the chart and list use the theme tokens, so light
+   and dark both work. */
+.ja .ja-stack > .ja-prog + .ja-prog { margin-top: 0; }
+.ja .ja-prog-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.ja .ja-prog-head h2 { font: 400 22px/1.1 var(--ja-display); letter-spacing: .01em; text-transform: uppercase; color: var(--ja-hi); }
+.ja .ja-prog-head .ja-muted { font-size: 12.5px; }
+.ja .ja-prog-chart { display: block; width: 100%; max-width: 520px; height: auto; margin: 4px auto 0; overflow: visible; }
+.ja .ja-prog-chart .g { stroke: var(--ja-line); stroke-width: 1; }
+.ja .ja-prog-chart .ax { fill: var(--ja-faint); font: 600 10px/1 Inter, system-ui, sans-serif; }
+.ja .ja-prog-chart .v { fill: var(--ja-hi); font: 700 12px/1 Inter, system-ui, sans-serif; }
+.ja .ja-prog-chart .l { fill: none; stroke: var(--ja-red); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.ja .ja-prog-chart .a { fill: var(--ja-red); opacity: .08; }
+.ja .ja-prog-chart .d { fill: var(--ja-panel); stroke: var(--ja-red); stroke-width: 2.5; }
+.ja .ja-prog-chart .d.now { fill: var(--ja-red); }
+.ja .ja-prog-start { margin: 6px 0 0; padding: 10px 12px; border-radius: 12px; background: var(--ja-panel-2); color: var(--ja-ink-2); font-size: 13.5px; line-height: 1.45; }
+.ja .ja-prog-sum { margin: 10px 0 4px; font-size: 14px; line-height: 1.45; color: var(--ja-ink-2); }
+.ja .ja-prog-sum:empty { display: none; }
+.ja .ja-prog-list { list-style: none; margin: 6px 0 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); column-gap: 20px; }
+@media (min-width: 640px) { .ja .ja-prog-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.ja .ja-prog-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto 22px; align-items: center; gap: 8px; min-height: 36px; padding: 6px 0; border-bottom: 1px solid var(--ja-line); font-size: 13.5px; }
+.ja .ja-prog-list.is-first li { grid-template-columns: minmax(0, 1fr) auto; }
+.ja .ja-prog-list .nm { color: var(--ja-ink); overflow-wrap: anywhere; }
+.ja .ja-prog-list .lv { color: var(--ja-muted); font-weight: 600; font-size: 12.5px; white-space: nowrap; }
+.ja .ja-prog-list .ar { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; }
+.ja .ja-prog-list .ar svg { width: 14px; height: 14px; fill: currentColor; }
+.ja .ja-prog-list .ar.up { color: var(--j-green); background: var(--j-green-bg); }
+.ja .ja-prog-list .ar.down { color: var(--j-amber); background: var(--j-amber-bg); }
+.ja .ja-prog-list .ar.same { color: var(--ja-muted); background: rgb(var(--ja-ov) / .07); }
+.ja .ja-prog .sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
