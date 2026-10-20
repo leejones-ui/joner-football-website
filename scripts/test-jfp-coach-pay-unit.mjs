@@ -94,6 +94,8 @@ t('fees not paid: unpaid, partly paid, not set or a balance', () => {
   assert.equal(feesOwed({ paymentStatus: 'Partially Paid' }), true)
   assert.equal(feesOwed({ paymentStatus: '' }), true)
   assert.equal(feesOwed({ paymentStatus: 'Paid', balanceAud: 50 }), true)
+  assert.equal(feesOwed({ paymentType: 'JFP Session by session', paymentStatus: 'Unpaid', balanceAud: 0 }), false, 'session by session: nothing billed yet is not owing')
+  assert.equal(feesOwed({ paymentType: 'JFP Pro sessions', paymentStatus: 'Unpaid', balanceAud: 160 }), true, 'a billed amount not paid is')
 })
 t('due Monday: the coming Monday, or today on a Monday', () => {
   assert.equal(dueMonday('2026-10-21'), '2026-10-26'); assert.equal(dueMonday('2026-10-26'), '2026-10-26'); assert.equal(dueMonday('2026-10-25'), '2026-10-26')

@@ -25,7 +25,7 @@
 //
 // Private: a coach only ever sees their own invoices, lines and amounts.
 // Hermes never sees any of it.
-import { kvCommand, clean, newId, audit, dateLabel, coachById, coachLabel, formatAud, listGroups, locationFor, sydneyToday } from './_jfp-store.js'
+import { isSessionType, kvCommand, clean, newId, audit, dateLabel, coachById, coachLabel, formatAud, listGroups, locationFor, sydneyToday } from './_jfp-store.js'
 import { allHours, HOUR_KINDS, shortNames } from './_jfp-hours.js'
 import { loadRoster } from './_jfp-airtable.js'
 import { getCard, allCards, checkCard, saveCard, getDetails, saveDetails, registerFor, priceLine, isPathwayGroup, dueMonday, BAND_LABELS } from './_jfp-coach-pay.js'
@@ -102,8 +102,13 @@ export function newLine(body, { by, role, from, to }) {
   return { hoursId: '', date, dateLabel: dateLabel(date), start: '', end: '', minutes, kind: 'other', kindLabel: 'Added', groupId: '', note: '', what: '', location: clean(body.location, 80), status: 'approved', description, players: null, cents, calcCents: null, basis: `Added by ${role === 'coach' ? 'the coach' : 'Lee or Ligia'}`, flags: [{ code: 'added', text: `Line added by ${role === 'coach' ? 'the coach' : 'Lee or Ligia'}` }], edits: [{ by, role, at: new Date().toISOString(), fields: ['added'] }] }
 }
 
-// Fees not paid: Unpaid, Partly paid or not set, or a balance still owing.
-export const feesOwed = (r) => /^(unpaid|partially paid|not set)$/i.test(String(r.paymentStatus || 'Not set')) || Number(r.balanceAud || 0) > 0
+// Fees not paid. A term fee: Unpaid, Partly paid or not set, or a balance
+// still owing. Session by session, Pro sessions or an agency's players: they
+// are billed after the sessions, so "Unpaid" with nothing billed is normal;
+// flagged only when a billed amount is still owing.
+export const feesOwed = (r) => isSessionType(r.paymentType)
+  ? Number(r.balanceAud || 0) > 0
+  : /^(unpaid|partially paid|not set)$/i.test(String(r.paymentStatus || 'Not set')) || Number(r.balanceAud || 0) > 0
 // What a coach may see of a line: never a family's payments.
 const forCoach = (l) => { const { unpaid, ...rest } = l; return { ...rest, flags: (l.flags || []).filter((f) => f.code !== 'unpaid') } }
 
