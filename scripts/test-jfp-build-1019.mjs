@@ -279,6 +279,12 @@ await test('coach invoices, 20 Oct: tick players on hours, edit lines before sen
   assert.equal(v.amountCents, 3000)
   const free = (await ok(sam, 'coachInvList', { from: day(-7), to: day(0) })).draft
   assert.ok(free.some((l) => l.hoursId === dev.entry.id), 'a line taken off frees its hours')
+  // Quick picks for logging: Sam's own sessions and players only.
+  const opts = await ok(sam, 'hoursOptions', {})
+  assert.ok(opts.groups.some((g) => g.id === THU) && opts.players.length >= 1)
+  // Fees not paid: Lee sees who to chase, Sam never does.
+  const coachSees = await ok(sam, 'coachInvList', { from: day(-7), to: day(0) })
+  assert.ok(coachSees.draft.every((l) => !('unpaid' in l) && !l.flags.some((f) => f.code === 'unpaid')))
   // Lee's own coach view.
   const mine = await ok(lee, 'coachInvList', { mine: true, from: day(-7), to: day(0) })
   assert.equal(mine.admin, false); assert.ok(Array.isArray(mine.draft))

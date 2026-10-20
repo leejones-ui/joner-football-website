@@ -20,7 +20,7 @@ import { loadRoster } from './_jfp-airtable.js'
 import { registerFor, paidUpfront } from './_jfp-coach-pay.js'
 
 const KEY = 'jfp:hours'
-export const HOURS_ACTIONS = new Set(['hoursList', 'hoursSave', 'hoursDelete', 'hoursDecide', 'hoursPlayers'])
+export const HOURS_ACTIONS = new Set(['hoursList', 'hoursSave', 'hoursDelete', 'hoursDecide', 'hoursPlayers', 'hoursOptions'])
 export const HOUR_KINDS = { session: 'JFP session', cover: 'Cover', devsesh: 'Dev Sesh', holiday: 'Holiday training', camp: 'Camp', juniors: 'Joners Juniors', event: 'Event or trial day', admin: 'Admin or planning', other: 'Other' }
 const MAX_PLAYERS = 40
 
@@ -60,6 +60,20 @@ export function checkPlayers(list, allowed) {
     if (name) out.push({ rowId: '', name })
   }
   return out
+}
+
+// The quick picks for logging hours: the coach's own sessions (to tap) and
+// the players in them (for a Dev Sesh or anything not on a register).
+async function coachOptions(config, coachId) {
+  const [groups, roster] = await Promise.all([listGroups(), loadRoster().catch(() => ({ players: [] }))])
+  const mine = groups.filter((g) => (g.mode !== 'closed' || g.label === 'Joners Juniors') && (g.coachId === coachId || (g.extraCoachIds || []).includes(coachId)))
+  const ids = new Set(mine.map((g) => g.id))
+  const rows = roster.players.filter((r) => ids.has(r.groupId) && r.holdsPlace)
+  const names = shortNames(roster.players)
+  return {
+    groups: mine.map((g) => { const s = to24h(g.time); return { id: g.id, day: g.day, time: g.time, label: `${g.day} ${g.time}, ${locationFor(config, g.location).name}`, kind: g.label === 'Joners Juniors' ? 'juniors' : 'session', start: s || '', end: s ? hm(mins(s) + Number(g.durationMin || 60)) : '' } }),
+    players: rows.map((r) => ({ rowId: r.id, name: names.get(r.id), full: String(r.player || '').trim() })).sort((a, b) => a.full.localeCompare(b.full)),
+  }
 }
 
 // May this login see a session's players: Lee, Ligia, the group's coaches, or the cover that day.
@@ -159,6 +173,12 @@ export async function hoursAction(res, principal, config, body, action, { isAdmi
     return ok(await sessionPlayers(groupId, date))
   }
 
+  if (action === 'hoursOptions') {
+    const coachId = isAdmin ? clean(body.coachId, 30) || myCoachId : myCoachId
+    if (!coachId) return no(403, 'Your login is not linked to a coach yet. Ask Lee.')
+    return ok(await coachOptions(config, coachId))
+  }
+
   if (action === 'hoursSave') {
     const id = clean(body.id, 40)
     const was = id ? parse(await kvCommand(['HGET', KEY, id])) : null
@@ -176,6 +196,8 @@ export async function hoursAction(res, principal, config, body, action, { isAdmi
       const gid = e.groupId || was?.groupId || ''
       let allowed = new Map()
       if (gid && await canSeeSession(gid, e.date, { isAdmin, myCoachId: isAdmin ? myCoachId : coachId, listCovers })) allowed = new Map((await sessionPlayers(gid, e.date)).players.map((p) => [p.rowId, p.name]))
+      // Not a register session (a Dev Sesh, an event): any player in the coach's own groups.
+      if (!gid) allowed = new Map((await coachOptions(config, coachId)).players.map((p) => [p.rowId, p.name]))
       e.players = checkPlayers(body.players, allowed)
     }
     const now = new Date().toISOString()

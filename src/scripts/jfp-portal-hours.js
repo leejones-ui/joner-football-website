@@ -137,50 +137,97 @@ const HC_CSS = `<style>
 .hp-row small{margin-left:auto;color:var(--j-muted);white-space:nowrap}
 </style>`
 const MARK = { Present: 'Present', Absent: 'Away', Notified: 'Told us away' }
+const HQ_CSS = `<style>
+.hq{display:flex;flex-direction:column;gap:14px}
+.hq-sec>span{display:block;font-size:12.5px;font-weight:650;color:var(--j-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.03em}
+.hq-row{display:flex;flex-wrap:wrap;gap:6px}
+.hq-chip{font:inherit;font-size:14px;line-height:1.2;color:var(--j-ink);background:var(--j-surface-2);border:1px solid var(--j-line);border-radius:999px;padding:9px 14px;cursor:pointer;min-height:40px;text-align:left}
+.hq-chip small{display:block;font-size:11.5px;color:var(--j-muted)}
+.hq-chip[aria-pressed="true"]{background:var(--j-action);color:var(--j-action-ink);border-color:var(--j-action)}
+.hq-chip[aria-pressed="true"] small{color:inherit;opacity:.8}
+.hq-chip.hq-dim{opacity:.6}
+.hq-players{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;max-height:40vh;overflow:auto}
+.hq-players .hq-chip{border-radius:12px}
+.hq-time{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+</style>`
+const DURS = [[30, '30m'], [45, '45m'], [60, '1h'], [90, '1h 30m'], [120, '2h'], [180, '3h']]
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+const toMin = (t) => { const [h, m] = String(t).split(':').map(Number); return h * 60 + m }
+const fromMin = (m) => `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
+const dayChip = (iso, today) => (iso === today ? 'Today' : iso === addDays(today, -1) ? 'Yesterday' : new Intl.DateTimeFormat('en-AU', { timeZone: 'UTC', weekday: 'short', day: 'numeric' }).format(new Date(`${iso}T00:00:00Z`)))
 
+// Log or change hours: everything is a tap. Date, what, which session (its
+// times fill in), then tap the players (the register's come ticked).
 function entryModal(ui, d, h, reload, sug = null) {
   const admin = ui.user.role === 'admin'
   const today = d.today
   const src = h || sug || {}
-  const groupId = src.groupId || ''
-  const typed = (h?.players || []).filter((p) => !p.rowId)
-  const box = ui.modal(`<h2 style="margin-bottom:4px">${h ? 'Edit hours' : sug ? 'Log this session' : 'Log hours'}</h2>${sug ? `<p class="muted small" style="margin-bottom:10px">${esc(sug.dateLabel)} · ${esc(sug.label)}</p>` : ''}
-    ${admin && !h ? `<label class="j-field"><span>Coach</span><select class="j-select" id="he-coach">${d.coaches.map((c) => `<option value="${esc(c.id)}" ${c.id === (sug ? d.suggestFor : S.coachId || d.myCoachId) ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>` : ''}
-    <label class="j-field" ${sug ? 'hidden' : ''}><span>Date</span><input class="j-input" type="date" id="he-date" max="${esc(today)}" value="${esc(src.date || today)}"></label>
-    <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px"><label class="j-field"><span>Start</span><input class="j-input" type="time" id="he-start" step="300" value="${esc(src.start || '')}"></label><label class="j-field"><span>Finish</span><input class="j-input" type="time" id="he-end" step="300" value="${esc(src.end || '')}"></label></div>
-    <label class="j-field" ${sug ? 'hidden' : ''}><span>What for</span><select class="j-select" id="he-kind">${Object.entries(d.kinds).map(([k, l]) => `<option value="${k}" ${(src.kind || 'session') === k ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label>
-    <div class="j-field"><span>Players you coached <b id="hp-n"></b></span>
-      ${groupId ? '<div class="hp-list" id="hp-list"><p class="muted small" style="padding:8px">Loading the register…</p></div>' : ''}
-      <div id="hp-typed" class="hc-players" style="margin:4px 0"></div>
-      <div style="display:flex;gap:6px"><input class="j-input" id="hp-add" maxlength="40" placeholder="${groupId ? 'Someone else? Type a name' : 'Type a player name, then Add'}"><button type="button" class="j-btn j-btn-line j-btn-sm" id="hp-add-go">Add</button></div></div>
-    <label class="j-field"><span>Note (optional)</span><input class="j-input" id="he-note" maxlength="300" value="${esc(h?.note || '')}" placeholder="e.g. Dev Sesh"></label>
+  const st = { coachId: h?.coachId || (sug ? d.suggestFor : admin ? S.coachId || d.myCoachId : ''), date: src.date || today, kind: src.kind || 'session', groupId: src.groupId || '', start: src.start || '', end: src.end || '', picked: new Set((h?.players || []).filter((p) => p.rowId).map((p) => p.rowId)), typed: (h?.players || []).filter((p) => !p.rowId).map((p) => p.name), touched: Boolean(h?.players), opts: null, list: null, q: '' }
+  const box = ui.modal(`${HQ_CSS}<h2 style="margin-bottom:12px">${h ? 'Change hours' : 'Log hours'}</h2><div class="hq" id="hq"></div>
     <p class="j-err" id="he-err" hidden></p>
-    <div class="jpf-acts">${h ? '<button type="button" class="j-btn j-btn-line" id="he-del">Delete</button>' : ''}<button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="he-go">Save</button></div>`)
+    <div class="jpf-acts">${h ? '<button type="button" class="j-btn j-btn-line" id="he-del">Delete</button>' : ''}<button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="he-go">Save</button></div>`, { wide: true })
   const err = (m) => { const e = box.querySelector('#he-err'); e.textContent = m; e.hidden = !m }
-  const names = typed.map((p) => p.name)
-  const count = () => { box.querySelector('#hp-n').textContent = `(${box.querySelectorAll('[data-hp]:checked').length + names.length})` }
-  const drawTyped = () => { box.querySelector('#hp-typed').innerHTML = names.map((n, i) => `<button type="button" class="hc-chip" data-hp-x="${i}" title="Take off">${esc(n)} ✕</button>`).join(''); box.querySelectorAll('[data-hp-x]').forEach((b) => b.addEventListener('click', () => { names.splice(Number(b.dataset.hpX), 1); drawTyped() })); count() }
-  drawTyped()
-  const addTyped = () => { const i = box.querySelector('#hp-add'); const v = i.value.trim(); if (v) { names.push(v); i.value = ''; drawTyped() } }
-  box.querySelector('#hp-add-go').addEventListener('click', addTyped)
-  box.querySelector('#hp-add').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addTyped() } })
-  if (groupId) {
-    ui.post('hoursPlayers', { groupId, date: src.date }).then((r) => {
-      const el = box.querySelector('#hp-list')
-      if (!el) return
-      if (!r.ok) { el.innerHTML = `<p class="j-err" style="padding:8px">${esc(r.data.error || 'Could not load the players.')}</p>`; return }
-      const saved = h?.players ? new Set(h.players.filter((p) => p.rowId).map((p) => p.rowId)) : null
-      el.innerHTML = r.data.players.map((p) => `<label class="hp-row"><input type="checkbox" data-hp="${esc(p.rowId)}" ${(saved ? saved.has(p.rowId) : p.ticked) ? 'checked' : ''}><span>${esc(p.full || p.name)}</span><small>${esc(p.mark ? `${MARK[p.mark] || p.mark}${p.mark !== 'Present' && p.paidUpfront ? ', paid upfront' : ''}` : 'Not marked')}</small></label>`).join('') || '<p class="muted small" style="padding:8px">No players in this group.</p>'
-      if (!r.data.marked) el.insertAdjacentHTML('afterbegin', '<p class="small" style="padding:6px 8px;color:var(--j-amber)">The register is not marked yet. Tick who came.</p>')
-      el.querySelectorAll('[data-hp]').forEach((c) => c.addEventListener('change', count))
-      count()
-    })
+  const chip = (attr, val, label, on, sub = '', dim = false) => `<button type="button" class="hq-chip${dim ? ' hq-dim' : ''}" ${attr}="${esc(val)}" aria-pressed="${on}">${esc(label)}${sub ? `<small>${esc(sub)}</small>` : ''}</button>`
+  const usesGroup = () => ['session', 'cover', 'juniors'].includes(st.kind)
+  const loadOpts = async () => { const r = await ui.post('hoursOptions', { coachId: st.coachId }); st.opts = r.ok ? r.data : { groups: [], players: [] }; draw() }
+  const loadList = async () => {
+    st.list = null
+    if (!st.groupId) return draw()
+    draw()
+    const r = await ui.post('hoursPlayers', { groupId: st.groupId, date: st.date })
+    st.list = r.ok ? r.data : { players: [], error: r.data.error }
+    if (!st.touched) st.picked = new Set(st.list.players.filter((p) => p.ticked).map((p) => p.rowId))
+    draw()
+  }
+  const draw = () => {
+    const el = box.querySelector('#hq')
+    const dates = Array.from({ length: 8 }, (_, i) => addDays(today, -i))
+    const wd = DAYS[new Date(`${st.date}T00:00:00Z`).getUTCDay()]
+    const groups = (st.opts?.groups || []).filter((g) => st.kind !== 'juniors' || g.kind === 'juniors').sort((a, b) => Number(b.day === wd) - Number(a.day === wd))
+    const dur = st.start && st.end ? toMin(st.end) - toMin(st.start) : 0
+    let players = ''
+    if (usesGroup() && st.groupId) {
+      players = !st.list ? '<p class="muted small">Loading the register…</p>' : st.list.error ? `<p class="j-err">${esc(st.list.error)}</p>` : `${st.list.marked ? '' : '<p class="small" style="color:var(--j-amber);margin-bottom:6px">Register not marked yet. Tap who came.</p>'}<div class="hq-players">${st.list.players.map((p) => chip('data-hq-p', p.rowId, p.full || p.name, st.picked.has(p.rowId), p.mark ? `${MARK[p.mark] || p.mark}${p.mark !== 'Present' && p.paidUpfront ? ', paid' : ''}` : '')).join('') || '<p class="muted small">No players in this group.</p>'}</div>`
+    } else if (!usesGroup()) {
+      const q = st.q.toLowerCase()
+      const all = (st.opts?.players || []).filter((p) => st.picked.has(p.rowId) || !q || p.full.toLowerCase().includes(q))
+      players = `<input class="j-input" id="hq-q" placeholder="Search your players" value="${esc(st.q)}" style="margin-bottom:6px"><div class="hq-players">${all.slice(0, 60).map((p) => chip('data-hq-p', p.rowId, p.full, st.picked.has(p.rowId))).join('') || '<p class="muted small">No match. Type the name below.</p>'}</div>`
+    } else players = '<p class="muted small">Tap the session above first.</p>'
+    el.innerHTML = `${admin && !h ? `<div class="hq-sec"><span>Coach</span><select class="j-select" id="hq-coach">${d.coaches.map((c) => `<option value="${esc(c.id)}" ${c.id === st.coachId ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></div>` : ''}
+      <div class="hq-sec"><span>When</span><div class="hq-row">${dates.map((x) => chip('data-hq-date', x, dayChip(x, today), x === st.date)).join('')}<input class="j-input" type="date" id="hq-date" max="${esc(today)}" value="${esc(st.date)}" style="width:auto;min-height:40px"></div></div>
+      <div class="hq-sec"><span>What</span><div class="hq-row">${Object.entries(d.kinds).map(([k, l]) => chip('data-hq-kind', k, l, k === st.kind)).join('')}</div></div>
+      ${usesGroup() ? `<div class="hq-sec"><span>Which session</span><div class="hq-row">${groups.map((g) => chip('data-hq-g', g.id, `${g.day.slice(0, 3)} ${g.time}`, g.id === st.groupId, g.label.split(', ').slice(1).join(', '), g.day !== wd)).join('') || '<p class="muted small">No sessions of yours found. Use Other.</p>'}</div></div>` : ''}
+      <div class="hq-sec"><span>Time</span><div class="hq-time"><label class="j-field" style="margin:0"><span>Start</span><input class="j-input" type="time" id="hq-start" step="300" value="${esc(st.start)}"></label><label class="j-field" style="margin:0"><span>Finish</span><input class="j-input" type="time" id="hq-end" step="300" value="${esc(st.end)}"></label></div>
+        <div class="hq-row" style="margin-top:6px">${DURS.map(([m, l]) => chip('data-hq-dur', m, l, dur === m)).join('')}</div></div>
+      <div class="hq-sec"><span>Players you coached (${st.picked.size + st.typed.length})</span>${players}
+        <div class="hq-row" style="margin-top:6px">${st.typed.map((n, i) => chip('data-hq-x', i, `${n} ✕`, true)).join('')}</div>
+        <div style="display:flex;gap:6px;margin-top:6px"><input class="j-input" id="hq-add" maxlength="40" placeholder="Someone else? Type a name"><button type="button" class="j-btn j-btn-line" id="hq-add-go">Add</button></div></div>
+      <div class="hq-sec"><span>Note (optional)</span><input class="j-input" id="hq-note" maxlength="300" value="${esc(st.note ?? h?.note ?? '')}"></div>`
+    wire(el)
+  }
+  const wire = (el) => {
+    el.querySelector('#hq-coach')?.addEventListener('change', (e) => { st.coachId = e.target.value; st.groupId = ''; st.picked.clear(); loadOpts() })
+    el.querySelectorAll('[data-hq-date]').forEach((b) => b.addEventListener('click', () => { st.date = b.dataset.hqDate; if (st.groupId) loadList(); else draw() }))
+    el.querySelector('#hq-date').addEventListener('change', (e) => { if (e.target.value) { st.date = e.target.value; if (st.groupId) loadList(); else draw() } })
+    el.querySelectorAll('[data-hq-kind]').forEach((b) => b.addEventListener('click', () => { st.kind = b.dataset.hqKind; if (!usesGroup()) { st.groupId = ''; st.list = null } draw() }))
+    el.querySelectorAll('[data-hq-g]').forEach((b) => b.addEventListener('click', () => { const g = st.opts.groups.find((x) => x.id === b.dataset.hqG); st.groupId = g.id; if (g.start) { st.start = g.start; st.end = g.end } st.touched = false; loadList() }))
+    el.querySelectorAll('[data-hq-dur]').forEach((b) => b.addEventListener('click', () => { if (!st.start) return err('Set the start time first.'); err(''); st.end = fromMin(toMin(st.start) + Number(b.dataset.hqDur)); draw() }))
+    el.querySelector('#hq-start').addEventListener('change', (e) => { const keep = st.start && st.end ? toMin(st.end) - toMin(st.start) : 60; st.start = e.target.value; if (st.start) st.end = fromMin(toMin(st.start) + (keep > 0 ? keep : 60)); draw() })
+    el.querySelector('#hq-end').addEventListener('change', (e) => { st.end = e.target.value })
+    el.querySelectorAll('[data-hq-p]').forEach((b) => b.addEventListener('click', () => { const id = b.dataset.hqP; st.touched = true; if (st.picked.has(id)) st.picked.delete(id); else st.picked.add(id); draw() }))
+    el.querySelectorAll('[data-hq-x]').forEach((b) => b.addEventListener('click', () => { st.typed.splice(Number(b.dataset.hqX), 1); draw() }))
+    const q = el.querySelector('#hq-q')
+    if (q) q.addEventListener('input', (e) => { st.q = e.target.value; const pos = e.target.selectionStart; draw(); const n = box.querySelector('#hq-q'); n.focus(); n.setSelectionRange(pos, pos) })
+    const add = () => { const v = el.querySelector('#hq-add').value.trim(); if (v) { st.typed.push(v); st.touched = true; draw() } }
+    el.querySelector('#hq-add-go').addEventListener('click', add)
+    el.querySelector('#hq-add').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); add() } })
+    el.querySelector('#hq-note').addEventListener('input', (e) => { st.note = e.target.value })
   }
   box.querySelector('#he-go').addEventListener('click', async (e) => {
+    if (usesGroup() && !st.groupId && !h) return err('Tap which session, or choose Other.')
     e.currentTarget.disabled = true
-    const list = box.querySelector('#hp-list')
-    const players = [...[...box.querySelectorAll('[data-hp]:checked')].map((c) => ({ rowId: c.dataset.hp })), ...names.map((name) => ({ name }))]
-    const r = await ui.post('hoursSave', { id: h?.id || '', coachId: box.querySelector('#he-coach')?.value || (sug ? d.suggestFor : ''), date: box.querySelector('#he-date').value, start: box.querySelector('#he-start').value, end: box.querySelector('#he-end').value, kind: box.querySelector('#he-kind').value, note: box.querySelector('#he-note').value, groupId, ...(list?.querySelector('[data-hp]') || names.length || h?.players ? { players } : {}) })
+    const players = [...[...st.picked].map((rowId) => ({ rowId })), ...st.typed.map((name) => ({ name }))]
+    const r = await ui.post('hoursSave', { id: h?.id || '', coachId: st.coachId, date: st.date, start: st.start, end: st.end, kind: st.kind, note: st.note ?? h?.note ?? '', groupId: usesGroup() ? st.groupId : '', ...(st.touched || st.groupId || players.length ? { players } : {}) })
     e.currentTarget.disabled = false
     if (!r.ok) return err(r.data.error || 'Could not save.')
     ui.closeModal(); toast(players.length ? `Saved with ${players.length} player${players.length === 1 ? '' : 's'}.` : 'Saved.'); reload()
@@ -191,4 +238,7 @@ function entryModal(ui, d, h, reload, sug = null) {
     if (!r.ok) return err(r.data.error || 'Could not delete.')
     ui.closeModal(); toast('Deleted.'); reload()
   })
+  draw()
+  loadOpts()
+  if (st.groupId) loadList()
 }

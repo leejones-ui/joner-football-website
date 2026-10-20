@@ -3,7 +3,7 @@
 //   node scripts/test-jfp-coach-pay-unit.mjs
 import assert from 'node:assert/strict'
 import { priceLine, checkCard, dueMonday, paidUpfront } from '../api/_jfp-coach-pay.js'
-import { editLine, newLine } from '../api/_jfp-coach-invoices.js'
+import { editLine, newLine, feesOwed } from '../api/_jfp-coach-invoices.js'
 import { checkPlayers, shortNames } from '../api/_jfp-hours.js'
 
 const card = { bands: [4000, 4500, 5500, 6500, 7000, 7500, 8000], weekendExtra: 1000, pathwayFlat: 5000, jjHead: 5000, jjShadow: 4000 }
@@ -81,6 +81,19 @@ t('a card needs all seven bands; empty boxes are not agreed; camps always TBC', 
   assert.ok(checkCard({ bands: [1, 2, 3] }).error)
   const c = checkCard({ bands: [4000, 4500, 5500, 6500, 7000, 7500, 8000], office: '', pathwayFlat: 5000 })
   assert.equal(c.office, undefined); assert.equal(c.pathwayFlat, 5000); assert.equal(c.camps, 'tbc')
+})
+t('a custom rate for one session beats the band; Dev Sesh only where the card has it', () => {
+  const c = checkCard({ bands: [4000, 5000, 6000, 7000, 7500, 8500, 9000], custom: { G: 4500, X: '' } })
+  assert.deepEqual(c.custom, { G: 4500 })
+  assert.equal(priceLine(line(), { card: c, group, register: reg(1) }).cents, 4500)
+  assert.equal(priceLine(line({ kind: 'devsesh', groupId: '' }), { card: c, group: null, register: null }).cents, null, 'no Dev Sesh rate: TBC')
+})
+t('fees not paid: unpaid, partly paid, not set or a balance', () => {
+  assert.equal(feesOwed({ paymentStatus: 'Paid', balanceAud: 0 }), false)
+  assert.equal(feesOwed({ paymentStatus: 'Unpaid' }), true)
+  assert.equal(feesOwed({ paymentStatus: 'Partially Paid' }), true)
+  assert.equal(feesOwed({ paymentStatus: '' }), true)
+  assert.equal(feesOwed({ paymentStatus: 'Paid', balanceAud: 50 }), true)
 })
 t('due Monday: the coming Monday, or today on a Monday', () => {
   assert.equal(dueMonday('2026-10-21'), '2026-10-26'); assert.equal(dueMonday('2026-10-26'), '2026-10-26'); assert.equal(dueMonday('2026-10-25'), '2026-10-26')

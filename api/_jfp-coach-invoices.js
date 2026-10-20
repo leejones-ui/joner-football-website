@@ -17,6 +17,12 @@
 // or add any line. Every change keeps what the portal worked out, so a
 // changed amount shows as "Changed: worked out A$X" for Lee and Ligia.
 //
+// Fees not paid (Lee, 20 Oct 2026: "if a player still hasnt paid either that
+// needs flagging! ... we need to be ruthless here and message the player /
+// parent for the fees immediately. we will do this internally"): a line whose
+// players include one with fees not paid is flagged for Lee and Ligia with who
+// to chase. The coach never sees a family's payments.
+//
 // Private: a coach only ever sees their own invoices, lines and amounts.
 // Hermes never sees any of it.
 import { kvCommand, clean, newId, audit, dateLabel, coachById, coachLabel, formatAud, listGroups, locationFor, sydneyToday } from './_jfp-store.js'
@@ -96,6 +102,11 @@ export function newLine(body, { by, role, from, to }) {
   return { hoursId: '', date, dateLabel: dateLabel(date), start: '', end: '', minutes, kind: 'other', kindLabel: 'Added', groupId: '', note: '', what: '', location: clean(body.location, 80), status: 'approved', description, players: null, cents, calcCents: null, basis: `Added by ${role === 'coach' ? 'the coach' : 'Lee or Ligia'}`, flags: [{ code: 'added', text: `Line added by ${role === 'coach' ? 'the coach' : 'Lee or Ligia'}` }], edits: [{ by, role, at: new Date().toISOString(), fields: ['added'] }] }
 }
 
+// Fees not paid: Unpaid, Partly paid or not set, or a balance still owing.
+export const feesOwed = (r) => /^(unpaid|partially paid|not set)$/i.test(String(r.paymentStatus || 'Not set')) || Number(r.balanceAud || 0) > 0
+// What a coach may see of a line: never a family's payments.
+const forCoach = (l) => { const { unpaid, ...rest } = l; return { ...rest, flags: (l.flags || []).filter((f) => f.code !== 'unpaid') } }
+
 const pendingOf = (inv) => inv.lines.filter((l) => l.cents == null).length
 const totalOf = (lines) => lines.reduce((t, l) => t + (l.cents || 0), 0)
 const withTotals = (inv, lines) => ({ ...inv, lines, amountCents: totalOf(lines), totalMinutes: lines.reduce((t, l) => t + (l.minutes || 0), 0) })
@@ -103,10 +114,10 @@ const withTotals = (inv, lines) => ({ ...inv, lines, amountCents: totalOf(lines)
 function view(inv, config, isAdmin) {
   const pending = pendingOf(inv)
   return {
-    ...inv, coach: coachLabel(coachById(config, inv.coachId)), statusLabel: INV_STATUS[inv.status] || inv.status,
+    ...inv, lines: isAdmin ? inv.lines : inv.lines.map(forCoach), unpaidCount: isAdmin ? inv.lines.reduce((t, l) => t + (l.unpaid?.length || 0), 0) : 0, coach: coachLabel(coachById(config, inv.coachId)), statusLabel: INV_STATUS[inv.status] || inv.status,
     amountLabel: `${formatAud(inv.amountCents || 0)}${pending ? ` + ${pending} TBC` : ''}`, pending,
     fromLabel: dateLabel(inv.from), toLabel: dateLabel(inv.to), dueLabel: inv.dueDate ? dateLabel(inv.dueDate) : '',
-    flagCount: inv.lines.reduce((t, l) => t + l.flags.filter((f) => f.code !== 'waiting').length, 0),
+    flagCount: inv.lines.reduce((t, l) => t + l.flags.filter((f) => f.code !== 'waiting' && (isAdmin || f.code !== 'unpaid')).length, 0),
     canWithdraw: !isAdmin && ['submitted', 'queried'].includes(inv.status),
   }
 }
@@ -130,7 +141,7 @@ async function linesFor(config, coachId, from, to, { listCovers }) {
   const [hours, covers, groups, roster, card] = await Promise.all([allHours(), listCovers(), listGroups(), loadRoster().catch(() => ({ players: [] })), getCard(coachId)])
   const byId = Object.fromEntries(groups.map((g) => [g.id, g]))
   const short = shortNames(roster.players)
-  const rows = new Map(roster.players.map((r) => [r.id, { name: short.get(r.id), paymentType: r.paymentType, paymentStatus: r.paymentStatus }]))
+  const rows = new Map(roster.players.map((r) => [r.id, { name: short.get(r.id), full: String(r.player || '').trim(), paymentType: r.paymentType, paymentStatus: r.paymentStatus, balanceAud: r.balanceAud }]))
   const name = (id) => coachLabel(coachById(config, id))
   const mine = hours.filter((h) => h.coachId === coachId && h.date >= from && h.date <= to && !h.invoiceId).sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start))
   const out = []
@@ -140,7 +151,10 @@ async function linesFor(config, coachId, from, to, { listCovers }) {
     const picked = Array.isArray(h.players) && h.players.length ? h.players : null
     const base = { players: picked, hoursId: h.id, date: h.date, dateLabel: dateLabel(h.date), start: h.start, end: h.end, minutes: h.minutes, kind: h.kind, kindLabel: HOUR_KINDS[h.kind] || h.kind, groupId: h.groupId || '', note: h.note || '', what: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : h.note || '', location: g ? locationFor(config, g.location).name : '', status: h.status }
     const price = priceLine(base, { card, group: g, register })
-    out.push({ ...base, description: describe(base, g, picked || register?.counted || []), playerNames: (picked || register?.counted || []).map((p) => p.name), players: price.players, calcCents: price.cents, cents: price.cents, basis: price.basis, flags: [...flagsFor(base, coachId, { covers, hours, name }), ...price.flags] })
+    const who = (picked || register?.counted || []).filter((p) => p.rowId)
+    const unpaid = who.map((p) => ({ p, r: rows.get(p.rowId) })).filter(({ r }) => r && feesOwed(r)).map(({ p, r }) => ({ rowId: p.rowId, name: r.full || p.name, status: r.paymentStatus || 'Not set', owedCents: Math.max(0, Math.round(Number(r.balanceAud || 0) * 100)) }))
+    if (unpaid.length) price.flags = [...price.flags, { code: 'unpaid', text: `Fees not paid: ${unpaid.map((u) => u.name.split(' ')[0]).join(', ')}. Chase the family` }]
+    out.push({ ...base, unpaid, description: describe(base, g, picked || register?.counted || []), playerNames: (picked || register?.counted || []).map((p) => p.name), players: price.players, calcCents: price.cents, cents: price.cents, basis: price.basis, flags: [...flagsFor(base, coachId, { covers, hours, name }), ...price.flags] })
   }
   return out
 }
@@ -169,7 +183,8 @@ export async function invoiceAction(res, principal, config, body, action, { isAd
   // ---------- rate cards: Lee and Ligia only ----------
   if (action === 'coachPayCards') {
     if (!isAdmin) return no(403, 'Only Lee or Ligia see rates.')
-    return ok({ cards: await allCards(), coaches: config.coaches.map((c) => ({ id: c.id, name: coachLabel(c) })), bands: BAND_LABELS })
+    const groups = (await listGroups()).map((g) => ({ id: g.id, coachId: g.coachId, label: `${g.day} ${g.time}, ${locationFor(config, g.location).name}${g.label ? ` (${g.label})` : ''}` }))
+    return ok({ cards: await allCards(), coaches: config.coaches.map((c) => ({ id: c.id, name: coachLabel(c) })), bands: BAND_LABELS, groups })
   }
   if (action === 'coachPayCardSave') {
     if (!isAdmin) return no(403, 'Only Lee or Ligia set rates.')
@@ -200,7 +215,7 @@ export async function invoiceAction(res, principal, config, body, action, { isAd
     const list = (await allInvoices()).filter((x) => !coachId || x.coachId === coachId)
     const from = ISO.test(body.from || '') ? body.from : ''
     const to = ISO.test(body.to || '') ? body.to : today
-    const draft = asCoach && from ? await linesFor(config, coachId, from, to, { listCovers }) : null
+    const draft = asCoach && from ? (await linesFor(config, coachId, from, to, { listCovers })).map((l) => (isAdmin ? l : forCoach(l))) : null
     return ok({
       invoices: list.map((x) => ({ ...view(x, config, isAdmin), canWithdraw: asCoach && ['submitted', 'queried'].includes(x.status) })), draft, dueLabel: dateLabel(dueMonday(today)),
       hasCard: asCoach && coachId ? Boolean(await getCard(coachId)) : undefined,
@@ -259,10 +274,11 @@ export async function invoiceAction(res, principal, config, body, action, { isAd
     try {
       const coach = coachLabel(coachById(config, coachId))
       const pending = pendingOf(inv), flagged = claimed.filter((l) => l.flags.some((f) => f.code !== 'waiting')).length
+      const chase = [...new Map(claimed.flatMap((l) => l.unpaid || []).map((u) => [u.rowId, u])).values()]
       await sendCoachInvoiceToStaff({
         subject: `Coach invoice ${inv.number} from ${details.fullName || coach}`, heading: `Invoice ${inv.number}`,
         paras: [`${details.fullName || coach} sent an invoice for ${dateLabel(from)} to ${dateLabel(to)}. Every session line is priced from the register and their rate card.`, ...(pending || flagged ? [`To check: ${[pending ? `${pending} line${pending > 1 ? 's' : ''} TBC` : '', flagged ? `${flagged} line${flagged > 1 ? 's' : ''} flagged` : ''].filter(Boolean).join(', ')}.`] : [])],
-        list: [['Lines', String(claimed.length)], ['Total', `${formatAud(inv.amountCents)}${pending ? ' + TBC' : ''}`], ['Due', dateLabel(inv.dueDate)]],
+        list: [['Lines', String(claimed.length)], ...(chase.length ? [['Fees not paid, chase', chase.map((u) => u.name).join(', ')]] : []), ['Total', `${formatAud(inv.amountCents)}${pending ? ' + TBC' : ''}`], ['Due', dateLabel(inv.dueDate)]],
         cta: { label: 'Open Coach invoices', url: 'https://jonerfootball.com/jfp-portal/#cinvoices' },
         attachment: await pdfOf(inv, config), replyTo: details.email || '',
       })

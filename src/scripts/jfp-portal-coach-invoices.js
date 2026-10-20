@@ -48,6 +48,13 @@ const readForm = (box) => {
   const amt = num(box.querySelector('#lf-amt').value), h = num(box.querySelector('#lf-hrs').value)
   return { date: box.querySelector('#lf-date')?.value, description: box.querySelector('#lf-desc').value, location: box.querySelector('#lf-loc').value, minutes: h === '' ? '' : Math.round(Number(h) * 60), cents: amt === '' ? '' : Math.round(Number(amt) * 100) }
 }
+// Lee and Ligia: the families on this invoice whose fees are not paid, to chase now.
+function chaseList(inv) {
+  const seen = new Map()
+  for (const l of inv.lines) for (const u of l.unpaid || []) if (!seen.has(u.rowId)) seen.set(u.rowId, u)
+  if (!seen.size) return ''
+  return `<div class="j-card" style="padding:10px 12px;margin-bottom:10px;border-color:var(--j-red)"><b>Fees not paid: chase these families now</b><ul style="margin:6px 0 0 18px">${[...seen.values()].map((u) => `<li>${esc(u.name)} · ${esc(u.status)}${u.owedCents ? ` · owes ${esc(money(u.owedCents))}` : ''}</li>`).join('')}</ul></div>`
+}
 const fmtD = (s) => new Intl.DateTimeFormat('en-AU', { timeZone: 'UTC', day: 'numeric', month: 'short' }).format(new Date(`${s}T00:00:00Z`))
 const totalOf = (lines) => lines.reduce((t, l) => t + (l.cents || 0), 0)
 const tbcOf = (lines) => lines.filter((l) => l.cents == null).length
@@ -69,10 +76,16 @@ const detailsForm = (d = {}) => `<div class="j-two">${DETAIL.map(([k, l, m]) => 
 // Rate card editor (Lee and Ligia): dollars an hour unless it says flat.
 const CARD_FIELDS = [['weekendExtra', 'Weekend extra (Sat or Sun JFP, an hour)'], ['pathwayFlat', 'Pathway 45-minute class (flat)'], ['jjHead', 'Joners Juniors, head or shadow (an hour)'], ['office', 'Office hours (an hour)'], ['devSesh', 'Dev Sesh (flat, each one)']]
 const dollars = (c) => (c ? (c / 100).toFixed(2).replace(/\.00$/, '') : '')
-function cardForm(c, card, bands) {
+function cardForm(c, card, bands, groups = []) {
+  const custom = Object.entries(card?.custom || {})
+  const label = (id) => groups.find((g) => g.id === id)?.label || id
+  const mine = groups.filter((g) => g.coachId === c.id)
   return `<div class="j-card" style="padding:12px 14px;margin-bottom:10px" data-card="${esc(c.id)}"><b>${esc(c.name)}</b>${card ? ` <span class="muted small">saved ${esc(new Date(card.savedAt).toLocaleDateString('en-AU'))}</span>` : ' <span class="j-pill j-pill-grey">No rates</span>'}
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-top:8px">${bands.map((b, i) => `<label class="j-field" style="margin:0"><span>${esc(b)}</span><input class="j-input" inputmode="decimal" data-band="${i}" value="${dollars(card?.bands?.[i])}"></label>`).join('')}</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-top:8px">${CARD_FIELDS.map(([k, l]) => `<label class="j-field" style="margin:0"><span>${esc(l)}</span><input class="j-input" inputmode="decimal" data-cf="${k}" value="${dollars(card?.[k])}" placeholder="Not agreed"></label>`).join('')}</div>
+    <div style="margin-top:10px"><b class="small">Custom rate for one session (an hour)</b>
+      ${custom.map(([gid, cents]) => `<div style="display:flex;gap:8px;align-items:center;margin-top:6px" data-cu="${esc(gid)}"><span class="small" style="flex:1">${esc(label(gid))}</span><input class="j-input" inputmode="decimal" data-cu-v value="${dollars(cents)}" style="width:110px" placeholder="Remove"></div>`).join('')}
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px"><select class="j-select" data-cu-new style="flex:1"><option value="">Add a custom rate for a session…</option>${mine.filter((g) => !card?.custom?.[g.id]).map((g) => `<option value="${esc(g.id)}">${esc(g.label)}</option>`).join('')}</select><input class="j-input" inputmode="decimal" data-cu-new-v style="width:110px" placeholder="A$"></div></div>
     <p class="muted small" style="margin:6px 0">Camps: agreed with Lee before each camp (TBC). Leave a box empty when there is no agreed rate: those lines wait for you.</p>
     <button type="button" class="j-btn j-btn-dark j-btn-sm" data-card-save>Save ${esc(c.name)}'s rates</button></div>`
 }
@@ -89,7 +102,7 @@ export async function renderCoachInvoices(ui) {
   const reload = () => renderCoachInvoices(ui)
   const card = (inv) => `<div class="j-card" style="padding:14px 16px;margin-bottom:10px" data-inv="${esc(inv.id)}">
     <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start">
-      <div><b>${esc(inv.number)}</b>${admin ? ` · ${esc(inv.coach)}` : ''} <span class="j-pill j-pill-${PILL[inv.status] || 'grey'}">${esc(inv.statusLabel)}</span>${inv.flagCount ? ` <span class="j-pill j-pill-red">${inv.flagCount} to check</span>` : ''}${inv.pending ? ` <span class="j-pill j-pill-amber">${inv.pending} TBC</span>` : ''}
+      <div><b>${esc(inv.number)}</b>${admin ? ` · ${esc(inv.coach)}` : ''} <span class="j-pill j-pill-${PILL[inv.status] || 'grey'}">${esc(inv.statusLabel)}</span>${inv.flagCount ? ` <span class="j-pill j-pill-red">${inv.flagCount} to check</span>` : ''}${inv.pending ? ` <span class="j-pill j-pill-amber">${inv.pending} TBC</span>` : ''}${inv.unpaidCount ? ` <span class="j-pill j-pill-red">Fees not paid: chase ${inv.unpaidCount}</span>` : ''}
         <p class="muted small" style="margin-top:4px">${esc(inv.fromLabel)} to ${esc(inv.toLabel)} · ${hrs(inv.totalMinutes)} · <b>${esc(inv.amountLabel)}</b>${inv.paidAt ? ` · paid ${esc(new Date(inv.paidAt).toLocaleDateString('en-AU'))}` : ''}</p>
         ${inv.decisionNote ? `<p class="small" style="color:var(--j-red);margin-top:4px">${esc(inv.decisionNote)}</p>` : ''}</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" class="j-btn j-btn-line j-btn-sm" data-inv-open>See it</button><button type="button" class="j-btn j-btn-line j-btn-sm" data-inv-pdf>PDF</button>
@@ -112,13 +125,17 @@ export async function renderCoachInvoices(ui) {
       const r = await post('coachPayCards')
       const box = view().querySelector('#inv-cards-body')
       if (!r.ok) { box.innerHTML = `<p class="j-err">${esc(r.data.error || 'Could not load.')}</p>`; return }
-      box.innerHTML = r.data.coaches.map((c) => cardForm(c, r.data.cards[c.id], r.data.bands)).join('')
+      box.innerHTML = r.data.coaches.map((c) => cardForm(c, r.data.cards[c.id], r.data.bands, r.data.groups)).join('')
       box.querySelectorAll('[data-card-save]').forEach((b) => b.addEventListener('click', async () => {
         const el = b.closest('[data-card]')
         const cents = (v) => (String(v).trim() === '' ? null : Math.round(Number(String(v).replace(/[^0-9.]/g, '')) * 100))
         const cardBody = { bands: [...el.querySelectorAll('[data-band]')].map((i) => cents(i.value)) }
         el.querySelectorAll('[data-cf]').forEach((i) => { cardBody[i.dataset.cf] = cents(i.value) })
         cardBody.jjShadow = cardBody.jjHead
+        cardBody.custom = {}
+        el.querySelectorAll('[data-cu]').forEach((row) => { const v = cents(row.querySelector('[data-cu-v]').value); if (v != null) cardBody.custom[row.dataset.cu] = v })
+        const ng = el.querySelector('[data-cu-new]').value, nv = cents(el.querySelector('[data-cu-new-v]').value)
+        if (ng && nv != null) cardBody.custom[ng] = nv
         const x = await post('coachPayCardSave', { coachId: el.dataset.card, card: cardBody })
         toast(x.ok ? 'Rates saved. They price new invoices.' : x.data.error)
       }))
@@ -211,7 +228,7 @@ export async function renderCoachInvoices(ui) {
   const invOf = (el) => d.invoices.find((x) => x.id === el.closest('[data-inv]').dataset.inv)
   view().querySelectorAll('[data-inv-open]').forEach((b) => b.addEventListener('click', () => {
     const inv = invOf(b)
-    const box = modal(`<h2 style="margin-bottom:4px">Invoice ${esc(inv.number)}</h2><p class="muted small" style="margin-bottom:10px">${esc(inv.coach)} · ${esc(inv.fromLabel)} to ${esc(inv.toLabel)} · ${hrs(inv.totalMinutes)} · <b>${esc(inv.amountLabel)}</b>${inv.dueLabel ? ` · due ${esc(inv.dueLabel)}` : ''}</p>${linesTable(inv.lines, { admin: admin && ['submitted', 'queried', 'approved'].includes(inv.status) })}${inv.note ? `<p class="small" style="margin-top:8px"><b>Note:</b> ${esc(inv.note)}</p>` : ''}<div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Close</button></div>`, { wide: true })
+    const box = modal(`<h2 style="margin-bottom:4px">Invoice ${esc(inv.number)}</h2><p class="muted small" style="margin-bottom:10px">${esc(inv.coach)} · ${esc(inv.fromLabel)} to ${esc(inv.toLabel)} · ${hrs(inv.totalMinutes)} · <b>${esc(inv.amountLabel)}</b>${inv.dueLabel ? ` · due ${esc(inv.dueLabel)}` : ''}</p>${chaseList(inv)}${linesTable(inv.lines, { admin: admin && ['submitted', 'queried', 'approved'].includes(inv.status) })}${inv.note ? `<p class="small" style="margin-top:8px"><b>Note:</b> ${esc(inv.note)}</p>` : ''}<div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Close</button></div>`, { wide: true })
     const lineModal = (i) => {
       const l = i == null ? { date: inv.to, minutes: 60 } : inv.lines[i]
       const m = modal(`<h2 style="margin-bottom:4px">${i == null ? 'Add a line' : `Change line, ${esc(l.dateLabel)}`}</h2>${l.calcCents !== undefined && l.calcCents !== l.cents ? `<p class="muted small">Worked out: ${l.calcCents == null ? 'TBC' : esc(money(l.calcCents))}</p>` : ''}${lineForm(l, { add: i == null })}<label class="j-field"><span>Why <span class="muted">(optional, for example the camp rate agreed)</span></span><input class="j-input" id="lf-why" maxlength="200"></label><p class="j-err" id="lf-err" hidden></p>

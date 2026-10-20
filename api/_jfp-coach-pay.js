@@ -54,6 +54,12 @@ export function checkCard(body) {
     if (!centsOk(v)) return { error: `That ${k} rate is not right.` }
     card[k] = v
   }
+  // An agreed rate for one session (Lee, 20 Oct 2026: a coach's custom rate for a 1on1), an hour.
+  if (body.custom && typeof body.custom === 'object') {
+    const custom = {}
+    for (const [gid, v] of Object.entries(body.custom).slice(0, 40)) { const cents = c(v); if (cents == null) continue; if (!centsOk(cents)) return { error: 'That custom session rate is not right.' }; custom[clean(gid, 80)] = cents }
+    if (Object.keys(custom).length) card.custom = custom
+  }
   card.camps = 'tbc'
   card.source = clean(body.source, 200)
   return card
@@ -129,6 +135,8 @@ export function priceLine(line, { card, group, register }) {
   }
   if (['session', 'cover'].includes(line.kind) && line.groupId) {
     if (!group) return tbc('no-group', 'That group is gone: Lee sets the amount')
+    const own = card.custom?.[group.id]
+    if (own) return { cents: hourly(own, line.minutes), basis: `Agreed rate for this session, ${money(own)} an hour`, players: picked || counted || null, flags: [] }
     if (!register?.marked && !picked) return tbc('register', 'Register not marked for this session. Mark it, or tick your players in My hours')
     const n = picked || counted
     const flags = []
