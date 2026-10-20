@@ -1249,6 +1249,9 @@ a.sr-only[href="#main-content"]:focus { position: fixed !important; top: 16px; l
 
 /* Session ideas (Lee, 19 Oct 2026): search across the JF App and Lee's drill library. */
 .ji-quick { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 14px; }
+.ji-yt .ji-quick { align-items: center; }
+.ji-yt-pick { flex: 0 1 340px; min-width: 0; }
+.ji-yt-pick .j-select { width: 100%; }
 .ji-search { display: block; margin-bottom: 10px; }
 .ji-search .j-input { width: 100%; min-height: 48px; font-size: 16px; }
 .ji-chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 6px; scrollbar-width: thin; }

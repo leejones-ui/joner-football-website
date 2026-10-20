@@ -2879,11 +2879,13 @@ function coverView(c, config, groupsById) {
 // What Session ideas shows until Lee or Ligia change it. Lee's training video
 // spreadsheet goes here once Lee sends the link.
 const SESSION_IDEAS = [
-  { label: 'The JF App', url: 'https://apps.apple.com/au/app/joner-football-app/id6737069275', note: 'Drills and full sessions to follow. Android: search Joner Football in Google Play.' },
+  // The app's web home, not the App Store (Lee, 20 Oct 2026).
+  { label: 'The JF App', url: 'https://app.jonerfootball.com', note: 'Drills and full sessions to follow, on the web. Also on iPhone and Android.' },
 ]
 // Lee's YouTube playlists for coaches (20 Oct 2026, read from
 // youtube.com/@jonerfootball/playlists). Replaces the one channel button.
-// Shorts, viral clips, boot reviews, tour vlogs and subtitled copies left out.
+// Shorts, viral clips, boot reviews, tour vlogs and subtitled copies left out,
+// and Tekkers Tuesdays (Lee, 20 Oct 2026).
 const YT_PLAYLISTS = [
   { label: "Full training sessions", id: 'PLM3cVo2QYr-MExQg_Ezv5faZ2NQsnQK2_', count: 84 },
   { label: "Team and group training", id: 'PLM3cVo2QYr-N6FRyqwgLPXfrxmOds2LG2', count: 40 },
@@ -2901,7 +2903,6 @@ const YT_PLAYLISTS = [
   { label: "Defending sessions", id: 'PLM3cVo2QYr-N2VyAwy7V2Dx6M9Vb-j94h', count: 14 },
   { label: "Ball mastery skills", id: 'PLM3cVo2QYr-PuexAAWLHNP7m4nQXyF8Az', count: 15 },
   { label: "Ball mastery drills", id: 'PLM3cVo2QYr-N3U9xxR54OnCMrOWCDlb_k', count: 3 },
-  { label: "Tekkers Tuesdays", id: 'PLM3cVo2QYr-PCae0QiGRPfiPIqnIasL3K', count: 10 },
   { label: "For beginners", id: 'PLM3cVo2QYr-MCd6BYXPlmMVbxY5OwDj3h', count: 15 },
   { label: "No equipment drills", id: 'PLM3cVo2QYr-OVVb5EcJIBA3eYUXmtmicO', count: 43 },
   { label: "Train on your own", id: 'PLM3cVo2QYr-M3PCHsYFDrd1uvg9SDGL5s', count: 20 },
@@ -4014,7 +4015,7 @@ async function handle(req, res) {
       case 'accountAlerts': return res.status(200).json({ success: true, ...(await accountAlerts(principal)) })
       case 'newAccounts': {
         const [profiles, roster] = await Promise.all([allProfiles().catch(() => []), loadRoster()])
-        return res.status(200).json({ success: true, ...(await newAccountsData(principal, config, { profiles, roster, show: body.show === 'all' ? 'all' : 'new' })) })
+        return res.status(200).json({ success: true, ...(await newAccountsData(principal, config, { profiles, roster, show: ['all', 'away'].includes(body.show) ? body.show : 'new' })) })
       }
       case 'audit': return res.status(200).json({ success: true, entries: await listAudit(Number(body.limit) || 300) })
 

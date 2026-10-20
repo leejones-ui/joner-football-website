@@ -177,8 +177,9 @@ await test('cover and time off: Lee and Ligia get a count in the portal until th
 
 await test('session ideas: the JF App and YouTube for coaches; only Lee or Ligia edit the list', async () => {
   const i = await ok(sam, 'ideasGet')
-  // The YouTube channel button became Lee's playlists (20 Oct 2026).
-  assert.ok(i.ideas.some((x) => /apps\.apple\.com/.test(x.url)) && i.playlists.length > 10 && i.playlists.every((x) => /youtube\.com\/playlist\?list=/.test(x.url)))
+  // The YouTube channel button became Lee's playlists, and the JF App opens its web home (20 Oct 2026).
+  assert.ok(i.ideas.some((x) => x.url === 'https://app.jonerfootball.com') && i.playlists.length > 10 && i.playlists.every((x) => /youtube\.com\/playlist\?list=/.test(x.url)))
+  assert.ok(!i.playlists.some((x) => /tekkers/i.test(x.label)))
   assert.equal((await portal(sam, 'ideasSave', { ideas: [] })).status, 403)
   const sv = await ok(lee, 'ideasSave', { ideas: [...i.ideas, { label: 'Training videos', url: 'https://docs.google.com/spreadsheets/d/example', note: '' }, { label: 'Bad', url: 'http://x' }] })
   assert.equal(sv.ideas.length, i.ideas.length + 1)

@@ -326,16 +326,26 @@ async function renderNewAccounts(keep = false) {
   const ago = (iso) => { const m = Math.round((Date.now() - Date.parse(iso)) / 60000); return m < 60 ? `${Math.max(1, m)} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) }
   const tag = (a) => (a.booked ? '<span class="ps-badge green"><i></i>Booked</span>' : a.players.length ? '<span class="ps-badge orange"><i></i>No session yet</span>' : '<span class="ps-badge grey"><i></i>No player added yet</span>')
   const T = d.totals
-  view().innerHTML = `${psHead({ title: 'New accounts', count: d.accounts.length }).replace('</h1>', '</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Everyone who made an account (mostly from Create an account on the booking page). New to us means nothing was on file for that email. The red count shows new ones since you last opened this page.</div></details>')}
+  // Where they are based (Lee, 20 Oct 2026): their answer, and the country they signed up from.
+  const cname = (c) => { try { return new Intl.DisplayNames(['en'], { type: 'region' }).of(c) || c } catch { return c } }
+  const fromLine = (f) => (f ? `Signed up from ${[f.city, cname(f.country)].filter(Boolean).join(', ')}` : '')
+  const whereCell = (a) => {
+    const w = a.where
+    if (!w) return `<div style="margin-top:4px"><span class="ps-tag">Where: not answered yet</span>${a.from ? `<span class="ps-sub">${esc(fromLine(a.from))}</span>` : ''}</div>`
+    const tone = w.place === 'sydney' ? 'green' : 'orange'
+    const extra = [w.forWho && `For: ${w.forWho}`, w.heard && `Heard from ${w.heard}`, a.from && a.from.country !== 'AU' ? fromLine(a.from) : ''].filter(Boolean).join(' · ')
+    return `<div style="margin-top:4px"><span class="ps-badge ${tone}"><i></i>${esc(w.label)}</span>${extra ? `<span class="ps-sub">${esc(extra)}</span>` : ''}</div>`
+  }
+  view().innerHTML = `${psHead({ title: 'New accounts', count: d.accounts.length }).replace('</h1>', '</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Everyone who made an account (mostly from Create an account on the booking page). New to us means nothing was on file for that email. Where they are based is what they told us after signing up; Signed up from is the country of their internet connection, a guess. The red count shows new ones since you last opened this page.</div></details>')}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px">
-      <span class="ps-tag">${T.thisWeek} new this week</span><span class="ps-tag">${T.newToUs} new to us in all</span><span class="ps-tag">${T.notBooked} not booked</span>
+      <span class="ps-tag">${T.thisWeek} new this week</span><span class="ps-tag">${T.newToUs} new to us in all</span><span class="ps-tag">${T.notBooked} not booked</span><span class="ps-tag">${T.away || 0} outside Sydney</span>
     </div>
-    <div class="j-chips" style="margin:0 0 12px">${[['new', 'New to us'], ['all', 'All accounts']].map(([k, l]) => `<button type="button" class="j-chip" data-na-show="${k}" aria-pressed="${show === k}">${l}</button>`).join('')}</div>
+    <div class="j-chips" style="margin:0 0 12px">${[['new', 'New to us'], ['away', 'Outside Sydney'], ['all', 'All accounts']].map(([k, l]) => `<button type="button" class="j-chip" data-na-show="${k}" aria-pressed="${show === k}">${l}</button>`).join('')}</div>
     <div class="ps-table-wrap"><table class="ps-table"><thead><tr><th>Account</th><th>Players</th><th data-col="pay">Signed up</th><th class="ps-end"><span class="sr-only">Actions</span></th></tr></thead><tbody>
-    ${d.accounts.map((a, i) => `<tr><td data-col="who"><b>${esc(a.parent || a.email)}</b>${a.isNew ? ' <span class="ps-badge red"><i></i>New</span>' : ''}${a.kind === 'family' ? ' <span class="ps-tag">Known family</span>' : ''}<span class="ps-sub">${esc(a.email)}${a.mobile ? ` · ${esc(a.mobile)}` : ''}</span></td>
+    ${d.accounts.map((a, i) => `<tr><td data-col="who"><b>${esc(a.parent || a.email)}</b>${a.isNew ? ' <span class="ps-badge red"><i></i>New</span>' : ''}${a.kind === 'family' ? ' <span class="ps-tag">Known family</span>' : ''}<span class="ps-sub">${esc(a.email)}${a.mobile ? ` · ${esc(a.mobile)}` : ''}</span>${whereCell(a)}</td>
       <td data-col="group">${a.players.map((p) => `<div>${esc(p.name)}${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}${p.session ? ` <span class="muted small">· ${esc(p.session)}</span>` : ''}${p.club || p.level ? `<span class="ps-sub">${esc([p.club, p.level].filter(Boolean).join(' · '))}</span>` : ''}</div>`).join('') || '<span class="muted">None added yet</span>'}<div style="margin-top:4px">${tag(a)}</div></td>
       <td data-col="pay" class="small" style="white-space:nowrap">${esc(ago(a.createdAt))}${a.lastSignIn ? `<span class="ps-sub">Last in ${esc(ago(a.lastSignIn))}</span>` : ''}</td>
-      <td class="ps-end ps-keep">${a.players.filter((p) => !p.session).map((p, j) => `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-na-add="${i}:${j}" style="margin:2px 0">Add ${esc(p.name.split(' ')[0])} to a group</button>`).join('<br>')}</td></tr>`).join('') || `<tr><td colspan="4"><div class="ps-empty">${show === 'new' ? 'No new accounts yet. They show here as soon as someone signs up.' : 'No accounts yet.'}</div></td></tr>`}
+      <td class="ps-end ps-keep">${a.players.filter((p) => !p.session).map((p, j) => `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-na-add="${i}:${j}" style="margin:2px 0">Add ${esc(p.name.split(' ')[0])} to a group</button>`).join('<br>')}</td></tr>`).join('') || `<tr><td colspan="4"><div class="ps-empty">${show === 'new' ? 'No new accounts yet. They show here as soon as someone signs up.' : show === 'away' ? 'Nobody from outside Sydney yet.' : 'No accounts yet.'}</div></td></tr>`}
     </tbody></table></div>`
   view().querySelectorAll('[data-na-show]').forEach((b) => b.addEventListener('click', () => { P.naShow = b.dataset.naShow; renderNewAccounts() }))
   view().querySelectorAll('[data-na-add]').forEach((b) => b.addEventListener('click', () => {

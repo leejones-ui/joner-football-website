@@ -11,6 +11,7 @@ import { getConfig, kvCommand } from './_jfp-store.js'
 import { startChallenge, verifyChallenge, openSession, cookieHeader, sessionFor, closeSession, roleFor, sameOrigin, clientIp, staffPrincipal } from './_jfp-people.js'
 import { sendSignInCode } from './_jfp-email.js'
 import { noteAccount, accountOf } from './_jfp-account-open.js'
+import { connectionPlace } from './_jfp-account-where.js'
 import { addAccountToBrevo } from './_jfp-brevo-account.js'
 import { loadRoster, familyFor } from './_jfp-airtable.js'
 import { playerLoginOf } from './_jfp-player-logins.js'
@@ -95,7 +96,7 @@ export default async function handler(req, res) {
       if (v.audience === 'staff' && !roleFor(v.email, config)) return fail(res, 401, 'That code is not right or has expired. Ask for a new one.')
       if (v.audience === 'parent' && !(await accountOf(v.email))) {
         const known = await knownFamily(v.email, config)
-        const a = await noteAccount({ email: v.email, ip: clientIp(req), known })
+        const a = await noteAccount({ email: v.email, ip: clientIp(req), known, from: connectionPlace(req) })
         if (a.limited) return fail(res, 429, 'Too many new accounts from this connection today. Try again tomorrow, or contact us.', { code: 'signup' })
         if (a.created) await addAccountToBrevo({ email: v.email, known })
       }

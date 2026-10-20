@@ -38,12 +38,12 @@ async function saveAccount(rec) { await kvCommand(['HSET', ACCOUNTS, rec.email, 
 
 // First sign-in with a code. known: the address is already on a Term 4 or
 // Term 3 row or a waiver (never limited). { ok } or { limited: true }.
-export async function noteAccount({ email, ip = 'unknown', known = false }) {
+export async function noteAccount({ email, ip = 'unknown', known = false, from = null }) {
   const e = String(email || '').toLowerCase()
   if (!e) return { ok: false }
   if (Number(await kvCommand(['HEXISTS', ACCOUNTS, e])) === 1) return { ok: true, created: false }
   if (!known && (!(await under(`signup-ip:${ip}`, SIGNUP_PER_IP_DAY, 86400)) || !(await under('signup-all', SIGNUP_PER_HOUR, 3600)))) return { limited: true }
-  const rec = { email: e, createdAt: new Date().toISOString(), kind: known ? 'family' : 'new', players: [] }
+  const rec = { email: e, createdAt: new Date().toISOString(), kind: known ? 'family' : 'new', players: [], ...(from?.country ? { from } : {}) }
   // Two sign-ins at once: the first record wins.
   await kvCommand(['HSETNX', ACCOUNTS, e, JSON.stringify(rec)])
   if (!known) await audit({ by: e, action: 'account.create', target: e, after: { kind: rec.kind } })

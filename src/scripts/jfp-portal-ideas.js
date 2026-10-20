@@ -87,7 +87,8 @@ export async function renderIdeas(ui) {
       <div class="j-card" style="padding:16px"><p class="ji-kick">A 10 week block</p><ol class="ji-steps">${guide.topics.map((t) => `<li><b>${esc(t)}</b></li>`).join('')}</ol><p class="muted small" style="margin-top:8px">The first three set the base. Sessions 7 to 10 need to be challenging and add pressure.</p></div></div>`
 
   // YouTube playlists (Lee, 20 Oct 2026), in place of the one channel button.
-  const playlists = () => (d.playlists || []).length ? `<div class="ji-yt"><p class="ji-kick">Joner Football on YouTube</p><div class="ji-quick">${d.playlists.map((x) => `<a class="j-btn j-btn-line j-btn-sm" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${x.place === 'hq' ? 'HQ: ' : ''}${esc(x.label)} <span class="muted">${x.count}</span> ↗</a>`).join('')}<a class="j-btn j-btn-ghost j-btn-sm" href="https://www.youtube.com/@jonerfootball/playlists" target="_blank" rel="noopener noreferrer">All playlists ↗</a></div></div>` : ''
+  // A dropdown, not a wall of buttons (Lee, 20 Oct 2026).
+  const playlists = () => (d.playlists || []).length ? `<div class="ji-yt"><p class="ji-kick">Joner Football on YouTube</p><div class="ji-quick"><label class="ji-yt-pick"><span class="sr-only">YouTube playlist</span><select class="j-select" data-yt-pick>${d.playlists.map((x) => `<option value="${esc(x.url)}">${x.place === 'hq' ? 'HQ: ' : ''}${esc(x.label)} (${x.count})</option>`).join('')}</select></label><a class="j-btn j-btn-line j-btn-sm" data-yt-open href="${esc(d.playlists[0].url)}" target="_blank" rel="noopener noreferrer">Open playlist ↗</a><a class="j-btn j-btn-ghost j-btn-sm" href="https://www.youtube.com/@jonerfootball/playlists" target="_blank" rel="noopener noreferrer">All playlists ↗</a></div></div>` : ''
   const quick = () => `<div class="ji-quick">${d.ideas.map((x) => `<a class="j-btn j-btn-line j-btn-sm" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer" title="${esc(x.note || '')}">${esc(x.label)} ↗</a>`).join('')}${d.admin ? '<button type="button" class="j-btn j-btn-ghost j-btn-sm" id="id-edit">Edit quick links</button>' : ''}</div>`
 
   const results = () => {
@@ -178,6 +179,7 @@ export async function renderIdeas(ui) {
     view().querySelectorAll('[data-topic]').forEach((b) => b.addEventListener('click', () => { S.topic = b.dataset.topic; S.shown = 48; view().querySelectorAll('[data-topic]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); paint() }))
     view().querySelector('#id-edit')?.addEventListener('click', edit)
     view().querySelector('#ji-add').addEventListener('click', addLink)
+    view().querySelector('[data-yt-pick]')?.addEventListener('change', (e) => { const a = view().querySelector('[data-yt-open]'); if (a) a.href = e.target.value })
     wireResults()
     loadApp()
   }

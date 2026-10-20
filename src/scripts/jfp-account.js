@@ -15,6 +15,7 @@ import { renderExtra, renderAnalysis, extraClick, setExtraLink } from './jfp-acc
 import { mountSavedPay, savedReturn, forgetSaved } from './jfp-account-saved.js'
 import { renderReports, reportsHomeBlock, unreadReports } from './jfp-account-reports.js'
 import { newSessions, markSeen, newSessionsPopup } from './jfp-account-new.js'
+import { askWhere } from './jfp-account-where.js'
 import { coachRow, coachSheet } from './jfp-account-coach.js'
 import { attendanceLine, pastMark, unreadNotes, notesHomeBlock, makeupsHomeBlock, askMakeup, renderNotes, renderAlerts, pushOffered, loginRow, loginSheet } from './jfp-account-more.js'
 
@@ -156,7 +157,8 @@ async function start() {
     const el = document.querySelector(`.j-sheet [data-todo="${CSS.escape(payId)}"]`) || document.querySelector(`[data-todo="${CSS.escape(payId)}"]`)
     if (el) { el.scrollIntoView({ block: 'center' }); el.style.boxShadow = '0 0 0 2px var(--ja-red, #E30613)' }
     else if (D && !D.todo.length && !(D.juniors?.todo || []).length) toast('That payment is already done or no longer open.')
-  } else if (h !== 'extra' && h !== 'holidays') newSessionsPopup(D, (k) => show(k))
+  } else if (D?.askWhere) askWhere(D)
+  else if (h !== 'extra' && h !== 'holidays') newSessionsPopup(D, (k) => show(k))
   loadProfiles()
 }
 

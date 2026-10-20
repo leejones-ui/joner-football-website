@@ -45,6 +45,7 @@ import { docFromRecord } from './_jfp-invoice-pdf.js'
 import { calendarToken, emailForToken, familyCalendar } from './_jfp-calendar.js'
 import { coveredOf } from './_jfp-quote.js'
 import { accountOf, openPlayers, addMyPlayer } from './_jfp-account-open.js'
+import { saveWhere, shouldAsk, isAway, PLACES, STATES, FOR, HEARD } from './_jfp-account-where.js'
 import { prepaidOf } from './_jfp-store.js'
 import { announcementsFor, markAnnouncementsRead } from './_jfp-announce.js'
 import { familyMakeups, makeupRequest, sessionOffMap } from './_jfp-makeups.js'
@@ -287,6 +288,9 @@ async function overview(res, parent, body = {}, opts = {}) {
     self: !juniors?.children?.length && ((fam.players.length > 0 && fam.players.every((p) => p.term4.length > 0 && p.term4.every((r) => r.ownContact))) || (!fam.players.some((p) => p.term4.length) && open.length > 0 && open.every((o) => o.self))),
     // Anyone can have an account (round 2 item 8): where to book a first session.
     bookUrl: '/jfp-booking/',
+    // Where are you based (Lee, 20 Oct 2026): asked once of someone new to us.
+    where: account?.where ? { place: account.where.place, away: isAway(account.where) } : null,
+    askWhere: !opts.player && shouldAsk(account) ? { places: PLACES, states: STATES, forWho: FOR, heard: HEARD, country: account.from?.country || '' } : null,
     nextTerm: nextTerm.length ? { name: nt.name, players: nextTerm } : null,
     keep,
     termStart: config.termStart,
@@ -993,6 +997,7 @@ export default async function handler(req, res) {
     if (body.action === 'saveProfile') return await saveMyProfile(res, parent, body)
     if (body.action === 'savePhoto') return await saveMyPhoto(res, parent, body)
     if (body.action === 'addPlayer') return await addPlayerAction(res, parent, body)
+    if (body.action === 'saveWhere') { const r = await saveWhere({ email: parent.email, body, req }); return r.error ? fail(res, 400, r.error) : res.status(200).json({ success: true, ...r }) }
     if (['jjPay', 'jjRequestPay', 'jjNextChoice'].includes(body.action)) return await juniorsAction(req, res, parent, body)
     if (body.action === 'makeupRequest') { const fam2 = familyFor(parent.email, await loadRoster(), (await getConfig()).termStart); const out = await makeupRequest({ rowIds: fam2.players.flatMap((p) => p.term4.map((r) => r.id)), body, config: await getConfig() }); return out.status === 200 ? res.status(200).json({ success: true }) : fail(res, out.status, out.error) }
     if (body.action === 'cancelSession') return await cancelSession(res, parent, body)

@@ -10,6 +10,7 @@
 // marks them seen for that person.
 import { kvCommand, ageOn, sydneyToday, locationFor, rowEmails } from './_jfp-store.js'
 import { allAccounts } from './_jfp-account-open.js'
+import { whereView } from './_jfp-account-where.js'
 
 export const ACCOUNTS_SEEN = 'jfp:accounts-seen'
 const ms = (iso) => Date.parse(iso || '') || 0
@@ -32,7 +33,9 @@ export async function newAccountsData(principal, config, { profiles, roster, sho
   const signedIn = {}
   for (let i = 0; i + 1 < (signedFlat || []).length; i += 2) signedIn[signedFlat[i]] = signedFlat[i + 1]
   const all = Object.values(accounts)
-  const list = all.filter((a) => show === 'all' || a.kind === 'new').map((a) => {
+  // Outside Sydney (Lee, 20 Oct 2026): by their answer, or by the connection's country while they have not answered.
+  const away = (a) => (a.where ? a.where.place !== 'sydney' : Boolean(a.from?.country && a.from.country !== 'AU'))
+  const list = all.filter((a) => show === 'all' || (show === 'away' ? a.kind === 'new' && away(a) : a.kind === 'new')).map((a) => {
     const email = a.email
     const profs = profiles.filter((p) => (p.emails || []).includes(email))
     const rows = roster.players.filter((r) => r.holdsPlace && rowEmails(r).includes(email))
@@ -45,9 +48,9 @@ export async function newAccountsData(principal, config, { profiles, roster, sho
     const parent = profs.find((p) => p.parentName)?.parentName || rows[0]?.parent || ''
     const mobile = profs.find((p) => p.parentMobile)?.parentMobile || rows[0]?.phone || ''
     const booked = players.some((p) => p.session)
-    return { email, kind: a.kind, createdAt: a.createdAt, isNew: a.kind === 'new' && ms(a.createdAt) > since, parent, mobile, players, booked, status: booked ? 'booked' : players.length ? 'players' : 'empty', lastSignIn: signedIn[email] || '' }
+    return { email, kind: a.kind, createdAt: a.createdAt, isNew: a.kind === 'new' && ms(a.createdAt) > since, parent, mobile, players, booked, status: booked ? 'booked' : players.length ? 'players' : 'empty', lastSignIn: signedIn[email] || '', ...whereView(a) }
   }).sort((a, b) => ms(b.createdAt) - ms(a.createdAt)).slice(0, 300)
   const newOnes = all.filter((a) => a.kind === 'new')
   const week = Date.now() - 7 * 86400000
-  return { show, accounts: list, totals: { all: all.length, newToUs: newOnes.length, thisWeek: newOnes.filter((a) => ms(a.createdAt) > week).length, notBooked: list.filter((a) => !a.booked).length } }
+  return { show, accounts: list, totals: { all: all.length, newToUs: newOnes.length, thisWeek: newOnes.filter((a) => ms(a.createdAt) > week).length, notBooked: list.filter((a) => !a.booked).length, away: newOnes.filter(away).length } }
 }
