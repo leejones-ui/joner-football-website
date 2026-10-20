@@ -240,6 +240,50 @@ await test('coach invoices: built from logged hours, a covered session is flagge
   assert.ok(list.invoices.some((x) => x.id === inv2.id && x.status === 'paid'))
 })
 
+await test('coach invoices, 20 Oct: tick players on hours, edit lines before sending, Lee edits after, Lee makes his own', async () => {
+  const dates = [1, 2, 3, 4, 5, 6, 7].map((n) => day(-n))
+  const thuDate = dates.find((d) => new Date(`${d}T12:00:00Z`).getUTCDay() === 4)
+  const dean = client()
+  await signIn(dean, 'jonerfootballdean@gmail.com', 'staff')
+  // The session's list for ticking: Sam's own group, never Dean's.
+  const pl = await ok(sam, 'hoursPlayers', { groupId: THU, date: thuDate })
+  assert.ok(pl.players.length >= 3 && pl.marked)
+  assert.ok(pl.players.filter((p) => p.mark === 'Present').every((p) => p.ticked), 'Present comes ticked')
+  assert.equal((await portal(dean, 'hoursPlayers', { groupId: THU, date: thuDate })).status, 403, 'not your session')
+  // Sam logs a Dev Sesh with a typed name, and a session with two ticked players.
+  const ids = pl.players.slice(0, 2).map((p) => ({ rowId: p.rowId }))
+  const tue = dates.find((d) => d !== thuDate)
+  await kv(['HDEL', `jfp:att:${THU}:${thuDate}`, 'zz'])
+  const dev = await ok(sam, 'hoursSave', { date: tue, start: '07:00', end: '08:00', kind: 'devsesh', players: [{ name: 'Guest Player' }, { rowId: 'not-real' }] })
+  assert.deepEqual(dev.entry.players, [{ rowId: '', name: 'Guest Player' }])
+  const list = await ok(sam, 'hoursList', { from: day(-7), to: day(0) })
+  assert.ok(list.entries.some((h) => h.id === dev.entry.id && h.players.length === 1))
+  const draft = (await ok(sam, 'coachInvList', { from: day(-7), to: day(0) })).draft
+  const devLine = draft.find((l) => l.hoursId === dev.entry.id)
+  assert.match(devLine.description, /Guest Player/)
+  // Sam changes the amount, takes nothing off, adds a line.
+  const made = (await ok(sam, 'coachInvCreate', { from: day(-7), to: day(0), lines: [{ hoursId: dev.entry.id, cents: 7000, description: 'Dev Sesh: Guest' }], added: [{ date: tue, description: 'Kit run', minutes: 30, cents: 2000 }] })).invoice
+  const dl = made.lines.find((l) => l.hoursId === dev.entry.id)
+  assert.equal(dl.cents, 7000); assert.equal(dl.description, 'Dev Sesh: Guest'); assert.ok(dl.flags.some((f) => f.code === 'edited'))
+  assert.ok(made.lines.some((l) => !l.hoursId && l.flags[0].code === 'added'))
+  assert.equal(made.amountCents, 9000)
+  // Lee changes a line, adds one, takes one off.
+  assert.equal((await portal(sam, 'coachInvLineAdd', { id: made.id, line: { date: tue, description: 'x', minutes: 60, cents: 100 } })).status, 403)
+  let v = (await ok(lee, 'coachInvLineAdd', { id: made.id, line: { date: tue, description: 'Bonus', minutes: 0, cents: 1000 } })).invoice
+  assert.equal(v.amountCents, 10000)
+  const i = v.lines.findIndex((l) => l.description === 'Kit run')
+  v = (await ok(lee, 'coachInvLineSet', { id: made.id, index: i, line: { description: 'Kit run and setup', minutes: 60 } })).invoice
+  assert.equal(v.lines.find((l) => l.description === 'Kit run and setup').minutes, 60)
+  const j = v.lines.findIndex((l) => l.hoursId === dev.entry.id)
+  v = (await ok(lee, 'coachInvLineRemove', { id: made.id, index: j })).invoice
+  assert.equal(v.amountCents, 3000)
+  const free = (await ok(sam, 'coachInvList', { from: day(-7), to: day(0) })).draft
+  assert.ok(free.some((l) => l.hoursId === dev.entry.id), 'a line taken off frees its hours')
+  // Lee's own coach view.
+  const mine = await ok(lee, 'coachInvList', { mine: true, from: day(-7), to: day(0) })
+  assert.equal(mine.admin, false); assert.ok(Array.isArray(mine.draft))
+})
+
 await test('the whole program register: Lee sees every coach in a week; a coach only sees their own', async () => {
   await ok(lee, 'saveGroup', { group: { day: 'Monday', time: '5:00pm', location: 'Belrose HQ', coachId: 'dean', capacity: 10, mode: 'direct' } })
   const all = await ok(lee, 'coachSessions', { coachId: 'all' })

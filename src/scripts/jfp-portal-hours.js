@@ -1,5 +1,9 @@
 // Hours (Lee, 18 Oct 2026). Coaches: "My hours", log what they worked, with
-// their own sessions and covers offered as one tap adds. Lee and Ligia:
+// their own sessions and covers offered as one tap adds. 20 Oct 2026 ("it
+// needs to be able to add the players they had... click that hour, then the
+// players names get entered into the invoice"): each session is a card; tap it
+// to tick who you coached (the register's Present and paid-upfront players come
+// ticked) and those names go on the invoice line. Lee and Ligia:
 // "Coach hours", every coach's hours with totals, Approve or Send back, CSV.
 // Server: api/_jfp-hours.js.
 import { esc, toast } from './jfp-common.js'
@@ -28,7 +32,35 @@ export async function renderHours(ui) {
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney' }).format(new Date())
   const [from, to] = rangeOf(S.range, today)
   const d = await need(await post('hoursList', { from, to, coachId: admin ? S.coachId : '' }))
-  const draw = () => {
+  const draw = () => (admin ? drawAdmin() : drawCoach())
+  const playersLine = (h) => (h.players?.length ? `<span class="hc-players">${h.players.map((p) => `<span class="hc-chip">${esc(p.name)}</span>`).join('')}</span>` : ['session', 'cover', 'devsesh'].includes(h.kind) ? '<span class="hc-none">Tap to tick your players</span>' : '')
+  const drawCoach = () => {
+    const total = d.entries.reduce((t, h) => t + h.minutes, 0)
+    const byDate = (a, b) => b.date.localeCompare(a.date) || a.start.localeCompare(b.start)
+    view().innerHTML = `${HC_CSS}${psHead({ title: 'My hours', count: `${hrs(total)} logged`, primary: '<button type="button" class="j-btn j-btn-dark" id="hr-add">+ Other hours</button>' })}
+      <div class="ps-tools">${psSelect('hr-range', RANGES.map(([id, label]) => ({ id, label })), S.range, 'This fortnight', 'Dates').replace('<option value="">This fortnight</option>', '')}<span class="muted small" style="align-self:center">${esc(fmtDay(from))} to ${esc(fmtDay(to))}</span></div>
+      <p class="muted small" style="margin:0 0 12px">Tap a session to log it and tick the players you coached. Their names go straight onto your invoice.</p>
+      ${d.suggest.length ? `<h2 class="hc-h">To log <span class="muted small">${d.suggest.length}</span>${d.suggest.length > 1 ? '<button type="button" class="ps-link" id="hr-add-all">Log all as on the register</button>' : ''}</h2>
+        <div class="hc-grid">${d.suggest.slice().sort(byDate).map((x) => `<button type="button" class="hc-card hc-todo" data-hr-sug="${d.suggest.indexOf(x)}"><span class="hc-date">${esc(x.dateLabel)}</span><b>${esc(t12(x.start))} to ${esc(t12(x.end))}</b><span class="hc-what">${esc(x.label)}${x.kind === 'cover' ? ' · Cover' : ''}</span><span class="hc-go">Log it and tick players</span></button>`).join('')}</div>` : ''}
+      <h2 class="hc-h">Logged</h2>
+      <div class="hc-grid">${d.entries.slice().sort(byDate).map((h) => `<button type="button" class="hc-card" data-hr-edit="${esc(h.id)}" ${h.canEdit ? '' : 'data-locked="1"'}><span class="hc-date">${esc(h.dateLabel)} ${psBadge(...STATUS[h.status])}</span><b>${esc(t12(h.start))} to ${esc(t12(h.end))} · ${hrs(h.minutes)}</b><span class="hc-what">${esc(h.kindLabel)}${h.note ? ` · ${esc(h.note)}` : ''}</span>${playersLine(h)}${h.status === 'queried' && h.decisionNote ? `<span class="hc-none">Sent back: ${esc(h.decisionNote)}</span>` : ''}${h.invoiceId ? '<span class="muted small">On an invoice</span>' : ''}</button>`).join('') || '<div class="ps-empty">Nothing logged for these dates yet.</div>'}</div>`
+    const v = view()
+    v.querySelector('#hr-range').addEventListener('change', (e) => { S.range = e.target.value || 'fortnight'; reload() })
+    v.querySelector('#hr-add').addEventListener('click', () => entryModal(ui, d, null, reload))
+    v.querySelectorAll('[data-hr-sug]').forEach((b) => b.addEventListener('click', () => entryModal(ui, d, null, reload, d.suggest[Number(b.dataset.hrSug)])))
+    v.querySelectorAll('[data-hr-edit]').forEach((b) => b.addEventListener('click', () => {
+      const h = d.entries.find((x) => x.id === b.dataset.hrEdit)
+      if (b.dataset.locked) return toast(h.invoiceId ? 'On an invoice. Withdraw the invoice to change it.' : 'Approved. Ask Lee or Ligia to change it.')
+      entryModal(ui, d, h, reload)
+    }))
+    v.querySelector('#hr-add-all')?.addEventListener('click', async (e) => {
+      e.currentTarget.disabled = true
+      let n = 0
+      for (const x of d.suggest) if (await save({ date: x.date, start: x.start, end: x.end, kind: x.kind, groupId: x.groupId, coachId: d.suggestFor })) n++
+      toast(`${n} added. Tap any to change the players.`); reload()
+    })
+  }
+  const drawAdmin = () => {
     const list = d.entries.filter((h) => !S.status || h.status === S.status)
     const waiting = d.entries.filter((h) => h.status === 'submitted')
     const total = d.entries.reduce((t, h) => t + h.minutes, 0)
@@ -43,7 +75,7 @@ export async function renderHours(ui) {
       <tbody>${list.map((h) => `<tr data-hr="${esc(h.id)}"><td data-col="who"><b>${esc(h.dateLabel)}</b><span class="ps-sub">${esc(t12(h.start))} to ${esc(t12(h.end))}</span></td>
         <td data-col="pay"><b>${hrs(h.minutes)}</b><span class="ps-sub">${psBadge(...STATUS[h.status])}</span></td>
         ${admin ? `<td data-col="group">${esc(h.coach)}</td>` : ''}
-        <td data-col="${admin ? 'flags' : 'group'}">${esc(h.kindLabel)}${h.note ? `<span class="ps-sub">${esc(h.note)}</span>` : ''}${h.status === 'queried' && h.decisionNote ? `<span class="ps-sub" style="color:var(--j-red)">Sent back: ${esc(h.decisionNote)}</span>` : ''}</td>
+        <td data-col="${admin ? 'flags' : 'group'}">${esc(h.kindLabel)}${h.note ? `<span class="ps-sub">${esc(h.note)}</span>` : ''}${h.players?.length ? `<span class="ps-sub">${h.players.length} player${h.players.length === 1 ? '' : 's'}: ${esc(h.players.map((p) => p.name).join(', '))}</span>` : ''}${h.status === 'queried' && h.decisionNote ? `<span class="ps-sub" style="color:var(--j-red)">Sent back: ${esc(h.decisionNote)}</span>` : ''}</td>
         <td class="ps-end ps-keep">${admin && h.status !== 'approved' ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-hr-ok="${esc(h.id)}">Approve</button> ` : ''}${admin && h.status === 'submitted' ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-hr-back="${esc(h.id)}">Send back</button> ` : ''}${h.canEdit ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-hr-edit="${esc(h.id)}">Edit</button>` : ''}</td></tr>`).join('') || `<tr><td colspan="${admin ? 5 : 4}"><div class="ps-empty">No hours logged for these dates.</div></td></tr>`}</tbody></table></div>`
     wire(list)
   }
@@ -57,11 +89,7 @@ export async function renderHours(ui) {
     v.querySelectorAll('[data-hr-coach]').forEach((r) => r.addEventListener('click', () => { S.coachId = r.dataset.hrCoach; reload() }))
     v.querySelector('#hr-add').addEventListener('click', () => entryModal(ui, d, null, reload))
     v.querySelectorAll('[data-hr-edit]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); entryModal(ui, d, d.entries.find((h) => h.id === b.dataset.hrEdit), reload) }))
-    v.querySelectorAll('[data-hr-sug]').forEach((b) => b.addEventListener('click', async () => {
-      const x = d.suggest[Number(b.dataset.hrSug)]
-      b.disabled = true
-      if (await save({ date: x.date, start: x.start, end: x.end, kind: x.kind, groupId: x.groupId, coachId: d.suggestFor })) { toast('Added.'); reload() } else b.disabled = false
-    }))
+    v.querySelectorAll('[data-hr-sug]').forEach((b) => b.addEventListener('click', () => entryModal(ui, d, null, reload, d.suggest[Number(b.dataset.hrSug)])))
     v.querySelector('#hr-add-all')?.addEventListener('click', async (e) => {
       e.currentTarget.disabled = true
       let n = 0
@@ -89,24 +117,73 @@ export async function renderHours(ui) {
 }
 function fmtDay(s) { return new Intl.DateTimeFormat('en-AU', { timeZone: 'UTC', day: 'numeric', month: 'short' }).format(new Date(`${s}T00:00:00Z`)) }
 
-function entryModal(ui, d, h, reload) {
+const HC_CSS = `<style>
+.hc-h{font-size:15px;margin:22px 0 10px;display:flex;gap:8px;align-items:center}.hc-h .ps-link{margin-left:auto;font-size:13px}
+.hc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.hc-card{all:unset;box-sizing:border-box;cursor:pointer;color:var(--j-ink);display:flex;flex-direction:column;gap:4px;padding:12px 14px;border:1px solid var(--j-line);border-radius:12px;background:var(--j-surface);min-width:0}
+.hc-card:hover,.hc-card:focus-visible{border-color:var(--j-ink);outline:none}
+.hc-card[data-locked]{cursor:default;opacity:.85}
+.hc-todo{border-style:dashed}
+.hc-date{display:flex;justify-content:space-between;gap:6px;align-items:center;font-size:12px;color:var(--j-muted);text-transform:uppercase;letter-spacing:.03em}
+.hc-what{font-size:13px;color:var(--j-muted);overflow-wrap:anywhere}
+.hc-go{font-size:13px;font-weight:600;color:var(--j-blue);margin-top:2px}
+.hc-players{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.hc-chip{font:inherit;font-size:12px;color:var(--j-ink);border:0;padding:2px 8px;border-radius:999px;background:var(--j-surface-2)}
+.hc-none{font-size:12px;color:var(--j-amber);margin-top:2px}
+.hp-list{display:flex;flex-direction:column;gap:2px;max-height:46vh;overflow:auto;margin:6px 0 8px;border:1px solid var(--j-line);border-radius:10px;padding:4px}
+.hp-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer}
+.hp-row:hover{background:var(--j-surface-2)}
+.hp-row input{width:18px;height:18px;flex:none}
+.hp-row small{margin-left:auto;color:var(--j-muted);white-space:nowrap}
+</style>`
+const MARK = { Present: 'Present', Absent: 'Away', Notified: 'Told us away' }
+
+function entryModal(ui, d, h, reload, sug = null) {
   const admin = ui.user.role === 'admin'
   const today = d.today
-  const box = ui.modal(`<h2 style="margin-bottom:12px">${h ? 'Edit hours' : 'Log hours'}</h2>
-    ${admin && !h ? `<label class="j-field"><span>Coach</span><select class="j-select" id="he-coach">${d.coaches.map((c) => `<option value="${esc(c.id)}" ${c.id === (S.coachId || d.myCoachId) ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>` : ''}
-    <label class="j-field"><span>Date</span><input class="j-input" type="date" id="he-date" max="${esc(today)}" value="${esc(h?.date || today)}"></label>
-    <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px"><label class="j-field"><span>Start</span><input class="j-input" type="time" id="he-start" step="300" value="${esc(h?.start || '')}"></label><label class="j-field"><span>Finish</span><input class="j-input" type="time" id="he-end" step="300" value="${esc(h?.end || '')}"></label></div>
-    <label class="j-field"><span>What for</span><select class="j-select" id="he-kind">${Object.entries(d.kinds).map(([k, l]) => `<option value="${k}" ${(h?.kind || 'session') === k ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label>
-    <label class="j-field"><span>Note (optional)</span><input class="j-input" id="he-note" maxlength="300" value="${esc(h?.note || '')}"></label>
+  const src = h || sug || {}
+  const groupId = src.groupId || ''
+  const typed = (h?.players || []).filter((p) => !p.rowId)
+  const box = ui.modal(`<h2 style="margin-bottom:4px">${h ? 'Edit hours' : sug ? 'Log this session' : 'Log hours'}</h2>${sug ? `<p class="muted small" style="margin-bottom:10px">${esc(sug.dateLabel)} · ${esc(sug.label)}</p>` : ''}
+    ${admin && !h ? `<label class="j-field"><span>Coach</span><select class="j-select" id="he-coach">${d.coaches.map((c) => `<option value="${esc(c.id)}" ${c.id === (sug ? d.suggestFor : S.coachId || d.myCoachId) ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>` : ''}
+    <label class="j-field" ${sug ? 'hidden' : ''}><span>Date</span><input class="j-input" type="date" id="he-date" max="${esc(today)}" value="${esc(src.date || today)}"></label>
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px"><label class="j-field"><span>Start</span><input class="j-input" type="time" id="he-start" step="300" value="${esc(src.start || '')}"></label><label class="j-field"><span>Finish</span><input class="j-input" type="time" id="he-end" step="300" value="${esc(src.end || '')}"></label></div>
+    <label class="j-field" ${sug ? 'hidden' : ''}><span>What for</span><select class="j-select" id="he-kind">${Object.entries(d.kinds).map(([k, l]) => `<option value="${k}" ${(src.kind || 'session') === k ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label>
+    <div class="j-field"><span>Players you coached <b id="hp-n"></b></span>
+      ${groupId ? '<div class="hp-list" id="hp-list"><p class="muted small" style="padding:8px">Loading the register…</p></div>' : ''}
+      <div id="hp-typed" class="hc-players" style="margin:4px 0"></div>
+      <div style="display:flex;gap:6px"><input class="j-input" id="hp-add" maxlength="40" placeholder="${groupId ? 'Someone else? Type a name' : 'Type a player name, then Add'}"><button type="button" class="j-btn j-btn-line j-btn-sm" id="hp-add-go">Add</button></div></div>
+    <label class="j-field"><span>Note (optional)</span><input class="j-input" id="he-note" maxlength="300" value="${esc(h?.note || '')}" placeholder="e.g. Dev Sesh"></label>
     <p class="j-err" id="he-err" hidden></p>
     <div class="jpf-acts">${h ? '<button type="button" class="j-btn j-btn-line" id="he-del">Delete</button>' : ''}<button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="he-go">Save</button></div>`)
   const err = (m) => { const e = box.querySelector('#he-err'); e.textContent = m; e.hidden = !m }
+  const names = typed.map((p) => p.name)
+  const count = () => { box.querySelector('#hp-n').textContent = `(${box.querySelectorAll('[data-hp]:checked').length + names.length})` }
+  const drawTyped = () => { box.querySelector('#hp-typed').innerHTML = names.map((n, i) => `<button type="button" class="hc-chip" data-hp-x="${i}" title="Take off">${esc(n)} ✕</button>`).join(''); box.querySelectorAll('[data-hp-x]').forEach((b) => b.addEventListener('click', () => { names.splice(Number(b.dataset.hpX), 1); drawTyped() })); count() }
+  drawTyped()
+  const addTyped = () => { const i = box.querySelector('#hp-add'); const v = i.value.trim(); if (v) { names.push(v); i.value = ''; drawTyped() } }
+  box.querySelector('#hp-add-go').addEventListener('click', addTyped)
+  box.querySelector('#hp-add').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addTyped() } })
+  if (groupId) {
+    ui.post('hoursPlayers', { groupId, date: src.date }).then((r) => {
+      const el = box.querySelector('#hp-list')
+      if (!el) return
+      if (!r.ok) { el.innerHTML = `<p class="j-err" style="padding:8px">${esc(r.data.error || 'Could not load the players.')}</p>`; return }
+      const saved = h?.players ? new Set(h.players.filter((p) => p.rowId).map((p) => p.rowId)) : null
+      el.innerHTML = r.data.players.map((p) => `<label class="hp-row"><input type="checkbox" data-hp="${esc(p.rowId)}" ${(saved ? saved.has(p.rowId) : p.ticked) ? 'checked' : ''}><span>${esc(p.full || p.name)}</span><small>${esc(p.mark ? `${MARK[p.mark] || p.mark}${p.mark !== 'Present' && p.paidUpfront ? ', paid upfront' : ''}` : 'Not marked')}</small></label>`).join('') || '<p class="muted small" style="padding:8px">No players in this group.</p>'
+      if (!r.data.marked) el.insertAdjacentHTML('afterbegin', '<p class="small" style="padding:6px 8px;color:var(--j-amber)">The register is not marked yet. Tick who came.</p>')
+      el.querySelectorAll('[data-hp]').forEach((c) => c.addEventListener('change', count))
+      count()
+    })
+  }
   box.querySelector('#he-go').addEventListener('click', async (e) => {
     e.currentTarget.disabled = true
-    const r = await ui.post('hoursSave', { id: h?.id || '', coachId: box.querySelector('#he-coach')?.value || '', date: box.querySelector('#he-date').value, start: box.querySelector('#he-start').value, end: box.querySelector('#he-end').value, kind: box.querySelector('#he-kind').value, note: box.querySelector('#he-note').value, groupId: h?.groupId || '' })
+    const list = box.querySelector('#hp-list')
+    const players = [...[...box.querySelectorAll('[data-hp]:checked')].map((c) => ({ rowId: c.dataset.hp })), ...names.map((name) => ({ name }))]
+    const r = await ui.post('hoursSave', { id: h?.id || '', coachId: box.querySelector('#he-coach')?.value || (sug ? d.suggestFor : ''), date: box.querySelector('#he-date').value, start: box.querySelector('#he-start').value, end: box.querySelector('#he-end').value, kind: box.querySelector('#he-kind').value, note: box.querySelector('#he-note').value, groupId, ...(list?.querySelector('[data-hp]') || names.length || h?.players ? { players } : {}) })
     e.currentTarget.disabled = false
     if (!r.ok) return err(r.data.error || 'Could not save.')
-    ui.closeModal(); toast('Saved.'); reload()
+    ui.closeModal(); toast(players.length ? `Saved with ${players.length} player${players.length === 1 ? '' : 's'}.` : 'Saved.'); reload()
   })
   box.querySelector('#he-del')?.addEventListener('click', async () => {
     if (!(await ui.confirmBox('Delete these hours?', { ok: 'Delete', danger: true }))) return

@@ -7,12 +7,70 @@
 //
 //   jfp:hours   hash id -> JSON {id, coachId, date, start, end, minutes, kind,
 //               groupId, note, status: submitted|approved|queried, createdAt,
-//               by, editedAt, decidedBy, decidedAt, decisionNote}
+//               by, editedAt, decidedBy, decidedAt, decisionNote,
+//               players: [{ rowId, name }]}
+//
+// Players (Lee, 20 Oct 2026: "it needs to be able to add the players they
+// had... click that hour, then the players names get entered into the
+// invoice"): a coach ticks who they coached on each session. The list is the
+// group's players with the register's marks; Present and paid-upfront players
+// come ticked. The ticked names go on the invoice line.
 import { kvCommand, newId, clean, audit, listGroups, coachById, coachLabel, locationFor, sessionDates, to24h, dateLabel, sydneyToday } from './_jfp-store.js'
+import { loadRoster } from './_jfp-airtable.js'
+import { registerFor, paidUpfront } from './_jfp-coach-pay.js'
 
 const KEY = 'jfp:hours'
-export const HOURS_ACTIONS = new Set(['hoursList', 'hoursSave', 'hoursDelete', 'hoursDecide'])
-export const HOUR_KINDS = { session: 'JFP session', cover: 'Cover', holiday: 'Holiday training', camp: 'Camp', juniors: 'Joners Juniors', event: 'Event or trial day', admin: 'Admin or planning', other: 'Other' }
+export const HOURS_ACTIONS = new Set(['hoursList', 'hoursSave', 'hoursDelete', 'hoursDecide', 'hoursPlayers'])
+export const HOUR_KINDS = { session: 'JFP session', cover: 'Cover', devsesh: 'Dev Sesh', holiday: 'Holiday training', camp: 'Camp', juniors: 'Joners Juniors', event: 'Event or trial day', admin: 'Admin or planning', other: 'Other' }
+const MAX_PLAYERS = 40
+
+// First names, with a last initial when two share a first name.
+export function shortNames(rows) {
+  const first = (n) => String(n || '').trim().split(/\s+/)[0] || 'Player'
+  const count = {}
+  for (const r of rows) count[first(r.player).toLowerCase()] = (count[first(r.player).toLowerCase()] || 0) + 1
+  return new Map(rows.map((r) => { const parts = String(r.player || '').trim().split(/\s+/); const f = first(r.player); return [r.id, count[f.toLowerCase()] > 1 && parts[1] ? `${f} ${parts[parts.length - 1][0]}` : f] }))
+}
+
+// The players for one session: the group's players and anyone on its
+// register that day, with the mark, and whether they come ticked.
+export async function sessionPlayers(groupId, date) {
+  const roster = await loadRoster().catch(() => ({ players: [] }))
+  const byId = new Map(roster.players.map((r) => [r.id, r]))
+  const names = shortNames(roster.players)
+  const rowOf = (id) => { const r = byId.get(id); return r ? { name: names.get(id), paymentType: r.paymentType, paymentStatus: r.paymentStatus } : null }
+  const reg = await registerFor(groupId, date, rowOf)
+  const ids = [...new Set([...roster.players.filter((r) => r.groupId === groupId && r.holdsPlace).map((r) => r.id), ...Object.keys(reg.marks)])]
+  const counted = new Set(reg.counted.map((p) => p.rowId))
+  return {
+    marked: reg.marked,
+    players: ids.map((id) => ({ rowId: id, name: names.get(id) || 'Player', full: String(byId.get(id)?.player || '').trim() || 'Player on the register', mark: reg.marks[id] || '', paidUpfront: paidUpfront(byId.get(id)), ticked: counted.has(id) }))
+      .sort((a, b) => Number(b.ticked) - Number(a.ticked) || a.full.localeCompare(b.full)),
+  }
+}
+
+// Pure: the ticked players, checked against the session's list. Typed names (no rowId) are allowed.
+export function checkPlayers(list, allowed) {
+  if (!Array.isArray(list)) return []
+  const out = [], seen = new Set()
+  for (const p of list.slice(0, MAX_PLAYERS)) {
+    const rowId = clean(p?.rowId, 40)
+    if (rowId) { const a = allowed.get(rowId); if (a && !seen.has(rowId)) { seen.add(rowId); out.push({ rowId, name: a }) } continue }
+    const name = clean(p?.name, 40)
+    if (name) out.push({ rowId: '', name })
+  }
+  return out
+}
+
+// May this login see a session's players: Lee, Ligia, the group's coaches, or the cover that day.
+async function canSeeSession(groupId, date, { isAdmin, myCoachId, listCovers }) {
+  if (isAdmin) return true
+  if (!myCoachId) return false
+  const g = (await listGroups()).find((x) => x.id === groupId)
+  if (!g) return false
+  if (g.coachId === myCoachId || (g.extraCoachIds || []).includes(myCoachId)) return true
+  return (await listCovers()).some((c) => c.status === 'active' && c.groupId === groupId && c.date === date && c.coverCoachId === myCoachId)
+}
 const ISO = /^\d{4}-\d{2}-\d{2}$/
 const HM = /^([01]\d|2[0-3]):([0-5]\d)$/
 const BACK_DAYS = 62
@@ -94,6 +152,13 @@ export async function hoursAction(res, principal, config, body, action, { isAdmi
     return ok({ from, to, today, entries: entries.map(view), suggest, suggestFor, totals: Object.values(totals).sort((a, b) => a.coach.localeCompare(b.coach)), kinds: HOUR_KINDS, coaches: isAdmin ? config.coaches.map((c) => ({ id: c.id, name: coachLabel(c) })) : [], myCoachId })
   }
 
+  if (action === 'hoursPlayers') {
+    const groupId = clean(body.groupId, 80), date = clean(body.date, 10)
+    if (!groupId || !ISO.test(date)) return no(400, 'Choose the session.')
+    if (!(await canSeeSession(groupId, date, { isAdmin, myCoachId, listCovers }))) return no(403, 'Not your session.')
+    return ok(await sessionPlayers(groupId, date))
+  }
+
   if (action === 'hoursSave') {
     const id = clean(body.id, 40)
     const was = id ? parse(await kvCommand(['HGET', KEY, id])) : null
@@ -106,13 +171,20 @@ export async function hoursAction(res, principal, config, body, action, { isAdmi
     const others = (await allHours()).filter((h) => h.coachId === coachId && h.id !== id)
     const e = checkEntry(body, { today: isAdmin ? addDays(today, 0) : today, others })
     if (e.error) return no(400, e.error)
+    // The players they coached: names come from the session's list, never from the browser.
+    if (Array.isArray(body.players)) {
+      const gid = e.groupId || was?.groupId || ''
+      let allowed = new Map()
+      if (gid && await canSeeSession(gid, e.date, { isAdmin, myCoachId: isAdmin ? myCoachId : coachId, listCovers })) allowed = new Map((await sessionPlayers(gid, e.date)).players.map((p) => [p.rowId, p.name]))
+      e.players = checkPlayers(body.players, allowed)
+    }
     const now = new Date().toISOString()
     // A coach changing hours sends them back for approval; Lee or Ligia editing keeps the status.
     const rec = was
       ? { ...was, ...e, editedAt: now, editedBy: principal.email, status: isAdmin ? was.status : 'submitted' }
       : { id: newId('HRS'), coachId, ...e, status: isAdmin && body.approve ? 'approved' : 'submitted', createdAt: now, by: principal.email, ...(isAdmin && body.approve ? { decidedBy: principal.email, decidedAt: now } : {}) }
     await kvCommand(['HSET', KEY, rec.id, JSON.stringify(rec)])
-    await audit({ by: principal.email, action: was ? 'hours.edit' : 'hours.add', target: rec.id, after: { coachId, date: rec.date, start: rec.start, end: rec.end, kind: rec.kind } })
+    await audit({ by: principal.email, action: was ? 'hours.edit' : 'hours.add', target: rec.id, after: { coachId, date: rec.date, start: rec.start, end: rec.end, kind: rec.kind, players: rec.players?.length ?? null } })
     return ok({ entry: view(rec) })
   }
 

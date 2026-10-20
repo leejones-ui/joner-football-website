@@ -13,10 +13,18 @@
 // A rate card: bands[0..6] = 1 player .. 7 or more, an hour; weekendExtra an
 // hour on top for ordinary JFP sessions on Saturday or Sunday (not Joners
 // Juniors, not Pathway); pathwayFlat for a 45-minute Pathway class whatever
-// the player count; jjHead and jjShadow an hour; office and devSesh an hour
-// where agreed; camps are always agreed with Lee before the camp (TBC).
+// the player count; Joners Juniors an hour (one rate for head or shadow, Lee
+// 20 Oct 2026: "keep $50 across the board"); office an hour; devSesh flat for
+// each Dev Sesh ("per dev sesh"); camps are always agreed with Lee before the
+// camp (TBC).
+//
+// Who counts (Lee, 20 Oct 2026: "if they have paid for the program upfront
+// and they dont show, they still get paid for that session!"): players marked
+// Present, plus players who paid the term upfront and were marked Absent or
+// Notified. Session-by-session, drop-in, Pro and trial players count only
+// when Present.
 // A line with no agreed rate is never guessed: it waits for Lee or Ligia.
-import { kvCommand, clean, audit, sydneyToday } from './_jfp-store.js'
+import { kvCommand, clean, audit, sydneyToday, isSessionType } from './_jfp-store.js'
 
 const CARDS = 'jfp:coach-pay:cards'
 const DETAILS = 'jfp:coach-pay:details'
@@ -60,7 +68,7 @@ export async function saveCard(principal, coachId, card) {
   return next
 }
 
-// The coach's own details for their invoice (Luke's layout: name, ABN,
+// The coach's own details for their invoice (the coaches' own layout: name, ABN,
 // address, phone, email, and where to pay).
 export const DETAIL_FIELDS = { fullName: 80, abn: 20, address: 160, phone: 30, email: 120, accountName: 80, bsb: 10, accountNumber: 20 }
 export async function getDetails(coachId) { return parse(await kvCommand(['HGET', DETAILS, clean(coachId, 30)])) || {} }
@@ -75,14 +83,21 @@ export async function saveDetails(principal, coachId, body) {
   return { details: out }
 }
 
-// Who was marked Present in a group's register on a date: { marked, present: [{ rowId, name }] }.
-export async function registerFor(groupId, date, nameOf) {
+// Paid the whole program upfront: a term or half-term fee that is paid (not
+// session by session, drop-in, Pro sessions or a trial).
+export const paidUpfront = (row) => Boolean(row) && !isSessionType(row.paymentType) && !/trial/i.test(row.paymentType || '') && /^(paid|partially paid)$/i.test(row.paymentStatus || '')
+
+// A group's register on a date. rowOf(rowId) -> { name, paymentType, paymentStatus } | null.
+// { marked, present: [{ rowId, name }], paidAway: [{ rowId, name, mark }], counted: [...present, ...paidAway] }
+export async function registerFor(groupId, date, rowOf) {
   const raw = (await kvCommand(['HGETALL', `jfp:att:${groupId}:${date}`])) || []
   const marks = {}
   if (Array.isArray(raw)) { for (let i = 1; i < raw.length; i += 2) marks[raw[i - 1]] = raw[i] } else Object.assign(marks, raw)
   const ids = Object.keys(marks)
-  const present = ids.filter((id) => marks[id] === 'Present').map((rowId) => ({ rowId, name: nameOf(rowId) }))
-  return { marked: ids.length > 0, present }
+  const who = (rowId) => ({ rowId, name: rowOf(rowId)?.name || 'Player' })
+  const present = ids.filter((id) => marks[id] === 'Present').map(who)
+  const paidAway = ids.filter((id) => ['Absent', 'Notified'].includes(marks[id]) && paidUpfront(rowOf(id))).map((id) => ({ ...who(id), mark: marks[id] }))
+  return { marked: ids.length > 0, present, paidAway, counted: [...present, ...paidAway], marks }
 }
 
 const isWeekend = (iso) => [0, 6].includes(new Date(`${iso}T00:00:00Z`).getUTCDay())
@@ -90,19 +105,23 @@ export const isPathwayGroup = (g) => g?.label === 'Pathway' || g?.product === 'p
 const isJJGroup = (g) => g?.label === 'Joners Juniors'
 const hourly = (rate, minutes) => Math.round((rate * minutes) / 60)
 
-// Pure: the price of one invoice line. line: { kind, minutes, date, groupId, note }.
-// ctx: { card, group, register: { marked, present } | null }.
+// Pure: the price of one invoice line. line: { kind, minutes, date, groupId, note, players? }.
+// ctx: { card, group, register: { marked, counted } | null }. When the coach
+// ticked the players on their hours (line.players), that count prices it; the
+// register is the check (a flag when they differ).
 // Returns { cents (null when Lee or Ligia must set it), basis, players, flags }.
 export function priceLine(line, { card, group, register }) {
-  const tbc = (code, text) => ({ cents: null, basis: text, players: register?.present?.length ?? null, flags: [{ code, text }] })
+  const picked = Array.isArray(line.players) && line.players.length ? line.players.length : 0
+  const counted = register?.counted?.length ?? 0
+  const tbc = (code, text) => ({ cents: null, basis: text, players: picked || (register?.marked ? counted : null), flags: [{ code, text }] })
   if (!card) return tbc('no-card', 'No rate card yet: Lee sets the amount')
   const jj = line.kind === 'juniors' || isJJGroup(group)
   if (jj) {
-    if (!card.jjHead && !card.jjShadow) return tbc('no-rate', 'No agreed Joners Juniors rate: Lee sets the amount')
-    if (card.jjHead && card.jjShadow && card.jjHead !== card.jjShadow) return tbc('jj-role', `Head coach (${money(card.jjHead)} an hour) or shadow coach (${money(card.jjShadow)} an hour)? Lee or Ligia confirm`)
     const r = card.jjHead || card.jjShadow
+    if (!r) return tbc('no-rate', 'No agreed Joners Juniors rate: Lee sets the amount')
     return { cents: hourly(r, line.minutes), basis: `Joners Juniors, ${money(r)} an hour`, players: null, flags: [] }
   }
+  if (line.kind === 'devsesh' && !card.devSesh) return tbc('no-rate', 'No agreed Dev Sesh rate: Lee sets the amount')
   if (line.kind === 'camp') return tbc('camp', 'Camps: the rate is agreed with Lee before the camp')
   if (line.kind === 'admin') {
     if (!card.office) return tbc('no-rate', 'No agreed office rate: Lee sets the amount')
@@ -110,18 +129,21 @@ export function priceLine(line, { card, group, register }) {
   }
   if (['session', 'cover'].includes(line.kind) && line.groupId) {
     if (!group) return tbc('no-group', 'That group is gone: Lee sets the amount')
-    if (!register?.marked) return tbc('register', 'Register not marked for this session. Mark it, then make the invoice again')
-    const n = register.present.length
+    if (!register?.marked && !picked) return tbc('register', 'Register not marked for this session. Mark it, or tick your players in My hours')
+    const n = picked || counted
+    const flags = []
+    if (picked && register?.marked && picked !== counted) flags.push({ code: 'register-diff', text: `You ticked ${picked}, the register counts ${counted}` })
+    if (picked && !register?.marked) flags.push({ code: 'register', text: 'Register not marked: players ticked by the coach' })
     if (isPathwayGroup(group)) {
       if (!card.pathwayFlat) return tbc('no-rate', 'No agreed Pathway rate: Lee sets the amount')
-      return { cents: card.pathwayFlat, basis: `Pathway class, flat ${money(card.pathwayFlat)}`, players: n, flags: n ? [] : [{ code: 'no-players', text: 'Register shows nobody present' }] }
+      return { cents: card.pathwayFlat, basis: `Pathway class, flat ${money(card.pathwayFlat)}`, players: n, flags: n ? flags : [...flags, { code: 'no-players', text: 'Register shows nobody present' }] }
     }
     if (!n) return tbc('no-players', 'Register shows nobody present: Lee or Ligia check')
     const band = card.bands[Math.min(n, 7) - 1]
     const extra = isWeekend(line.date) && card.weekendExtra ? card.weekendExtra : 0
-    return { cents: hourly(band + extra, line.minutes), basis: `${BAND_LABELS[Math.min(n, 7) - 1]}, ${money(band)} an hour${extra ? ` + ${money(extra)} weekend` : ''}`, players: n, flags: [] }
+    return { cents: hourly(band + extra, line.minutes), basis: `${BAND_LABELS[Math.min(n, 7) - 1]}, ${money(band)} an hour${extra ? ` + ${money(extra)} weekend` : ''}`, players: n, flags }
   }
-  if (card.devSesh && /dev\s*sesh/i.test(line.note || '')) return { cents: hourly(card.devSesh, line.minutes), basis: `Dev Sesh, ${money(card.devSesh)} an hour`, players: null, flags: [] }
+  if (card.devSesh && (line.kind === 'devsesh' || /dev\s*sesh/i.test(line.note || ''))) return { cents: card.devSesh, basis: `Dev Sesh, flat ${money(card.devSesh)}`, players: picked || null, flags: [] }
   return tbc('no-rate', 'No agreed rate for this: Lee sets the amount')
 }
 
