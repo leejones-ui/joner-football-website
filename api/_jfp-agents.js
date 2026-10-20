@@ -51,6 +51,19 @@ export async function saveAgent(principal, { name, email, mobile, company }) {
   return rec
 }
 
+// Session packs (Lee, 20 Oct 2026): "they should get options for a 5 and 10
+// pack at a cheaper price". Per player, used up by the sessions Lee bills,
+// gone at the end of the term (the count lives on the term's Term 4 row).
+// Every agency gets them; Lee sets the prices per agency in Edit agency.
+// Until he does, a 5-pack at A$90 a session (his price on 20 Oct 2026).
+export const PACK_SIZES = [5, 10]
+export const DEFAULT_PACKS = [{ n: 5, cents: 9000 }]
+export function packsOf(a) {
+  if (!a) return []
+  const list = Array.isArray(a.packs) ? a.packs : DEFAULT_PACKS
+  return list.filter((p) => PACK_SIZES.includes(p.n) && Number.isInteger(p.cents) && p.cents > 0).sort((x, y) => x.n - y.n)
+}
+
 export async function agentById(id) {
   return (await allAgents()).find((a) => a.id === id) || null
 }
@@ -78,7 +91,17 @@ export async function updateAgent(principal, id, f = {}) {
   const rate = f.rateCents === '' || f.rateCents == null ? 0 : Number(f.rateCents)
   if (!Number.isInteger(rate) || rate < 0 || rate > 200000) return { ok: false, status: 400, error: 'Enter the price per session in dollars, or leave it empty.' }
   if (email !== was.email && await agentFor(email)) return { ok: false, status: 409, error: `${email} is already another agent's email.` }
-  const after = { ...was, name, email, mobile: clean(f.mobile, 40), company: clean(f.company, 100), billingEmail: billingEmail === email ? '' : billingEmail, address: clean(f.address, 300), abn: clean(f.abn, 20).replace(/[^\d ]/g, ''), rateCents: rate || 0, updatedAt: new Date().toISOString(), updatedBy: principal.email }
+  // Pack prices: { 5: cents, 10: cents }, 0 or empty = not offered.
+  let packs = packsOf(was)
+  if (f.packs && typeof f.packs === 'object') {
+    packs = []
+    for (const n of PACK_SIZES) {
+      const c = f.packs[n] === '' || f.packs[n] == null ? 0 : Number(f.packs[n])
+      if (!Number.isInteger(c) || c < 0 || c > 200000) return { ok: false, status: 400, error: `Enter the ${n}-pack price per session in dollars, or leave it empty.` }
+      if (c) packs.push({ n, cents: c })
+    }
+  }
+  const after = { ...was, packs, name, email, mobile: clean(f.mobile, 40), company: clean(f.company, 100), billingEmail: billingEmail === email ? '' : billingEmail, address: clean(f.address, 300), abn: clean(f.abn, 20).replace(/[^\d ]/g, ''), rateCents: rate || 0, updatedAt: new Date().toISOString(), updatedBy: principal.email }
   if (email !== was.email) await kvCommand(['HDEL', AGENTS, was.email])
   await kvCommand(['HSET', AGENTS, email, JSON.stringify(after)])
   return { ok: true, before: was, after }
@@ -88,6 +111,6 @@ export async function updateAgent(principal, id, f = {}) {
 export function agentsView(agents, rosterPlayers) {
   return agents.map((a) => {
     const rows = rosterPlayers.filter((r) => r.agentId === a.id && r.holdsPlace)
-    return { id: a.id, name: a.name, email: a.email, mobile: a.mobile, company: a.company, billingEmail: a.billingEmail || '', address: a.address || '', abn: a.abn || '', rateCents: a.rateCents || 0, players: rows.map((r) => r.player).sort() }
+    return { id: a.id, name: a.name, email: a.email, mobile: a.mobile, company: a.company, billingEmail: a.billingEmail || '', address: a.address || '', abn: a.abn || '', rateCents: a.rateCents || 0, packs: packsOf(a), players: rows.map((r) => r.player).sort() }
   })
 }

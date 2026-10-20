@@ -29,6 +29,13 @@ function client() {
   return { call }
 }
 const getJson = async (p) => (await fetch(`${B}${p}`)).json()
+const kv = async (cmd) => (await fetch(`${B}/__kv?cmd=${encodeURIComponent(JSON.stringify(cmd))}`)).text()
+async function payAtStripe(c, url) {
+  const back = await fetch(`${url}&action=pay`, { redirect: 'manual' })
+  const sid = new URL(back.headers.get('location')).searchParams.get('session_id')
+  const conf = await c.call(`/api/jfp-confirm?session_id=${sid}`)
+  assert.equal(conf.data.status, 'paid', JSON.stringify(conf.data))
+}
 const emails = () => getJson('/__emails')
 const at = () => getJson('/__airtable')
 async function signIn(c, email, audience = 'parent') {
@@ -218,6 +225,47 @@ await test('the agent adds their own players: straight on to Term 4 under the ag
   assert.ok(kai.byAgent)
   assert.equal(kai.perSessionCents, 9000)
   assert.ok((await acct('overview')).data.players.some((p) => p.name === 'Noa Silva'))
+})
+
+await test('session packs: the agent buys a 5-pack at the agency price, billing uses it up, Lee can send one', async () => {
+  // 5 x A$80 and 10 x A$75 against A$90 a session; blank clears a pack.
+  await ok('editAgent', { agentId: added.agentId, agent: { ...AGENT, company: 'Bellini Sports Pty Ltd', rateCents: 9000, packs: { 5: 8000, 10: 7500 } } })
+  let card = await ok('agentCard', { agentId: added.agentId, fresh: true })
+  assert.deepEqual(card.agent.packs, [{ n: 5, cents: 8000 }, { n: 10, cents: 7500 }])
+  assert.equal((await portal('editAgent', { agentId: added.agentId, agent: { ...AGENT, rateCents: 9000, packs: { 5: -1 } } })).status, 400)
+  const kai = card.players.find((p) => p.name === 'Kai Mensah')
+  const d = (await acct('overview')).data
+  const o = d.owed.find((x) => x.rowId === kai.rowId)
+  assert.equal(o.kind, 'pack', JSON.stringify(o))
+  assert.deepEqual(o.packs.map((k) => [k.key, k.totalCents, k.saveCents]), [['pack:5', 40000, 5000], ['pack:10', 75000, 15000]])
+  assert.equal((await acct('payOwed', { rowId: kai.rowId })).status, 400, 'a pack item needs a pack chosen')
+  assert.equal((await acct('payOwed', { rowId: kai.rowId, option: 'pack:7' })).status, 400)
+  const r = await acct('payOwed', { rowId: kai.rowId, option: 'pack:5' })
+  assert.equal(r.status, 200, JSON.stringify(r.data))
+  const q = JSON.parse(await kv(['GET', `jfp:payreq:${r.data.payreqId || r.data.payreq?.id}`]) || 'null') || (await ok('agentCard', { agentId: added.agentId, fresh: true })).open.find((x) => x.players.includes('Kai Mensah'))
+  assert.equal(q.amountCents, 40000)
+  const url = r.data.url || q.url
+  await payAtStripe(agent, url)
+  let row = (await at()).term4.find((x) => x.id === kai.rowId).fields
+  assert.match(row['Term 4 Notes'], /\[PREPAID:5\]/)
+  assert.match(row['Term 4 Notes'], /session pack/)
+  assert.equal(row['Term 4 Fee'], 400)
+  card = await ok('agentCard', { agentId: added.agentId, fresh: true })
+  assert.equal(card.players.find((p) => p.name === 'Kai Mensah').prepaid, 5)
+  // Lee bills 2 sessions: nothing to pay, 3 left.
+  const bill = await ok('sessionInvoice', { rows: [{ rowId: kai.rowId, sessions: 2, perSessionCents: 9000 }], mode: 'link', sendEmail: false })
+  assert.equal(bill.payreq, null, JSON.stringify(bill))
+  row = (await at()).term4.find((x) => x.id === kai.rowId).fields
+  assert.match(row['Term 4 Notes'], /\[PREPAID:3\]/)
+  // Lee makes a 10-pack link for another agency player; no email goes.
+  const noa = card.players.find((p) => p.name === 'Noa Silva')
+  const before = (await emails()).length
+  const sp = await ok('agentPack', { agentId: added.agentId, rowId: noa.rowId, n: 10 })
+  assert.equal(sp.amountCents, 75000)
+  assert.match(sp.url, /^http/)
+  assert.equal((await emails()).length, before, 'no email')
+  assert.equal((await ok('agentPack', { agentId: added.agentId, rowId: noa.rowId, n: 10 })).reused, true, 'one open link per player')
+  assert.equal((await portal('agentPack', { agentId: added.agentId, rowId: 'recNOTREAL', n: 5 })).status, 404)
 })
 
 await test('a new agent email moves the rows, the sign-in and the player logins', async () => {

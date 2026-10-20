@@ -33,7 +33,7 @@ import { withPayreqLease } from './_jfp-finalise.js'
 import { familyProfiles, findProfile, pickProfile, profileKey, profileView, cleanProfile, saveProfile, savePhoto, waiverPrefill, DOB_MIN, dobMax, clubSuggestions, LEVELS, PLAYING_UP, POSITIONS, FEET, YEARS } from './_jfp-profiles.js'
 import { markToldAway, clearToldAway } from './_jfp-away.js'
 import { asksComing, comingDates, saveComing, clearComing } from './_jfp-coming.js'
-import { agentFor } from './_jfp-agents.js'
+import { agentFor, allAgents } from './_jfp-agents.js'
 import { addAgentPlayer } from './_jfp-agent-add.js'
 import { coachPhotoUrl } from './jfp-groups.js'
 import { listCancels, submitCancel, withdrawCancel, rowSessionDates, rowTime, noticeFor, coachesFor, coverCoachFor, familyView, cancelId, REASONS, NOTE_MAX } from './_jfp-cancel.js'
@@ -158,7 +158,9 @@ async function overview(res, parent, body = {}, opts = {}) {
   const open = openPlayers({ fam, profs, account }).filter((o) => !jfpPlayers.some((p) => p.key === o.key))
   // Anything owing on a place with no open payment request (term fee, or
   // session by session): a Pay step, made into a request when they tap it.
-  const owed = owedItems({ config, players: jfpPlayers, payreqs: mine, byGroup, cancels: myCancels, nowMs })
+  // An agency's players get its 5 and 10 session packs (Lee, 20 Oct 2026).
+  const agencies = jfpPlayers.some((p) => p.term4.some((r) => r.agentId)) ? new Map((await allAgents().catch(() => [])).map((a) => [a.id, a])) : null
+  const owed = owedItems({ config, players: jfpPlayers, payreqs: mine, byGroup, cancels: myCancels, nowMs, agencies })
   const owedByRow = new Map(owed.map((x) => [x.rowId, x]))
   // Attendance (Lee, 17 Oct 2026): the coach's register for every session
   // already run, one read for the whole family. A failed read shows none.

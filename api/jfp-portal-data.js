@@ -89,6 +89,7 @@ import { withAgent, inAgent, agentState, setAgentEnabled, listHeld, takeHeld, he
 import { sendHeldEmail } from './_jfp-email.js'
 import { SAVED_PAY_ACTIONS, savedPayAction, withSavedPay, autoChargeActiveFor } from './_jfp-saved-pay.js'
 import { PROGRAMMES, programmeLabel, PRICE_MIN, PRICE_MAX, PRICES_MAX, cleanPrice, allPrices, priceById, quickHolidayPeriods, quickLinkInput, quickStatus, QUICK_STATUS, quickOpen, quickToCheck, quickUrl, QUICK_CHECKED, QUICK_EMAILED } from './_jfp-quick.js'
+import { payOwed as makeOwedPayreq } from './_jfp-account-pay.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
 function fail(res, status, error, extra = {}) { return res.status(status).json({ success: false, error, ...extra }) }
@@ -414,10 +415,29 @@ async function agentCard(req, res, body) {
   const players = rows.map((r) => {
     const g = byId[r.groupId]
     const fee = cents(r.feeAud), paid = cents(r.paidAud)
-    return { rowId: r.id, name: r.player, group: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : 'No group yet', paymentType: r.paymentType || '', bySession: isSessionType(r.paymentType), perSessionCents: r.perSessionCents || a.rateCents || 0, feeCents: fee, paidCents: paid, owingCents: Math.max(0, fee - paid), waiver: Boolean(waiverFor(r.player, { emails: rowEmails(r), phones: [r.phone], dob: r.dob }, roster.waivers)), byAgent: /\[AGENTADD\]/.test(r.notes || '') }
+    return { rowId: r.id, name: r.player, group: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : 'No group yet', paymentType: r.paymentType || '', bySession: isSessionType(r.paymentType), perSessionCents: r.perSessionCents || a.rateCents || 0, feeCents: fee, paidCents: paid, owingCents: Math.max(0, fee - paid), waiver: Boolean(waiverFor(r.player, { emails: rowEmails(r), phones: [r.phone], dob: r.dob }, roster.waivers)), byAgent: /\[AGENTADD\]/.test(r.notes || ''), prepaid: r.prepaidSessions || 0 }
   }).sort((x, y) => x.name.localeCompare(y.name))
   const open = links.filter((q) => ['open', 'checkout'].includes(q.status) && q.term4Ids.some((id) => ids.has(id))).map((q) => ({ id: q.id, url: payreqUrl(req, q), amountCents: q.amountCents, players: q.playerNames, createdAt: q.createdAt || '', emailedAt: q.emailedAt || '' }))
   return res.status(200).json({ success: true, agent: { ...agentsView([a], roster.players)[0] }, players, open, totals: { feeCents: players.reduce((t, p) => t + p.feeCents, 0), paidCents: players.reduce((t, p) => t + p.paidCents, 0), owingCents: players.reduce((t, p) => t + p.owingCents, 0) } })
+}
+
+// Staff make a session pack link for one of the agency's players (Lee, 20 Oct
+// 2026): the same link the agent makes from their account (payOwed), at the
+// agency's pack price. Nothing is emailed: staff copy the link.
+async function agentPack(req, res, principal, body) {
+  const a = await agentById(clean(body.agentId, 40))
+  if (!a) return fail(res, 404, 'That agent is not on file.')
+  const config = await getConfig()
+  const [roster, groups, allCancels] = await Promise.all([loadRoster({ fresh: true }), listGroups(), listCancels()])
+  const fam = familyFor(a.email, roster, config.termStart)
+  const rowId = clean(body.rowId, 30)
+  if (!fam.players.some((p) => p.term4.some((r) => r.id === rowId && r.agentId === a.id))) return fail(res, 404, `That player is not one of ${a.company || a.name}'s.`)
+  const out = await makeOwedPayreq({ config, parent: { email: a.email }, fam, byGroup: Object.fromEntries(groups.map((g) => [g.id, g])), cancels: allCancels.filter((c) => c.email === a.email && c.status === 'active'), site: siteUrl(req), body: { rowId, option: `pack:${Number(body.n) || 0}` } })
+  if (!out.ok) return fail(res, out.status, out.error, out.code ? { code: out.code } : {})
+  const q = await getPayreq(out.payreqId)
+  if (!out.reused && q) await savePayreq({ ...q, createdBy: principal.email, madeByStaff: principal.email })
+  await audit({ by: principal.email, action: 'agent.pack', target: out.payreqId, after: { agentId: a.id, rowId, n: Number(body.n) || 0, reused: Boolean(out.reused) } })
+  return res.status(200).json({ success: true, payreqId: out.payreqId, reused: Boolean(out.reused), url: q ? payreqUrl(req, q) : '', amountCents: q?.amountCents || 0 })
 }
 
 // Staff edit the agency. A new contact name, email or mobile goes on to every
@@ -3875,6 +3895,7 @@ async function handle(req, res) {
       case 'addAgent': return await addFamily(req, res, principal, config, { ...body, agent: body.agent || {} })
       case 'agentsList': return res.status(200).json({ success: true, agents: agentsView(await allAgents(), (await loadRoster()).players) })
       case 'agentCard': return await agentCard(req, res, body)
+      case 'agentPack': return await agentPack(req, res, principal, body)
       case 'editAgent': return await editAgent(res, principal, body)
       case 'movePlayer': return await movePlayer(res, principal, config, body)
       case 'removePlayer': return await removePlayer(res, principal, config, body)

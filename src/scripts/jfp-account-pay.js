@@ -140,6 +140,27 @@ function optCard(o, x, { blocked, pane }) {
   </div>`
 }
 
+// An agency's session packs (Lee, 20 Oct 2026): 5 or 10 sessions at the
+// agency's pack price, used up as Joner bills sessions, for this term only.
+function packOpts(o, { blocked }) {
+  const dis = blocked ? `disabled title="${esc(blocked)}"` : ''
+  const left = o.prepaid ? `<p class="ja-small ja-muted" style="margin-top:12px">${esc(o.prepaid)} prepaid session${o.prepaid === 1 ? '' : 's'} left this term.</p>` : ''
+  return `${left}<div class="ja-opts-grid${o.packs.length === 1 ? ' one' : ''}" data-packs>${o.packs.map((k) => `<div class="ja-opt-card${k.n === 10 ? ' is-best' : ''}" data-opt="${esc(k.key)}">
+    <p class="ja-opt-t">Pack of ${esc(k.n)} sessions</p>
+    <p class="ja-opt-amt">${esc(k.totalLabel)}</p>
+    <p class="ja-opt-s">${esc(k.perLabel)} a session instead of ${esc(o.perLabel)}${k.saveCents ? `, save ${esc(k.saveLabel)}` : ''}. Use them by the end of ${esc(o.term || 'this term')}.</p>
+    <button type="button" class="ja-btn ja-btn-red ja-btn-block" data-owed="${esc(o.rowId)}" data-owed-option="${esc(k.key)}" ${dis}>Pay ${esc(k.totalLabel)}</button>
+  </div>`).join('')}</div>`
+}
+export function packBlock(D, o, { pane = 'fees' } = {}) {
+  return `<article class="ja-card ja-ahead${pane === 'home' ? ' ja-todo' : ''}" ${pane === 'home' ? `data-todo-owed="${esc(o.rowId)}"` : `data-fees-owed="${esc(o.rowId)}"`}>
+    <div class="ja-pay-top"><p class="ja-kicker"><i></i>Session packs</p></div>
+    <h3 class="ja-pay-who">${esc(o.player)}</h3>
+    <p class="ja-pay-sub">${esc(o.perLabel)} a session, or buy a pack and pay less.</p>
+    ${packOpts(o, { blocked: '' })}
+  </article>`
+}
+
 // What this place already has paid ahead (dates still to come).
 function alreadyPaid(D, o) {
   const e = (D.players || []).flatMap((p) => p.enrolments || []).find((x) => x.rowId === o.rowId)
@@ -169,6 +190,7 @@ export function aheadBlock(D, o, { pane = 'fees', compact = false } = {}) {
     ${o.needsWaiver ? `<p class="j-box j-box-amber ja-small" style="margin-top:12px">Sign the waiver first, then pay. <button type="button" class="ja-link" data-waiver-player="${esc(o.playerKey)}">Sign the waiver</button></p>` : ''}
     <div class="ja-opts-grid${shown.length === 1 ? ' one' : ''}">${shown.map((x) => optCard(o, x, { blocked, pane })).join('')}</div>
     ${compact && shown.length < all.length ? `<p style="margin-top:12px"><button type="button" class="ja-btn ja-btn-line ja-btn-sm" data-go-pay="${esc(o.rowId)}">All ways to pay ${ic('arrow')}</button></p>` : ''}
+    ${o.packs?.length && !compact ? `<p class="ja-opt-t" style="margin-top:16px">Or buy a session pack</p>${packOpts(o, { blocked })}` : ''}
   </article>`
 }
 

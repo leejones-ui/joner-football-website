@@ -314,7 +314,7 @@ async function runPayreqEffects(payreq, retry = new Set()) {
         // Sessions prepaid from My account: counted on the row, so the next
         // time staff bill sessions these come off (_jfp-account-pay.js).
         // A commitment also records the dates it covers ([COVERED:...], _jfp-quote.js).
-        'Term 4 Notes': appendNote(payreq.prepay?.rowId === row.id ? commitNotes(withPrepaid(row.notes, prepaidOf(row.notes) + Number(payreq.prepay.sessions || 0)), payreq.prepay) : row.notes, `Paid ${(share[i] / 100).toFixed(2)} online${payreq.prepay?.rowId === row.id ? ` for ${payreq.prepay.sessions} ${payreq.prepay.commit ? 'committed' : 'prepaid'} session${payreq.prepay.sessions > 1 ? 's' : ''} (${(payreq.prepay.dates || []).join(', ')})` : ''}. [PAID:${payreq.id}]`),
+        'Term 4 Notes': appendNote(payreq.prepay?.rowId === row.id ? commitNotes(withPrepaid(row.notes, prepaidOf(row.notes) + Number(payreq.prepay.sessions || 0)), payreq.prepay) : row.notes, `Paid ${(share[i] / 100).toFixed(2)} online${payreq.prepay?.rowId === row.id ? ` for ${payreq.prepay.sessions} ${payreq.prepay.commit ? 'committed' : 'prepaid'} session${payreq.prepay.sessions > 1 ? 's' : ''}${payreq.prepay.pack ? ' (session pack)' : ` (${(payreq.prepay.dates || []).join(', ')})`}` : ''}. [PAID:${payreq.id}]`),
         // Add to what earlier payments recorded; never overwrite them.
         ...(addedFee != null ? {
           'Term 4 Stripe Fee AUD': (cents(row.stripeFeeAud) + addedFee) / 100,

@@ -56,7 +56,7 @@ export function coachTextHoursOpen(ms = Date.now()) {
 // against the Coaches page when the Mac picks it up.
 async function textCoach({ coach, text, kind }) {
   const phone = normalisePhone(coach?.phone)
-  if (!phone) return { texted: false, why: 'no mobile on the Coaches page' }
+  if (!phone) return { texted: false, why: 'no mobile in Our coaches' }
   const route = await routeStatus()
   if (!route.verified) return { texted: false, why: 'portal texts are not switched on yet' }
   const m = newMsg({ channel: 'text', family: { email: coach.email || '', parent: `Coach ${coach.name}`, players: [], kind }, content: { text }, target: { ref: maskPhone(phone), hash: sha(phone) }, by: 'coach alerts', route: { id: 'mac', label: 'Messages on the office Mac' } })

@@ -84,7 +84,9 @@ export async function mountMyProfile(box, ui) {
   profileForm(box.querySelector('#cp-form'), ui, me, meta, () => {})
 }
 
-// Our coaches: every coach's profile.
+// Our coaches: every coach's profile. The one coaches tab (20 Oct 2026):
+// for Lee and Ligia it also holds what the old Coaches tab did (ui.adminTop,
+// ui.details from jfp-portal.js).
 export async function renderTeam(ui) {
   const { view, post, need, modal, closeModal, toast } = ui
   const meta = await need(await post('coachProfiles'))
@@ -92,13 +94,17 @@ export async function renderTeam(ui) {
   view().innerHTML = `<div class="jp-head"><div><h1>Our coaches</h1><p class="muted small">Every Joner Football coach. Fill in yours on My profile.</p></div></div>
     ${meta.admin ? `<label class="j-check" style="max-width:760px;margin-bottom:14px"><input type="checkbox" id="cp-fam" ${meta.families ? 'checked' : ''}> <span><b>Families see their coach's profile.</b> In My account, each family sees the profile of the coaches on their child's group. Off means families see no coach names, as now.</span></label>` : ''}
     <div class="cp-grid">${cards}</div>`
+  // Lee and Ligia: coach logins, coach alerts and Add a coach, from the old Coaches tab.
+  if (meta.admin) ui.adminTop?.(() => renderTeam(ui))
   view().querySelectorAll('[data-cp]').forEach((b) => b.addEventListener('click', () => {
     const c = meta.coaches[Number(b.dataset.cp)]
     const box = modal(`<div class="cp-view">${profileHtml(c, meta)}</div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap">${c.canEdit ? '<button type="button" class="j-btn j-btn-line" data-edit>Edit</button>' : ''}<button type="button" class="j-btn j-btn-dark" data-close>Close</button></div>`, { wide: true })
     box.querySelector('[data-close]').addEventListener('click', closeModal)
     box.querySelector('[data-edit]')?.addEventListener('click', () => {
-      const m = modal(`<h2 style="margin-bottom:12px">${esc(c.name)}</h2><div id="cp-ed"></div><button type="button" class="j-btn j-btn-line" data-close style="margin-top:10px">Close</button>`, { wide: true })
+      const m = modal(`<h2 style="margin-bottom:12px">${esc(c.name)}</h2><div id="cp-details"></div><h3 style="margin-bottom:8px">Profile</h3><div id="cp-ed"></div><button type="button" class="j-btn j-btn-line" data-close style="margin-top:10px">Close</button>`, { wide: true })
       m.querySelector('[data-close]').addEventListener('click', closeModal)
+      // Photo, name, sign-in email, mobile and alerts: Lee and Ligia only.
+      if (meta.admin) ui.details?.(m.querySelector('#cp-details'), c.id, (close) => { if (close) { closeModal(); renderTeam(ui) } })
       profileForm(m.querySelector('#cp-ed'), { post, toast }, c, meta, () => { closeModal(); renderTeam(ui) })
     })
   }))

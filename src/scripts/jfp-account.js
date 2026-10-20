@@ -9,7 +9,7 @@ import { oneToOneSummary } from '../data/jfp-one-to-one.js'
 import { hqVideos, pitchVideos, reels, socials, contacts, hq, holidays } from '../data/jfp-account-media.js'
 import { ic } from './jfp-account-icons.js'
 import { first, initials, money, pageHead, hero, secHead } from './jfp-account-ui.js'
-import { oweList, jjOweList, oweCard, aheadBlock, depositCards, placeCards, historyCard } from './jfp-account-pay.js'
+import { oweList, jjOweList, oweCard, aheadBlock, packBlock, depositCards, placeCards, historyCard } from './jfp-account-pay.js'
 import { renderExtra, renderAnalysis, extraClick, setExtraLink } from './jfp-account-extras.js'
 // Fees: save a card or bank account for session payments (claude/card-on-file).
 import { mountSavedPay, savedReturn, forgetSaved } from './jfp-account-saved.js'
@@ -458,7 +458,7 @@ function stepList(kicker, title, rows) {
 function todoCards() {
   const want = q.get('pay')
   const pays = oweList(D, want).map((x) => oweCard(x, 'home'))
-  const ahead = (D.owed || []).filter((o) => o.kind === 'prepay').map((o) => aheadBlock(D, o, { pane: 'home', compact: true }))
+  const ahead = (D.owed || []).filter((o) => o.kind === 'prepay' || o.kind === 'pack').map((o) => o.kind === 'pack' ? packBlock(D, o, { pane: 'home' }) : aheadBlock(D, o, { pane: 'home', compact: true }))
   // Players whose waiver is not part of a payment card above: step 1, first.
   const inCards = new Set([...D.todo.flatMap((t) => t.players), ...(D.owed || []).map((o) => o.player)])
   const waivers = D.players.filter((p) => !p.waiver.onFile && !inCards.has(p.name) && !(p.byAgent && !D.playerLogin)).map((p) => ({ title: p.adult ? (D.self || solo() ? 'Sign your waiver' : `Sign ${first(p.name)}'s waiver`) : `Sign ${first(p.name)}'s waiver`, sub: 'Every JFP player needs one on file. It takes two minutes.', btn: `<button type="button" class="ja-btn ja-btn-light ja-btn-sm" data-waiver-player="${esc(p.key)}">Sign</button>` }))
@@ -475,7 +475,7 @@ function todoCards() {
 // same cards in a sheet.
 function todoSummary() {
   const pay = oweList(D).length + (D.juniors?.todo || []).length
-  const ahead = (D.owed || []).filter((o) => o.kind === 'prepay').length
+  const ahead = (D.owed || []).filter((o) => o.kind === 'prepay' || o.kind === 'pack').length
   const waivers = D.players.filter((p) => !p.waiver.onFile && !(p.byAgent && !D.playerLogin)).length + agentWaiting().length
   const info = infoGaps().length
   const deposit = depositCards(D, { compact: true, self: Boolean(D.self || solo()) }) ? 1 : 0
@@ -1021,7 +1021,7 @@ function renderFees() {
   const el = document.querySelector('[data-pane="fees"]')
   if (!D) return
   const owe = [...oweList(D), ...jjOweList(D)]
-  const ahead = (D.owed || []).filter((x) => x.kind === 'prepay')
+  const ahead = (D.owed || []).filter((x) => x.kind === 'prepay' || x.kind === 'pack')
   const head = pageHead(D.term, 'Fees', '')
   const deposit = depositCards(D, { self: Boolean(D.self || solo()) })
   // Redesign (17 Oct 2026): this term in plain words first, then what to pay
@@ -1029,7 +1029,7 @@ function renderFees() {
   const now = owe.length
     ? `<section class="ja-fees-sec">${secHead('To pay now')}<div class="ja-pay-grid">${owe.map((x) => oweCard(x, 'fees')).join('')}</div></section>`
     : !ahead.length ? `<div class="ja-card ja-allpaid">${ic('check')}<div><h3 class="ja-h3">Nothing owing</h3><p class="ja-small ja-muted">You are all paid up.</p></div></div>` : ''
-  const pre = ahead.length ? `<section class="ja-fees-sec">${secHead('Pay ahead and save', 'Pay for sessions before they happen. Commit to a run and each session costs less.')}${ahead.map((o) => aheadBlock(D, o, { pane: 'fees' })).join('')}</section>` : ''
+  const pre = ahead.length ? `<section class="ja-fees-sec">${secHead('Pay ahead and save', 'Pay for sessions before they happen. Commit to a run and each session costs less.')}${ahead.map((o) => o.kind === 'pack' ? packBlock(D, o, { pane: 'fees' }) : aheadBlock(D, o, { pane: 'fees' })).join('')}</section>` : ''
   el.innerHTML = `${head}
     <section class="ja-fees-sec">${secHead('This term')}<div id="fees-places"><div class="ja-card ja-skel"><p class="ja-small ja-muted">Loading your payments.</p></div></div></section>
     ${now}${deposit ? `<section class="ja-fees-sec">${deposit}</section>` : ''}${pre}

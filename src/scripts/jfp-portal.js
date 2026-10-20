@@ -85,7 +85,7 @@ const NAV = {
     JJ_NAV,
     // Bank payments (Lee, 16 Oct 2026): Money with the bank list open, its count on the badge.
     ['Money', [['money', 'Money'], ['bank', 'Bank payments'], ['payments', 'Payment links'], ['prices', 'Prices'], ['sessionvalue', 'Session value']]],
-    ['Coaches', [['coach', 'Registers'], ['reports', 'Player reports'], ['extra', 'Extra sessions'], ['cancellations', 'Cancellations'], ['staff', 'Cover and time off'], ['hours', 'Coach hours'], ['cinvoices', 'Coach invoices'], ['ideas', 'Session ideas'], ['plans', 'Session plans'], ['team', 'Our coaches'], ['coaches', 'Coaches']]],
+    ['Coaches', [['coach', 'Registers'], ['reports', 'Player reports'], ['extra', 'Extra sessions'], ['cancellations', 'Cancellations'], ['staff', 'Cover and time off'], ['hours', 'Coach hours'], ['cinvoices', 'Coach invoices'], ['ideas', 'Session ideas'], ['plans', 'Session plans'], ['team', 'Our coaches']]],
     ['Admin', [['removed', 'Removed players'], ['audit', 'Audit log'], ['settings', 'Settings']]],
   ],
 }
@@ -242,7 +242,7 @@ async function go(tab, { quiet = false, instant = false } = {}) {
   if (!quiet && !instant) view().innerHTML = '<p class="muted">Loading</p>'
   closeSide()
   setDrawer(false)
-  const fn = JJ_TABS.has(tab) ? () => renderJJ(tab, jjUi()) : { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, accounts: renderNewAccounts, absence: () => renderAbsence({ view, post, need, modal, closeModal, toast, openPlayer: openPlayerRecord, onCount: setAbsCount }),sessionvalue: () => renderSessionValue({ view, post, need }), trials: renderTrials, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, register: () => renderCoach(), cancellations: renderCancellations, coaches: renderCoaches, profile: renderProfile, staff: renderStaff, plans: renderPlans, help: renderHelp, families: renderPlayers, messages: () => renderMessages({ view, need, modal, closeModal, confirmBox }), announce: () => renderAnnouncements({ view, need, modal, closeModal, confirmBox }), hours: () => renderHours({ view, post, need, modal, closeModal, confirmBox, user: P.user }), makeups: () => renderMakeups({ view, post, need, modal, closeModal, confirmBox }), fnotes: () => renderFamilyNotesPage({ view, post, need, modal, closeModal, confirmBox }), extra: () => renderExtra({ view, post, need, modal, closeModal, confirmBox, toast, copy, user: P.user, refreshAsks: checkAskAlerts }), reports: () => renderReports(reportsUi()), cinvoices: () => renderCoachInvoices({ view, post, need, modal, closeModal, confirmBox, user: P.user }), ideas: () => renderIdeas({ view, post, need, toast }), team: () => renderTeam({ view, post, need, modal, closeModal, toast }), removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
+  const fn = JJ_TABS.has(tab) ? () => renderJJ(tab, jjUi()) : { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, accounts: renderNewAccounts, absence: () => renderAbsence({ view, post, need, modal, closeModal, toast, openPlayer: openPlayerRecord, onCount: setAbsCount }),sessionvalue: () => renderSessionValue({ view, post, need }), trials: renderTrials, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, register: () => renderCoach(), cancellations: renderCancellations, coaches: () => { P.tab = 'team'; return renderTeam(teamUi()) }, profile: renderProfile, staff: renderStaff, plans: renderPlans, help: renderHelp, families: renderPlayers, messages: () => renderMessages({ view, need, modal, closeModal, confirmBox }), announce: () => renderAnnouncements({ view, need, modal, closeModal, confirmBox }), hours: () => renderHours({ view, post, need, modal, closeModal, confirmBox, user: P.user }), makeups: () => renderMakeups({ view, post, need, modal, closeModal, confirmBox }), fnotes: () => renderFamilyNotesPage({ view, post, need, modal, closeModal, confirmBox }), extra: () => renderExtra({ view, post, need, modal, closeModal, confirmBox, toast, copy, user: P.user, refreshAsks: checkAskAlerts }), reports: () => renderReports(reportsUi()), cinvoices: () => renderCoachInvoices({ view, post, need, modal, closeModal, confirmBox, user: P.user }), ideas: () => renderIdeas({ view, post, need, toast }), team: () => renderTeam(teamUi()), removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
   try { await fn() } catch (e) { console.error(e); if (!quiet) view().innerHTML = `<div class="j-box j-box-red">Something went wrong loading this page. ${esc(e.message || '')}</div>` }
   if (P.user?.role === 'admin' && (tab === 'money' || tab === 'jj-money')) prefetchOthers(tab === 'jj-money' ? 'juniors' : P.jf.programme, moneyReaders())
   if (!P.cxChecked) { P.cxChecked = true; checkCancelAlerts(); checkTrialAlerts(); checkAccountAlerts(); checkAbsenceAlerts(); checkRequestAlerts(); checkAskAlerts(); checkStaffAlerts() } else cancelBanner()
@@ -4382,55 +4382,101 @@ async function renderProfile() {
   })
 }
 
-async function renderCoaches() {
-  const [me, sd] = await Promise.all([need(await post('me')), need(await post('getSettings'))])
-  const list = me.coaches
-  const cfg = sd.config
-  let rows = list.map((c) => ({ ...cfg.coaches.find((x) => x.id === c.id), photo: c.photo }))
-  const draw = () => {
-    view().innerHTML = `<div class="jp-head"><div><h1>Coaches</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Full names show to parents on every group. Coaches sign in at <b>jonerfootball.com/jfp-portal</b> with the email here and a 6 digit code. Nobody is emailed from this page.</div></details></div></div>
-      <label class="j-check" style="max-width:760px"><input type="checkbox" id="co-on" ${cfg.coachLoginsEnabled ? 'checked' : ''}> <span><b>Coach logins on.</b> Coaches see the program timetable (names and ages), their own registers and their profile. Never money or parent contact details.</span></label>
-      <div style="display:grid;gap:12px;max-width:760px;margin-top:12px">${rows.map((c, i) => `<div class="j-card" style="padding:14px;display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap" data-co="${i}">
-        <div style="display:flex;flex-direction:column;gap:6px;align-items:center">${avatar(c.photo, c.fullName, 84)}<button type="button" class="j-btn j-btn-line j-btn-sm" data-photo="${i}">${c.photo ? 'Change photo' : 'Add photo'}</button>${c.photo ? `<button type="button" class="j-btn j-btn-ghost j-btn-sm" data-photo-rm="${i}">Remove</button>` : ''}</div>
-        <div style="flex:1;min-width:220px">
-          <div class="j-two"><label class="j-field"><span>Full name (parents see this)</span><input class="j-input" data-cf="fullName" value="${esc(c.fullName)}"></label>
-          <label class="j-field"><span>Sign-in email</span><input class="j-input" type="email" data-cf="email" value="${esc(c.email)}" placeholder="No login"></label></div>
-          <label class="j-field"><span>Mobile (parents see this so they can reach the coach)</span><input class="j-input" type="tel" inputmode="tel" data-cf="phone" value="${esc(c.phone || '')}" placeholder="Not shown until you add it" autocomplete="off"></label>
-          <label class="j-check"><input type="checkbox" data-cf="alerts" ${c.alerts ? 'checked' : ''}> <span>Email them when a family pays for a place in their group</span></label>
-          <p class="muted small">Matches Airtable's Coach column as "${esc(c.airtableName || c.name)}"${c.id === 'lee' ? '. You sign in as super admin, so you see everything.' : ''}</p>
-        </div></div>`).join('')}</div>
-      <div class="j-card" style="padding:14px;max-width:760px;margin-top:12px"><h3 style="margin-bottom:8px">Add a coach</h3>
-        <div class="j-two"><label class="j-field"><span>Full name</span><input class="j-input" id="co-new-name" placeholder="First and last name"></label><label class="j-field"><span>Email</span><input class="j-input" type="email" id="co-new-email"></label></div>
-        <button type="button" class="j-btn j-btn-line j-btn-sm" id="co-add">Add to the list</button></div>
-      <p class="j-err" id="co-err" hidden></p>
-      <button type="button" class="j-btn j-btn-dark j-btn-lg" id="co-save" style="margin-top:12px">Save coaches</button>`
-    const read = () => { rows = rows.map((c, i) => { const box = view().querySelector(`[data-co="${i}"]`); return { ...c, fullName: box.querySelector('[data-cf="fullName"]').value.trim(), email: box.querySelector('[data-cf="email"]').value.trim(), phone: box.querySelector('[data-cf="phone"]').value.trim(), alerts: box.querySelector('[data-cf="alerts"]').checked } }) }
-    view().querySelectorAll('[data-photo]').forEach((b) => b.addEventListener('click', () => { read(); const c = rows[Number(b.dataset.photo)]; if (!list.some((x) => x.id === c.id)) return toast('Save coaches first, then add the photo.'); photoPicker(b, c.id, (url) => { c.photo = url; draw() }) }))
-    view().querySelectorAll('[data-photo-rm]').forEach((b) => b.addEventListener('click', async () => { read(); const c = rows[Number(b.dataset.photoRm)]; const r = await post('coachPhoto', { coachId: c.id, remove: true }); if (r.ok) { c.photo = ''; draw() } else toast(r.data.error) }))
-    coachAlertsCard()
-    $('co-add').addEventListener('click', () => {
-      read()
-      const full = $('co-new-name').value.trim().replace(/\s+/g, ' ')
-      if (!/\s/.test(full)) return toast('Enter their first and last name.')
+// One coaches tab (Lee, 20 Oct 2026): "merge them, where we can edit their
+// profiles, photo, email address and phone number etc etc all in one place".
+// Our coaches keeps the profiles; Lee and Ligia also get, from the old
+// Coaches tab, the coach alerts, the coach logins switch, Add a coach, and in
+// each coach's Edit: photo, full name, sign-in email, mobile and alerts.
+const teamUi = () => ({ view, post, need, modal, closeModal, toast, adminTop: teamAdminTop, details: coachDetailsBox })
+
+const PHONE_OK = (v) => { const n = v.replace(/\D/g, '').length; return /^[+(\d][\d\s().-]*$/.test(v) && n >= 8 && n <= 15 }
+async function saveCoachList(coaches, extra = {}) {
+  return post('saveSettings', { config: { ...extra, coaches: coaches.map(({ photo, ...c }) => c) } })
+}
+
+async function teamAdminTop(onChange) {
+  const sd = await post('getSettings')
+  if (!sd.ok) return
+  const cfg = sd.data.config
+  const head = view().querySelector('.jp-head')
+  if (!head) return
+  const bar = document.createElement('div')
+  bar.style.cssText = 'max-width:760px;margin:0 0 14px;display:flex;flex-direction:column;gap:10px'
+  bar.innerHTML = `<label class="j-check"><input type="checkbox" id="co-on" ${cfg.coachLoginsEnabled ? 'checked' : ''}> <span><b>Coach logins on.</b> Coaches sign in at jonerfootball.com/jfp-portal with their email and a 6 digit code. They see the program timetable (names and ages), their own registers and their profile. Never money or parent contact details.</span></label>
+    <div><button type="button" class="j-btn j-btn-dark j-btn-sm" id="co-add">+ Add a coach</button></div>`
+  head.after(bar)
+  coachAlertsCard()
+  $('co-on').addEventListener('change', async (e) => {
+    const r = await post('saveSettings', { config: { coachLoginsEnabled: e.target.checked } })
+    if (!r.ok) { e.target.checked = !e.target.checked; return toast(r.data.error) }
+    toast(e.target.checked ? 'Coach logins on' : 'Coach logins off')
+  })
+  $('co-add').addEventListener('click', () => {
+    const box = modal(`<h2 style="margin-bottom:12px">Add a coach</h2>
+      <div class="j-two"><label class="j-field"><span>Full name</span><input class="j-input" id="co-new-name" placeholder="First and last name"></label><label class="j-field"><span>Sign-in email</span><input class="j-input" type="email" id="co-new-email"></label></div>
+      <label class="j-field"><span>Mobile <span class="muted">(optional)</span></span><input class="j-input" type="tel" id="co-new-phone"></label>
+      <p class="muted small">Nobody is emailed. Add their photo and profile from their card after.</p>
+      <p class="j-err" id="co-new-err" hidden></p>
+      <div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="co-new-go">Add the coach</button></div>`)
+    box.querySelector('[data-close]')?.addEventListener('click', closeModal)
+    box.querySelector('#co-new-go').addEventListener('click', async () => {
+      const err = box.querySelector('#co-new-err')
+      const full = box.querySelector('#co-new-name').value.trim().replace(/\s+/g, ' ')
+      const email = box.querySelector('#co-new-email').value.trim(), phone = box.querySelector('#co-new-phone').value.trim()
+      const say = (t) => { err.textContent = t; err.hidden = false }
+      if (!/\s/.test(full)) return say('Enter their first and last name.')
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return say('Check the email.')
+      if (phone && !PHONE_OK(phone)) return say('Check the mobile. Use digits, like 0411 222 333.')
+      const fresh = await post('getSettings')
+      if (!fresh.ok) return say(fresh.data.error)
+      const rows = fresh.data.config.coaches
       const first = full.split(' ')[0]
       let id = first.toLowerCase().replace(/[^a-z0-9]/g, '') || 'coach'
       while (rows.some((c) => c.id === id)) id += '2'
-      rows.push({ id, name: first, fullName: full, airtableName: full, email: $('co-new-email').value.trim(), phone: '', alerts: false, photo: '' })
-      draw()
+      const r = await saveCoachList([...rows, { id, name: first, fullName: full, airtableName: full, email, phone, alerts: false }])
+      if (!r.ok) return say(r.data.error)
+      closeModal(); toast(`${full} added`); P.coaches = null; P.board = null; onChange?.()
     })
-    $('co-save').addEventListener('click', async () => {
-      read()
-      const bad = rows.find((c) => c.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email))
-      if (bad) { $('co-err').textContent = `Check ${bad.fullName}'s email.`; $('co-err').hidden = false; return }
-      const phoneOk = (v) => { const n = v.replace(/\D/g, '').length; return /^[+(\d][\d\s().-]*$/.test(v) && n >= 8 && n <= 15 }
-      const badPhone = rows.find((c) => c.phone && !phoneOk(c.phone))
-      if (badPhone) { $('co-err').textContent = `Check ${badPhone.fullName}'s mobile. Use digits, like 0411 222 333.`; $('co-err').hidden = false; return }
-      const r = await post('saveSettings', { config: { coachLoginsEnabled: $('co-on').checked, coaches: rows.map(({ photo, ...c }) => c) } })
-      if (!r.ok) { $('co-err').textContent = r.data.error; $('co-err').hidden = false; return }
-      toast('Coaches saved'); P.coaches = null; P.board = null; PL.at = 0; renderCoaches()
-    })
-  }
-  draw()
+  })
+}
+
+// One coach's details, in their Edit window: photo, name, email, mobile, alerts.
+async function coachDetailsBox(box, coachId, onSaved) {
+  const [sd, me] = await Promise.all([post('getSettings'), post('me')])
+  if (!sd.ok) { box.innerHTML = ''; return }
+  const c = sd.data.config.coaches.find((x) => x.id === coachId)
+  if (!c) { box.innerHTML = ''; return }
+  const photo = (me.ok ? me.data.coaches : []).find((x) => x.id === coachId)?.photo || ''
+  box.innerHTML = `<div class="j-card" style="padding:14px;display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;margin-bottom:16px">
+    <div style="display:flex;flex-direction:column;gap:6px;align-items:center">${avatar(photo, c.fullName, 84)}<button type="button" class="j-btn j-btn-line j-btn-sm" id="cd-photo">${photo ? 'Change photo' : 'Add photo'}</button>${photo ? '<button type="button" class="j-btn j-btn-ghost j-btn-sm" id="cd-photo-rm">Remove</button>' : ''}</div>
+    <div style="flex:1;min-width:220px">
+      <h3 style="margin-bottom:8px">Details</h3>
+      <div class="j-two"><label class="j-field"><span>Full name (parents see this)</span><input class="j-input" id="cd-name" value="${esc(c.fullName || '')}"></label>
+      <label class="j-field"><span>Sign-in email</span><input class="j-input" type="email" id="cd-email" value="${esc(c.email || '')}" placeholder="No login"></label></div>
+      <label class="j-field"><span>Mobile (parents see this so they can reach the coach)</span><input class="j-input" type="tel" inputmode="tel" id="cd-phone" value="${esc(c.phone || '')}" placeholder="Not shown until you add it" autocomplete="off"></label>
+      <label class="j-check"><input type="checkbox" id="cd-alerts" ${c.alerts ? 'checked' : ''}> <span>Email them when a family pays for a place in their group</span></label>
+      <p class="muted small">Matches Airtable's Coach column as "${esc(c.airtableName || c.name)}". Nobody is emailed from here.</p>
+      <p class="j-err" id="cd-err" hidden></p>
+      <button type="button" class="j-btn j-btn-dark j-btn-sm" id="cd-save">Save details</button>
+    </div></div>`
+  const q = (id) => box.querySelector(`#${id}`)
+  q('cd-photo').addEventListener('click', (e) => photoPicker(e.currentTarget, coachId, () => { P.coaches = null; coachDetailsBox(box, coachId, onSaved); onSaved?.(false) }))
+  q('cd-photo-rm')?.addEventListener('click', async () => { const r = await post('coachPhoto', { coachId, remove: true }); if (!r.ok) return toast(r.data.error); toast('Photo removed'); coachDetailsBox(box, coachId, onSaved); onSaved?.(false) })
+  q('cd-save').addEventListener('click', async (ev) => {
+    const btn = ev.currentTarget, err = q('cd-err'), say = (t) => { err.textContent = t; err.hidden = false }
+    err.hidden = true
+    const next = { fullName: q('cd-name').value.trim().replace(/\s+/g, ' '), email: q('cd-email').value.trim(), phone: q('cd-phone').value.trim(), alerts: q('cd-alerts').checked }
+    if (!next.fullName) return say('Enter their full name.')
+    if (next.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(next.email)) return say('Check the email.')
+    if (next.phone && !PHONE_OK(next.phone)) return say('Check the mobile. Use digits, like 0411 222 333.')
+    btn.disabled = true
+    const fresh = await post('getSettings')
+    if (!fresh.ok) { btn.disabled = false; return say(fresh.data.error) }
+    const r = await saveCoachList(fresh.data.config.coaches.map((x) => (x.id === coachId ? { ...x, ...next } : x)))
+    btn.disabled = false
+    if (!r.ok) return say(r.data.error)
+    toast('Details saved'); P.coaches = null; P.board = null; PL.at = 0; onSaved?.(true)
+  })
 }
 
 // ---------- removed, audit, settings ----------
@@ -4558,7 +4604,7 @@ async function renderSettings() {
     booking: group('Booking page', sw('s-pw', c.passwordRequired, 'Booking password', 'Off: anyone with the link sees the timetable. The password is set in Vercel.'))
       + group('Training kit', row('Kit link', inp('s-kit', c.kitUrl || '', 'placeholder="https://"'), { id: 's-kit', hint: 'Families confirm the kit before paying' }) + row('Kit price', inp('s-kitprice', c.kitPriceLabel || 'A$60', 'maxlength="20"'), { id: 's-kitprice', cls: 'is-short' }) + row('Line above the button', inp('s-kitnote', c.kitNote || '', 'maxlength="300"'), { id: 's-kitnote' }))
       + group('Waiver', sw('s-wcarry', c.waiverCarryover !== false, 'Earlier waivers count', `Off: every family signs again for ${esc(c.term)}`) + row('Backup waiver link', inp('s-waiver', c.waiverUrl), { id: 's-waiver', hint: 'Families normally sign on the booking page' })),
-    access: group('Who can sign in', row('Super admins', `<textarea class="j-textarea" id="s-admins" rows="3" data-ss>${esc(c.superAdmins.join('\n'))}</textarea>`, { id: 's-admins', hint: 'Full access and money. One email per line.' }) + row('Coach logins', `<span class="ss-val">${c.coachLoginsEnabled ? 'On' : 'Off'}</span><a class="j-btn j-btn-line j-btn-sm" href="#coaches" data-tab="coaches">Coaches</a>`, { hint: 'Names, emails and photos live in Coaches' }))
+    access: group('Who can sign in', row('Super admins', `<textarea class="j-textarea" id="s-admins" rows="3" data-ss>${esc(c.superAdmins.join('\n'))}</textarea>`, { id: 's-admins', hint: 'Full access and money. One email per line.' }) + row('Coach logins', `<span class="ss-val">${c.coachLoginsEnabled ? 'On' : 'Off'}</span><a class="j-btn j-btn-line j-btn-sm" href="#team" data-tab="team">Our coaches</a>`, { hint: 'Names, emails, mobiles and photos live in Our coaches' }))
       + group('Alerts', row('Booking alert emails', `<textarea class="j-textarea" id="s-staff" rows="3" data-ss>${esc(c.staffEmails.join('\n'))}</textarea>`, { id: 's-staff', hint: 'Lee always gets them. One per line.' })),
     payments: group('Invoices', sw('s-inv-pdf', c.invoice?.attachPdf !== false, 'PDF on fee emails', 'Payment links, family and session invoices') + sw('s-inv-bank', c.invoice?.bankEnabled === true, 'Offer bank transfer', 'Needs the account name, BSB and number below') + row('Account name', inp('s-inv-name', c.invoice?.accountName || '', 'maxlength="80"'), { id: 's-inv-name' }) + row('BSB', inp('s-inv-bsb', c.invoice?.bsb || '', 'inputmode="numeric" maxlength="7"'), { id: 's-inv-bsb', cls: 'is-short' }) + row('Account number', inp('s-inv-acc', c.invoice?.accountNumber || '', 'inputmode="numeric" maxlength="12"'), { id: 's-inv-acc', cls: 'is-short' }) + row('Reference', inp('s-inv-ref', c.invoice?.reference || 'INV-<n> <player>', 'maxlength="40"'), { id: 's-inv-ref', hint: 'Keep &lt;n&gt;, the invoice number' }) + row('ABN', inp('s-inv-abn', c.invoice?.abn || '', 'inputmode="numeric" maxlength="14"'), { id: 's-inv-abn', cls: 'is-short', hint: 'Optional. Shown on invoices when saved.' }))
       + '<section class="ss-group ss-savedpay" id="s-savedpay"></section>',

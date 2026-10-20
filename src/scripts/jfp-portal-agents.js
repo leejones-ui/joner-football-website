@@ -36,17 +36,18 @@ export async function agentCard(ui, agentId) {
     <p class="muted small" style="margin-bottom:10px">Agent ${esc(a.name)} · ${esc(a.email)}${a.mobile ? ` · ${esc(a.mobile)}` : ''}</p>
     <div class="jf-agent-facts" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px">
       <div><span class="muted small">Invoices made out to</span><br><b>${esc(a.company || a.name)}</b>${a.company && a.name ? `<br><span class="small">Attn: ${esc(a.name)}</span>` : ''}${a.address ? `<br><span class="small">${esc(a.address)}</span>` : ''}${a.abn ? `<br><span class="small">ABN ${esc(a.abn)}</span>` : ''}<br><span class="small">${esc(a.billingEmail || a.email)}</span></div>
-      <div><span class="muted small">Price per session</span><br><b>${a.rateCents ? money(a.rateCents) : 'Not set'}</b></div>
+      <div><span class="muted small">Price per session</span><br><b>${a.rateCents ? money(a.rateCents) : 'Not set'}</b>${(a.packs || []).map((k) => `<br><span class="small">Pack of ${k.n}: ${money(k.cents)} a session (${money(k.n * k.cents)})</span>`).join('') || '<br><span class="small">No packs</span>'}</div>
       <div><span class="muted small">This term</span><br><b>${money(totals.feeCents)} billed</b><br><span class="small">${money(totals.paidCents)} paid · ${money(totals.owingCents)} owing</span></div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
       <button type="button" class="j-btn j-btn-dark j-btn-sm" id="agc-bill" ${billable.length ? '' : 'disabled'}>Bill the agency</button>
+      <button type="button" class="j-btn j-btn-line j-btn-sm" id="agc-pack" ${billable.length && (a.packs || []).length ? '' : 'disabled'}>Send a pack</button>
       <button type="button" class="j-btn j-btn-line j-btn-sm" id="agc-edit">Edit agency</button>
       <button type="button" class="j-btn j-btn-line j-btn-sm" id="agc-add">+ Add players</button>
     </div>
     <h3>Players (${players.length})</h3>
-    ${players.length ? `<div style="overflow-x:auto"><table class="j-table small" style="width:100%"><thead><tr><th>Player</th><th>Group</th><th>Price</th><th>Owing</th><th>Waiver</th></tr></thead><tbody>
-      ${players.map((p) => `<tr><td><b>${esc(p.name)}</b>${p.byAgent ? ' <span class="ps-tag">Added by agent</span>' : ''}</td><td>${esc(p.group)}</td><td>${p.bySession ? (p.perSessionCents ? `${money(p.perSessionCents)} a session` : 'By the session') : esc(p.paymentType || 'Term fee')}</td><td>${p.owingCents ? money(p.owingCents) : '-'}</td><td>${p.waiver ? 'Signed' : 'Not yet'}</td></tr>`).join('')}
+    ${players.length ? `<div style="overflow-x:auto"><table class="j-table small" style="width:100%"><thead><tr><th>Player</th><th>Group</th><th>Price</th><th>Owing</th><th>Prepaid left</th><th>Waiver</th></tr></thead><tbody>
+      ${players.map((p) => `<tr><td><b>${esc(p.name)}</b>${p.byAgent ? ' <span class="ps-tag">Added by agent</span>' : ''}</td><td>${esc(p.group)}</td><td>${p.bySession ? (p.perSessionCents ? `${money(p.perSessionCents)} a session` : 'By the session') : esc(p.paymentType || 'Term fee')}</td><td>${p.owingCents ? money(p.owingCents) : '-'}</td><td>${p.prepaid ? `${p.prepaid} session${p.prepaid > 1 ? 's' : ''}` : '-'}</td><td>${p.waiver ? 'Signed' : 'Not yet'}</td></tr>`).join('')}
     </tbody></table></div>` : '<p class="muted">No players yet. The agent can add them from their account (My players > Add your players), or use + Add players.</p>'}
     <h3 style="margin-top:14px">Open payment links</h3>
     ${open.length ? open.map((q) => `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line,#E4E7EC)"><span><b>${money(q.amountCents)}</b> <span class="muted small">${esc(q.players.join(', '))}${q.emailedAt ? ' · emailed' : ' · not emailed'}</span></span><button type="button" class="j-btn j-btn-line j-btn-sm" data-copy="${esc(q.url)}">Copy link</button></div>`).join('') : '<p class="muted small">Nothing open.</p>'}
@@ -55,6 +56,29 @@ export async function agentCard(ui, agentId) {
   box.querySelector('#agc-edit').addEventListener('click', () => editAgency(ui, a))
   box.querySelector('#agc-add').addEventListener('click', () => ui.addAgent(a.id))
   box.querySelector('#agc-bill').addEventListener('click', () => billAgency(ui, a, billable))
+  box.querySelector('#agc-pack').addEventListener('click', () => sendPack(ui, a, billable))
+}
+
+// A session pack for one player (Lee, 20 Oct 2026): a link at the agency's
+// pack price. The sessions come off as you bill; unused ones end with the term.
+function sendPack(ui, a, players) {
+  const packs = a.packs || []
+  const box = ui.modal(`<h2>Send a pack</h2>
+    <p class="muted small" style="margin-bottom:10px">A payment link for ${esc(a.company || a.name)}. When it is paid, the sessions come off what you bill for that player. Unused sessions end with the term. Nothing is emailed: copy the link and send it.</p>
+    <label class="j-field"><span>Player</span><select class="j-select" id="sp-row">${players.map((p) => `<option value="${esc(p.rowId)}">${esc(p.name)}</option>`).join('')}</select></label>
+    <label class="j-field"><span>Pack</span><select class="j-select" id="sp-n">${packs.map((k) => `<option value="${k.n}">${k.n} sessions at ${money(k.cents)} = ${money(k.n * k.cents)}</option>`).join('')}</select></label>
+    <p class="j-err" id="sp-err" hidden></p>
+    <div id="sp-out"></div>
+    <div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-dark" id="sp-go">Make the link</button></div>`)
+  box.querySelector('#sp-go').addEventListener('click', async (ev) => {
+    const b = ev.currentTarget, err = box.querySelector('#sp-err')
+    b.disabled = true; err.hidden = true
+    const r = await ui.post('agentPack', { agentId: a.id, rowId: box.querySelector('#sp-row').value, n: Number(box.querySelector('#sp-n').value) })
+    b.disabled = false
+    if (!r.ok) { err.textContent = r.data.error; err.hidden = false; return }
+    box.querySelector('#sp-out').innerHTML = `<p class="small" style="margin:8px 0">${r.data.reused ? 'This player already has an open link, so here it is (pay or cancel that one first):' : `Link made for ${money(r.data.amountCents)}:`}</p><div style="display:flex;gap:8px"><input class="j-input" readonly value="${esc(r.data.url)}"><button type="button" class="j-btn j-btn-line j-btn-sm" id="sp-copy">Copy</button></div>`
+    box.querySelector('#sp-copy').addEventListener('click', () => ui.copy(r.data.url))
+  })
 }
 
 function editAgency(ui, a) {
@@ -68,13 +92,15 @@ function editAgency(ui, a) {
     <label class="j-field"><span>Billing address <span class="muted">(optional)</span></span><input class="j-input" id="ea-address" value="${esc(a.address || '')}"></label>
     <div class="j-two"><label class="j-field"><span>ABN <span class="muted">(optional)</span></span><input class="j-input" id="ea-abn" inputmode="numeric" value="${esc(a.abn || '')}"></label>
     <label class="j-field"><span>Price per session (A$) <span class="muted">(used when you bill, and for players the agent adds)</span></span><input class="j-input" id="ea-rate" inputmode="decimal" value="${esc(dollars(a.rateCents))}" placeholder="e.g. 100"></label></div>
+    <div class="j-two"><label class="j-field"><span>5-pack price per session (A$) <span class="muted">(blank: no 5-pack)</span></span><input class="j-input" id="ea-p5" inputmode="decimal" value="${esc(dollars((a.packs || []).find((k) => k.n === 5)?.cents))}" placeholder="e.g. 90"></label>
+    <label class="j-field"><span>10-pack price per session (A$) <span class="muted">(blank: no 10-pack)</span></span><input class="j-input" id="ea-p10" inputmode="decimal" value="${esc(dollars((a.packs || []).find((k) => k.n === 10)?.cents))}" placeholder="e.g. 85"></label></div>
     <p class="j-err" id="ea-err" hidden></p>
     <div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="ea-save">Save</button></div>`, { wide: true })
   const v = (id) => box.querySelector(`#${id}`).value.trim()
   box.querySelector('#ea-save').addEventListener('click', async (ev) => {
     const b = ev.currentTarget, err = box.querySelector('#ea-err')
     b.disabled = true
-    const r = await ui.post('editAgent', { agentId: a.id, agent: { company: v('ea-company'), name: v('ea-name'), email: v('ea-email'), mobile: v('ea-mobile'), billingEmail: v('ea-billing'), address: v('ea-address'), abn: v('ea-abn'), rateCents: toCents(v('ea-rate')) } })
+    const r = await ui.post('editAgent', { agentId: a.id, agent: { company: v('ea-company'), name: v('ea-name'), email: v('ea-email'), mobile: v('ea-mobile'), billingEmail: v('ea-billing'), address: v('ea-address'), abn: v('ea-abn'), rateCents: toCents(v('ea-rate')), packs: { 5: toCents(v('ea-p5')) || 0, 10: toCents(v('ea-p10')) || 0 } } })
     b.disabled = false
     if (!r.ok) { err.textContent = r.data.error; err.hidden = false; return }
     ui.toast(`Saved${r.data.rowsChanged ? `, and ${r.data.rowsChanged} player${r.data.rowsChanged > 1 ? 's' : ''} updated in Airtable` : ''}.`)

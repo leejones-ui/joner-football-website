@@ -31,6 +31,7 @@ import {
 import { getTerm4Row, updateTerm4Rows, appendNote, bustRosterCache } from './_jfp-airtable.js'
 import { rowSessionDates, rowTime, noticeFor } from './_jfp-cancel.js'
 import { quoteTiersOf, quoteOptions, commitmentOf, restOption } from './_jfp-quote.js'
+import { allAgents, packsOf } from './_jfp-agents.js'
 
 const cents = (aud) => (typeof aud === 'number' && Number.isFinite(aud) ? Math.round(aud * 100) : 0)
 const isOpen = (q) => ['open', 'checkout'].includes(q?.status)
@@ -79,7 +80,7 @@ const placeLabel = (config, row, group) => (group ? `${group.day} ${group.time},
 // What each place still needs paying, for places with no open payment
 // request. players: the family's players (familyFor). Each item says what to
 // show; nothing here is trusted back from the page.
-export function owedItems({ config, players, payreqs, byGroup, cancels = [], nowMs = Date.now() }) {
+export function owedItems({ config, players, payreqs, byGroup, cancels = [], nowMs = Date.now(), agencies = null }) {
   const out = []
   for (const p of players) {
     for (const r of p.term4) {
@@ -97,7 +98,14 @@ export function owedItems({ config, players, payreqs, byGroup, cancels = [], now
       const per = perSessionFor(config, r, group)
       if (!per) continue
       const dates = prepayDates({ config, row: r, group, payreqs, cancels, nowMs })
-      if (!dates.length) continue
+      // An agency's player (Lee, 20 Oct 2026): a 5 or 10 session pack at the
+      // agency's pack price, used up by the sessions Joner bills this term.
+      const packs = r.agentId && agencies ? packsOf(agencies.get(r.agentId)).filter((k) => k.cents < per || !per).map((k) => ({ key: `pack:${k.n}`, n: k.n, perCents: k.cents, perLabel: formatAud(k.cents), totalCents: k.n * k.cents, totalLabel: formatAud(k.n * k.cents), saveCents: Math.max(0, k.n * (per - k.cents)), saveLabel: formatAud(Math.max(0, k.n * (per - k.cents))) })) : []
+      const packInfo = packs.length ? { packs, prepaid: r.prepaidSessions || 0, term: config.term } : {}
+      if (!dates.length) {
+        if (packs.length) out.push({ ...base, kind: 'pack', title: 'Buy a session pack', perCents: per, perLabel: formatAud(per), max: 0, dates: [], ...packInfo })
+        continue
+      }
       const listed = dates.slice(0, PREPAY_MAX).map((iso) => ({ iso, label: dateLabel(iso) }))
       // A quote staff set for this player (Pro sessions, 14 Oct 2026): the
       // next session, or one of their commitment options. Only these.
@@ -107,7 +115,7 @@ export function owedItems({ config, players, payreqs, byGroup, cancels = [], now
       // and what they come to, and "Pay for the rest of the term" (every date
       // left at the price per session, or staff's tier when it is exactly that run).
       const rest = quote ? quote.options.find((o) => o.rest) || null : restOption({ perCents: per, dates: listed })
-      out.push({ ...base, kind: 'prepay', title: 'Pay for your sessions', perCents: per, perLabel: formatAud(per), max: Math.min(PREPAY_MAX, dates.length), left: listed.length, leftCents: listed.length * per, leftLabel: formatAud(listed.length * per), dates: listed, ...(rest ? { rest: { key: rest.key, n: rest.n, totalCents: rest.totalCents, totalLabel: formatAud(rest.totalCents), perCents: rest.perCents, commit: Boolean(rest.commit) } } : {}), ...(quote ? { quote } : {}) })
+      out.push({ ...base, kind: 'prepay', title: 'Pay for your sessions', perCents: per, perLabel: formatAud(per), max: Math.min(PREPAY_MAX, dates.length), left: listed.length, leftCents: listed.length * per, leftLabel: formatAud(listed.length * per), dates: listed, ...(rest ? { rest: { key: rest.key, n: rest.n, totalCents: rest.totalCents, totalLabel: formatAud(rest.totalCents), perCents: rest.perCents, commit: Boolean(rest.commit) } } : {}), ...(quote ? { quote } : {}), ...packInfo })
     }
   }
   return out
@@ -137,7 +145,8 @@ export async function payOwed({ config, parent, fam, byGroup, cancels, site, bod
     // Fresh money fields from Airtable; the group as the roster placed it.
     const r = { ...listed, ...row, groupId: listed.groupId, emails: listed.emails }
     const group = byGroup[r.groupId] || null
-    const [item] = owedItems({ config, players: [{ ...p, term4: [r] }], payreqs: all, byGroup, cancels })
+    const agencies = r.agentId ? new Map((await allAgents()).map((a) => [a.id, a])) : null
+    const [item] = owedItems({ config, players: [{ ...p, term4: [r] }], payreqs: all, byGroup, cancels, agencies })
     if (!item) return no(409, 'There is nothing to pay for this place just now. Your account updates within a few minutes.', 'nothing')
     const where = placeLabel(config, r, group)
     const q = {
@@ -157,6 +166,26 @@ export async function payOwed({ config, parent, fam, byGroup, cancels, site, bod
       Object.assign(q, { reason: 'balance', amountCents: item.amountCents, afterpay: true })
     } else if (item.kind === 'sessions') {
       Object.assign(q, { reason: 'sessions', amountCents: item.amountCents, afterpay: false, groupLabel: 'Session by session', places: [{ rowId: r.id, name: p.name, label: 'Sessions billed by Joner Football', feeCents: item.amountCents, paidCents: 0, owingCents: item.amountCents }] })
+    } else if (item.kind === 'pack' && !String(body.option || '').startsWith('pack:')) {
+      return no(400, 'Choose a pack first.', 'option')
+    } else if (String(body.option || '').startsWith('pack:')) {
+      // A session pack: no dates, the sessions count down as Joner bills them.
+      const pk = (item.packs || []).find((k) => k.key === clean(body.option, 20))
+      if (!pk) return no(400, 'That pack is not available. Refresh and choose again.', 'option')
+      const fee = cents(r.feeAud) + pk.totalCents
+      const paid = cents(r.paidAud)
+      const restoreFields = [{ id: r.id, fields: { 'Term 4 Fee': r.feeAud ?? 0, 'Term 4 Payment Status': r.paymentStatus || 'Unpaid' } }]
+      Object.assign(q, {
+        reason: 'sessions', amountCents: pk.totalCents, afterpay: false, groupLabel: 'Session pack', restoreFields,
+        prepay: { rowId: r.id, sessions: pk.n, perCents: pk.perCents, dates: [], pack: pk.n },
+        places: [{ rowId: r.id, name: p.name, label: `Pack of ${pk.n} sessions at ${formatAud(pk.perCents)} each, to use in ${config.term}`, feeCents: pk.totalCents, paidCents: 0, owingCents: pk.totalCents }],
+      })
+      await updateTerm4Rows([{ id: r.id, fields: {
+        'Term 4 Fee': fee / 100,
+        'Term 4 Payment Status': paid >= fee ? 'Paid' : paid > 0 ? 'Partially Paid' : 'Unpaid',
+        'Term 4 Notes': appendNote(r.perSessionCents ? r.notes : withPerSession(r.notes, item.perCents), `Pack of ${pk.n} sessions from My account on ${sydneyToday()}: ${pk.n} x ${formatAud(pk.perCents)} = ${formatAud(pk.totalCents)}, payment link ${q.id}. Used up by the sessions billed in ${config.term}.`),
+      } }])
+      await bustRosterCache()
     } else {
       // A quoted player picks one of staff's options (body.option, e.g.
       // 'commit:6'); the price comes from the quote on the row, never the page.
