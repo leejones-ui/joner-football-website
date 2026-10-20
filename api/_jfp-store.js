@@ -343,6 +343,8 @@ export function normaliseConfig(input = {}) {
     coachProfilesFamilies: input.coachProfilesFamilies === true,
     // Player report reminders to coaches, Lee and Ligia in week 9: off until Lee says yes to the words (20 Oct 2026).
     reportReminders: input.reportReminders === true,
+    // Monday email to Ligia of players who missed 2 weeks in a row (_jfp-absence.js): off until Lee switches it on (20 Oct 2026).
+    absenceDigest: input.absenceDigest === true,
     // Session ideas for coaches (19 Oct 2026): null until Lee or Ligia edit the list.
     sessionIdeas: Array.isArray(input.sessionIdeas) ? input.sessionIdeas.slice(0, 30).map((x) => ({ label: clean(x?.label, 80), url: clean(x?.url, 600), note: clean(x?.note, 240) })).filter((x) => x.label && /^https:\/\/\S+$/.test(x.url)) : null,
     // Coach pay for invoices (19 Oct 2026): hourly rate in cents per coach id, set by Lee or Ligia.

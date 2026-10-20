@@ -78,6 +78,7 @@ import { feePdfAttachment, docForPayreq, docForInvoice, pdfDownload } from './_j
 import { invoiceRefOf } from './_jfp-bank-match.js'
 // Saved card or bank account, auto-charge after each session (claude/card-on-file).
 import { accountAlerts, newAccountsData } from './_jfp-new-accounts.js'
+import { ABSENCE_ACTIONS, absenceAction } from './_jfp-absence.js'
 import { withAgent, inAgent, agentState, setAgentEnabled, listHeld, takeHeld, heldView } from './_jfp-agent.js'
 import { sendHeldEmail } from './_jfp-email.js'
 import { SAVED_PAY_ACTIONS, savedPayAction, withSavedPay, autoChargeActiveFor } from './_jfp-saved-pay.js'
@@ -3740,6 +3741,11 @@ async function handle(req, res) {
     if (MAKEUP_ADMIN_ACTIONS.has(action)) {
       const out = action === 'emergencyCancel' ? await emergencyCancel({ principal, config, body }) : action === 'emergencyUncancel' ? await emergencyUncancel({ principal, body }) : action === 'makeupUpdate' ? await makeupUpdate({ principal, config, body }) : { status: 200, ...(await makeupsList({ config })) }
       const { status, error, ...rest } = out
+      return status === 200 ? res.status(200).json({ success: true, ...rest }) : fail(res, status, error)
+    }
+    // Missing players: 2 sessions in a row missed (Lee, 20 Oct 2026; _jfp-absence.js).
+    if (ABSENCE_ACTIONS.has(action)) {
+      const { status, error, ...rest } = await absenceAction({ principal, config, body, action, agent: inAgent(), saveConfig })
       return status === 200 ? res.status(200).json({ success: true, ...rest }) : fail(res, status, error)
     }
 

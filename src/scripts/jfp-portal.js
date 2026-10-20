@@ -39,6 +39,7 @@ import { findExisting, removedView, wireRemoved, removedCount } from './jfp-port
 import { savedPayTag, savedPayDetail, mountAutoChargeEdit, mountSavedPaySettings } from './jfp-portal-autocharge.js'
 import { mountHermesSettings } from './jfp-portal-hermes.js'
 import { mountCredits } from './jfp-portal-credits.js'
+import { renderAbsence } from './jfp-portal-absence.js'
 
 // jf: the Money programme switch, the Joners Juniors filters and the holiday picked.
 const P = { jf: { programme: 'jfp', term: '', status: '', q: '', period: '' }, user: null, tab: '', board: null, loc: '', day: '', coachFilter: '', ttView: 'staff', sel: '', groups: null, coachId: '', coachDate: {}, reqFilter: 'pending', linkFilter: 'open', linkProg: 'all', pricing: null }
@@ -77,7 +78,7 @@ const NAV = {
   ],
   admin: [
     ['Overview', [['overview', 'Dashboard']]],
-    ['Program', [['board', 'Timetable'], ['families', 'Players'], ['messages', 'Messages'], ['announce', 'Announcements'], ['fnotes', 'Coach notes'], ['makeups', 'Make-ups and credits'], ['requests', 'Requests'], ['accounts', 'New accounts'], ['trials', 'Trial feedback'], ['groups', 'Groups and rules'], ['next', 'Next term'], ['holiday', 'Holiday training']]],
+    ['Program', [['board', 'Timetable'], ['families', 'Players'], ['absence', 'Missing players'], ['messages', 'Messages'], ['announce', 'Announcements'], ['fnotes', 'Coach notes'], ['makeups', 'Make-ups and credits'], ['requests', 'Requests'], ['accounts', 'New accounts'], ['trials', 'Trial feedback'], ['groups', 'Groups and rules'], ['next', 'Next term'], ['holiday', 'Holiday training']]],
     // Joners Juniors (Lee, 13 Oct 2026): its own section, the same pages as JFP.
     JJ_NAV,
     // Bank payments (Lee, 16 Oct 2026): Money with the bank list open, its count on the badge.
@@ -123,6 +124,7 @@ const ICON = {
   settings: '<circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/>',
   accounts: '<circle cx="10" cy="8" r="3.5"/><path d="M3.5 20c.8-3.6 3.4-5.6 6.5-5.6 1.4 0 2.6.4 3.6 1.1M18 14v6M15 17h6"/>',
   invites: '<path d="M21 3 10.5 13.5M21 3l-6.5 18-4-7.5L3 9.5z"/>',
+  absence: '<circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5M16 8l4 4M20 8l-4 4"/>',
 }
 // Joners Juniors pages borrow their JFP twin's icon.
 const icon = (k) => `<span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${ICON[JJ_ICON[k] || k] || ICON.overview}</svg></span>`
@@ -165,7 +167,7 @@ function renderNav() {
     const here = list.some(([k]) => k === P.tab)
     // Coaches: every group open until they close one. Lee and Ligia: closed until opened.
     const shut = sections.length > 1 && !here && (P.user.role === 'admin' ? open[title] !== true : open[title] === false)
-    return `<div class="jp-navgrp${shut ? ' shut' : ''}"><button type="button" class="jp-nav-sec" data-navsec="${esc(title)}" aria-expanded="${shut ? 'false' : 'true'}"><span>${esc(title)}</span>${list.some(([k]) => k === 'bank') ? bankBadge() : ''}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></button><div class="jp-navlist">${list.map(([k, label]) => `<button type="button" data-tab="${k}" data-label="${esc(label)}" aria-current="${P.tab === k ? 'page' : 'false'}">${icon(k)}<span class="jp-lbl">${esc(label)}</span>${k === 'requests' && P.pendingCount ? `<span class="count">${P.pendingCount}</span>` : ''}${k === 'accounts' && P.acctNew?.count ? `<span class="count" title="New accounts since you last looked">${P.acctNew.count}</span>` : ''}${k === 'trials' && P.trialNew ? `<span class="count" title="New trial feedback">${P.trialNew}</span>` : ''}${k === 'cancellations' && P.cxNew?.count ? `<span class="count" title="New since you last looked">${P.cxNew.count}</span>` : ''}${k === 'bank' ? bankBadge() : ''}${k === 'staff' && P.staffNew?.count ? `<span class="count" title="Cover and time off to see">${P.staffNew.count}</span>` : ''}${k === 'extra' && P.user.role !== 'admin' && P.askNew ? `<span class="count" title="Requests from families">${P.askNew}</span>` : ''}</button>`).join('')}</div></div>`
+    return `<div class="jp-navgrp${shut ? ' shut' : ''}"><button type="button" class="jp-nav-sec" data-navsec="${esc(title)}" aria-expanded="${shut ? 'false' : 'true'}"><span>${esc(title)}</span>${list.some(([k]) => k === 'bank') ? bankBadge() : ''}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></button><div class="jp-navlist">${list.map(([k, label]) => `<button type="button" data-tab="${k}" data-label="${esc(label)}" aria-current="${P.tab === k ? 'page' : 'false'}">${icon(k)}<span class="jp-lbl">${esc(label)}</span>${k === 'requests' && P.pendingCount ? `<span class="count">${P.pendingCount}</span>` : ''}${k === 'accounts' && P.acctNew?.count ? `<span class="count" title="New accounts since you last looked">${P.acctNew.count}</span>` : ''}${k === 'absence' && P.absNew ? `<span class="count" title="Missed 2 sessions in a row, to follow up">${P.absNew}</span>` : ''}${k === 'trials' && P.trialNew ? `<span class="count" title="New trial feedback">${P.trialNew}</span>` : ''}${k === 'cancellations' && P.cxNew?.count ? `<span class="count" title="New since you last looked">${P.cxNew.count}</span>` : ''}${k === 'bank' ? bankBadge() : ''}${k === 'staff' && P.staffNew?.count ? `<span class="count" title="Cover and time off to see">${P.staffNew.count}</span>` : ''}${k === 'extra' && P.user.role !== 'admin' && P.askNew ? `<span class="count" title="Requests from families">${P.askNew}</span>` : ''}</button>`).join('')}</div></div>`
   }).join('')
 }
 
@@ -237,10 +239,10 @@ async function go(tab, { quiet = false, instant = false } = {}) {
   if (!quiet && !instant) view().innerHTML = '<p class="muted">Loading</p>'
   closeSide()
   setDrawer(false)
-  const fn = JJ_TABS.has(tab) ? () => renderJJ(tab, jjUi()) : { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, accounts: renderNewAccounts, trials: renderTrials, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, register: () => renderCoach(), cancellations: renderCancellations, coaches: renderCoaches, profile: renderProfile, staff: renderStaff, plans: renderPlans, help: renderHelp, families: renderPlayers, messages: () => renderMessages({ view, need, modal, closeModal, confirmBox }), announce: () => renderAnnouncements({ view, need, modal, closeModal, confirmBox }), hours: () => renderHours({ view, post, need, modal, closeModal, confirmBox, user: P.user }), makeups: () => renderMakeups({ view, post, need, modal, closeModal, confirmBox }), fnotes: () => renderFamilyNotesPage({ view, post, need, modal, closeModal, confirmBox }), extra: () => renderExtra({ view, post, need, modal, closeModal, confirmBox, toast, copy, user: P.user, refreshAsks: checkAskAlerts }), reports: () => renderReports(reportsUi()), cinvoices: () => renderCoachInvoices({ view, post, need, modal, closeModal, confirmBox, user: P.user }), ideas: () => renderIdeas({ view, post, need, toast }), team: () => renderTeam({ view, post, need, modal, closeModal, toast }), removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
+  const fn = JJ_TABS.has(tab) ? () => renderJJ(tab, jjUi()) : { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, accounts: renderNewAccounts, trials: renderTrials, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, register: () => renderCoach(), cancellations: renderCancellations, coaches: renderCoaches, profile: renderProfile, staff: renderStaff, plans: renderPlans, help: renderHelp, families: renderPlayers, absence: () => renderAbsence({ view, post, need, modal, closeModal, toast, openPlayer: openPlayerRecord, onCount: setAbsCount }), messages: () => renderMessages({ view, need, modal, closeModal, confirmBox }), announce: () => renderAnnouncements({ view, need, modal, closeModal, confirmBox }), hours: () => renderHours({ view, post, need, modal, closeModal, confirmBox, user: P.user }), makeups: () => renderMakeups({ view, post, need, modal, closeModal, confirmBox }), fnotes: () => renderFamilyNotesPage({ view, post, need, modal, closeModal, confirmBox }), extra: () => renderExtra({ view, post, need, modal, closeModal, confirmBox, toast, copy, user: P.user, refreshAsks: checkAskAlerts }), reports: () => renderReports(reportsUi()), cinvoices: () => renderCoachInvoices({ view, post, need, modal, closeModal, confirmBox, user: P.user }), ideas: () => renderIdeas({ view, post, need, toast }), team: () => renderTeam({ view, post, need, modal, closeModal, toast }), removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
   try { await fn() } catch (e) { console.error(e); if (!quiet) view().innerHTML = `<div class="j-box j-box-red">Something went wrong loading this page. ${esc(e.message || '')}</div>` }
   if (P.user?.role === 'admin' && (tab === 'money' || tab === 'jj-money')) prefetchOthers(tab === 'jj-money' ? 'juniors' : P.jf.programme, moneyReaders())
-  if (!P.cxChecked) { P.cxChecked = true; checkCancelAlerts(); checkTrialAlerts(); checkAccountAlerts(); checkRequestAlerts(); checkAskAlerts(); checkStaffAlerts() } else cancelBanner()
+  if (!P.cxChecked) { P.cxChecked = true; checkCancelAlerts(); checkTrialAlerts(); checkAccountAlerts(); checkAbsenceAlerts(); checkRequestAlerts(); checkAskAlerts(); checkStaffAlerts() } else cancelBanner()
   if (!quiet) view().focus({ preventScroll: true })
 }
 // Bank payments (the sidebar and the Dashboard's link): Money for this
@@ -257,7 +259,7 @@ const bankUiBase = () => ({ post, toast })
 // How often the portal re-reads by itself (Lee, 18 Oct 2026: "every 30 mins").
 const REFRESH_MS = 30 * 60 * 1000
 // New cancellations, trials, accounts and requests show up within 30 minutes, whatever page is open.
-setInterval(() => { if (P.user && document.visibilityState === 'visible') { checkCancelAlerts(); checkTrialAlerts(); checkAccountAlerts(); checkRequestAlerts(); checkAskAlerts(); checkStaffAlerts() } }, REFRESH_MS)
+setInterval(() => { if (P.user && document.visibilityState === 'visible') { checkCancelAlerts(); checkTrialAlerts(); checkAccountAlerts(); checkAbsenceAlerts(); checkRequestAlerts(); checkAskAlerts(); checkStaffAlerts() } }, REFRESH_MS)
 // The red count on Requests (Lee, 18 Oct 2026: it showed nothing until the
 // page was opened, then 4). One count everywhere, read when the portal opens
 // and every two minutes: new applications and waitlist, plus extra session
@@ -315,6 +317,15 @@ async function checkAccountAlerts() {
   P.acctNew = r.data
   if (before !== P.acctNew.count) { renderNav(); if (P.tab === 'overview' && before < P.acctNew.count) toast(P.acctNew.count === 1 ? 'Someone new made an account' : `${P.acctNew.count} new accounts`) }
 }
+
+// Missing players (Lee, 20 Oct 2026): a red count on Missing players for
+// players who missed 2 sessions in a row and nobody has followed up yet.
+async function checkAbsenceAlerts() {
+  if (P.user?.role !== 'admin') return
+  const r = await post('absenceAlerts')
+  if (r.ok) setAbsCount(r.data.count)
+}
+function setAbsCount(n) { const before = P.absNew || 0; P.absNew = Number(n) || 0; if (before !== P.absNew) renderNav() }
 
 // New accounts: who signed up, the players they added, and whether they have
 // booked. Opening it clears the count. Add to a group is the normal add,
