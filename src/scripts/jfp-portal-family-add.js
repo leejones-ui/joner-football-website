@@ -309,7 +309,12 @@ async function agentModal(ui) {
   $('ag-pick')?.addEventListener('change', (e) => {
     const a = agents[Number(e.target.value)]
     for (const [id, k] of [['ag-name', 'name'], ['ag-email', 'email'], ['ag-mobile', 'mobile'], ['ag-company', 'company']]) $(id).value = a ? a[k] || '' : ''
+    // More players for an agent already on file: their price per session, and no email unless ticked.
+    if (a) { $('ag-send').checked = false; if (a.rateCents) box.querySelectorAll('[id$="-per"]').forEach((x) => { if (!x.value) x.value = String(a.rateCents / 100) }) }
+    relabel()
   })
+  // Opened from an agency's card: that agent is already picked.
+  if (ui.agentId && $('ag-pick')) { const i = agents.findIndex((a) => a.id === ui.agentId); if (i >= 0) { $('ag-pick').value = String(i); $('ag-pick').dispatchEvent(new Event('change')) } }
   // A picked player fills the next empty player (never the agent's details).
   findExisting(box, { post: ui.post, toast: ui.toast, input: $('ag-search'), results: $('ag-results'), form: { fill: (x) => {
     let k = list2.kids.find((c) => !box.querySelector(`#${c.px}-name`).value.trim())

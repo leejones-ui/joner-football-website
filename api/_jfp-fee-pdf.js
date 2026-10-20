@@ -6,24 +6,28 @@
 // Attaching is never in the way of the email: when the PDF cannot be made,
 // the email still goes, without it, and staff are told (pdfWarning).
 import { listGroups } from './_jfp-store.js'
+import { agentFor, agencyBillTo } from './_jfp-agents.js'
 import { getInvoice, publicInvoice, invoiceUrl } from './_jfp-invoices.js'
 import { docFromInvoice, docFromPayreq, feeInvoiceNumber, renderInvoicePdf, pdfName, attachOn } from './_jfp-invoice-pdf.js'
 
 export const PDF_WARNING = 'The PDF invoice could not be made, so the email went without it. Download the PDF from the link and send it if the family asks.'
 
-export function docForInvoice(inv, config, base) {
-  return docFromInvoice(inv, publicInvoice(inv, config), config, { payUrl: invoiceUrl(base, inv) })
+// An agent's email (Lee, 20 Oct 2026): billed to the agency, as Lee last saved it.
+const billToFor = async (email) => agencyBillTo(await agentFor(email).catch(() => null))
+
+export async function docForInvoice(inv, config, base) {
+  return docFromInvoice(inv, publicInvoice(inv, config), config, { payUrl: invoiceUrl(base, inv), billTo: await billToFor(inv.email) })
 }
 
 // A payment request's invoice. One made for a custom invoice is that invoice.
 export async function docForPayreq(q, config, base) {
   if (q.invoiceId) {
     const inv = await getInvoice(q.invoiceId)
-    if (inv) return docForInvoice(inv, config, base)
+    if (inv) return await docForInvoice(inv, config, base)
   }
   const groups = Object.fromEntries((await listGroups()).map((g) => [g.id, g]))
   const number = await feeInvoiceNumber(q.id)
-  return docFromPayreq(q, config, { number, groups, payUrl: `${base}/jfp-account/?pay=${encodeURIComponent(q.id)}` })
+  return docFromPayreq(q, config, { number, groups, payUrl: `${base}/jfp-account/?pay=${encodeURIComponent(q.id)}`, billTo: await billToFor(q.email) })
 }
 
 async function attach(make) {

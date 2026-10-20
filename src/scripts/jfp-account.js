@@ -811,7 +811,47 @@ async function saveProf(key, btn) {
 
 // Round 2 item 8: a player profile from the account, booked or not. The
 // player's own details are then filled in on Player information.
+// An agent adds their players (Lee, 20 Oct 2026): several in one go, and each
+// one goes straight on to Joner Football's list as one of the agency's.
+function agentAddSheet() {
+  const sheet = openSheet({ title: 'Add your players', subtitle: `Each player goes straight on to our list under ${D.agent.company || 'your agency'}. Nothing to pay until we invoice you.` })
+  const o = PROF?.options || OPT
+  const max = new Date().toISOString().slice(0, 10)
+  const row = (i) => `<div class="ja-card" data-ag-row style="margin-bottom:10px;padding:12px">
+      <p class="ja-label" style="margin:0 0 6px">Player ${i}</p>
+      <label class="j-field"><span>Full name</span><input class="j-input" data-ag-name autocomplete="off"></label>
+      <div class="j-two"><label class="j-field"><span>Date of birth <span class="muted">(optional)</span></span><input class="j-input" data-ag-dob type="date" min="1940-01-01" max="${max}"></label>
+      <label class="j-field"><span>Club <span class="muted">(optional)</span></span><input class="j-input" data-ag-club autocomplete="off"></label></div>
+      <label class="j-field"><span>Level <span class="muted">(optional)</span></span><select class="j-select" data-ag-level><option value="">Choose</option>${o.levels.map((x) => `<option>${esc(x)}</option>`).join('')}</select></label>
+    </div>`
+  sheet.body.innerHTML = `<div id="ag-rows">${row(1)}</div>
+    <button type="button" class="ja-btn ja-btn-line ja-btn-sm" id="ag-more">+ Another player</button>
+    <p class="j-err" id="ag-err" hidden></p>`
+  const rows = () => [...sheet.body.querySelectorAll('[data-ag-row]')]
+  sheet.body.querySelector('#ag-more').addEventListener('click', () => { sheet.body.querySelector('#ag-rows').insertAdjacentHTML('beforeend', row(rows().length + 1)); rows().at(-1).querySelector('[data-ag-name]').focus() })
+  sheet.foot.innerHTML = '<button type="button" class="ja-btn ja-btn-red ja-btn-block" id="ag-save">Add the players</button>'
+  sheet.foot.querySelector('#ag-save').addEventListener('click', async (ev) => {
+    const b = ev.currentTarget, err = sheet.body.querySelector('#ag-err')
+    err.hidden = true
+    const list = rows().map((el) => ({ el, name: el.querySelector('[data-ag-name]').value.trim(), dob: el.querySelector('[data-ag-dob]').value, values: { club: el.querySelector('[data-ag-club]').value.trim(), level: el.querySelector('[data-ag-level]').value } })).filter((x) => x.name)
+    if (!list.length) { err.textContent = 'Enter at least one player.'; err.hidden = false; return }
+    b.disabled = true
+    let added = 0
+    for (const x of list) {
+      const r = await api('/api/jfp-account', { action: 'addPlayer', name: x.name, dob: x.dob, values: x.values })
+      if (!r.ok) { b.disabled = false; err.textContent = `${x.name}: ${r.data.error || 'could not be added. Try again.'}${added ? ` (${added} added before this one.)` : ''}`; err.hidden = false; return }
+      x.el.remove()
+      added += 1
+    }
+    closeSheet(true)
+    toast(`${added} player${added > 1 ? 's' : ''} added to ${D.agent.company || 'your agency'}.`)
+    await load()
+    show('family')
+  })
+}
+
 function addPlayerSheet() {
+  if (D.agent && !D.playerLogin) return agentAddSheet()
   const sheet = openSheet({ title: 'Add a player', subtitle: 'No session needed. You can book one any time.' })
   const o = PROF?.options || OPT
   sheet.body.innerHTML = `
@@ -1053,10 +1093,10 @@ function renderFamily() {
       <div class="ja-kid-act">${p.waiver?.onFile ? '' : `<button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-waiver-player="${esc(p.key)}">${ic('sign')}Sign waiver</button>`}${jj ? '' : `<button type="button" class="ja-btn ${miss ? 'ja-btn-light' : 'ja-btn-line'} ja-btn-sm" data-go="info">${miss ? 'Update details' : 'View details'}</button>`}</div>
     </article>`
   }
-  el.innerHTML = `${pageHead(name ? `${name}'s family` : 'Your family', solo() ? 'My profile' : 'Family', '')}${strip}
+  el.innerHTML = `${pageHead(D.agent ? `${D.agent.company || 'Your'} players` : name ? `${name}'s family` : 'Your family', D.agent ? 'My players' : solo() ? 'My profile' : 'Family', '')}${strip}
     <p class="ja-label" style="margin-top:18px">${solo() ? 'You' : 'Players'}</p>
     ${kids.length ? `<div class="ja-kids">${kids.map(card).join('')}</div>` : '<div class="ja-card"><p class="ja-muted">No players yet.</p></div>'}
-    <div class="ja-actions" style="margin:14px 0 0"><button type="button" class="ja-btn ja-btn-line ja-btn-sm" data-add-player>+ Add a player</button>${nW > 1 ? `<button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-waiver-all>${ic('sign')}Sign all ${nW} waivers</button>` : ''}</div>
+    <div class="ja-actions" style="margin:14px 0 0"><button type="button" class="ja-btn ${D.agent ? 'ja-btn-red' : 'ja-btn-line'} ja-btn-sm" data-add-player>${D.agent ? '+ Add your players' : '+ Add a player'}</button>${nW > 1 && !D.agent ? `<button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-waiver-all>${ic('sign')}Sign all ${nW} waivers</button>` : ''}</div>
     <p class="ja-label" style="margin-top:26px">Your account</p>
     <div class="ja-card ja-acct"><div class="ja-acct-row"><div><b>${esc(D.parentName || (D.self ? D.players[0]?.name : '') || 'Signed in')}</b><small>${esc(D.email || '')}</small></div><button type="button" class="ja-btn ja-btn-line ja-btn-sm" id="sign-out-fam">Sign out</button></div>
       <div class="ja-acct-row"><div><b>Look</b><small>Light or dark, on this phone or computer</small></div>${themeSwitch()}</div>

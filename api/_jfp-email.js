@@ -352,10 +352,13 @@ export async function sendFamilyWelcome({ to, parentName, children, ...rest }) {
 }
 
 // One invoice for the whole family: each place and its price, one total.
-export async function sendFamilyInvoice({ to, parentName, places, config, url, amountCents, needWaiver = false, sessions = false, self = false, attachment }) {
+export async function sendFamilyInvoice({ to, parentName, places, config, url, amountCents, needWaiver = false, sessions = false, self = false, attachment, agency = '' }) {
   const names = [...new Set(places.map((x) => x.name))]
-  const w = contactWords({ self, players: names, parent: parentName })
-  const intro = self
+  const w = contactWords({ self, players: names, parent: parentName, agent: Boolean(agency) })
+  // An agency (Lee, 20 Oct 2026): one invoice, made out to the agency.
+  const intro = agency
+    ? `Hi ${esc(w.hi)}, here ${sessions ? 'are the JFP sessions' : `is ${esc(config.term)}`} for your ${names.length > 1 ? 'players' : 'player'} ${esc(names.join(' and '))}, on one invoice made out to ${esc(agency)}.`
+    : self
     ? (sessions ? `Hi ${esc(w.hi)}, here are your JFP sessions to pay.` : `Hi ${esc(w.hi)}, here is ${esc(config.term)} in one payment.`)
     : (sessions ? `Hi ${esc(w.hi)}, here are ${esc(names.join(' and '))}'s JFP sessions to pay.` : `Hi ${esc(w.hi)}, here is ${esc(config.term)} for ${esc(names.join(' and '))} in one payment.`)
   const body = `${p(intro)}
@@ -365,8 +368,8 @@ ${button('Sign in and pay', url)}
 ${pdfLine(attachment)}
 ${howToSignIn(to, self)}
 ${kitLine(config)}`
-  const subject = self ? (sessions ? 'Your JFP sessions invoice' : `Your ${config.term} invoice`) : (sessions ? `${names.join(' and ')}: JFP sessions invoice` : `${names.join(' and ')}: your ${config.term} invoice`)
-  return send({ to: [{ email: to, name: w.toName }], subject, html: shell({ preheader: `${formatAud(amountCents)} for ${names.length} player${names.length > 1 ? 's' : ''}`, heading: sessions ? 'Your sessions invoice' : self ? 'Your invoice' : 'Your family invoice', body }), kind: sessions ? 'sessions invoice' : 'family invoice', attachment })
+  const subject = agency ? `${agency}: JFP ${sessions ? 'sessions ' : ''}invoice` : self ? (sessions ? 'Your JFP sessions invoice' : `Your ${config.term} invoice`) : (sessions ? `${names.join(' and ')}: JFP sessions invoice` : `${names.join(' and ')}: your ${config.term} invoice`)
+  return send({ to: [{ email: to, name: w.toName }], subject, html: shell({ preheader: `${formatAud(amountCents)} for ${names.length} player${names.length > 1 ? 's' : ''}`, heading: agency ? 'Your agency invoice' : sessions ? 'Your sessions invoice' : self ? 'Your invoice' : 'Your family invoice', body }), kind: agency ? 'agency invoice' : sessions ? 'sessions invoice' : 'family invoice', attachment })
 }
 
 // After a good trial: the rest of the term, with the trial fee taken off.

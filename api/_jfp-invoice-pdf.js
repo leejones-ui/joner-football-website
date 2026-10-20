@@ -63,16 +63,22 @@ function totals(totalCents, paidCents) {
   return { totalCents, gstCents: gstOf(totalCents), paidCents: paid, balanceCents: Math.max(0, totalCents - paid) }
 }
 
+// An agency (Lee, 20 Oct 2026): the agency's name, for the attention of the
+// agent, with its address and ABN when Lee saved them. billTo: agencyBillTo().
+function agencyTo(b, players) {
+  return { name: b.name, attn: b.attn || '', address: b.address || '', abn: b.abn || '', email: b.email, players }
+}
+
 // A custom invoice. view: publicInvoice(inv, config) from _jfp-invoices.js.
 // Each line: what staff typed (x quantity) and its amount.
-export function docFromInvoice(inv, view, config, { payUrl = '' } = {}) {
+export function docFromInvoice(inv, view, config, { payUrl = '', billTo = null } = {}) {
   const self = !view.billTo.name && view.players.length === 1
   const lines = view.lines.map((l) => ({ title: `${l.description}${l.qty > 1 ? ` x ${l.qty}` : ''}`, details: [], amountCents: l.totalCents }))
   const t = totals(view.totalCents, view.paidCents)
   const status = view.status === 'void' ? 'void' : t.balanceCents === 0 ? 'paid' : view.draft ? 'draft' : 'open'
   return {
     number: view.number, issueDate: view.issueDate, dueDate: view.dueDate || '',
-    from: business(config), to: { name: view.billTo.name || (self ? view.players[0] : '') || view.billTo.email, email: view.billTo.email, players: self ? [] : view.players },
+    from: business(config), to: billTo ? agencyTo(billTo, view.players) : { name: view.billTo.name || (self ? view.players[0] : '') || view.billTo.email, email: view.billTo.email, players: self ? [] : view.players },
     lines, ...t, status, notes: view.notes || '',
     payUrl: t.balanceCents > 0 && !['void', 'draft'].includes(status) ? payUrl : '',
     bank: t.balanceCents > 0 && status !== 'void' ? bankFor(config, view.bank?.reference || inv.id) : null,
@@ -83,7 +89,7 @@ export function docFromInvoice(inv, view, config, { payUrl = '' } = {}) {
 // session by session, a charge. Kept plain (Lee, 16 Oct 2026): each line is
 // the player, their session day, time and location, the term, and the
 // amount. No group or product names. groups: { [id]: group }.
-export function docFromPayreq(q, config, { number, groups = {}, payUrl = '' }) {
+export function docFromPayreq(q, config, { number, groups = {}, payUrl = '', billTo = null }) {
   const term = config.term || ''
   const self = q.ownContact === true
   const lines = []
@@ -116,7 +122,7 @@ export function docFromPayreq(q, config, { number, groups = {}, payUrl = '' }) {
   const toName = self ? (q.playerNames || [])[0] || q.parentName : q.parentName || (q.playerNames || []).join(' and ')
   return {
     number, issueDate: dayOf(q.createdAt), dueDate: q.expiresAt ? dayOf(q.expiresAt) : '',
-    from: business(config), to: { name: toName || q.email, email: q.email, players: self ? [] : q.playerNames || [] },
+    from: business(config), to: billTo ? agencyTo(billTo, q.playerNames || []) : { name: toName || q.email, email: q.email, players: self ? [] : q.playerNames || [] },
     lines, ...t, status, notes: '',
     payUrl: t.balanceCents > 0 && status !== 'void' ? payUrl : '',
     bank: t.balanceCents > 0 && status !== 'void' ? bankFor(config, `${number} ${String((q.playerNames || [])[0] || '').split(/\s+/)[0]}`.trim().slice(0, 40)) : null,
@@ -267,7 +273,7 @@ export async function renderInvoicePdf(doc) {
     return yy
   }
   const fromRows = [[doc.from.name, bold, 11, C.ink], [doc.from.address, reg, 9.5, C.ink], [doc.from.email, reg, 9.5, C.ink], ...(doc.from.abn ? [[`ABN ${doc.from.abn}`, reg, 9.5, C.ink]] : [])]
-  const toRows = [[doc.to.name, bold, 11, C.ink], ...(doc.to.email && doc.to.email !== doc.to.name ? [[doc.to.email, reg, 9.5, C.ink]] : [])]
+  const toRows = [[doc.to.name, bold, 11, C.ink], ...(doc.to.attn ? [[`Attn: ${doc.to.attn}`, reg, 9.5, C.ink]] : []), ...(doc.to.address ? [[doc.to.address, reg, 9.5, C.ink]] : []), ...(doc.to.email && doc.to.email !== doc.to.name ? [[doc.to.email, reg, 9.5, C.ink]] : []), ...(doc.to.abn ? [[`ABN ${doc.to.abn}`, reg, 9.5, C.ink]] : [])]
   y = Math.min(block(M, 'From', fromRows), block(M + half + 24, doc.receipt ? 'Received from' : 'Bill to', toRows)) - 18
 
   // The lines: player, session and term, amount.

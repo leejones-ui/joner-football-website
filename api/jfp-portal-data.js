@@ -7,7 +7,8 @@
 //
 // Staff changes write straight into Airtable Term 4 Players, so Lee's
 // dashboard always matches, and every change is recorded in the audit log.
-import { agentFor, saveAgent, allAgents, agentsView, withAgentTag } from './_jfp-agents.js'
+import { agentFor, saveAgent, allAgents, agentsView, withAgentTag, agentById, updateAgent } from './_jfp-agents.js'
+import { moveLoginsParent } from './_jfp-player-logins.js'
 import { asksComing, comingByGroup } from './_jfp-coming.js'
 import { playersHistory, HISTORY_TERMS, playerRecords } from './_jfp-players-history.js'
 import { boardExtras } from './_jfp-extra.js'
@@ -399,6 +400,49 @@ async function agentIdFor(family, email) {
   return email ? (await agentFor(email).catch(() => null))?.id || '' : ''
 }
 
+// The agency card (Lee, 20 Oct 2026): the agency's details, every player on
+// it this term with their price and what is owed, and the agency's open
+// payment links. One agency, one email, one invoice.
+async function agentCard(req, res, body) {
+  const a = await agentById(clean(body.agentId, 40))
+  if (!a) return fail(res, 404, 'That agent is not on file.')
+  const [roster, groups, links] = await Promise.all([loadRoster({ fresh: body.fresh === true }), listGroups(), listPayreqs()])
+  const byId = Object.fromEntries(groups.map((g) => [g.id, g]))
+  const config = await getConfig()
+  const rows = roster.players.filter((r) => r.agentId === a.id && r.holdsPlace)
+  const ids = new Set(rows.map((r) => r.id))
+  const players = rows.map((r) => {
+    const g = byId[r.groupId]
+    const fee = cents(r.feeAud), paid = cents(r.paidAud)
+    return { rowId: r.id, name: r.player, group: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : 'No group yet', paymentType: r.paymentType || '', bySession: isSessionType(r.paymentType), perSessionCents: r.perSessionCents || a.rateCents || 0, feeCents: fee, paidCents: paid, owingCents: Math.max(0, fee - paid), waiver: Boolean(waiverFor(r.player, { emails: rowEmails(r), phones: [r.phone], dob: r.dob }, roster.waivers)), byAgent: /\[AGENTADD\]/.test(r.notes || '') }
+  }).sort((x, y) => x.name.localeCompare(y.name))
+  const open = links.filter((q) => ['open', 'checkout'].includes(q.status) && q.term4Ids.some((id) => ids.has(id))).map((q) => ({ id: q.id, url: payreqUrl(req, q), amountCents: q.amountCents, players: q.playerNames, createdAt: q.createdAt || '', emailedAt: q.emailedAt || '' }))
+  return res.status(200).json({ success: true, agent: { ...agentsView([a], roster.players)[0] }, players, open, totals: { feeCents: players.reduce((t, p) => t + p.feeCents, 0), paidCents: players.reduce((t, p) => t + p.paidCents, 0), owingCents: players.reduce((t, p) => t + p.owingCents, 0) } })
+}
+
+// Staff edit the agency. A new contact name, email or mobile goes on to every
+// one of the agency's Term 4 rows, so the agent signs in with the new email
+// and the player logins they gave follow them.
+async function editAgent(res, principal, body) {
+  const was = await agentById(clean(body.agentId, 40))
+  const newEmail = clean(body.agent?.email, 160).toLowerCase()
+  if (was && newEmail && newEmail !== was.email && familyFor(newEmail, await loadRoster(), (await getConfig()).termStart).players.some((x) => x.term4.some((r) => r.holdsPlace && !r.agentId))) return fail(res, 409, `${newEmail} is already a family's email. Use another email for the agent.`)
+  const out = await updateAgent(principal, body.agentId, body.agent || {})
+  if (!out.ok) return fail(res, out.status, out.error)
+  const { before, after } = out
+  let rowsChanged = 0
+  if (after.name !== before.name || after.email !== before.email || after.mobile !== before.mobile) {
+    const rows = (await loadRoster({ fresh: true })).players.filter((r) => r.agentId === after.id)
+    const fields = { 'Parent Name': after.name, Email: after.email, ...(after.mobile ? { Phone: after.mobile } : {}) }
+    if (rows.length) await updateTerm4Rows(rows.map((r) => ({ id: r.id, fields })))
+    rowsChanged = rows.length
+    if (after.email !== before.email) await moveLoginsParent(before.email, after.email)
+    await bustRosterCache()
+  }
+  await audit({ by: principal.email, action: 'agent.edit', target: after.id, before, after: { ...after, rowsChanged } })
+  return res.status(200).json({ success: true, agent: after, rowsChanged })
+}
+
 // One player into a group, checked, nothing written yet (round 2, 14 Oct
 // 2026: shared by Add a player and Add a family). { ok, ... } or
 // { status, error, code?, rowId? }. family: { size } when several children
@@ -549,7 +593,7 @@ async function playersList(req, res, config, body = {}) {
       trial: /trial/i.test(r.paymentType), trialDate: trialDateOf(r), trialFeedback: trialFb[r.id] || null,
       parent: r.parent || '',
       // Paid for by an agent (Lee, 20 Oct 2026): the parent fields are the agent's.
-      ...(r.agentId ? { agent: agentById.get(r.agentId)?.name || r.parent || 'Agent' } : {}),
+      ...(r.agentId ? { agent: agentById.get(r.agentId)?.company || agentById.get(r.agentId)?.name || r.parent || 'Agent', agentId: r.agentId } : {}),
       email: r.email || '',
       phone: r.phone || '',
       // No parent: the player is their own contact (wording, emails, texts).
@@ -1986,7 +2030,7 @@ async function staffInvoicePdf(req, res, config, body) {
   if (body.id) {
     const inv = await getInvoice(body.id)
     if (!inv) return fail(res, 404, 'Invoice not found.')
-    doc = docForInvoice(inv, config, siteUrl(req))
+    doc = await docForInvoice(inv, config, siteUrl(req))
   } else {
     const q = await getPayreq(clean(body.payreqId, 60))
     if (!q || q.quick) return fail(res, 404, 'Payment link not found.')
@@ -2095,7 +2139,8 @@ async function familyInvoice(req, res, principal, config, body) {
 // link for exactly that, or recorded as already paid by bank or cash.
 // Several rows of one family (sisters) can go on one link.
 async function sessionInvoice(req, res, principal, config, body) {
-  const asked = (Array.isArray(body.rows) ? body.rows : []).slice(0, 6)
+  // An agency bills all its players on one invoice (Lee, 20 Oct 2026).
+  const asked = (Array.isArray(body.rows) ? body.rows : []).slice(0, 30)
   if (!asked.length) return fail(res, 400, 'Choose a player.')
   const rows = []
   for (const a of asked) {
@@ -2167,7 +2212,8 @@ async function sessionInvoice(req, res, principal, config, body) {
   let sent = { emailed: false }, pdf = {}
   if (body.sendEmail === true) {
     pdf = await feePdf(req, config, q)
-    sent = await trySend('sessions invoice', () => sendFamilyInvoice({ to: email, parentName: rows[0].row.parent, places: q.places, config, url: payreqUrl(req, q), amountCents: q.amountCents, needWaiver: false, sessions: true, self: sw.self, attachment: pdf.attachment }))
+    const ag = rows[0].row.agentId ? await agentFor(email).catch(() => null) : null
+    sent = await trySend('sessions invoice', () => sendFamilyInvoice({ to: email, parentName: rows[0].row.parent, places: q.places, config, url: payreqUrl(req, q), amountCents: q.amountCents, needWaiver: false, sessions: true, self: sw.self, attachment: pdf.attachment, agency: ag ? ag.company || ag.name : '' }))
     if (sent.emailed) await savePayreq({ ...q, emailedAt: new Date().toISOString() })
   }
   const emailed = sent.emailed
@@ -3828,6 +3874,8 @@ async function handle(req, res) {
       // Add an agent (Lee, 20 Oct 2026): addFamily with the agent as the contact.
       case 'addAgent': return await addFamily(req, res, principal, config, { ...body, agent: body.agent || {} })
       case 'agentsList': return res.status(200).json({ success: true, agents: agentsView(await allAgents(), (await loadRoster()).players) })
+      case 'agentCard': return await agentCard(req, res, body)
+      case 'editAgent': return await editAgent(res, principal, body)
       case 'movePlayer': return await movePlayer(res, principal, config, body)
       case 'removePlayer': return await removePlayer(res, principal, config, body)
       case 'editPlayer': return await editPlayer(res, principal, config, body)

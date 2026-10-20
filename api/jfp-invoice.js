@@ -88,7 +88,7 @@ export default async function handler(req, res) {
     if (body.action === 'view') return await view(res, inv, config)
     if (body.action === 'pay') return await pay(req, res, inv)
     if (body.action === 'confirm') return await confirm(res, inv, config, body.sessionId)
-    if (body.action === 'pdf') return res.status(200).json({ success: true, ...(await pdfDownload(docForInvoice(inv, config, siteUrl(req)))) })
+    if (body.action === 'pdf') return res.status(200).json({ success: true, ...(await pdfDownload(await docForInvoice(inv, config, siteUrl(req)))) })
     return fail(res, 400, 'Unknown action')
   } catch (error) {
     console.error('jfp-invoice failed', error)

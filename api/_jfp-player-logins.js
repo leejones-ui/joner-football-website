@@ -58,3 +58,13 @@ export async function removePlayerLogin({ parent, fam, playerKey }) {
   if (mine.length) await audit({ by: parent.email, action: 'playerLogin.remove', target: mine[0].name, before: { email: mine[0].email } })
   return { removed: mine.length }
 }
+
+// An agent's email changes (Lee edits the agency): the logins they gave their
+// players follow them to the new address.
+export async function moveLoginsParent(fromEmail, toEmail) {
+  const from = String(fromEmail || '').toLowerCase(), to = String(toEmail || '').toLowerCase()
+  if (!from || !to || from === to) return 0
+  const moved = (await allPlayerLogins()).filter((x) => x.parentEmail === from)
+  for (const x of moved) await kvCommand(['HSET', KEY, x.email, JSON.stringify({ ...x, parentEmail: to })])
+  return moved.length
+}

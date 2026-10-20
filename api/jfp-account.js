@@ -34,6 +34,7 @@ import { familyProfiles, findProfile, pickProfile, profileKey, profileView, clea
 import { markToldAway, clearToldAway } from './_jfp-away.js'
 import { asksComing, comingDates, saveComing, clearComing } from './_jfp-coming.js'
 import { agentFor } from './_jfp-agents.js'
+import { addAgentPlayer } from './_jfp-agent-add.js'
 import { coachPhotoUrl } from './jfp-groups.js'
 import { listCancels, submitCancel, withdrawCancel, rowSessionDates, rowTime, noticeFor, coachesFor, coverCoachFor, familyView, cancelId, REASONS, NOTE_MAX } from './_jfp-cancel.js'
 import { loadRoster, familyFor, createWaiverRows, waiverFields, bustRosterCache, updateTerm4Rows } from './_jfp-airtable.js'
@@ -622,6 +623,13 @@ async function saveOpenProfile(res, parent, fam, body) {
 // "Add a player" in My account: a profile, no session and no place.
 async function addPlayerAction(res, parent, body) {
   const config = await getConfig()
+  // An agent's player goes straight on to Term 4 as one of the agency's (Lee, 20 Oct 2026).
+  const agent = await agentFor(parent.email).catch(() => null)
+  if (agent) {
+    const out = await addAgentPlayer({ agent, roster: await loadRoster({ fresh: true }), body })
+    if (!out.ok) return fail(res, out.status, out.error, out.code ? { code: out.code } : {})
+    return res.status(200).json({ success: true, key: out.key, rowId: out.rowId, agent: true, profile: out.profile ? profileView(out.profile) : null })
+  }
   const fam = familyFor(parent.email, await loadRoster({ fresh: true }), config.termStart)
   const out = await addMyPlayer({ email: parent.email, fam, body })
   if (!out.ok) return fail(res, out.status, out.error, out.code ? { code: out.code } : {})

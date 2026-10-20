@@ -9,6 +9,8 @@
 // Every name and email here is invented.
 import assert from 'node:assert/strict'
 import { paidSiblings } from '../api/_jfp-store.js'
+import { docFromPayreq } from '../api/_jfp-invoice-pdf.js'
+import { agencyBillTo } from '../api/_jfp-agents.js'
 
 const PORT = Number(process.argv[2] || 4321)
 const B = `http://localhost:${PORT}`
@@ -80,7 +82,8 @@ await test('the agent shows on the Players tab and in the agents list', async ()
   assert.deepEqual(a.players, ['Dani Okoye', 'Leo Ferraro'])
   assert.equal(a.company, 'Bellini Sports')
   const pl = await ok('playersList', { fresh: true })
-  assert.equal(pl.players.find((p) => p.name === 'Leo Ferraro').agent, 'Marco Bellini')
+  assert.equal(pl.players.find((p) => p.name === 'Leo Ferraro').agent, 'Bellini Sports')
+  assert.equal(pl.players.find((p) => p.name === 'Leo Ferraro').agentId, added.agentId)
 })
 
 await test("the agent's account: agent, players, and payments not held up by waivers", async () => {
@@ -150,6 +153,85 @@ await test("an agent's email cannot be a family's email, and the same agent agai
   const list = (await ok('agentsList')).agents.filter((x) => x.email === AGENT.email)
   assert.equal(list.length, 1)
   assert.equal(list[0].mobile, '0400 661 999')
+})
+
+// Round 2 (Lee, 20 Oct 2026): one agency, its details editable, one-off
+// invoices to the agency, and the agent adds their own players.
+await test('Edit agency: invoice details and price saved; a new mobile goes on every row', async () => {
+  const r = await ok('editAgent', { agentId: added.agentId, agent: { ...AGENT, mobile: '0400 661 555', company: 'Bellini Sports Pty Ltd', address: '1 Pitt St, Sydney NSW 2000', abn: '12 345 678 901', billingEmail: 'accounts@bellini.example.com', rateCents: 9000 } })
+  assert.ok(r.rowsChanged >= 3)
+  const rows = (await at()).term4.filter((x) => (x.fields['Term 4 Notes'] || '').includes(`[AGENT:${added.agentId}]`))
+  assert.ok(rows.length >= 3 && rows.every((x) => x.fields.Phone === '0400 661 555'))
+  const card = await ok('agentCard', { agentId: added.agentId, fresh: true })
+  assert.equal(card.agent.company, 'Bellini Sports Pty Ltd')
+  assert.equal(card.agent.rateCents, 9000)
+  assert.ok(card.players.find((p) => p.name === 'Leo Ferraro').bySession)
+  assert.equal(card.players.find((p) => p.name === 'Leo Ferraro').waiver, true)
+  // Another agent's email or a family's is refused.
+  assert.equal((await portal('editAgent', { agentId: added.agentId, agent: { ...AGENT, email: 'walsh.fam@example.com' } })).status, 409)
+  assert.equal((await portal('editAgent', { agentId: added.agentId, agent: { ...AGENT, rateCents: -5 } })).status, 400)
+})
+
+await test('the invoice is made out to the agency, for the attention of the agent', async () => {
+  const b = agencyBillTo({ name: 'Marco Bellini', email: AGENT.email, company: 'Bellini Sports Pty Ltd', billingEmail: 'accounts@bellini.example.com', address: '1 Pitt St', abn: '12 345 678 901' })
+  const doc = docFromPayreq({ id: 'PAY-1', email: AGENT.email, parentName: 'Marco Bellini', playerNames: ['Leo Ferraro'], amountCents: 9000, status: 'open', places: [{ name: 'Leo Ferraro', label: '1 session at A$90', feeCents: 9000 }], createdAt: new Date().toISOString() }, { term: 'Term 4 2026' }, { number: 'F-1', billTo: b })
+  assert.equal(doc.to.name, 'Bellini Sports Pty Ltd')
+  assert.equal(doc.to.attn, 'Marco Bellini')
+  assert.equal(doc.to.email, 'accounts@bellini.example.com')
+  assert.equal(doc.to.abn, '12 345 678 901')
+})
+
+await test('Bill the agency: a one-off session on one link, the agency invoice email, no family words', async () => {
+  const card = await ok('agentCard', { agentId: added.agentId, fresh: true })
+  const leo = card.players.find((p) => p.name === 'Leo Ferraro')
+  const before = (await emails()).length
+  const r = await ok('sessionInvoice', { rows: [{ rowId: leo.rowId, sessions: 1, perSessionCents: leo.perSessionCents }], what: '21 October', mode: 'link', sendEmail: true })
+  assert.equal(r.payreq.amountLabel, 'A$60')
+  const mail = (await emails()).slice(before).filter((m) => m.to.includes(AGENT.email))
+  assert.equal(mail.length, 1)
+  assert.match(mail[0].subject, /^Bellini Sports Pty Ltd: JFP sessions invoice$/)
+  const text = mail[0].html.replace(/<style[\s\S]*?<\/style>/g, '').replace(/<[^>]+>/g, ' ')
+  assert.match(text, /made out to Bellini Sports Pty Ltd/)
+  assert.ok(!/famil|your child/i.test(text))
+  assert.ok(!/—/.test(text))
+  const after = await ok('agentCard', { agentId: added.agentId, fresh: true })
+  assert.ok(after.open.some((q) => q.amountCents === 6000 && q.players.join() === 'Leo Ferraro' && q.emailedAt))
+  assert.ok(after.totals.owingCents >= 6000)
+})
+
+await test('the agent adds their own players: straight on to Term 4 under the agency, at its price', async () => {
+  const r1 = await acct('addPlayer', { name: 'Kai Mensah', dob: '2003-03-03', values: { club: 'Sydney United' } })
+  assert.equal(r1.status, 200, JSON.stringify(r1.data))
+  assert.equal(r1.data.agent, true)
+  const r2 = await acct('addPlayer', { name: 'Noa Silva' })
+  assert.equal(r2.status, 200, JSON.stringify(r2.data))
+  assert.equal((await acct('addPlayer', { name: 'Kai Mensah' })).status, 409)
+  const row = (await at()).term4.find((x) => x.id === r1.data.rowId).fields
+  assert.match(row['Term 4 Notes'], new RegExp(`\\[AGENT:${added.agentId}\\]`))
+  assert.match(row['Term 4 Notes'], /\[AGENTADD\]/)
+  assert.match(row['Term 4 Notes'], /\[PERSESSION:9000\]/)
+  assert.equal(row.Email, AGENT.email)
+  assert.equal(row['Term 4 Payment Type'], 'JFP Session by session')
+  assert.ok(!('Date of Birth' in row) && !Object.values(row).includes('2003-03-03'), 'no date of birth on Term 4')
+  const card = await ok('agentCard', { agentId: added.agentId, fresh: true })
+  const kai = card.players.find((p) => p.name === 'Kai Mensah')
+  assert.ok(kai.byAgent)
+  assert.equal(kai.perSessionCents, 9000)
+  assert.ok((await acct('overview')).data.players.some((p) => p.name === 'Noa Silva'))
+})
+
+await test('a new agent email moves the rows, the sign-in and the player logins', async () => {
+  const r = await ok('editAgent', { agentId: added.agentId, agent: { ...AGENT, email: 'marco.new@example.com', company: 'Bellini Sports Pty Ltd', rateCents: 9000 } })
+  assert.ok(r.rowsChanged >= 5)
+  const moved = client()
+  await signIn(moved, 'marco.new@example.com')
+  const d = (await moved.call('/api/jfp-account', { action: 'overview' })).data
+  assert.equal(d.agent.company, 'Bellini Sports Pty Ltd')
+  assert.ok(d.players.length >= 5)
+  const leo = d.players.find((p) => p.name === 'Leo Ferraro')
+  assert.equal(leo.login?.email || leo.playerLogin?.email || 'leo.own@example.com', 'leo.own@example.com')
+  const list = (await ok('agentsList')).agents
+  assert.ok(list.some((a) => a.email === 'marco.new@example.com') && !list.some((a) => a.email === AGENT.email))
 })
 
 console.log(`\n${passed} agent checks passed`)

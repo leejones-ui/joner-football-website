@@ -22,6 +22,7 @@ import { mountReportDue } from './jfp-portal-reportdue.js'
 import { renderCampsMoney, campsData } from './jfp-portal-camps.js'
 import { renderEverything } from './jfp-portal-everything.js'
 import { drawFamilies, sessionModal } from './jfp-portal-family.js'
+import { agentsModal, agentCard } from './jfp-portal-agents.js'
 import { psHead, psSearch, psSelect, psBadge, psChips, psToolsMore, psHelp, PS_PAY } from './jfp-portal-ps.js'
 import { bankPanel, bindBank, loadBank, bankDone, bankStale, bankLink, bankSummary, openBankList, watchBank } from './jfp-portal-bank.js'
 import { renderHolidayMoney, holidayStale, holidayData } from './jfp-portal-holiday.js'
@@ -975,6 +976,7 @@ const famUI = () => ({
   post, modal, closeModal, toast, copy, confirmBox, textComposer, priceBlock, dateOptions, nextDate, customPrices, isJJ, pricing,
   board: async () => P.board || (P.board = await need(await post('board'))),
   after: () => { P.board = null; PL.at = 0; if (P.tab === 'players') renderPlayers(); else renderBoard(true) },
+  addAgent: (agentId = '') => familyModal({ ...famUI(), agent: true, agentId }),
 })
 
 // Add a player by hand. With spotLink, the family gets a link to this spot:
@@ -3672,7 +3674,7 @@ function plRow(p) {
   const football = [f.level, (f.positions || []).map((x) => POS_SHORT[x] || x).join('/')].filter(Boolean).join(' · ')
   const fee = p.feeAud != null ? `${money0(p.feeAud)}${p.balanceAud ? ` · ${money0(p.balanceAud)} owing` : ''}` : 'No fee set'
   return `<tr data-pl="${esc(p.rowId)}" tabindex="0" aria-label="${esc(p.name)}, open details">
-    <td data-col="who"><div class="ps-who">${avatar(p.profile?.photo, p.name, 32)}<div><b>${esc(p.name)}</b>${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}${p.pro ? ' <span class="ps-tag pink">Pro</span>' : ''}${savedPayTag(p)}<span class="ps-sub">${p.ownContact ? 'Own contact' : p.agent ? `Agent: ${esc(p.agent)}` : esc(p.parent || 'No parent name')}</span></div></div></td>
+    <td data-col="who"><div class="ps-who">${avatar(p.profile?.photo, p.name, 32)}<div><b>${esc(p.name)}</b>${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}${p.pro ? ' <span class="ps-tag pink">Pro</span>' : ''}${savedPayTag(p)}<span class="ps-sub">${p.ownContact ? 'Own contact' : p.agent ? `<button type="button" class="ja-link" data-agent-open="${esc(p.agentId || '')}" style="background:none;border:0;padding:0;color:inherit;text-decoration:underline;cursor:pointer;font:inherit">Agent: ${esc(p.agent)}</button>` : esc(p.parent || 'No parent name')}</span></div></div></td>
     <td data-col="group">${p.inGroup ? esc(p.groupLabel) : psBadge('orange', 'Not in a group')}${p.coach ? `<span class="ps-sub">${esc(p.coach)}</span>` : ''}</td>
     <td data-col="pay">${psPayBadge(p)}<span class="ps-sub">${esc(fee)}</span></td>
     <td data-col="football">${club || football ? `${esc(club || '')}${football ? `<span class="ps-sub">${esc(football)}</span>` : ''}` : '<span class="muted">Not on file</span>'}</td>
@@ -3955,12 +3957,14 @@ async function renderPlayers(keep = false) {
   $('ps-more').addEventListener('click', (e) => menu(e.currentTarget, [
     { key: 'family', label: '+ Add a family', run: () => familyModal(famUI()) },
     { key: 'agent', label: '+ Add an agent', run: () => familyModal({ ...famUI(), agent: true }) },
+    { key: 'agents', label: 'Agents and agency invoices', run: () => agentsModal(famUI()) },
     { key: 'invite', label: 'Send account invites', run: () => renderFamilies() },
     { key: 'app', label: 'JF App access', run: () => appAccessModal() },
     '-',
     { key: 'refresh', label: 'Refresh from Airtable', run: () => { PL.at = 0; renderPlayers() } },
   ]))
   $('pl-refresh').addEventListener('click', () => { PL.at = 0; renderPlayers() })
+  view().querySelectorAll('[data-agent-open]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); if (b.dataset.agentOpen) agentCard(famUI(), b.dataset.agentOpen) }))
   view().querySelectorAll('[data-pl]').forEach((tr) => {
     const open = (e) => {
       const p = d.players.find((x) => x.rowId === tr.dataset.pl)
