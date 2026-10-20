@@ -1328,3 +1328,16 @@ a.sr-only[href="#main-content"]:focus { position: fixed !important; top: 16px; l
 .ji-place.ji-field { background: #15803d; }
 .ji-yt { margin-top: 10px; }
 .ji-yt .ji-kick { margin-bottom: 6px; }
+/* Money > Session value (Lee, 20 Oct 2026): fill and fees per coach hour. */
+.sv-ps td { vertical-align: top; }
+.sv-ps .sv-lap { display: block; margin-top: 4px; font-size: 12px; font-weight: 600; color: #F97316; }
+.sv-ps .sv-extra { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 4px; }
+.sv-ps .sv-extra .ps-sub { flex-basis: 100%; }
+.sv-ps .sv-hours { margin-top: 4px; font-size: 12.5px; color: var(--ps-text-2); }
+.sv-ps .sv-margin { font-weight: 700; color: inherit; }
+.sv-ps .sv-margin.sv-neg { color: var(--j-red); }
+.sv-ps tfoot td { border-top: 2px solid var(--j-line); font-size: 13.5px; }
+@media (max-width: 760px) {
+  .sv-ps tfoot { display: block; }
+  .sv-ps td[data-col="group"], .sv-ps td[data-col="flags"] { padding-left: 0; }
+}

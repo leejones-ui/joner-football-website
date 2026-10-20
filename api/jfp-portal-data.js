@@ -78,6 +78,7 @@ import { feePdfAttachment, docForPayreq, docForInvoice, pdfDownload } from './_j
 import { invoiceRefOf } from './_jfp-bank-match.js'
 // Saved card or bank account, auto-charge after each session (claude/card-on-file).
 import { accountAlerts, newAccountsData } from './_jfp-new-accounts.js'
+import { sessionValueAction } from './_jfp-session-value.js'
 import { withAgent, inAgent, agentState, setAgentEnabled, listHeld, takeHeld, heldView } from './_jfp-agent.js'
 import { sendHeldEmail } from './_jfp-email.js'
 import { SAVED_PAY_ACTIONS, savedPayAction, withSavedPay, autoChargeActiveFor } from './_jfp-saved-pay.js'
@@ -4017,6 +4018,8 @@ async function handle(req, res) {
         const [profiles, roster] = await Promise.all([allProfiles().catch(() => []), loadRoster()])
         return res.status(200).json({ success: true, ...(await newAccountsData(principal, config, { profiles, roster, show: ['all', 'away'].includes(body.show) ? body.show : 'new' })) })
       }
+      // Session value (Lee, 20 Oct 2026): fill and fees per coach hour for each group. Read only.
+      case 'sessionValue': return await sessionValueAction(res, principal, config, body)
       case 'audit': return res.status(200).json({ success: true, entries: await listAudit(Number(body.limit) || 300) })
 
       // Hermes access (Lee, 16 Oct 2026): the switch, emails held for Lee's
