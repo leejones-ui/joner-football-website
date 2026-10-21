@@ -931,3 +931,22 @@ body:has(.ja[data-theme="light"]) { background: #F5F5F3 !important; }
 .ja-coming-bar { margin-top: 12px; padding: 12px 14px; border-radius: 14px; background: var(--ja-panel-2); border: 1px solid var(--ja-line); }
 @media (max-width: 560px) { .ja-date > .ja-yn { grid-column: 2; justify-self: start; justify-content: flex-start; } }
 @media (max-width: 300px) { .ja-date > .ja-yn { grid-column: 1; } }
+
+/* Game analysis (21 Oct 2026): packages, what you get, four steps. */
+.ja-ga-packs { margin-top: 6px; }
+@media (min-width: 800px) { .ja-ga-packs { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.ja-ga-pack { padding-top: 22px; }
+.ja .ja-ga-was { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; font-size: 15px; color: var(--ja-muted); }
+.ja .ja-ga-was s { text-decoration-thickness: 2px; text-decoration-color: var(--ja-red-2); }
+.ja .ja-ga-was span { padding: 4px 9px; border-radius: 999px; background: rgba(232, 0, 13, .12); color: var(--ja-red-2); font: 800 11px/1 Inter, system-ui, sans-serif; letter-spacing: .1em; text-transform: uppercase; }
+.ja .ja-ga-now { font-family: var(--ja-display); font-size: clamp(46px, 11vw, 60px); line-height: .95; color: var(--ja-hi); margin: 6px 0 4px; }
+.ja-ga-pack .ja-opt-s { margin-bottom: 16px; }
+.ja-ga-gets { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 760px) { .ja-ga-gets { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ja-ga-get.is-wide { grid-column: 1 / -1; } }
+.ja-ga-get { display: flex; gap: 14px; align-items: flex-start; padding: 18px; border-radius: 18px; background: var(--ja-panel); border: 1px solid var(--ja-line); min-width: 0; }
+.ja-ga-get.is-wide { border-color: var(--ja-red); background: linear-gradient(170deg, rgba(232, 0, 13, .14), rgba(232, 0, 13, .02) 70%), var(--ja-panel); }
+.ja-ga-ic { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: rgba(232, 0, 13, .12); color: var(--ja-red-2); }
+.ja-ga-ic svg { width: 20px; height: 20px; }
+.ja-ga-get b { display: block; color: var(--ja-hi); font-size: 16px; margin-bottom: 3px; }
+.ja-ga-get p { color: var(--ja-muted); font-size: 14px; line-height: 1.5; }
+@media (min-width: 900px) { .ja-steps.ja-steps-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }

@@ -22,7 +22,7 @@ const picked = (root, group) => [...root.querySelectorAll(`[data-x-group="${grou
 function mineList(D, kind) {
   const list = X(D).mine.filter((r) => r.kind === kind)
   if (!list.length) return ''
-  return `<section class="ja-sec">${secHead('Your requests')}<div class="ja-card"><ul class="ja-list">${list.map((r) => `<li class="ja-row"><span class="ja-num">${ic(kind === 'analysis' ? 'video' : 'calplus')}</span><div><b>${esc(r.kindLabel)}: ${esc(r.player)}</b><small>Sent ${esc(new Date(r.createdAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }))}${r.matchLabel ? ` · match ${esc(r.matchLabel)}` : ''}</small></div><span class="ja-dot ${r.status === 'done' ? 'ok' : 'warn'}">${r.status === 'done' ? 'Sorted' : 'With Ligia'}</span></li>`).join('')}</ul></div></section>`
+  return `<section class="ja-sec">${secHead('Your requests')}<div class="ja-card"><ul class="ja-list">${list.map((r) => `<li class="ja-row"><span class="ja-num">${ic(kind === 'analysis' ? 'video' : 'calplus')}</span><div><b>${esc(r.kindLabel)}: ${esc(r.player)}</b><small>Sent ${esc(new Date(r.createdAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }))}${r.matchLabel ? ` · match ${esc(r.matchLabel)}` : ''}${r.packageLabel ? ` · ${esc(r.packageLabel)}` : ''}</small></div><span class="ja-dot ${r.status === 'done' ? 'ok' : 'warn'}">${r.status === 'done' ? 'Sorted' : 'With Ligia'}</span></li>`).join('')}</ul></div></section>`
 }
 
 // ---------- Book extra sessions ----------
@@ -93,23 +93,64 @@ export function renderExtra(el, D) {
 
 // ---------- Book game analysis ----------
 
+// Redesign with Coach Dean's packages (Lee, 21 Oct 2026): JFP prices with
+// the normal price crossed out, what they get, how it works, then the form
+// with the package already picked.
+const GA_DEFAULT = [{ key: '1', games: 1, cents: 25000, normalCents: 30000 }, { key: '5', games: 5, cents: 97500, normalCents: 119900 }, { key: '10', games: 10, cents: 150000, normalCents: 180000 }]
+const aud = (c) => `A$${(c / 100).toLocaleString('en-AU', { maximumFractionDigits: 0 })}`
+const GA_GETS = [
+  ['Full Performance Breakdown', 'A detailed review of your overall performance.'],
+  ['Performance Statistics', 'Key stats and individual performance metrics.'],
+  ['What You Did Well', 'Your strengths and positive moments throughout the game.'],
+  ['Areas for Improvement', 'Constructive feedback with specific examples of what you could have done differently.'],
+  ['Position-Specific Analysis', 'Detailed feedback tailored to your position and your role in the team.'],
+  ['Personal Development Targets', 'Clear areas to focus on to help improve your game.'],
+  ['In-Person Review', 'A one to one session to go through the footage, discuss key moments and find ways to take your game to the next level.'],
+]
 export function renderAnalysis(el, D) {
   const x = X(D)
-  el.innerHTML = `${hero({ img: `${IMG}/lee-coaching-field-1600x900.webp`, imgSmall: `${IMG}/lee-coaching-field-900x1100.webp`, kicker: 'Program', title: 'Game<br>analysis', lede: "JFP players get an exclusive discount on game analysis. We watch your player's game and give them detailed feedback to take into training." })}
-    <div class="ja-steps"><div class="ja-step"><b>Enquire</b><p>Fill in the short form below.</p></div><div class="ja-step"><b>We watch the game</b><p>Your player's moments in the match, on and off the ball.</p></div><div class="ja-step"><b>Detailed feedback</b><p>What they do well and what to work on next.</p></div></div>
-    <div class="ja-grid ja-grid-2" style="margin-top:14px">
-      <div class="ja-card ja-price-card"><p class="ja-kicker"><i></i>JFP players</p><p class="ja-amt"><span>Exclusive discount</span></p><p class="ja-small ja-muted">${x.analysisPriceLabel ? `Your JFP price is ${esc(x.analysisPriceLabel)} a match. ` : ''}Send an enquiry and we will reply with the price and the next steps.</p></div>
+  const packs = x.analysisPackages?.length ? x.analysisPackages : GA_DEFAULT
+  const jfp = x.analysisJfp === true
+  const card = (k) => {
+    const save = k.normalCents - k.cents
+    const best = k.games === 10
+    return `<div class="ja-opt-card ja-ga-pack${best ? ' is-best' : ''}" data-ga-pack="${esc(k.key)}">
+      ${best ? `<span class="ja-best">${ic('spark')}Best value</span>` : ''}
+      <p class="ja-opt-t">${k.games} game${k.games > 1 ? 's' : ''}</p>
+      ${jfp ? `<p class="ja-ga-was"><s>${aud(k.normalCents)}</s> <span>Save ${aud(save)}</span></p>` : ''}
+      <p class="ja-ga-now">${aud(jfp ? k.cents : k.normalCents)}</p>
+      <p class="ja-opt-s">${k.games > 1 ? `${aud(Math.round((jfp ? k.cents : k.normalCents) / k.games))} a game` : 'One match analysed'}</p>
+      <button type="button" class="ja-btn ${best ? 'ja-btn-red' : 'ja-btn-light'} ja-btn-block" data-ga-pick="${esc(k.key)}">Choose ${k.games} game${k.games > 1 ? 's' : ''}</button>
+    </div>`
+  }
+  el.innerHTML = `${hero({ img: `${IMG}/lee-coaching-field-1600x900.webp`, imgSmall: `${IMG}/lee-coaching-field-900x1100.webp`, kicker: 'Program', title: 'Game<br>analysis', lede: 'We break down your game, show you what went well and what to work on, then go through the footage with you one to one.' })}
+    <section class="ja-sec">${secHead(jfp ? 'Exclusive JFP prices' : 'Prices', jfp ? 'Only for JFP players. Everyone else pays the full price.' : 'JFP players get exclusive lower prices.')}
+      <div class="ja-opts-grid ja-ga-packs">${packs.map(card).join('')}</div>
+    </section>
+    <section class="ja-sec">${secHead('What you get', 'In every game analysis.')}
+      <div class="ja-ga-gets">${GA_GETS.map(([t, d], i) => `<div class="ja-ga-get${i === GA_GETS.length - 1 ? ' is-wide' : ''}"><span class="ja-ga-ic">${ic(i === GA_GETS.length - 1 ? 'user' : i === 1 ? 'grid' : i === 2 ? 'check' : i === 0 ? 'video' : 'spark')}</span><div><b>${esc(t)}</b><p>${esc(d)}</p></div></div>`).join('')}</div>
+    </section>
+    <section class="ja-sec">${secHead('How it works')}
+      <div class="ja-steps ja-steps-4"><div class="ja-step"><b>Choose and enquire</b><p>Pick a package and send the short form below.</p></div><div class="ja-step"><b>Send us the game</b><p>A link to the match video, now or later.</p></div><div class="ja-step"><b>We analyse it</b><p>Every moment, on and off the ball, with stats and examples.</p></div><div class="ja-step"><b>Your in-person review</b><p>We go through the footage together, one to one.</p></div></div>
+    </section>
+    <section class="ja-sec" id="x-analysis-sec">
       <div class="ja-card ja-form-card" id="x-analysis">
-        <p class="ja-kicker"><i></i>Enquire</p><h2 class="ja-h2" style="margin-top:10px">Ask about game analysis</h2>
+        <p class="ja-kicker"><i></i>Enquire</p><h2 class="ja-h2" style="margin-top:10px">Book game analysis</h2>
+        <label class="j-field"><span>Package</span><select class="j-select" id="xa-package">${packs.map((k) => `<option value="${esc(k.key)}">${k.games} game${k.games > 1 ? 's' : ''}, ${aud(jfp ? k.cents : k.normalCents)}</option>`).join('')}</select></label>
         ${playerField(D, 'xa-player')}
         <label class="j-field"><span>Link to a match video <span class="muted">(optional)</span></span><input class="j-input" id="xa-video" type="url" inputmode="url" placeholder="https://" autocomplete="off"></label>
         <label class="j-field"><span>Anything we should know? <span class="muted">(optional)</span></span><textarea class="j-textarea" id="xa-notes" rows="3" maxlength="1000" placeholder="For example, their position, or what you would like us to look at"></textarea></label>
         <label class="j-field"><span>Your mobile <span class="muted">(optional)</span></span><input class="j-input" id="xa-phone" type="tel" inputmode="tel" autocomplete="tel"></label>
+        <p class="ja-small ja-muted">Nothing is charged now. We reply with the next steps and how to pay.</p>
         <p class="j-err" id="xa-err" hidden></p>
         <div class="ja-actions"><button type="button" class="ja-btn ja-btn-red" data-x-send="analysis">Send the enquiry</button></div>
       </div>
-    </div>
+    </section>
     ${mineList(D, 'analysis')}`
+  el.querySelectorAll('[data-ga-pick]').forEach((b) => b.addEventListener('click', () => {
+    const sel = el.querySelector('#xa-package'); if (sel) sel.value = b.dataset.gaPick
+    el.querySelector('#x-analysis-sec')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }))
 }
 
 // ---------- clicks ----------
@@ -120,7 +161,7 @@ async function send(kind, btn, D) {
   const err = root.querySelector(kind === 'analysis' ? '#xa-err' : '#x-err')
   err.hidden = true
   const body = kind === 'analysis'
-    ? { kind, player: v('xa-player'), video: v('xa-video'), notes: v('xa-notes'), phone: v('xa-phone') }
+    ? { kind, package: v('xa-package'), player: v('xa-player'), video: v('xa-video'), notes: v('xa-notes'), phone: v('xa-phone') }
     : { kind, player: v('x-player'), type: picked(root, 'type')[0] || 'Either', days: picked(root, 'days'), times: picked(root, 'times'), coach: v('x-coach'), notes: v('x-notes'), phone: v('x-phone') }
   // The same checks the server makes, so the family hears straight away.
   if (kind === 'analysis' && body.video && !/^https?:\/\/\S{4,}/.test(body.video)) { err.textContent = 'That video link does not look right. Paste the full link, or leave it empty.'; err.hidden = false; return }

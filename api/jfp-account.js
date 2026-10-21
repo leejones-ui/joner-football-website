@@ -59,7 +59,7 @@ import { roleFor } from './_jfp-people.js'
 import { familyNotesFor, markFamilyNotesRead } from './_jfp-family-notes.js'
 import { reportsForFamily, familyView as reportFamilyView, readSetFor, markReportsRead, getReport, REPORT_ATTRS, REPORT_SCALE } from './_jfp-reports.js'
 import { progressByPlayer } from './_jfp-progress.js'
-import { submitExtra, listExtras, familyExtraView, analysisPrice, extraSlots, DAYS as EXTRA_DAYS, TIMES as EXTRA_TIMES, TYPES as EXTRA_TYPES } from './_jfp-extras.js'
+import { submitExtra, listExtras, familyExtraView, analysisPrice, extraSlots, gaPackages, gaEligible, DAYS as EXTRA_DAYS, TIMES as EXTRA_TIMES, TYPES as EXTRA_TYPES } from './_jfp-extras.js'
 // Saved card or bank account for session payments (claude/card-on-file).
 import { SAVED_PAY_FAMILY, savedPayFamily } from './_jfp-saved-pay.js'
 
@@ -329,14 +329,14 @@ async function overview(res, parent, body = {}, opts = {}) {
     bookings: bookings.filter((b) => b.email === parent.email && b.status === 'paid').map((b) => ({ id: b.id, players: b.players.map((x) => x.name), amountLabel: formatAud(b.amountPaidCents ?? b.priceCents), paidAt: b.paidAt })),
     juniors,
     // Book extra sessions and Book game analysis (round 3).
-    extras: await extrasView(config, parent.email),
+    extras: await extrasView(config, parent.email, gaEligible(jfpPlayers.flatMap((p) => p.term4))),
   })
 }
 
 // What the two booking pages need: the game analysis price if Lee set one,
 // whether holiday training slots are open, slots to book (none yet), and
 // this family's own requests.
-async function extrasView(config, email) {
+async function extrasView(config, email, jfp = false) {
   const [holiday, mine, seen] = await Promise.all([
     holidaySessions().catch((e) => { console.error('jfp account holiday sessions failed', e); return { label: '', sessions: [] } }),
     listExtras().then((l) => l.filter((r) => r.email === email).slice(0, 10).map(familyExtraView)).catch(() => []),
@@ -345,7 +345,7 @@ async function extrasView(config, email) {
   const price = analysisPrice(config)
   // Extra sessions coaches opened to book now (money engineer, _jfp-family-extra.js).
   const bookable = await bookableSlots(config)
-  return { analysisPriceLabel: price?.label || '', holidaySlots: holiday.sessions.filter((s) => !s.full).length, holiday, seen, slots: extraSlots(), bookable, days: EXTRA_DAYS, times: EXTRA_TIMES, types: EXTRA_TYPES, mine }
+  return { analysisPriceLabel: price?.label || '', analysisPackages: gaPackages(config), analysisJfp: jfp, holidaySlots: holiday.sessions.filter((s) => !s.full).length, holiday, seen, slots: extraSlots(), bookable, days: EXTRA_DAYS, times: EXTRA_TIMES, types: EXTRA_TYPES, mine }
 }
 
 // Holiday training sessions still to come (Lee, 19 Oct 2026: show what is on
@@ -406,7 +406,7 @@ async function requestExtra(res, parent, body) {
   const profs = await familyProfiles(parent.email).catch(() => [])
   const open = openPlayers({ fam, profs, account: await accountOf(parent.email) })
   const players = [...fam.players.map((p) => p.name), ...open.map((o) => o.name)]
-  const out = await submitExtra({ config, parent, parentName: fam.parentName, players, kind: clean(body.kind, 20), body })
+  const out = await submitExtra({ config, parent, parentName: fam.parentName, players, jfp: gaEligible(fam.players.flatMap((p) => p.term4)), kind: clean(body.kind, 20), body })
   if (!out.ok) return fail(res, out.status, out.error)
   return res.status(200).json({ success: true, request: familyExtraView(out.record), emailed: out.record.deliveries.staff === 'sent' })
 }

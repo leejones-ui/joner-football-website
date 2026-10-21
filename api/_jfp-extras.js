@@ -34,6 +34,33 @@ export function analysisPrice(config) {
   return p ? { cents: p.cents, label: formatAud(p.cents) } : null
 }
 
+// Game analysis packages (Lee, from Coach Dean, 21 Oct 2026): JFP players'
+// exclusive prices, with the normal price crossed out on the page. These are
+// only the starting prices. Lee and Ligia change them in Money > Prices with
+// prices named "Game analysis 5 games" (the JFP price) and "Game analysis 5
+// games normal" (everyone else). A saved, live price wins over these.
+export const GA_PACKAGES = [
+  { key: '1', games: 1, cents: 25000, normalCents: 30000 },
+  { key: '5', games: 5, cents: 97500, normalCents: 119900 },
+  { key: '10', games: 10, cents: 150000, normalCents: 180000 },
+]
+export function gaPackages(config = {}) {
+  const live = (config.customPrices || []).filter((x) => !x.archived && /game analysis/i.test(x.name || ''))
+  const find = (games, normal) => live.find((x) => { const m = String(x.name).match(/(\d+)\s*games?\b/i); return m && Number(m[1]) === games && /normal|non[\s-]*jfp|full price/i.test(x.name) === normal })
+  return GA_PACKAGES.map((k) => ({ ...k, cents: find(k.games, false)?.cents || k.cents, normalCents: find(k.games, true)?.cents || k.normalCents }))
+}
+// jfp: the family has a confirmed or paid JFP place this term (gaEligible).
+export function gaPackageLabel(config, key, jfp) {
+  const p = gaPackages(config).find((x) => x.key === key)
+  if (!p) return ''
+  const n = `${p.games} game${p.games > 1 ? 's' : ''}`
+  return jfp ? `${n}, ${formatAud(p.cents)} JFP price (normally ${formatAud(p.normalCents)})` : `${n}, ${formatAud(p.normalCents)} (not a JFP family, so the normal price)`
+}
+// The JFP price is for a current JFP place (Revenue agent, 21 Oct 2026): a
+// Term 4 row that is confirmed or has money paid, never a trial or a removed
+// player.
+export const gaEligible = (rows = []) => rows.some((r) => r.holdsPlace && !/trial/i.test(r.paymentType || '') && (r.confirmation === 'Confirmed' || Number(r.paidAud) > 0))
+
 // Extra 1 on 1 times to book straight away, when staff open some. None yet:
 // the page shows the request form.
 export function extraSlots() { return [] }
@@ -58,7 +85,8 @@ export function cleanExtra(kind, body = {}, { players = [], today = sydneyToday(
   const video = clean(body.video, 500)
   // An enquiry since 15 Oct 2026 (Lee): the video link is optional.
   if (video && !URL_OK.test(video)) return { ok: false, status: 400, error: 'That video link does not look right. Paste the full link, or leave it empty.' }
-  return { ok: true, value: { kind, player: known || player, matchDate, video, sendLater: !video, notes } }
+  const pkg = GA_PACKAGES.some((x) => x.key === String(body.package || '')) ? String(body.package) : ''
+  return { ok: true, value: { kind, player: known || player, matchDate, video, sendLater: !video, notes, ...(pkg ? { package: pkg } : {}) } }
 }
 
 function parse(v) { try { return JSON.parse(v) } catch { return null } }
@@ -78,15 +106,15 @@ async function underRateLimit(email) {
 
 // What the family sees of their own requests.
 export function familyExtraView(r) {
-  return { id: r.id, kind: r.kind, kindLabel: KINDS[r.kind], player: r.player, status: r.status, createdAt: r.createdAt, ...(r.matchDate ? { matchLabel: dateLabel(r.matchDate) } : {}) }
+  return { id: r.id, kind: r.kind, kindLabel: KINDS[r.kind], player: r.player, status: r.status, createdAt: r.createdAt, ...(r.matchDate ? { matchLabel: dateLabel(r.matchDate) } : {}), ...(r.package ? { packageLabel: `${r.package} game${r.package === '1' ? '' : 's'}` } : {}) }
 }
 
 // A family's request: saved, staff emailed (game analysis: Ligia and Dean too), Telegram told.
-export async function submitExtra({ config, parent, parentName = '', players = [], kind, body, notify = { email: sendExtraRequestAlert, telegram: telegramAlert } }) {
+export async function submitExtra({ config, parent, parentName = '', players = [], jfp = false, kind, body, notify = { email: sendExtraRequestAlert, telegram: telegramAlert } }) {
   const v = cleanExtra(kind, body, { players })
   if (!v.ok) return v
   if (!(await underRateLimit(parent.email))) return { ok: false, status: 429, error: 'That is a lot of requests in a short time. Please call or email us instead.' }
-  const price = kind === 'analysis' ? analysisPrice(config) : null
+  const price = kind === 'analysis' ? (v.value.package ? { label: gaPackageLabel(config, v.value.package, jfp) } : analysisPrice(config)) : null
   const rec = {
     id: newId(kind === 'analysis' ? 'GA' : 'XS'), ...v.value, status: 'new',
     email: parent.email, parentName: clean(parentName, 100), phone: clean(body.phone, 40),

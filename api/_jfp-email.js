@@ -244,7 +244,7 @@ export async function sendExtraRequestAlert({ rec, config }) {
   const list = [
     ['Player', esc(rec.player)],
     ...(analysis
-      ? [['Match', esc(rec.matchDate ? dateLabel(rec.matchDate) : 'Date not given')], ['Video', rec.video ? link(rec.video.slice(0, 80), rec.video) : 'No link yet'], ['Price', esc(rec.priceLabel || 'Not set (the page says "Ask us")')]]
+      ? [['Match', esc(rec.matchDate ? dateLabel(rec.matchDate) : 'Date not given')], ['Video', rec.video ? link(rec.video.slice(0, 80), rec.video) : 'No link yet'], ['Package', esc(rec.priceLabel || 'Not chosen')]]
       : [['Type', esc(rec.type)], ['Days', esc(rec.days.join(', ') || 'Any')], ['Times', esc(rec.times.join(', ') || 'Any')], ['Coach', esc(rec.coach || 'No preference')]]),
     ['Notes', rec.notes ? esc(rec.notes).replace(/\r?\n/g, '<br>') : 'None'],
     ['From', esc(rec.parentName || 'Not given')], ['Email', esc(rec.email)], ...(rec.phone ? [['Mobile', esc(rec.phone)]] : []),
