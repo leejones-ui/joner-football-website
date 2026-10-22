@@ -500,8 +500,10 @@ export default async function handler(req, res) {
 
     const source = cleanString(body.source || body.formName || 'website-form', 80)
     const isFreeBundleLead = source.startsWith('free-bundle')
+    // The /newsletter page asks for first name as optional, like free-bundle.
+    const isNewsletterPage = source === 'newsletter-page'
     const firstName = cleanString(body.firstName || body.first_name || body.name || '', 80)
-    if (!firstName && !isFreeBundleLead) return res.status(400).json({ success: false, error: 'Name is required.' })
+    if (!firstName && !isFreeBundleLead && !isNewsletterPage) return res.status(400).json({ success: false, error: 'Name is required.' })
 
     const listIds = enforceFreeBundleRoleLists(parseListIds(body), body)
     const isHubGate = source.startsWith('hub-gate')
@@ -541,7 +543,9 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         email: validation.email,
         attributes: {
-          FIRSTNAME: firstName,
+          // Only send FIRSTNAME when given, so a blank optional name never
+          // wipes the name Brevo already holds for an existing contact.
+          ...(firstName ? { FIRSTNAME: firstName } : {}),
           WEBSITE_SOURCE: source,
           SOURCE: source,
           ...trackingAttributes
