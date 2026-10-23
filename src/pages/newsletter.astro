@@ -2,8 +2,8 @@
 import BaseLayout from '../layouts/BaseLayout.astro'
 import { breadcrumbSchema, webPageSchema } from '../lib/seoSchema'
 
-const title = 'The Joner Football Newsletter | A letter from Lee Jones'
-const description = 'One letter a month from Lee Jones. The stories behind Joner Football, what he is working on with his players, and one idea to use at your next session.'
+const title = 'The Joner Football Newsletter | Letters from Lee Jones'
+const description = 'Letters from Lee Jones. The real stories behind Joner Football, from Everton and Wrexham to the HQ in Belrose, and what they mean for your training.'
 const pageUrl = 'https://jonerfootball.com/newsletter/'
 const schemas = [
   webPageSchema({ name: title, description, url: pageUrl }),
@@ -12,69 +12,153 @@ const schemas = [
     { name: 'Newsletter', url: pageUrl },
   ]),
 ]
-const latestImage = '/images/email/oct26/oct26-empty-hq-day-one.jpg'
+
+// The two most recent letters sent to the Newsletter list (Brevo 66).
+// Links are Brevo's public web copies of each campaign. Newest first.
+const letters = [
+  {
+    date: '22 October 2026',
+    title: 'The warehouse I said I would never get.',
+    teaser: 'How a swimming lesson led us to the Joner Football HQ.',
+    image: '/images/email/oct26/oct26-empty-hq-day-one.jpg',
+    alt: 'The empty Joner Football HQ warehouse on day one',
+    url: 'https://sh1.sendinblue.com/2lz14j77wt4c.html',
+  },
+  {
+    date: '23 September 2026',
+    title: 'Every Tuesday I played against men.',
+    teaser: 'A normal week at Wrexham at sixteen, and why the off season matters.',
+    image: '/images/email/archive/archive-age-17-wrexham.jpg',
+    alt: 'Lee at seventeen playing for Wrexham AFC',
+    url: 'https://sh1.sendinblue.com/2lvp0z77wt4c.html',
+  },
+]
 ---
 
 <BaseLayout
   title={title}
   description={description}
   keywords="Joner Football newsletter, Lee Jones newsletter, football coaching newsletter, football training tips"
-  ogImage={`https://jonerfootball.com${latestImage}`}
+  ogImage={`https://jonerfootball.com${letters[0].image}`}
   schema={schemas}
+  hideBookNow
+  hideFooterSignup
+  hideMobileAppCta
 >
-  <main class="bg-joner-black text-white">
-    <section class="px-4 pt-12 pb-10 sm:pt-16 md:pt-24" aria-labelledby="newsletter-title">
-      <div class="mx-auto w-full max-w-xl">
-        <p class="font-body text-xs font-bold uppercase tracking-[0.2em] text-joner-red">The Newsletter</p>
-        <h1 id="newsletter-title" class="mt-3 font-heading text-4xl leading-none sm:text-5xl md:text-6xl">One letter a month from Lee.</h1>
-        <span class="mt-6 block h-1 w-14 bg-joner-red" aria-hidden="true"></span>
-        <p class="mt-6 font-body text-base leading-relaxed text-gray-300 sm:text-lg">
-          The stories behind Joner Football, what I am working on with my players, and one idea you can use at your next session. No spam. Unsubscribe any time.
-        </p>
+  <div class="nl">
+    <section class="nl-top" aria-labelledby="newsletter-title">
+      <div class="nl-wrap">
+        <div class="nl-rule">
+          <span>Joner Football</span>
+          <span>The Newsletter</span>
+        </div>
 
-        <div class="mt-8 border border-gray-800 bg-joner-gray p-5 sm:p-8">
-          <form id="newsletter-form" class="space-y-5" data-brevo-form data-brevo-custom novalidate>
-            <div>
-              <label for="newsletter-first-name" class="mb-2 block font-body text-sm font-semibold text-white">First name <span class="font-normal text-gray-400">(optional)</span></label>
-              <input id="newsletter-first-name" type="text" name="firstName" autocomplete="given-name" maxlength="80" placeholder="Your first name" class="min-h-[48px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+        <h1 id="newsletter-title" class="nl-h1">Letters from Lee.</h1>
+        <p class="nl-intro">
+          I write every one myself. The real stories behind Joner Football, from my years at Everton and Wrexham to building the HQ, and what they mean for your training.
+        </p>
+        <p class="nl-intro nl-intro--muted">Hit reply and it comes straight to me. I read every one.</p>
+
+        <div class="nl-card">
+          <form id="newsletter-form" class="nl-form" data-brevo-form data-brevo-custom novalidate>
+            <div class="nl-field">
+              <label for="newsletter-first-name">First name <span>(optional)</span></label>
+              <input id="newsletter-first-name" type="text" name="firstName" autocomplete="given-name" maxlength="80" placeholder="Your first name" />
             </div>
-            <div>
-              <label for="newsletter-email" class="mb-2 block font-body text-sm font-semibold text-white">Email</label>
-              <input id="newsletter-email" type="email" name="email" autocomplete="email" inputmode="email" required placeholder="you@example.com" class="min-h-[48px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+            <div class="nl-field">
+              <label for="newsletter-email">Email</label>
+              <input id="newsletter-email" type="email" name="email" autocomplete="email" inputmode="email" required placeholder="you@example.com" />
             </div>
-            <button type="submit" class="btn-red w-full">Send me the next letter</button>
-            <p id="newsletter-error" class="hidden font-body text-sm leading-relaxed text-amber-400" role="alert"></p>
+            <button type="submit" class="nl-btn">Send me the next letter</button>
+            <p class="nl-small">No spam. Unsubscribe any time.</p>
+            <p id="newsletter-error" class="nl-error hidden" role="alert"></p>
           </form>
 
-          <div id="newsletter-success" class="hidden" role="status" aria-live="polite" tabindex="-1">
-            <p class="font-heading text-3xl uppercase leading-none">You are in<span class="text-joner-red">.</span></p>
-            <p class="mt-4 font-body text-base leading-relaxed text-gray-300">The next letter lands in your inbox soon. Keep turning up.</p>
-            <p class="mt-4 font-body text-base font-semibold text-white">Lee</p>
+          <div id="newsletter-success" class="nl-success hidden" role="status" aria-live="polite" tabindex="-1">
+            <p class="nl-success-title">You are in.</p>
+            <p>The next letter lands in your inbox soon. Keep turning up.</p>
+            <p class="nl-sign">Lee</p>
           </div>
         </div>
       </div>
     </section>
 
-    <section class="px-4 pb-16 md:pb-24" aria-labelledby="latest-letter-title">
-      <div class="mx-auto w-full max-w-xl border-t border-gray-800 pt-10">
-        <p class="font-body text-xs font-bold uppercase tracking-[0.2em] text-joner-red">Latest letter</p>
-        <article class="mt-5">
-          <img
-            src={latestImage}
-            alt="The empty Joner Football HQ warehouse on day one"
-            width="1200"
-            height="1500"
-            loading="lazy"
-            decoding="async"
-            class="aspect-[4/3] w-full object-cover"
-          />
-          <h2 id="latest-letter-title" class="mt-5 font-heading text-2xl leading-tight sm:text-3xl">The warehouse I said I would never get</h2>
-          <p class="mt-3 font-body text-base leading-relaxed text-gray-300">How a swimming lesson led us to the Joner Football HQ.</p>
-        </article>
+    <section class="nl-recent" aria-labelledby="recent-title">
+      <div class="nl-wide">
+        <h2 id="recent-title" class="nl-label">The last two letters</h2>
+        <div class="nl-grid">
+          {letters.map((l) => (
+            <a class="nl-letter" href={l.url} target="_blank" rel="noopener noreferrer">
+              <img src={l.image} alt={l.alt} width="1200" height="900" loading="lazy" decoding="async" />
+              <div class="nl-letter-body">
+                <p class="nl-label">{l.date}</p>
+                <h3>{l.title}</h3>
+                <p class="nl-teaser">{l.teaser}</p>
+                <span class="nl-read">Read the letter &rarr;</span>
+              </div>
+            </a>
+          ))}
+        </div>
       </div>
     </section>
-  </main>
+  </div>
 </BaseLayout>
+
+<style>
+  /* Same paper, ink and type as the emails themselves. */
+  .nl { --paper: #EFE9D9; --ink: #1C1C1C; --muted: #5B5851; --line: #CFC7B2; --red: #C8102E; background: var(--paper); color: var(--ink); }
+  .nl-top { padding: 48px 16px 40px; }
+  .nl-wrap { max-width: 560px; margin: 0 auto; text-align: center; }
+  .nl-wide { max-width: 1000px; margin: 0 auto; }
+  .nl-rule { display: flex; justify-content: space-between; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--ink); font: 11px/1 'Courier New', Courier, monospace; letter-spacing: 3px; text-transform: uppercase; }
+  .nl-rule span:last-child { color: var(--muted); }
+  .nl-label { margin: 0; font: 11px/1.4 'Courier New', Courier, monospace; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); }
+  .nl-h1, .nl-letter h3, .nl-success-title { text-transform: none; }
+  .nl-h1 { margin: 36px 0 0; font: normal 44px/1.05 Georgia, 'Times New Roman', Times, serif; letter-spacing: -0.5px; color: var(--ink); }
+  .nl-intro { margin: 20px auto 0; max-width: 34em; font: 18px/1.65 Georgia, 'Times New Roman', Times, serif; color: var(--ink); text-wrap: pretty; }
+  .nl-intro--muted { margin-top: 12px; font-style: italic; color: var(--muted); }
+  .nl-card { margin-top: 32px; padding: 24px 20px; background: #F7F3E8; border: 1px solid var(--line); text-align: left; }
+  .nl-form { display: grid; gap: 16px; }
+  .nl-field label { display: block; margin-bottom: 6px; font: bold 12px/1.2 'Courier New', Courier, monospace; letter-spacing: 2px; text-transform: uppercase; color: var(--ink); }
+  .nl-field label span { font-weight: normal; color: var(--muted); letter-spacing: 1px; text-transform: none; }
+  .nl-field input { box-sizing: border-box; width: 100%; min-height: 48px; padding: 12px 14px; border: 1px solid #B9B09A; border-radius: 0; background: #fff; color: var(--ink); font: 16px/1.3 Georgia, 'Times New Roman', Times, serif; }
+  .nl-field input::placeholder { color: #9A9485; }
+  .nl-field input:focus { outline: 2px solid var(--ink); outline-offset: 1px; border-color: var(--ink); }
+  .nl-btn { width: 100%; min-height: 56px; padding: 16px; border: 2px solid var(--red); border-radius: 8px; background: var(--red); color: #fff; font: bold 15px/1.2 'Courier New', Courier, monospace; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; }
+  .nl-btn:hover { background: #A50D26; border-color: #A50D26; }
+  .nl-btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+  .nl-btn:disabled { opacity: .7; cursor: wait; }
+  .nl-small { margin: -4px 0 0; text-align: center; font: 14px/1.4 Georgia, 'Times New Roman', Times, serif; color: var(--muted); }
+  .nl-error { margin: 0; font: 15px/1.5 Georgia, 'Times New Roman', Times, serif; color: #A50D26; }
+  .nl-success { text-align: center; font: 17px/1.6 Georgia, 'Times New Roman', Times, serif; }
+  .nl-success:focus { outline: none; }
+  .nl-success p { margin: 0; }
+  .nl-success-title { font-size: 30px !important; line-height: 1.1 !important; margin-bottom: 12px !important; }
+  .nl-sign { margin-top: 14px !important; font: italic 30px/1.1 Georgia, 'Times New Roman', Times, serif; }
+  .nl-recent { padding: 8px 16px 64px; }
+  .nl-recent > .nl-wide > .nl-label { padding-bottom: 12px; border-bottom: 1px solid var(--ink); text-align: center; color: var(--ink); font-weight: normal; }
+  .nl-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; margin-top: 24px; }
+  .nl-letter { display: flex; flex-direction: column; background: #F7F3E8; border: 1px solid var(--line); color: var(--ink); text-decoration: none; transition: border-color .15s; }
+  .nl-letter:hover { border-color: var(--ink); }
+  .nl-letter:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+  .nl-letter img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+  .nl-letter-body { display: flex; flex: 1; flex-direction: column; padding: 20px; }
+  .nl-letter h3 { margin: 10px 0 0; font: normal 24px/1.2 Georgia, 'Times New Roman', Times, serif; letter-spacing: -0.3px; }
+  .nl-teaser { margin: 10px 0 0; font: 16px/1.6 Georgia, 'Times New Roman', Times, serif; color: var(--muted); }
+  .nl-read { margin-top: auto; padding-top: 18px; font: bold 12px/1 'Courier New', Courier, monospace; letter-spacing: 2px; text-transform: uppercase; color: var(--red); }
+  @media (min-width: 640px) {
+    .nl-top { padding: 72px 24px 48px; }
+    .nl-h1 { font-size: 60px; }
+    .nl-card { padding: 32px; }
+    .nl-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .nl-recent { padding: 16px 24px 88px; }
+  }
+  @media (max-width: 360px) {
+    .nl-h1 { font-size: 38px; }
+    .nl-rule { letter-spacing: 2px; }
+    .nl-btn { font-size: 14px; letter-spacing: 1px; padding: 16px 8px; }
+  }
+</style>
 
 <script is:inline>
   (function () {

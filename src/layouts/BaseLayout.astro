@@ -15,6 +15,10 @@ export interface Props {
   schema?: object | object[]
   hideChrome?: boolean
   hideMobileAppCta?: boolean
+  // Pages whose one job is something else (the newsletter) drop Book now.
+  hideBookNow?: boolean
+  // A page that is itself a sign-up form drops the footer's second one.
+  hideFooterSignup?: boolean
   // Private pages (JFP booking, accounts, staff portal): no ad pixels, analytics
   // or chat widgets, so personal details in URLs never reach third parties.
   noTracking?: boolean
@@ -34,6 +38,8 @@ const {
   schema,
   hideChrome = false,
   hideMobileAppCta = false,
+  hideBookNow = false,
+  hideFooterSignup = false,
   noTracking = false,
   manifest = '/site.webmanifest?v=20260526-original-logo-v2',
   themeColor = '#000000',
@@ -229,11 +235,11 @@ const allSchemas = schema
     <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:bg-red-600 focus:text-white focus:px-4 focus:py-2 focus:z-50 focus:rounded">
       Skip to content
     </a>
-    {!hideChrome && <Nav />}
+    {!hideChrome && <Nav hideBookNow={hideBookNow} />}
     <main id="main-content">
       <slot />
     </main>
-    {!hideChrome && <Footer />}
+    {!hideChrome && <Footer hideBookNow={hideBookNow} hideSignup={hideFooterSignup} />}
 
     {!noTracking && (
       <Fragment>

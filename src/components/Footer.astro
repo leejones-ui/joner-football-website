@@ -1,5 +1,7 @@
 ---
 import BookNowPanel from './BookNowPanel.astro'
+
+const { hideBookNow = false, hideSignup = false } = Astro.props
 ---
 
 <footer class="bg-joner-gray border-t border-gray-800 pb-20 md:pb-0">
@@ -12,11 +14,14 @@ import BookNowPanel from './BookNowPanel.astro'
     </div>
 
     <!-- JFP booking -->
+    {!hideBookNow && (
     <div class="mx-auto mb-6 max-w-4xl">
       <BookNowPanel compact heading="Train with us in Sydney" text="JFP bookings are open. See the timetable and apply for a spot." eyebrow="" place="footer" />
     </div>
+    )}
 
     <!-- Email capture -->
+    {!hideSignup && (
     <div class="mx-auto mb-10 max-w-4xl border border-gray-800 bg-joner-black p-6 md:p-8">
       <div class="mb-5 text-center">
         <p class="font-heading text-xs uppercase tracking-[0.24em] text-joner-red">Free Joner Football Updates</p>
@@ -37,6 +42,7 @@ import BookNowPanel from './BookNowPanel.astro'
         <button type="submit" class="btn-red min-h-[44px] whitespace-nowrap px-6 py-3 text-sm">Join</button>
       </form>
     </div>
+    )}
 
     <!-- Quick links -->
     <div class="flex flex-wrap justify-center gap-x-6 gap-y-2 mb-8">
