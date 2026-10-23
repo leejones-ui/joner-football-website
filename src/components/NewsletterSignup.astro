@@ -1,0 +1,123 @@
+---
+// The one newsletter form: adds to Brevo list 66 only (source newsletter-page).
+// Used on /newsletter/ and under every letter. One per page (it uses ids).
+import '../styles/letters.css'
+---
+
+<div class="nl-card">
+  <form id="newsletter-form" class="nl-form" data-brevo-form data-brevo-custom novalidate>
+    <div class="nl-field">
+      <label for="newsletter-first-name">First name <span>(optional)</span></label>
+      <input id="newsletter-first-name" type="text" name="firstName" autocomplete="given-name" maxlength="80" placeholder="Your first name" />
+    </div>
+    <div class="nl-field">
+      <label for="newsletter-email">Email</label>
+      <input id="newsletter-email" type="email" name="email" autocomplete="email" inputmode="email" required placeholder="you@example.com" />
+    </div>
+    <button type="submit" class="nl-btn">Send me the next letter</button>
+    <p class="nl-small">No spam. Unsubscribe any time.</p>
+    <p id="newsletter-error" class="nl-error hidden" role="alert"></p>
+  </form>
+
+  <div id="newsletter-success" class="nl-success hidden" role="status" aria-live="polite" tabindex="-1">
+    <p class="nl-success-title">You are in.</p>
+    <p>The next letter lands in your inbox soon. Keep turning up.</p>
+    <p class="nl-sign">Lee</p>
+  </div>
+</div>
+
+<script is:inline>
+  (function () {
+    var NEWSLETTER_LIST_ID = 66;
+    var SOURCE = 'newsletter-page';
+    var form = document.getElementById('newsletter-form');
+    var success = document.getElementById('newsletter-success');
+    var errorBox = document.getElementById('newsletter-error');
+    if (!form || !success || !errorBox) return;
+    var button = form.querySelector('button[type="submit"]');
+    var buttonText = button ? button.textContent : 'Send me the next letter';
+    var FRIENDLY_ERROR = 'Sorry, that did not go through. Please check your email and try again, or email leejones@jonerfootball.com and I will add you myself.';
+
+    function showError(message) {
+      errorBox.textContent = message || FRIENDLY_ERROR;
+      errorBox.classList.remove('hidden');
+    }
+
+    function trackingFields() {
+      var out = {};
+      var params = window.JonerTracking && typeof window.JonerTracking.collectTrackingParams === 'function'
+        ? window.JonerTracking.collectTrackingParams()
+        : new URLSearchParams(window.location.search || '');
+      params.forEach(function (value, key) {
+        if (value) out[key] = value;
+      });
+      return out;
+    }
+
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();
+      errorBox.classList.add('hidden');
+      var firstName = String(form.elements.firstName.value || '').trim();
+      var email = String(form.elements.email.value || '').trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+        showError('Please enter a valid email address.');
+        form.elements.email.focus();
+        return;
+      }
+      if (button) {
+        button.disabled = true;
+        button.textContent = 'Sending...';
+      }
+
+      var getToken = window.JonerRecaptcha && window.JonerRecaptcha.getToken
+        ? window.JonerRecaptcha.getToken('subscribe')
+        : Promise.resolve('');
+
+      Promise.resolve(getToken)
+        .catch(function () { return ''; })
+        .then(function (recaptchaToken) {
+          // Tracking fields go first so they can never replace the core fields.
+          // listId is sent as well as listIds: the endpoint falls back to list 2
+          // when listId is missing, and this form must only add list 66.
+          var payload = Object.assign(trackingFields(), {
+            email: email,
+            firstName: firstName,
+            listId: NEWSLETTER_LIST_ID,
+            listIds: [NEWSLETTER_LIST_ID],
+            source: SOURCE,
+            marketingConsent: true,
+            recaptchaToken: recaptchaToken || ''
+          });
+          return fetch('/api/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+        })
+        .then(function (response) {
+          return response.json().catch(function () { return {}; }).then(function (data) { return { ok: response.ok, data: data }; });
+        })
+        .then(function (result) {
+          if (!result.ok || !result.data || !result.data.success) {
+            throw new Error((result.data && result.data.error) || '');
+          }
+          if (window.JonerTracking && typeof window.JonerTracking.trackEvent === 'function') {
+            window.JonerTracking.trackEvent('Lead', {
+              user_data: { email: email },
+              custom_data: { form_name: SOURCE, list_id: NEWSLETTER_LIST_ID, lead_type: 'newsletter_lead' }
+            });
+          }
+          form.classList.add('hidden');
+          success.classList.remove('hidden');
+          success.focus({ preventScroll: true });
+        })
+        .catch(function (error) {
+          showError(error && error.message ? error.message : FRIENDLY_ERROR);
+          if (button) {
+            button.disabled = false;
+            button.textContent = buttonText;
+          }
+        });
+    });
+  })();
+</script>

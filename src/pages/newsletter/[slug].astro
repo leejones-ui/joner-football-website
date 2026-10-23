@@ -1,0 +1,106 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import NewsletterSignup from '../../components/NewsletterSignup.astro'
+import LetterCards from '../../components/LetterCards.astro'
+import { breadcrumbSchema, webPageSchema } from '../../lib/seoSchema'
+import { letters, type Letter } from '../../data/letters'
+import '../../styles/letters.css'
+
+export function getStaticPaths() {
+  return letters.map((letter) => ({ params: { slug: letter.slug }, props: { letter } }))
+}
+
+const { letter } = Astro.props as { letter: Letter }
+const pageUrl = `https://jonerfootball.com/newsletter/${letter.slug}/`
+const title = `${letter.title.replace(/\.$/, '')} | A letter from Lee Jones`
+const description = letter.teaser
+const others = letters.filter((l) => l.slug !== letter.slug).slice(0, 2)
+const schemas = [
+  webPageSchema({ name: title, description, url: pageUrl }),
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: letter.title,
+    description,
+    datePublished: letter.date,
+    image: `https://jonerfootball.com${letter.card}`,
+    author: { '@type': 'Person', name: 'Lee Jones', url: 'https://jonerfootball.com/about' },
+    publisher: { '@type': 'Organization', name: 'Joner Football', url: 'https://jonerfootball.com' },
+    mainEntityOfPage: pageUrl,
+  },
+  breadcrumbSchema([
+    { name: 'Home', url: 'https://jonerfootball.com/' },
+    { name: 'Newsletter', url: 'https://jonerfootball.com/newsletter/' },
+    { name: letter.title, url: pageUrl },
+  ]),
+]
+const isExternal = (href = '') => href.startsWith('http')
+---
+
+<BaseLayout
+  title={title}
+  description={description}
+  ogImage={`https://jonerfootball.com${letter.card}`}
+  ogType="article"
+  schema={schemas}
+  hideFooterSignup
+  hideMobileAppCta
+>
+  <div class="nl">
+    <article class="nl-top">
+      <div class="nl-wrap nl-wrap--letter">
+        <div class="nl-rule">
+          <a href="/newsletter/">Joner Football</a>
+          <span>The Newsletter</span>
+        </div>
+
+        {letter.hero && (
+          <img class="nl-fig-img nl-hero" src={letter.hero.src} alt={letter.hero.alt} loading="eager" />
+        )}
+        <h1 class="nl-h1 nl-h1--letter">{letter.title}</h1>
+        <p class="nl-label nl-dateline">{letter.dateLabel} &middot; A letter from Lee</p>
+
+        <div class="nl-body">
+          {letter.body.map((b) => {
+            if (b.type === 'h2') return <h2>{b.text}</h2>
+            if (b.type === 'p') return <p set:html={b.html} />
+            if (b.type === 'sign') return <p class="nl-sign">{b.text}</p>
+            if (b.type === 'ps') return <p class="nl-ps"><span>PS.</span> <Fragment set:html={b.html} /></p>
+            if (b.type === 'cta') return (
+              <a class="nl-btn nl-cta" href={b.href} {...(isExternal(b.href) ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>{b.label} &rarr;</a>
+            )
+            if (b.type === 'figure') return (
+              <figure class="nl-fig">
+                {b.video ? (
+                  <a href={b.video} target="_blank" rel="noopener noreferrer" class="nl-video">
+                    <img class="nl-fig-img" src={b.src} alt={b.alt} loading="lazy" decoding="async" />
+                  </a>
+                ) : (
+                  <img class="nl-fig-img" src={b.src} alt={b.alt} loading="lazy" decoding="async" />
+                )}
+                {(b.caption || b.video) && <figcaption class="nl-label">{b.caption || 'Tap to watch'}</figcaption>}
+              </figure>
+            )
+            return null
+          })}
+        </div>
+
+        <div class="nl-after">
+          <p class="nl-label">Get the next letter</p>
+          <NewsletterSignup />
+        </div>
+      </div>
+    </article>
+
+    {others.length > 0 && (
+      <section class="nl-recent" aria-labelledby="more-title">
+        <div class="nl-wide">
+          <h2 id="more-title" class="nl-label nl-rule-head">More letters</h2>
+          <div class={others.length === 1 ? 'nl-one' : undefined}>
+            <LetterCards letters={others} />
+          </div>
+        </div>
+      </section>
+    )}
+  </div>
+</BaseLayout>

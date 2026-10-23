@@ -1,5 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
+import LetterCards from './LetterCards.astro'
+import { letters } from '../data/letters'
 
 const APP_LINK = 'https://app.jonerfootball.com'
 const JOIN_LINK = '/app?utm_source=website&utm_medium=hub&utm_campaign=hub_app_cta'
@@ -78,6 +80,18 @@ const TitleTag = titleTag
             </a>
           ))}
         </div>
+      </div>
+    </section>
+
+    <section class="nl hub-letters" aria-labelledby="hub-letters-title">
+      <div class="hub-letters__head">
+        <div class="nl-rule"><span>Joner Football</span><span>The Newsletter</span></div>
+        <h2 id="hub-letters-title">Letters from Lee.</h2>
+        <p>Real stories from Joner Football and my life, on and off the pitch. Straight from me to you.</p>
+      </div>
+      <div class="nl-wide">
+        <LetterCards letters={letters.slice(0, 2)} />
+        <div class="hub-letters__all"><a class="nl-btn" href="/newsletter/">Get the next letter</a></div>
       </div>
     </section>
 

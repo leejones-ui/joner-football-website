@@ -1,0 +1,22 @@
+---
+import type { Letter } from '../data/letters'
+import '../styles/letters.css'
+
+export interface Props { letters: Letter[]; headingTag?: 'h2' | 'h3' }
+const { letters, headingTag = 'h3' } = Astro.props
+const Heading = headingTag
+---
+
+<div class:list={['nl-grid', { 'nl-grid--3': letters.length >= 3 }]}>
+  {letters.map((l) => (
+    <a class="nl-letter" href={`/newsletter/${l.slug}/`}>
+      <img src={l.card} alt={l.cardAlt} width="1200" height="900" loading="lazy" decoding="async" />
+      <div class="nl-letter-body">
+        <p class="nl-label">{l.dateLabel}</p>
+        <Heading>{l.title}</Heading>
+        <p class="nl-teaser">{l.teaser}</p>
+        <span class="nl-read">Read the letter &rarr;</span>
+      </div>
+    </a>
+  ))}
+</div>
