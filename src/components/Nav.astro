@@ -1,8 +1,6 @@
 ---
 import BookNowButton from './BookNowButton.astro'
 import { APP_JOIN_URL } from '../lib/booking'
-
-const { hideBookNow = false } = Astro.props
 ---
 
 <nav class="bg-joner-black sticky top-0 z-40 border-b border-gray-900" id="main-nav">
@@ -106,14 +104,14 @@ const { hideBookNow = false } = Astro.props
            Train in person (outlined, the JFP booking system) -->
       <div class="nav-desktop-cta hidden lg:flex items-center gap-2 xl:gap-3">
         <a href={APP_JOIN_URL} class="btn-red nav-download-cta nav-cta-sm">Download the App</a>
-        {!hideBookNow && <BookNowButton size="sm" variant="outline" label="Train in person" place="nav-desktop" />}
+        <BookNowButton size="sm" variant="outline" label="Train in person" place="nav-desktop" />
       </div>
 
       <!-- Mobile: the same two buttons as desktop (the app in red, Book now
            outlined), next to the menu button (Lee, 18 Oct) -->
       <div class="nav-mobile-actions lg:hidden flex items-center gap-1.5">
         <a href={APP_JOIN_URL} class="btn-red nav-download-cta nav-mobile-cta">Download App</a>
-        {!hideBookNow && <BookNowButton size="sm" variant="outline" place="nav-mobile-bar" class="nav-mobile-book nav-mobile-cta" />}
+        <BookNowButton size="sm" variant="outline" place="nav-mobile-bar" class="nav-mobile-book nav-mobile-cta" />
         <button id="mobile-menu-btn" class="nav-mobile-btn text-white p-2 min-h-[44px] min-w-[44px] flex items-center justify-center" aria-label="Open menu">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path id="hamburger-icon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
