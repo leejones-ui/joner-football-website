@@ -174,7 +174,7 @@ export default async function handler(req, res) {
     const isJuniors = (g) => g.label === 'Joners Juniors'
     const open = groups.filter((g) => g.mode !== 'closed' || isJuniors(g))
     let counts
-    try { counts = (await airtableCounts()).counts } catch (error) {
+    try { counts = (await airtableCounts({ groups, config })).counts } catch (error) {
       // Without the roster we cannot know what is free, so nothing is bookable.
       console.error('jfp airtable counts failed', error)
       return res.status(503).json({ success: false, error: 'Bookings are briefly unavailable. Try again in a minute.' })

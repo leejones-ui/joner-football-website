@@ -8,7 +8,7 @@
 // Each refund id is applied once, however often Stripe sends the event.
 import { stripeFetch } from './_holiday-store.js'
 import { getBooking, saveBooking, getPayreq, savePayreq, getConfig, audit, formatAud, kvCommand, clean, sydneyToday } from './_jfp-store.js'
-import { getTerm4Row, updateTerm4Rows, appendNote, airtable, TABLES, findLedgerByPayment, bustLedgerCache } from './_jfp-airtable.js'
+import { getTerm4Row, updateTerm4Rows, appendNote, airtable, TABLES, findLedgerByPayment, bustLedgerCache, bustRosterCache } from './_jfp-airtable.js'
 import { splitBy } from './_jfp-finalise.js'
 import { sendRefundAlert } from './_jfp-email.js'
 import { nextStatuses, setNextStatus, recordNext } from './_jfp-next.js'
@@ -97,6 +97,7 @@ export async function applyJfpRefunds(id, charge, piId) {
     done.push(entry)
     } finally { await kvCommand(['DEL', lock]) }
   }
-  await kvCommand(['DEL', 'jfp:roster-cache'])
+  // Every copy of the roster cache, and no slow read put back over it.
+  await bustRosterCache()
   return { ok: true, applied: done.length }
 }

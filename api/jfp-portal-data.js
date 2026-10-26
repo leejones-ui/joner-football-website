@@ -4012,6 +4012,14 @@ async function handle(req, res) {
       case 'decideRequest': return await decideRequest(req, res, principal, config, body)
       // Book extra sessions and Book game analysis, from My account (round 3).
       case 'extraRequests': return res.status(200).json({ success: true, requests: (await listExtras()).map((r) => ({ ...r, kindLabel: EXTRA_KINDS[r.kind] || r.kind })) })
+      // The red count on Requests (26 Oct 2026, Upstash bandwidth): just the
+      // number, the same rule as the page (requestCount in jfp-portal.js),
+      // without the roster, profiles and offer sweep the full list needs.
+      case 'requestCount': {
+        if (!isAdmin) return fail(res, 403, 'Only Lee and Ligia can see requests.')
+        const [list, extras] = await Promise.all([listApplications(), listExtras()])
+        return res.status(200).json({ success: true, count: list.filter((r) => r.status === 'pending').length + extras.filter((r) => r.status !== 'done').length })
+      }
       case 'extraRequestStatus': {
         const out = await setExtraStatus({ id: body.id, status: clean(body.status, 10), by: principal.email })
         if (!out.ok) return fail(res, out.status, out.error)

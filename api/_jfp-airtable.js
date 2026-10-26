@@ -7,6 +7,7 @@
 // they hold the Term 4 session, exactly as the Joner Dashboard reads them.
 import { kvGetJson, kvSetJson, kvCommand, kvPipeline, keys, groupId, ONLINE_TAG, ADMIN_TAG, coachByAirtableName, ageOn, normName, digits, clean, listGroups, getConfig, locationFor, to24h, sydneyToday, emailsIn, rowEmails } from './_jfp-store.js'
 import { LEDGER_FEE } from './_jfp-venues.js'
+import zlib from 'node:zlib'
 
 const BASE = process.env.AIRTABLE_BASE_ID || 'apphU4R0BtVIu5YqT'
 export const TABLES = {
@@ -156,12 +157,32 @@ function term4Row({ id, fields: f }) {
 // every write clears the cache so staff changes show at once.
 // maxAgeMs: how old a kept copy may be. A Money first paint (13 Oct 2026)
 // takes one up to 15 minutes old and reads Airtable again behind it.
-export async function loadRoster({ fresh = false, maxAgeMs = CACHE_SECONDS * 1000 } = {}) {
-  const cleared = Number(await kvCommand(['GET', 'jfp:roster-cleared'])) || 0
+// The roster cache (26 Oct 2026, Upstash bandwidth): the bundle is kept
+// compressed (about a sixth of the size), with a small stamp of when it was
+// read. Each server instance keeps the copy it last read and only downloads
+// the bundle again when the stamp says there is a newer one, so a warm
+// instance costs two tiny reads, not the whole roster. Freshness is exactly as
+// before: CACHE_SECONDS from the Airtable read, and never a copy read before
+// the last write cleared the cache.
+const ROSTER_Z = 'jfp:roster-cache:z'
+const ROSTER_AT = 'jfp:roster-cache:at'
+let memRoster = null
+export function packRoster(out) { return zlib.brotliCompressSync(Buffer.from(JSON.stringify(out)), { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 5 } }).toString('base64') }
+export function unpackRoster(s) { try { return s ? JSON.parse(zlib.brotliDecompressSync(Buffer.from(String(s), 'base64')).toString()) : null } catch { return null } }
+
+export async function loadRoster({ fresh = false, maxAgeMs = CACHE_SECONDS * 1000, groups, config } = {}) {
+  // Each request gets its own copy, so nothing a caller changes reaches the kept one.
+  const finish = async (r) => waiverRules(await placeInGroups(structuredClone(r), groups, config), config)
   if (!fresh) {
-    const cached = await kvGetJson(keys.roster())
+    const [clearedRaw, stampRaw] = await kvPipeline([['GET', 'jfp:roster-cleared'], ['GET', ROSTER_AT]])
+    const cleared = Number(clearedRaw) || 0, stamp = Number(stampRaw) || 0
     // Never a copy read before the last write cleared the cache.
-    if (cached && cached.at >= cleared && Date.now() - cached.at < maxAgeMs) return waiverRules(await placeInGroups(cached))
+    const usable = (c) => Boolean(c && c.at >= cleared && Date.now() - c.at < maxAgeMs)
+    if (usable(memRoster) && memRoster.at >= stamp) return finish(memRoster)
+    if (stamp && usable({ at: stamp })) {
+      const cached = unpackRoster(await kvCommand(['GET', ROSTER_Z]))
+      if (usable(cached)) { memRoster = cached; return finish(cached) }
+    }
   }
   const startedAt = Date.now()
   // Term 3 has finished and barely changes: read it at most every 10 minutes,
@@ -211,14 +232,17 @@ export async function loadRoster({ fresh = false, maxAgeMs = CACHE_SECONDS * 100
   // Stamped with when the read began, so a slow read is never cached as newer than it is.
   const out = { at: startedAt, players, term3, waivers }
   // A slow read that began before a later write must not replace the cache.
-  if (startedAt >= (Number(await kvCommand(['GET', 'jfp:roster-cleared'])) || 0)) await kvSetJson(keys.roster(), out, 3600)
-  return waiverRules(await placeInGroups(out))
+  if (startedAt >= (Number(await kvCommand(['GET', 'jfp:roster-cleared'])) || 0)) {
+    await kvPipeline([['SET', ROSTER_Z, packRoster(out), 'EX', '3600'], ['SET', ROSTER_AT, String(startedAt), 'EX', '3600']])
+  }
+  memRoster = out
+  return finish(out)
 }
 
 // Which waivers count (Settings, "Accept waivers signed in an earlier term"):
 // on, any accepted JFP waiver of the family's; off, only this term's.
-async function waiverRules(roster) {
-  const config = await getConfig()
+async function waiverRules(roster, known) {
+  const config = known || await getConfig()
   if (config.waiverCarryover !== false) return roster
   const term = config.term
   return { ...roster, waivers: roster.waivers.filter((w) => w.term === term || String(w.version || '').includes(term)) }
@@ -271,7 +295,7 @@ export function looseTime(v) {
 }
 
 export async function bustRosterCache() {
-  await kvPipeline([['SET', 'jfp:roster-cleared', String(Date.now()), 'EX', '86400'], ['DEL', keys.roster(), keys.airtableCounts(), 'jfp:ledger-cache']])
+  await kvPipeline([['SET', 'jfp:roster-cleared', String(Date.now()), 'EX', '86400'], ['DEL', keys.roster(), ROSTER_Z, ROSTER_AT, keys.airtableCounts(), 'jfp:ledger-cache']])
 }
 
 export function ageFromNotes(notes) { const m = /\bage (\d{1,2})\b/i.exec(notes || ''); return m ? Number(m[1]) : null }
@@ -288,8 +312,8 @@ export function countsFrom(roster) {
   }
   return counts
 }
-export async function airtableCounts({ fresh = false } = {}) {
-  const roster = await loadRoster({ fresh })
+export async function airtableCounts({ fresh = false, groups, config } = {}) {
+  const roster = await loadRoster({ fresh, groups, config })
   return { at: roster.at, counts: countsFrom(roster) }
 }
 

@@ -709,7 +709,7 @@ export async function closeCheckout(sessionId) {
 const LONG = 60 * 60 * 24 * 500
 export async function saveBooking(b) { await kvSetJson(keys.booking(b.id), b, b.status === 'reserving' ? 86400 : LONG); return b }
 export async function getBooking(id) { const c = clean(id, 60); return c ? kvGetJson(keys.booking(c)) : null }
-export async function indexBooking(b) { await kvCommand(['ZADD', keys.bookings(), String(Date.parse(b.createdAt)), b.id]) }
+export async function indexBooking(b) { await kvPipeline([['ZADD', keys.bookings(), String(Date.parse(b.createdAt)), b.id], ...familyIndexCommands('booking', b)]) }
 async function listIndex(indexKey, recordKey, limit) {
   const ids = await kvCommand(['ZREVRANGE', indexKey, '0', String(limit - 1)])
   if (!ids?.length) return []
@@ -720,7 +720,7 @@ export async function listBookings(limit = 1000) { return listIndex(keys.booking
 // kind: application (Pathway, squads), waitlist (full groups), enquiry (1 to 1)
 export async function saveApplication(a) {
   await kvSetJson(keys.application(a.id), a, LONG)
-  await kvCommand(['ZADD', keys.applications(), String(Date.parse(a.createdAt)), a.id])
+  await kvPipeline([['ZADD', keys.applications(), String(Date.parse(a.createdAt)), a.id], ...familyIndexCommands('application', a)])
   // Same row in Airtable "JFP Applications" (Lee, 18 Oct 2026). Never blocks the save.
   try { const { mirrorApplication } = await import('./_jfp-app-sync.js'); await mirrorApplication(a) } catch (error) { console.error('jfp application copy skipped', error) }
   return a
@@ -730,9 +730,40 @@ export async function listApplications(limit = 1000) { return listIndex(keys.app
 
 // A request for a family to pay, raised by staff (admin add, balance) or by
 // an approved application. Paying it runs through Stripe like a booking.
-export async function savePayreq(p) { await kvSetJson(keys.payreq(p.id), p, LONG); await kvCommand(['ZADD', keys.payreqs(), String(Date.parse(p.createdAt)), p.id]); return p }
+export async function savePayreq(p) { await kvSetJson(keys.payreq(p.id), p, LONG); await kvPipeline([['ZADD', keys.payreqs(), String(Date.parse(p.createdAt)), p.id], ...familyIndexCommands('payreq', p)]); return p }
 export async function getPayreq(id) { const c = clean(id, 60); return c ? kvGetJson(keys.payreq(c)) : null }
 export async function listPayreqs(limit = 1000) { return listIndex(keys.payreqs(), keys.payreq, limit) }
+
+// ---------- one family's records (26 Oct 2026, Upstash bandwidth) ----------
+// My account reads only the family's own payment requests, applications and
+// bookings, not every family's. Each save also puts the record's id in a small
+// set per email (and per Term 4 row, for payment requests). The sets only
+// point at records: every reader still checks the record itself, exactly as
+// it did with the full list, so a stale entry can never show anything.
+// Until scripts/jfp-backfill-family-index.mjs has filled the sets for older
+// records and set jfp:idx:ready, readers get null and use the full lists.
+export const FAMILY_INDEX_READY = 'jfp:idx:ready'
+const idxEmail = (kind, email) => `jfp:idx:${kind}:email:${crypto.createHash('sha256').update(String(email).trim().toLowerCase()).digest('hex').slice(0, 32)}`
+const idxRow = (rowId) => `jfp:idx:payreq:row:${rowId}`
+const RECORD_KEY = { payreq: keys.payreq, application: keys.application, booking: keys.booking }
+export function familyIndexCommands(kind, rec) {
+  if (!rec?.id) return []
+  const emails = kind === 'payreq' ? emailsIn(rec.email) : [String(rec.email || '').trim().toLowerCase()].filter(Boolean)
+  const sets = [...new Set([...emails.map((e) => idxEmail(kind, e)), ...(kind === 'payreq' ? (rec.term4Ids || []).filter(Boolean).map(idxRow) : [])])]
+  return sets.flatMap((k) => [['SADD', k, rec.id], ['EXPIRE', k, String(LONG)]])
+}
+export async function familyIndexReady() { return Boolean(await kvCommand(['GET', FAMILY_INDEX_READY])) }
+// The records whose sets include any of these emails (and Term 4 rows), newest
+// first like the full lists. null while the sets are not filled yet.
+export async function familyRecords(kind, { emails = [], rowIds = [] } = {}, { ready } = {}) {
+  if (!(ready ?? await familyIndexReady())) return null
+  const sets = [...new Set([...emails.filter(Boolean).map((e) => idxEmail(kind, e)), ...(kind === 'payreq' ? rowIds.filter(Boolean).map(idxRow) : [])])]
+  if (!sets.length) return []
+  const ids = [...new Set((await kvPipeline(sets.map((k) => ['SMEMBERS', k]))).flat().filter(Boolean))]
+  if (!ids.length) return []
+  const recs = (await kvPipeline(ids.map((id) => ['GET', RECORD_KEY[kind](id)]))).map(parse).filter(Boolean)
+  return recs.sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0))
+}
 
 // ---------- audit ----------
 

@@ -344,6 +344,21 @@ function jjUnknown(key, names) {
   const bad = have && names.find((n) => !have.includes(n))
   return bad ? { status: 422, body: { error: { type: 'UNKNOWN_FIELD_NAME', message: `Unknown field name: "${bad}"` } } } : null
 }
+// Bandwidth measurement (26 Oct 2026): HARNESS_BULK=135 adds that many
+// invented Term 4 rows (spread over the seeded sessions, notes padded to the
+// live roster's size per row), as many Term 3 rows and half as many again
+// waivers, so the roster cache weighs about what the real one does.
+if (Number(process.env.HARNESS_BULK) > 0) {
+  const n = Number(process.env.HARNESS_BULK)
+  const slots = [['Monday', '5:25pm', 'Belrose HQ', 'Dean Mac'], ['Tuesday', '5:25pm', 'Belrose HQ', 'Dean Mac'], ['Wednesday', '4:20pm', 'Belrose HQ', 'Sam Yorks'], ['Friday', '4pm', 'Belrose HQ', 'Dean Mac']]
+  const pad = (i) => `Bulk note ${i}. `.padEnd(1100, 'Invented filler so the cached row is the size of a real one. ')
+  for (let i = 0; i < n; i++) {
+    const [day, time, loc, coach] = slots[i % slots.length]
+    seedRow(day, time, loc, coach, 'JFP 10 weeks', i % 7 ? 'Confirmed' : 'Not Returning', { name: `Bulk Player ${i}`, parent: `Bulk Parent ${i}`, email: `bulk${i}@example.com`, notes: pad(i) })
+    airtable.term3.push({ id: recId(), fields: { 'Player Name': `Bulk Player ${i}`, 'Email': `bulk${i}@example.com`, 'Parent Name': `Bulk Parent ${i}`, 'Date of Birth': '2015-01-01', 'Coach': coach, 'Session Day': day, 'Session Time': time, 'Session Location': loc } })
+  }
+  for (let i = 0; i < Math.round(n * 1.5); i++) airtable.waiver.push({ id: recId(), fields: { 'Player Full Name': `Bulk Player ${i % n}`, 'Parent Email': `bulk${i % n}@example.com`, 'Date of Birth': '2015-01-01', 'Term': 'Term 4 2026', 'Signed Date': '2026-10-01', 'Waiver Accepted - Full Terms': true, 'Parent Mobile Number': '0400000000', 'Current Club': 'Invented FC', 'Internal Notes': 'Bulk waiver' } })
+}
 const TABLE_KEYS = { tbl6OIjkU6UsQCeZV: 'term4', tblfrXQLMhOcE2PWH: 'ledger', 'Term 3 Players': 'term3', tblF25gfo0fZcqdPT: 'term3', tblLziUfKOv1N0f40: 'waiver', tblfwc1VO3ind7cVk: 'attendance', tblLa3AFkRvlUEQEI: 'dropped', tblahicOyFRUCf7bL: 'nextHolds', 'Joner Football Master Database': 'master', tblMLhYQ126P5uKLB: 'juniors3', tblVzW8E9qumQEtXx: 'juniors4', tblJJNextTerm0001: 'juniorsNext', tblgss68pIVTUOttE: 'venueHistory', tblTt7jWK3s2me45B: 'profiles', tblrELWFdVouAn5FB: 'camps', tblAnkpS9vF4PI8nD: 'applications', tblY4W1OmMzNTAirt: 'players1', tblFXWwF7l7iKMm2j: 'term2', tblGMVuC2QaoOxdsN: 'masterPlayers' }
 function airtableResponse(url, init) {
   const u = new URL(url)
@@ -720,7 +735,27 @@ globalThis.fetch = async (url, init = {}) => {
   const k = serviceOf(String(url))
   calls[k] = (calls[k] || 0) + 1
   if (LATENCY[k]) await new Promise((r) => setTimeout(r, LATENCY[k]))
-  return innerFetch(url, init)
+  const out = await innerFetch(url, init)
+  // KV transfer (26 Oct 2026, the Upstash bandwidth notice): bytes sent and
+  // received and commands run, so a flow's KV cost can be compared before and after.
+  if (k === 'kv') {
+    const body = await out.clone().text()
+    const sent = Buffer.byteLength(String(init.body || ''))
+    calls.kvBytesOut = (calls.kvBytesOut || 0) + sent
+    calls.kvBytesIn = (calls.kvBytesIn || 0) + Buffer.byteLength(body)
+    try {
+      const c = JSON.parse(init.body), list = Array.isArray(c[0]) ? c : [c]
+      const res = JSON.parse(body), results = Array.isArray(res) ? res : [res]
+      calls.kvCommands = (calls.kvCommands || 0) + list.length
+      // Bytes received per key family (ids stripped), e.g. jfp:payreq:* or jfp:roster-cache.
+      const by = (calls.kvByKey ||= {})
+      list.forEach((cmd, i) => {
+        const fam = `${String(cmd[0]).toUpperCase()} ${String(cmd[1] || '').replace(/(PAY|APP|BK|XS|HRS|rec)[-\w]+$/i, '*').replace(/:[A-Za-z0-9_-]{12,}$/, ':*')}`
+        by[fam] = (by[fam] || 0) + Buffer.byteLength(JSON.stringify(results[i]?.result ?? null))
+      })
+    } catch {}
+  }
+  return out
 }
 
 const events = []

@@ -23,7 +23,7 @@ import { stripeFetch, siteUrl, listSlots, getConfig as holidayConfig, slotOwners
 import { chargeCheckoutMeta } from './_jfp-charges.js'
 import { bookableSlots, privateSlot, bookExtraPlace } from './_jfp-family-extra.js'
 import {
-  keys, getConfig, getGroup, listGroups, listPayreqs, getPayreq, savePayreq, listApplications, listBookings, clean, dateLabel,
+  keys, getConfig, getGroup, listGroups, listPayreqs, getPayreq, savePayreq, listApplications, listBookings, familyRecords, familyIndexReady, clean, dateLabel,
   formatAud, coachById, coachByAirtableName, coachLabel, locationFor, ageOn, sydneyToday, normName, emailsIn, rowEmails, audit, closeCheckout, kvPipeline, kvCommand, CHECKOUT_EXPIRES_MINUTES, formatPhone, isSessionType, isProType,
 } from './_jfp-store.js'
 import { telegramAlert } from './_jfp-notify.js'
@@ -124,16 +124,39 @@ function paymentLine(row, openReq, owed) {
   return { state: 'arranged', label: 'Payment arranged with Joner Football' }
 }
 
+// One family's payment requests, applications and bookings. The payment
+// requests also include any other request holding one of these Term 4 rows,
+// which the fee sync needs (held elsewhere). Before the per family sets are
+// filled (familyIndexReady), the full lists, as before.
+async function familyLists(email, fam, ready, { payreqsOnly = false } = {}) {
+  if (!ready) {
+    const [payreqs, requests, bookings] = await Promise.all([listPayreqs(), payreqsOnly ? [] : listApplications(), payreqsOnly ? [] : listBookings()])
+    return { payreqs, requests, bookings }
+  }
+  const emails = [...new Set([email, ...(fam?.emails || [])])]
+  const rowIds = (fam?.players || []).flatMap((p) => p.term4.map((r) => r.id))
+  const [first, requests, bookings] = await Promise.all([familyRecords('payreq', { emails, rowIds }, { ready }), payreqsOnly ? [] : familyRecords('application', { emails: [email] }, { ready }), payreqsOnly ? [] : familyRecords('booking', { emails: [email] }, { ready })])
+  // Rows on this family's requests that are not theirs (rare): who else holds them.
+  const extraRows = [...new Set(first.flatMap((q) => q.term4Ids || []))].filter((id) => !rowIds.includes(id))
+  const more = extraRows.length ? await familyRecords('payreq', { rowIds: extraRows }, { ready }) : []
+  const payreqs = [...new Map([...first, ...more].map((q) => [q.id, q])).values()].sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0))
+  return { payreqs, requests, bookings }
+}
+
 async function overview(res, parent, body = {}, opts = {}) {
   // Read marks (announcements, coach notes) belong to whoever is signed in:
   // a player with their own login keeps their own (player logins).
   const readEmail = opts.readEmail || parent.email
   const config = await getConfig()
-  const [roster, groups, payreqs, requests, bookings, allCancels] = await Promise.all([loadRoster(), listGroups(), listPayreqs(), listApplications(), listBookings(), listCancels()])
+  const [roster, groups, allCancels, ready] = await Promise.all([loadRoster({ config }), listGroups(), listCancels(), familyIndexReady()])
   const nowMs = Date.now()
   // Only this family's own cancellations are ever read out of the list.
   const myCancels = allCancels.filter((c) => c.email === parent.email && c.status === 'active')
-  const fam = withDobs(familyFor(parent.email, roster, config.termStart), dobsFrom(requests, parent.email), config.termStart)
+  const famBase = familyFor(parent.email, roster, config.termStart)
+  // Only this family's payment requests, applications and bookings (26 Oct
+  // 2026, Upstash bandwidth), filtered below exactly as the full lists were.
+  const { payreqs, requests, bookings } = await familyLists(parent.email, famBase, ready)
+  const fam = withDobs(famBase, dobsFrom(requests, parent.email), config.termStart)
   // Each open link at what the place owes now (a fee changed since it was
   // made, _jfp-fee-sync.js); one left with nothing owing is gone.
   const famRows = new Map(fam.players.flatMap((p) => p.term4).map((r) => [r.id, r]))
@@ -846,8 +869,9 @@ async function pay(req, res, parent, body) {
 // (_jfp-account-fees.js). Read only.
 async function fees(res, parent) {
   const config = await getConfig()
-  const [roster, groups, payreqs] = await Promise.all([loadRoster(), listGroups(), listPayreqs()])
+  const [roster, groups, ready] = await Promise.all([loadRoster({ config }), listGroups(), familyIndexReady()])
   const fam = familyFor(parent.email, roster, config.termStart)
+  const { payreqs } = await familyLists(parent.email, fam, ready, { payreqsOnly: true })
   const { intentIds, ...view } = await familyFees({ config, parent, fam, payreqs: payreqs.filter((q) => ownsPayreq(q, fam, parent.email)), groups })
   return res.status(200).json({ success: true, fees: view })
 }
@@ -857,8 +881,9 @@ async function fees(res, parent) {
 // A receipt PDF for one of this family's own payment records (Lee, 17 Oct 2026).
 async function receiptPdf(res, parent, body) {
   const config = await getConfig()
-  const [roster, groups, payreqs] = await Promise.all([loadRoster(), listGroups(), listPayreqs()])
+  const [roster, groups, ready] = await Promise.all([loadRoster({ config }), listGroups(), familyIndexReady()])
   const fam = familyFor(parent.email, roster, config.termStart)
+  const { payreqs } = await familyLists(parent.email, fam, ready, { payreqsOnly: true })
   const view = await familyFees({ config, parent, fam, payreqs: payreqs.filter((q) => ownsPayreq(q, fam, parent.email)), groups })
   const r = (view.records || []).find((x) => x.id && x.id === clean(body.id, 120))
   if (!r) return fail(res, 404, 'Receipt not found.')

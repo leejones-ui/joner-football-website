@@ -268,14 +268,22 @@ setInterval(() => { if (P.user && document.visibilityState === 'visible') { chec
 // and every two minutes: new applications and waitlist, plus extra session
 // and game analysis requests not marked done.
 const requestCount = (reqs = [], extras = []) => reqs.filter((r) => r.status === 'pending').length + extras.filter((r) => r.status !== 'done').length
-async function checkRequestAlerts() {
+// The 30 minute check asks only for the number (26 Oct 2026, Upstash
+// bandwidth); the dashboard, which lists the requests, asks for them in full.
+async function checkRequestAlerts(full = false) {
   if (P.user?.role !== 'admin') return
-  const [rq, xr] = await Promise.all([post('requests'), post('extraRequests')])
-  if (!rq.ok) return
-  P.requests = rq.data.requests
-  P.extraReqs = xr.ok ? xr.data.requests : []
   const before = P.pendingCount || 0
-  P.pendingCount = requestCount(P.requests, P.extraReqs)
+  if (full) {
+    const [rq, xr] = await Promise.all([post('requests'), post('extraRequests')])
+    if (!rq.ok) return
+    P.requests = rq.data.requests
+    P.extraReqs = xr.ok ? xr.data.requests : []
+    P.pendingCount = requestCount(P.requests, P.extraReqs)
+  } else {
+    const r = await post('requestCount')
+    if (!r.ok) return
+    P.pendingCount = r.data.count
+  }
   if (before !== P.pendingCount) renderNav()
 }
 // Lee and Ligia: covers and time off asked for (Lee, 19 Oct 2026), a red
@@ -1963,7 +1971,7 @@ async function renderOverview(redraw = false) {
   if (!redraw || !P.money) {
     view().innerHTML = '<p class="muted">Loading the dashboard</p>'
     // First paint from the last reading, then the latest a moment later.
-    const [mr] = await Promise.all([post('money', { quick: true }), checkRequestAlerts(), checkTrialAlerts(), checkAccountAlerts()])
+    const [mr] = await Promise.all([post('money', { quick: true }), checkRequestAlerts(true), checkTrialAlerts(), checkAccountAlerts()])
     const m = await need(mr)
     laterMoney('overview', (fresh) => { P.money = fresh; renderOverview(true) })
     P.money = m.money

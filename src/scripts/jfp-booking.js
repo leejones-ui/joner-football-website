@@ -64,7 +64,12 @@ async function showApp(q) {
   // ?group=<id> (the "a place has opened" email, 18 Oct 2026): open that session.
   const want = q.get('group')
   if (want && !payNext) { const g = S.data?.groups?.find((x) => x.id === want); history.replaceState(null, '', location.pathname + location.hash); if (g) groupSheet(g) }
-  setInterval(() => { if (!document.querySelector('.j-sheet')) load(true) }, 45000)
+  // Places left, every 45 seconds while the page is in view (26 Oct 2026: a
+  // tab left open in the background no longer reloads all day). Back in view
+  // after that long, it catches up straight away.
+  const refresh = () => { if (!document.querySelector('.j-sheet') && document.visibilityState === 'visible') load(true) }
+  setInterval(refresh, 45000)
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && Date.now() - S.loadedAt >= 45000) refresh() })
 }
 
 function showTab(tab) {
@@ -79,6 +84,7 @@ async function load(quiet) {
   if (r.status === 401) { location.reload(); return }
   if (!r.ok) { if (!quiet) $('results').innerHTML = `<div class="j-empty">${esc(r.data.error || 'Could not load the timetable. Try again in a minute.')}</div>`; return }
   S.data = r.data
+  S.loadedAt = Date.now()
   renderMeta()
   renderExtras()
   renderFilters()
