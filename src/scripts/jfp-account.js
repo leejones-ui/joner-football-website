@@ -187,11 +187,27 @@ async function load() {
   if (r.status === 0 && D) return offlineBanner()
   if (!r.ok) { document.querySelector('[data-pane="home"]').innerHTML = `<div class="ja-card">${esc(r.data.error || 'Could not load your account.')}</div>`; return }
   D = r.data
-  saveLast(D)
+  // Staff seeing this account (view only): nothing is kept on this device.
+  if (!D.viewAs) saveLast(D)
+  viewAsBar(D.viewAs)
   document.querySelector('[data-offline]')?.remove()
   FEES = null
   forgetSaved()
   render()
+}
+// Lee or Ligia seeing a family's account (27 Oct 2026): a bar on top says so,
+// with the time left and a way back. The server refuses every change.
+function viewAsBar(v) {
+  document.getElementById('ja-viewas')?.remove()
+  if (!v) return
+  const bar = document.createElement('div')
+  bar.id = 'ja-viewas'
+  bar.setAttribute('role', 'status')
+  bar.style.cssText = 'position:sticky;top:env(safe-area-inset-top,0px);z-index:60;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));background:#a15c00;color:#fff;font-weight:600;font-size:14px'
+  const left = Math.max(0, Math.round((v.until - Date.now()) / 60000))
+  bar.innerHTML = `<span>View only: you are seeing ${esc(v.player ? `${v.player}'s family` : 'this family')}'s account as they see it. Nothing here can be changed. ${left} min left.</span><button type="button" style="font:inherit;font-weight:700;padding:6px 14px;border-radius:6px;border:2px solid #fff;background:transparent;color:#fff;cursor:pointer">Exit</button>`
+  bar.querySelector('button').addEventListener('click', async () => { await api('/api/jfp-account', { action: 'viewAsEnd' }); location.href = '/jfp-portal/' })
+  document.body.prepend(bar)
 }
 async function loadProfiles() {
   if (D?.playerLogin) return

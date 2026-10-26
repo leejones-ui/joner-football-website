@@ -39,6 +39,7 @@ import { coachPhotoUrl } from './jfp-groups.js'
 import { listCancels, submitCancel, withdrawCancel, rowSessionDates, rowTime, noticeFor, coachesFor, coverCoachFor, familyView, cancelId, REASONS, NOTE_MAX } from './_jfp-cancel.js'
 import { loadRoster, familyFor, createWaiverRows, waiverFields, bustRosterCache, updateTerm4Rows } from './_jfp-airtable.js'
 import { sessionFor, sameOrigin } from './_jfp-people.js'
+import { viewAsFor, endViewAs, viewCookie, VIEW_READ, VIEW_QUIET } from './_jfp-view-as.js'
 import { nextStatuses, setNextStatus, nextPrices, recordNext, createNextPayreq, nextInterest, interestKey } from './_jfp-next.js'
 import { jjAccountView, jjPay, jjRequestPay, jjNextChoice, familyJJ, jjWaiverRows, markJJWaivers } from './_jj-account.js'
 import { owedItems, payOwed as makeOwedPayreq, cancelOwed as cancelOwedPayreq } from './_jfp-account-pay.js'
@@ -160,7 +161,9 @@ async function overview(res, parent, body = {}, opts = {}) {
   // Each open link at what the place owes now (a fee changed since it was
   // made, _jfp-fee-sync.js); one left with nothing owing is gone.
   const famRows = new Map(fam.players.flatMap((p) => p.term4).map((r) => [r.id, r]))
-  const mine = (await syncLinks(payreqs.filter((p) => ownsPayreq(p, fam, parent.email) && p.status !== 'cancelled'), { rowsById: famRows, all: payreqs, by: 'system: fee sync (My account)' })).filter((p) => p.status !== 'cancelled')
+  // Viewing as the family (staff): read only, so the fee sync waits for the family's own visit.
+  const owned = payreqs.filter((p) => ownsPayreq(p, fam, parent.email) && p.status !== 'cancelled')
+  const mine = (parent.viewAs ? owned : await syncLinks(owned, { rowsById: famRows, all: payreqs, by: 'system: fee sync (My account)' })).filter((p) => p.status !== 'cancelled')
   // Opened from a payment link: staff see that the family has looked at it.
   const opened = mine.find((q) => q.id === clean(body.pay, 60) && ['open', 'checkout'].includes(q.status))
   // Counted on its own key, never by rewriting the payment record, so a
@@ -314,6 +317,7 @@ async function overview(res, parent, body = {}, opts = {}) {
   // reports themselves load when the tab opens.
   const reports = opts.player ? [] : await reportsSummary(parent.email, null)
   return res.status(200).json({
+    viewAs: parent.viewAs || null,
     success: true,
     email: parent.email,
     announcements,
@@ -331,7 +335,7 @@ async function overview(res, parent, body = {}, opts = {}) {
     bookUrl: '/jfp-booking/',
     // Where are you based (Lee, 20 Oct 2026): asked once of someone new to us.
     where: account?.where ? { place: account.where.place, away: isAway(account.where) } : null,
-    askWhere: !opts.player && shouldAsk(account) ? { places: PLACES, states: STATES, forWho: FOR, heard: HEARD, country: account.from?.country || '' } : null,
+    askWhere: !opts.player && !parent.viewAs && shouldAsk(account) ? { places: PLACES, states: STATES, forWho: FOR, heard: HEARD, country: account.from?.country || '' } : null,
     nextTerm: nextTerm.length ? { name: nt.name, players: nextTerm } : null,
     keep,
     termStart: config.termStart,
@@ -1063,6 +1067,10 @@ export default async function handler(req, res) {
   let body
   try { body = parse(req) } catch { return fail(res, 400, 'Invalid request') }
   try {
+    // See a family's account (Lee, 27 Oct 2026): Lee or Ligia, view only.
+    const view = await viewAsFor(req, await getConfig())
+    if (view) return await viewAsAction(req, res, view, body)
+    if (body.action === 'viewAsEnd') { await endViewAs(req); res.setHeader('Set-Cookie', viewCookie('', 0)); return res.status(200).json({ success: true }) }
     const parent = await sessionFor(req, 'parent')
     if (!parent) return fail(res, 401, 'Sign in with your email to continue.', { code: 'signin' })
     // Push notifications (Lee, 17 Oct 2026): this device on or off, and the switches.
@@ -1126,6 +1134,23 @@ export default async function handler(req, res) {
     console.error('jfp-account failed', error)
     return fail(res, 500, 'Something went wrong. Try again in a moment.')
   }
+}
+
+// Viewing a family's account as staff: only the read actions run, as that
+// family; the page's own "seen" stamps are answered without writing.
+async function viewAsAction(req, res, view, body) {
+  const parent = { email: view.email, viewAs: { by: view.by, player: view.player, until: Date.parse(view.at) + 1800000 } }
+  const action = body.action || 'overview'
+  if (action === 'viewAsEnd') { await endViewAs(req); res.setHeader('Set-Cookie', viewCookie('', 0)); return res.status(200).json({ success: true }) }
+  if (VIEW_QUIET.has(action)) return res.status(200).json({ success: true, read: [], push: null })
+  if (!VIEW_READ.has(action)) return fail(res, 403, `View only. You are seeing this account as the family sees it, so nothing can be changed here.`, { code: 'viewOnly' })
+  if (action === 'fees') return await fees(res, parent)
+  if (action === 'profiles') return await profiles(res, parent)
+  if (REPORT_FAMILY.has(action)) return await reportsAction(res, parent.email, null, body)
+  if (action === 'receiptPdf') return await receiptPdf(res, parent, body)
+  if (action === 'invoicePdf') return await invoicePdf(req, res, parent, body)
+  if (action === 'appAccessState') { const config = await getConfig(); const fam = familyFor(parent.email, await loadRoster(), config.termStart); return res.status(200).json({ success: true, app: familyAppView(await appAccessOf(parent.email), eligiblePlayers(fam), parent.email) }) }
+  return await overview(res, parent, body)
 }
 
 export { normName }

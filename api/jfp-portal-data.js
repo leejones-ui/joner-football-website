@@ -4020,6 +4020,21 @@ async function handle(req, res) {
         const [list, extras] = await Promise.all([listApplications(), listExtras()])
         return res.status(200).json({ success: true, count: list.filter((r) => r.status === 'pending').length + extras.filter((r) => r.status !== 'done').length })
       }
+      // See a family's account, view only (Lee, 27 Oct 2026): a 30 minute
+      // pass for My account, tied to this admin's own sign in (_jfp-view-as.js).
+      case 'viewAsStart': {
+        if (!isAdmin) return fail(res, 403, 'Only Lee and Ligia can see a family\'s account.')
+        const row = (await loadRoster()).players.find((r) => r.id === clean(body.rowId, 40))
+        if (!row) return fail(res, 404, 'That player is not on the roster.')
+        const emails = rowEmails(row)
+        const want = String(body.email || '').trim().toLowerCase()
+        const email = emails.includes(want) ? want : emails[0]
+        if (!email) return fail(res, 400, 'This player has no email, so there is no account to see.')
+        const { startViewAs, viewCookie } = await import('./_jfp-view-as.js')
+        const v = await startViewAs({ by: principal.email, email, rowId: row.id, player: row.player || '' })
+        res.setHeader('Set-Cookie', viewCookie(v.token, v.seconds))
+        return res.status(200).json({ success: true, url: '/jfp-account/', email })
+      }
       case 'extraRequestStatus': {
         const out = await setExtraStatus({ id: body.id, status: clean(body.status, 10), by: principal.email })
         if (!out.ok) return fail(res, out.status, out.error)

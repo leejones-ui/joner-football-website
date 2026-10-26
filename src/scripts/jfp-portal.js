@@ -821,6 +821,16 @@ async function openPlayerDetails(rowId, fallback) {
   return p ? plDetail(p) : fallback()
 }
 
+// See a family's account (Lee, 27 Oct 2026): My account as they see it, view
+// only, in a new tab for 30 minutes. The tab is opened on the click so a
+// phone does not block it, then sent to the account once the pass is made.
+async function viewAsFamily(rowId, email) {
+  const tab = window.open('', '_blank')
+  const r = await post('viewAsStart', { rowId, email })
+  if (!r.ok) { tab?.close(); return toast(r.data.error || 'Could not open their account.') }
+  if (tab) tab.location.href = r.data.url; else location.href = r.data.url
+}
+
 // Which waiver was signed online: the adult one or the parent or guardian one.
 const waiverKindLabel = (k) => (k === 'adult' ? ' (adult waiver, signed by the player)' : k === 'guardian' ? ' (parent or guardian waiver)' : '')
 function detailsModal(p, g) {
@@ -837,8 +847,9 @@ function detailsModal(p, g) {
       <dt>Mobile</dt><dd>${p.phone ? `<a href="tel:${esc(p.phone)}">${esc(p.phone)}</a>` : 'None'}</dd>
       ${p.linkNotes || p.notes ? `<dt>Notes</dt><dd><button type="button" class="j-btn j-btn-line j-btn-sm" data-notes-row="${esc(p.rowId)}">Show notes</button></dd>` : ''}
     </dl>
-    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;flex-wrap:wrap"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-dark" id="cp-fnote">Note to family</button></div>`)
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;flex-wrap:wrap"><button type="button" class="j-btn j-btn-line" data-close>Close</button>${P.user.role === 'admin' && p.email ? '<button type="button" class="j-btn j-btn-line" id="cp-viewas">See their account</button>' : ''}<button type="button" class="j-btn j-btn-dark" id="cp-fnote">Note to family</button></div>`)
   document.getElementById('cp-fnote')?.addEventListener('click', () => { closeModal(); familyNotesModal({ post, modal, closeModal, confirmBox }, { rowId, name: p.name }) })
+  document.getElementById('cp-viewas')?.addEventListener('click', () => viewAsFamily(p.rowId, p.email))
 }
 
 function groupOptions(selected, { exclude } = {}) {
@@ -3762,7 +3773,7 @@ function plDetail(p) {
     ${p.ownContact ? row('Contact', 'The player is their own contact') : p.agent ? row('Agent', `${p.agent} (pays for this player)`) : row('Parent', p.parent)}
     ${row('Email', p.email || 'no email')}
     ${row('Mobile', p.phone)}
-    <div class="jpf-acts jpf-acts-left"><button type="button" class="j-btn j-btn-line" id="pd-invite" ${p.email ? '' : 'disabled title="No email on this player"'}>Account invite</button></div>
+    <div class="jpf-acts jpf-acts-left"><button type="button" class="j-btn j-btn-line" id="pd-invite" ${p.email ? '' : 'disabled title="No email on this player"'}>Account invite</button>${P.user.role === 'admin' && p.email ? '<button type="button" class="j-btn j-btn-line" id="pd-viewas">See their account</button>' : ''}</div>
     <p class="small" id="pd-invite-out" role="status" hidden></p>
     <h3 style="margin-top:14px">Emails</h3>
     <div id="pd-emails" class="jpf-emails"><p class="muted small">Checking the email log…</p></div>
@@ -3774,6 +3785,7 @@ function plDetail(p) {
   $('pd-edit')?.addEventListener('click', () => { closeModal(); plEdit(p) })
   $('pd-text')?.addEventListener('click', () => { closeModal(); textComposer({ modal, toast, rowIds: [p.rowId], parent: p.parent, mobile: p.phone, text: helloText({ parent: p.parent, player: p.name, self: w.self }), title: w.textWho, self: w.self, to: w.self ? p.name : '' }) })
   $('pd-invite')?.addEventListener('click', (e) => sendAccountInviteFor(p, e.currentTarget))
+  $('pd-viewas')?.addEventListener('click', () => viewAsFamily(p.rowId, p.email))
   loadEmailLog(p.rowId)
 }
 
