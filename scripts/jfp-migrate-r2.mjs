@@ -116,7 +116,9 @@ if (apply) {
   if (!e) throw new Error('--apply needs --env')
   for (const g of out) await kv(e, ['HSET', 'jfp:groups', g.id, JSON.stringify(g)])
   for (const id of removed) await kv(e, ['HDEL', 'jfp:groups', id])
-  await kv(e, ['DEL', 'jfp:roster-cache', 'jfp:airtable-counts'])
+  // As bustRosterCache does (26 Oct 2026: the roster cache is compressed now).
+  await kv(e, ['SET', 'jfp:roster-cleared', String(Date.now()), 'EX', '86400'])
+  await kv(e, ['DEL', 'jfp:roster-cache', 'jfp:roster-cache:z', 'jfp:roster-cache:at', 'jfp:airtable-counts'])
   await kv(e, ['LPUSH', 'jfp:audit', JSON.stringify({ at: now, by: 'system (round 2, 2026-09-29)', action: 'group.migrate', target: 'all', after: { groups: out.length, removed } })])
   console.log(`\napplied: ${out.length} groups written, ${removed.length} split`)
 } else console.log(`\ndry run: ${out.length} groups, ${removed.length} split, nothing written`)

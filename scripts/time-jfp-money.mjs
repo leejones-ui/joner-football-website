@@ -52,8 +52,10 @@ for (const [label, body] of READS) { out.cold[label] = await time(body); row(lab
 console.log('--- warm (looked at a moment ago)')
 for (const [label, body] of READS) { out.warm[label] = await time(body); row(label, out.warm[label]) }
 // Lee comes back to Money 10 minutes later: every kept reading is 10 minutes old.
+// The roster (since 26 Oct 2026) is compressed and also kept in the server's
+// memory, so its age is set by its stamp key; a warm server reads it from memory.
 const kv = async (cmd) => (await fetch(`${B}/__kv?cmd=${encodeURIComponent(JSON.stringify(cmd))}`)).text()
-for (const key of ['jfp:stripe-payments:v2', 'jfp:juniors-money', 'jfp:juniors-stripe', 'holiday:stripe-payments:v2', 'jfp:roster-cache', 'jfp:ledger-cache', 'jfp:camps-cache']) {
+for (const key of ['jfp:stripe-payments:v2', 'jfp:juniors-money', 'jfp:juniors-stripe', 'holiday:stripe-payments:v2', 'jfp:ledger-cache', 'jfp:camps-cache']) {
   const raw = await kv(['GET', key])
   let v
   try { v = JSON.parse(raw) } catch { continue }
@@ -61,6 +63,7 @@ for (const key of ['jfp:stripe-payments:v2', 'jfp:juniors-money', 'jfp:juniors-s
   v.at = typeof v.at === 'number' ? v.at - 600000 : new Date(Date.parse(v.at) - 600000).toISOString()
   await kv(['SET', key, JSON.stringify(v)])
 }
+{ const stamp = Number(await kv(['GET', 'jfp:roster-cache:at'])); if (stamp) await kv(['SET', 'jfp:roster-cache:at', String(stamp - 600000)]) }
 console.log('--- 10 minutes later (every kept reading 10 minutes old)')
 out.later = {}
 for (const [label, body] of READS) { out.later[label] = await time(body); row(label, out.later[label]) }

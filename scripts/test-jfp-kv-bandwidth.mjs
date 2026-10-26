@@ -5,7 +5,7 @@
 //   node scripts/test-jfp-kv-bandwidth.mjs
 import assert from 'node:assert/strict'
 import net from 'node:net'
-import { spawn } from 'node:child_process'
+import { spawn, execFileSync } from 'node:child_process'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { familyIndexCommands, FAMILY_INDEX_READY } from '../api/_jfp-store.js'
@@ -98,6 +98,31 @@ const full = reqs.data.requests.filter((r) => r.status === 'pending').length + e
 assert.ok(full >= 1)
 assert.equal(count.data.count, full, 'requestCount equals the full lists')
 assert.equal((await fam('/api/jfp-portal-data', { action: 'requestCount' })).status >= 400, true, 'families cannot read the count')
+
+// 6. The backfill, rehearsed: records saved before the sets existed (seeded
+// straight into KV, with no set entries) fail --verify; after --apply
+// --no-ready, --verify finds 0 missing, and ready is left to the last step.
+const backfill = (...args) => { try { return { code: 0, out: execFileSync(process.execPath, [path.join(HERE, 'jfp-backfill-family-index.mjs'), ...args], { env: { PATH: process.env.PATH, KV_REST_API_URL: `${B}/__upstash`, KV_REST_API_TOKEN: 'local' }, encoding: 'utf8' }) } } catch (e) { return { code: e.status, out: String(e.stdout) } } }
+await kv(['DEL', FAMILY_INDEX_READY])
+for (let i = 0; i < 40; i++) {
+  const id = `PAY-OLD-${i}`, email = i % 4 ? `old${i % 7}@example.com` : `Old${i % 7}@Example.com, second${i}@example.com`
+  await kv(['SET', `jfp:payreq:${id}`, JSON.stringify({ id, email, status: i % 3 ? 'paid' : 'open', term4Ids: i % 5 ? [`recOLD${i % 6}`] : [], playerKeys: [], players: [], amountCents: 85000, createdAt: at })])
+  await kv(['ZADD', 'jfp:payreqs', String(Date.now() - i), id])
+}
+for (let i = 0; i < 10; i++) {
+  await kv(['SET', `jfp:application:APP-OLD-${i}`, JSON.stringify({ id: `APP-OLD-${i}`, kind: 'waitlist', status: 'pending', email: `old${i % 3}@example.com`, players: [], groupId: '', createdAt: at })])
+  await kv(['ZADD', 'jfp:applications', String(Date.now() - i), `APP-OLD-${i}`])
+}
+const v1 = backfill('--verify')
+assert.equal(v1.code, 1, v1.out); assert.match(v1.out, /NOT READY/)
+const a1 = backfill('--apply', '--no-ready')
+assert.equal(a1.code, 0, a1.out)
+assert.equal(await kv(['GET', FAMILY_INDEX_READY]), null, '--no-ready leaves jfp:idx:ready unset')
+const v2 = backfill('--verify')
+console.log('backfill verify after apply:', v2.out.trim().split('\n').join(' / ')); assert.equal(v2.code, 0, v2.out); assert.match(v2.out, / 0 missing, 1 extra\. OK/, 'only the stale entry from step 3 is extra')
+assert.equal(backfill('--apply').code, 0)
+assert.ok(await kv(['GET', FAMILY_INDEX_READY]), 'the last --apply sets ready')
+assert.deepEqual(await paidIds(), before, 'My account unchanged after the rehearsal')
 
 console.log('kv bandwidth: family isolation, stale sets, roster freshness and request count all passed')
 process.exit(0)

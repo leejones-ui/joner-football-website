@@ -946,6 +946,13 @@ const server = http.createServer(async (req, res) => {
     const out = redis(JSON.parse(url.searchParams.get('cmd')))
     res.writeHead(200, { 'content-type': 'text/plain' }); return res.end(typeof out === 'string' ? out : JSON.stringify(out))
   }
+  // Test-only: the pretend KV over Upstash's REST shape, so a script run in
+  // its own process (the family index backfill) can point KV_REST_API_URL here.
+  if (url.pathname === '/__upstash' || url.pathname === '/__upstash/pipeline') {
+    const payload = JSON.parse(await readBody(req) || '[]')
+    const out = url.pathname.endsWith('/pipeline') ? payload.map((c) => ({ result: redis(c) })) : { result: redis(payload) }
+    res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(out))
+  }
   if (url.pathname === '/__sessions') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify([...sessions.values()])) }
 
   let file = path.join(DIST, decodeURIComponent(url.pathname))
