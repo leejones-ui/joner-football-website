@@ -38,6 +38,15 @@ for (const [kind, index, recordKey] of kinds) {
     missing += kindMissing; extra += kindExtra; sets += names.length
   }
   console.log(`${kind}: ${ids.length} in the index, ${records} records read, ${want.size} family sets` + (verify ? `, ${kindMissing} missing, ${kindExtra} extra` : ''))
+  // My account's old full scan (listPayreqs) read only the newest 1,000. The
+  // sets have no cap, so anything older would start to show: list the ones
+  // still open by date and amount (no names) for Lee or Ligia to close first.
+  if (verify && kind === 'payreq') {
+    const older = ids.length > 1000 ? (await kvCommand(['ZRANGE', index, '0', String(ids.length - 1001)])) || [] : []
+    const recs = older.length ? (await kvPipeline(older.map((id) => ['GET', recordKey(id)]))).map((v) => { try { return typeof v === 'string' ? JSON.parse(v) : v } catch { return null } }).filter(Boolean) : []
+    const live = recs.filter((q) => !['paid', 'cancelled', 'expired'].includes(q.status))
+    console.log(`  older than the newest 1,000 (hidden by the old scan): ${older.length}, still open: ${live.length}${live.map((q) => `\n    ${q.id} ${String(q.createdAt).slice(0, 10)} A$${((q.amountCents || 0) / 100).toFixed(2)} ${q.status}`).join('')}`)
+  }
 }
 if (verify) {
   // Extra ids are harmless (an email changed on a record; every reader checks
