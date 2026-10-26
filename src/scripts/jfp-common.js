@@ -7,12 +7,27 @@ export function esc(v) {
   return String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 }
 
+// See a family's account (staff, 27 Oct 2026): the view pass belongs to the
+// one tab it was opened in (sessionStorage), never the whole browser, so a
+// staff member's own My account in another tab stays their own. It arrives
+// once in the address (#va=...) and is taken out of it straight away.
+const VIEW_KEY = 'jfp-viewas'
+try {
+  const m = location.pathname.startsWith('/jfp-account') && location.hash.match(/^#va=([a-f0-9]{64})$/)
+  if (m) { sessionStorage.setItem(VIEW_KEY, m[1]); history.replaceState(null, '', location.pathname + location.search) }
+} catch {}
+export function viewPass() { try { return sessionStorage.getItem(VIEW_KEY) || '' } catch { return '' } }
+export function dropViewPass() { try { sessionStorage.removeItem(VIEW_KEY) } catch {} }
+
 export async function api(path, body, { method = 'POST' } = {}) {
   try {
+    const headers = body ? { 'content-type': 'application/json' } : {}
+    const pass = String(path).startsWith('/api/jfp-account') ? viewPass() : ''
+    if (pass) headers['x-jfp-viewas'] = pass
     const res = await fetch(path, {
       method,
       credentials: 'same-origin',
-      headers: body ? { 'content-type': 'application/json' } : {},
+      headers,
       body: body ? JSON.stringify(body) : undefined,
     })
     const data = await res.json().catch(() => ({}))

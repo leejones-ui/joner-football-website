@@ -6,6 +6,7 @@
 // own staff session (checked on every request), lasts 30 minutes, and is
 // written to the audit log.
 //   jfp:viewas:<token>  JSON {by, email, rowId, player, at}  EX 1800
+// The pass travels in the x-jfp-viewas header from one tab only.
 import crypto from 'node:crypto'
 import { kvCommand, audit } from './_jfp-store.js'
 import { sessionFor } from './_jfp-people.js'
@@ -20,9 +21,7 @@ export const VIEW_READ = new Set(['overview', 'fees', 'profiles', 'reports', 're
 // family still sees their new notes, reports and announcements as new.
 export const VIEW_QUIET = new Set(['noteRead', 'announceRead', 'reportRead', 'sessionsSeen', 'pushState'])
 
-function cookieValue(req, name) {
-  return String(req.headers?.cookie || '').split(';').map((s) => s.trim()).find((s) => s.startsWith(`${name}=`))?.slice(name.length + 1) || ''
-}
+// The first version (59f5292) used a browser-wide cookie; this clears it.
 export const viewCookie = (token, maxAge = SECONDS) => `${VIEW_COOKIE}=${token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}`
 
 export async function startViewAs({ by, email, rowId = '', player = '' }) {
@@ -36,7 +35,9 @@ export async function startViewAs({ by, email, rowId = '', player = '' }) {
 // The pass on this request, or null. Only while the same admin is still
 // signed in to the portal: signing out of the portal ends it too.
 export async function viewAsFor(req, config) {
-  const token = cookieValue(req, VIEW_COOKIE)
+  // The tab that opened the view sends its pass as a header (jfp-common.js),
+  // so other tabs in the same browser are never turned into the family.
+  const token = String(req.headers?.['x-jfp-viewas'] || '')
   if (!/^[a-f0-9]{64}$/.test(token)) return null
   const raw = await kvCommand(['GET', key(token)])
   if (!raw) return null
@@ -48,6 +49,6 @@ export async function viewAsFor(req, config) {
 }
 
 export async function endViewAs(req) {
-  const token = cookieValue(req, VIEW_COOKIE)
+  const token = String(req.headers?.['x-jfp-viewas'] || '')
   if (/^[a-f0-9]{64}$/.test(token)) await kvCommand(['DEL', key(token)])
 }

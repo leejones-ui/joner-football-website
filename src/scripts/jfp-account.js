@@ -3,7 +3,7 @@
 // position, contacts), can't make a session, keep my spot for next term,
 // term info, holidays and camps, training videos, the app and contact.
 // Phones first: a bottom tab bar on phones, a side bar on big screens.
-import { $, esc, api, toast, openSheet, closeSheet, signIn, signOut, waiverBlock, recaptcha, savePdf } from './jfp-common.js'
+import { $, esc, api, toast, openSheet, closeSheet, signIn, signOut, waiverBlock, recaptcha, savePdf, dropViewPass } from './jfp-common.js'
 import { termInfo, expectations, links, groupingLine, termExtras } from '../data/jfp-term-info.js'
 import { oneToOneSummary } from '../data/jfp-one-to-one.js'
 import { hqVideos, pitchVideos, reels, socials, contacts, hq, holidays } from '../data/jfp-account-media.js'
@@ -206,7 +206,7 @@ function viewAsBar(v) {
   bar.style.cssText = 'position:sticky;top:env(safe-area-inset-top,0px);z-index:60;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));background:#a15c00;color:#fff;font-weight:600;font-size:14px'
   const left = Math.max(0, Math.round((v.until - Date.now()) / 60000))
   bar.innerHTML = `<span>View only: you are seeing ${esc(v.player ? `${v.player}'s family` : 'this family')}'s account as they see it. Nothing here can be changed. ${left} min left.</span><button type="button" style="font:inherit;font-weight:700;padding:6px 14px;border-radius:6px;border:2px solid #fff;background:transparent;color:#fff;cursor:pointer">Exit</button>`
-  bar.querySelector('button').addEventListener('click', async () => { await api('/api/jfp-account', { action: 'viewAsEnd' }); location.href = '/jfp-portal/' })
+  bar.querySelector('button').addEventListener('click', async () => { await api('/api/jfp-account', { action: 'viewAsEnd' }); dropViewPass(); location.href = '/jfp-portal/' })
   document.body.prepend(bar)
 }
 async function loadProfiles() {

@@ -1068,6 +1068,7 @@ export default async function handler(req, res) {
   try { body = parse(req) } catch { return fail(res, 400, 'Invalid request') }
   try {
     // See a family's account (Lee, 27 Oct 2026): Lee or Ligia, view only.
+    if (/(?:^|;\s*)jfp_viewas=[a-f0-9]/.test(String(req.headers?.cookie || ''))) res.setHeader('Set-Cookie', viewCookie('', 0))
     const view = await viewAsFor(req, await getConfig())
     if (view) return await viewAsAction(req, res, view, body)
     if (body.action === 'viewAsEnd') { await endViewAs(req); res.setHeader('Set-Cookie', viewCookie('', 0)); return res.status(200).json({ success: true }) }

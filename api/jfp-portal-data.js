@@ -4032,8 +4032,9 @@ async function handle(req, res) {
         if (!email) return fail(res, 400, 'This player has no email, so there is no account to see.')
         const { startViewAs, viewCookie } = await import('./_jfp-view-as.js')
         const v = await startViewAs({ by: principal.email, email, rowId: row.id, player: row.player || '' })
-        res.setHeader('Set-Cookie', viewCookie(v.token, v.seconds))
-        return res.status(200).json({ success: true, url: '/jfp-account/', email })
+        // Clears the old browser-wide pass; the new one goes to the one tab only.
+        res.setHeader('Set-Cookie', viewCookie('', 0))
+        return res.status(200).json({ success: true, url: `/jfp-account/#va=${v.token}`, email })
       }
       case 'extraRequestStatus': {
         const out = await setExtraStatus({ id: body.id, status: clean(body.status, 10), by: principal.email })
