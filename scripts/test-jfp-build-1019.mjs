@@ -457,5 +457,28 @@ await test('past players open: their Airtable records, never medical notes; Lee 
   assert.equal(bad.records.length, 0)
 })
 
+await test('coach hours, 26 Oct: an own timetabled session with the register marked needs no approval; one Approve on the invoice approves its hours', async () => {
+  const dates = [8, 9, 10, 11, 12, 13, 14].map((n) => day(-n))
+  const thuDate = dates.find((d) => new Date(`${d}T12:00:00Z`).getUTCDay() === 4)
+  for (const [id, v] of [['recA', 'Present'], ['recB', 'Present']]) await kv(['HSET', `jfp:att:${THU}:${thuDate}`, id, v])
+  const s = (await ok(sam, 'hoursSave', { date: thuDate, start: '16:15', end: '17:15', kind: 'session', groupId: THU })).entry
+  assert.equal(s.status, 'approved'); assert.equal(s.autoApproved, true)
+  const office = (await ok(sam, 'hoursSave', { date: thuDate, start: '09:00', end: '10:00', kind: 'admin' })).entry
+  assert.equal(office.status, 'submitted', 'anything off the timetable still waits')
+  const before = await ok(lee, 'coachInvList', {})
+  const row = before.unbilled.find((u) => u.coachId === 'sam')
+  assert.ok(row && row.entries >= 2 && row.waiting >= 1, 'Lee sees hours not invoiced yet')
+  assert.ok(!('unbilled' in await ok(sam, 'coachInvList', {})), 'a coach never sees the not invoiced list')
+  const inv = (await ok(sam, 'coachInvCreate', { from: thuDate, to: thuDate })).invoice
+  const tbc = inv.lines.findIndex((l) => l.cents == null)
+  if (tbc >= 0) await ok(lee, 'coachInvLineSet', { id: inv.id, index: tbc, cents: 4500, note: 'Office rate agreed' })
+  const amount = (await ok(lee, 'coachInvList', {})).invoices.find((x) => x.id === inv.id).amountCents
+  await ok(lee, 'coachInvDecide', { id: inv.id, status: 'approved' })
+  const after = (await ok(lee, 'hoursList', { coachId: 'sam', from: thuDate, to: thuDate })).entries
+  const mine = after.filter((h) => h.invoiceId === inv.id)
+  assert.ok(mine.length >= 2 && mine.every((h) => h.status === 'approved'), 'approving the invoice approved every hour on it')
+  assert.equal((await ok(lee, 'coachInvList', {})).invoices.find((x) => x.id === inv.id).amountCents, amount, 'the amount never changes')
+})
+
 console.log(`${passed} passed`)
 process.exit(0)

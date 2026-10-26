@@ -17,7 +17,7 @@
 // come ticked. The ticked names go on the invoice line.
 import { kvCommand, newId, clean, audit, listGroups, coachById, coachLabel, locationFor, sessionDates, to24h, dateLabel, sydneyToday } from './_jfp-store.js'
 import { loadRoster } from './_jfp-airtable.js'
-import { registerFor, paidUpfront } from './_jfp-coach-pay.js'
+import { registerFor, paidUpfront, priceLine, getCard } from './_jfp-coach-pay.js'
 
 const KEY = 'jfp:hours'
 export const HOURS_ACTIONS = new Set(['hoursList', 'hoursSave', 'hoursDelete', 'hoursDecide', 'hoursPlayers', 'hoursOptions'])
@@ -141,11 +141,36 @@ function suggestions({ config, groups, covers, coachId, from, to, logged }) {
   return out.sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start))
 }
 
+// Approved as logged (Lee, 26 Oct 2026: "why do i have to approve every
+// hour?"): the coach's own session on one of its term dates, or a cover on
+// record, needs no one to approve the time. Only when it prices cleanly: a TBC
+// line (no rate) or players ticked that differ from the register still wait
+// (Revenue, 26 Oct 2026). This approves the time, never the pay: the invoice
+// is still approved by Lee or Ligia, with every flag on it.
+export async function matchesTimetable(config, e, coachId, { listCovers }) {
+  if (!['session', 'cover'].includes(e.kind) || !e.groupId) return false
+  const [groups, covers] = await Promise.all([listGroups(), listCovers()])
+  const g = groups.find((x) => x.id === e.groupId)
+  if (!g || g.label === 'Joners Juniors' || !sessionDates(config, g.day).includes(e.date)) return false
+  const active = covers.filter((c) => c.status === 'active' && c.groupId === g.id && c.date === e.date)
+  const own = g.coachId === coachId || (g.extraCoachIds || []).includes(coachId)
+  if (e.kind === 'session' && (!own || active.some((c) => c.coachId === coachId))) return false
+  if (e.kind === 'cover' && !active.some((c) => c.coverCoachId === coachId)) return false
+  const [card, roster] = await Promise.all([getCard(coachId), loadRoster().catch(() => ({ players: [] }))])
+  const names = shortNames(roster.players)
+  const rows = new Map(roster.players.map((r) => [r.id, { name: names.get(r.id), paymentType: r.paymentType, paymentStatus: r.paymentStatus }]))
+  const register = await registerFor(g.id, e.date, (id) => rows.get(id) || null)
+  const price = priceLine({ kind: e.kind, minutes: e.minutes, date: e.date, groupId: g.id, note: e.note, players: e.players?.length ? e.players : null }, { card, group: g, register })
+  return price.cents != null && !price.flags.some((f) => f.code === 'register-diff')
+}
+// A coach may still change hours the portal approved as logged, until they are on an invoice.
+const coachMayEdit = (h) => h.status !== 'approved' || (h.autoApproved && !h.invoiceId)
+
 export async function hoursAction(res, principal, config, body, action, { isAdmin, myCoachId, listCovers }) {
   const ok = (x) => res.status(200).json({ success: true, ...x })
   const no = (status, error) => res.status(status).json({ success: false, error })
   const today = sydneyToday()
-  const view = (h) => ({ ...h, coach: coachLabel(coachById(config, h.coachId)), kindLabel: HOUR_KINDS[h.kind] || h.kind, dateLabel: dateLabel(h.date), canEdit: isAdmin || (h.coachId === myCoachId && h.status !== 'approved') })
+  const view = (h) => ({ ...h, coach: coachLabel(coachById(config, h.coachId)), kindLabel: HOUR_KINDS[h.kind] || h.kind, dateLabel: dateLabel(h.date), canEdit: isAdmin || (h.coachId === myCoachId && coachMayEdit(h)) })
 
   if (action === 'hoursList') {
     const to = ISO.test(body.to || '') ? body.to : today
@@ -183,7 +208,7 @@ export async function hoursAction(res, principal, config, body, action, { isAdmi
     const id = clean(body.id, 40)
     const was = id ? parse(await kvCommand(['HGET', KEY, id])) : null
     if (id && !was) return no(404, 'That entry is gone. Refresh the page.')
-    if (was && !isAdmin && (was.coachId !== myCoachId || was.status === 'approved')) return no(403, was?.status === 'approved' ? 'Approved hours can only be changed by Lee or Ligia.' : 'Not your hours.')
+    if (was && !isAdmin && (was.coachId !== myCoachId || !coachMayEdit(was))) return no(403, was.coachId === myCoachId ? 'Approved hours can only be changed by Lee or Ligia.' : 'Not your hours.')
     // On an invoice: the invoice and the hours must match (Lee, 19 Oct 2026).
     if (was?.invoiceId && !isAdmin) return no(409, 'These hours are on an invoice. Withdraw the invoice first, then change them.')
     const coachId = was ? was.coachId : isAdmin ? clean(body.coachId, 30) || myCoachId : myCoachId
@@ -201,10 +226,14 @@ export async function hoursAction(res, principal, config, body, action, { isAdmi
       e.players = checkPlayers(body.players, allowed)
     }
     const now = new Date().toISOString()
-    // A coach changing hours sends them back for approval; Lee or Ligia editing keeps the status.
+    if (!e.players && was?.players) e.players = was.players
+    // A coach changing hours sends them back for approval, unless they match the timetable;
+    // Lee or Ligia editing keeps the status.
+    const auto = !(isAdmin && (was || body.approve)) && await matchesTimetable(config, e, coachId, { listCovers })
+    const autoFields = { status: 'approved', autoApproved: true, decidedBy: 'portal', decidedAt: now, decisionNote: '' }
     const rec = was
-      ? { ...was, ...e, editedAt: now, editedBy: principal.email, status: isAdmin ? was.status : 'submitted' }
-      : { id: newId('HRS'), coachId, ...e, status: isAdmin && body.approve ? 'approved' : 'submitted', createdAt: now, by: principal.email, ...(isAdmin && body.approve ? { decidedBy: principal.email, decidedAt: now } : {}) }
+      ? { ...was, ...e, editedAt: now, editedBy: principal.email, ...(isAdmin ? {} : auto ? autoFields : { status: 'submitted', autoApproved: false }) }
+      : { id: newId('HRS'), coachId, ...e, createdAt: now, by: principal.email, ...(isAdmin && body.approve ? { status: 'approved', decidedBy: principal.email, decidedAt: now } : auto ? autoFields : { status: 'submitted' }) }
     await kvCommand(['HSET', KEY, rec.id, JSON.stringify(rec)])
     await audit({ by: principal.email, action: was ? 'hours.edit' : 'hours.add', target: rec.id, after: { coachId, date: rec.date, start: rec.start, end: rec.end, kind: rec.kind, players: rec.players?.length ?? null } })
     return ok({ entry: view(rec) })
@@ -214,7 +243,7 @@ export async function hoursAction(res, principal, config, body, action, { isAdmi
     const id = clean(body.id, 40)
     const was = parse(await kvCommand(['HGET', KEY, id]))
     if (!was) return no(404, 'That entry is already gone.')
-    if (!isAdmin && (was.coachId !== myCoachId || was.status === 'approved')) return no(403, 'Approved hours can only be removed by Lee or Ligia.')
+    if (!isAdmin && (was.coachId !== myCoachId || !coachMayEdit(was))) return no(403, 'Approved hours can only be removed by Lee or Ligia.')
     if (was.invoiceId) return no(409, 'These hours are on an invoice. Withdraw or send back the invoice first.')
     await kvCommand(['HDEL', KEY, id])
     await audit({ by: principal.email, action: 'hours.delete', target: id, before: { coachId: was.coachId, date: was.date, start: was.start, end: was.end } })
@@ -233,7 +262,7 @@ export async function hoursAction(res, principal, config, body, action, { isAdmi
     for (const id of ids) {
       const was = parse(await kvCommand(['HGET', KEY, id]))
       if (!was) continue
-      const rec = { ...was, status, decidedBy: principal.email, decidedAt: now, decisionNote: status === 'queried' ? clean(body.note, 300) : '' }
+      const rec = { ...was, status, autoApproved: false, decidedBy: principal.email, decidedAt: now, decisionNote: status === 'queried' ? clean(body.note, 300) : '' }
       await kvCommand(['HSET', KEY, id, JSON.stringify(rec)])
       done.push(view(rec))
     }

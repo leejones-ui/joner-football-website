@@ -175,6 +175,21 @@ async function pdfOf(inv, config) {
   return { name: `Invoice-${inv.number}.pdf`, content: Buffer.from(bytes).toString('base64') }
 }
 
+// Each coach's logged hours, before today, not on an invoice: entries, minutes and the dates they span.
+export function unbilledHours(config, hours, today) {
+  const by = new Map()
+  for (const h of hours) {
+    if (h.invoiceId || h.date >= today) continue
+    const t = by.get(h.coachId) || { coachId: h.coachId, coach: coachLabel(coachById(config, h.coachId)), entries: 0, minutes: 0, waiting: 0, from: h.date, to: h.date }
+    t.entries += 1; t.minutes += h.minutes || 0
+    if (h.status !== 'approved') t.waiting += 1
+    if (h.date < t.from) t.from = h.date
+    if (h.date > t.to) t.to = h.date
+    by.set(h.coachId, t)
+  }
+  return [...by.values()].map((t) => ({ ...t, fromLabel: dateLabel(t.from), toLabel: dateLabel(t.to) })).sort((a, b) => a.coach.localeCompare(b.coach))
+}
+
 // Coach-filled details needed on every invoice.
 const NEEDED = [['fullName', 'your full name'], ['accountName', 'the account name'], ['bsb', 'the BSB'], ['accountNumber', 'the account number']]
 
@@ -221,7 +236,9 @@ export async function invoiceAction(res, principal, config, body, action, { isAd
     const from = ISO.test(body.from || '') ? body.from : ''
     const to = ISO.test(body.to || '') ? body.to : today
     const draft = asCoach && from ? (await linesFor(config, coachId, from, to, { listCovers })).map((l) => (isAdmin ? l : forCoach(l))) : null
-    return ok({
+    // Lee and Ligia (Lee, 26 Oct 2026: "nothing there?"): who has hours logged that are not on an invoice yet. Hours and names only.
+    const unbilled = isAdmin && !asCoach ? unbilledHours(config, await allHours(), today) : undefined
+    return ok({ unbilled,
       invoices: list.map((x) => ({ ...view(x, config, isAdmin), canWithdraw: asCoach && ['submitted', 'queried'].includes(x.status) })), draft, dueLabel: dateLabel(dueMonday(today)),
       hasCard: asCoach && coachId ? Boolean(await getCard(coachId)) : undefined,
       details: asCoach && coachId ? await getDetails(coachId) : undefined,
@@ -354,6 +371,18 @@ export async function invoiceAction(res, principal, config, body, action, { isAd
     if (['approved', 'paid'].includes(status) && pendingOf(inv)) return no(400, 'Set the amount on each TBC line first.')
     // Sent back: the hours come free so the coach can fix them and invoice again.
     if (status === 'queried') await release()
+    // Approving the invoice approves its hours (Lee, 26 Oct 2026: no approving
+    // every hour). Only the status: amounts, players and calcCents stay as they
+    // are, and lines taken off the invoice stay free.
+    if (['approved', 'paid'].includes(status)) {
+      const now = new Date().toISOString()
+      for (const l of inv.lines) {
+        if (!l.hoursId) continue
+        const h = parse(await kvCommand(['HGET', HOURS, l.hoursId]))
+        if (!h || h.invoiceId !== inv.id || h.status === 'approved') continue
+        await kvCommand(['HSET', HOURS, h.id, JSON.stringify({ ...h, status: 'approved', autoApproved: false, decidedBy: principal.email, decidedAt: now, decisionNote: '', approvedWith: inv.id })])
+      }
+    }
     const next = { ...inv, status, decidedBy: principal.email, decidedAt: new Date().toISOString(), decisionNote: clean(body.note, 300), ...(status === 'paid' ? { paidAt: new Date().toISOString() } : {}) }
     await kvCommand(['HSET', KEY, inv.id, JSON.stringify(next)])
     await audit({ by: principal.email, action: `coach-invoice.${status}`, target: inv.id })

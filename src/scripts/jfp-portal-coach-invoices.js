@@ -115,7 +115,13 @@ export async function renderCoachInvoices(ui) {
     view().innerHTML = `<div class="jp-head"><div><h1>Coach invoices</h1><p class="muted small" style="margin-top:4px">Made from the hours each coach logged. Every session is priced from the register (players marked present) and that coach's rate card. Flagged when a cover says otherwise, two coaches logged the same session, or the register is not marked. Due Monday 9am.</p></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">${d.myCoachId ? '<button type="button" class="j-btn j-btn-line" id="inv-mine">My own invoice</button>' : ''}<select class="j-select" id="inv-coach" style="width:auto"><option value="">Every coach</option>${d.coaches.map((c) => `<option value="${esc(c.id)}" ${S.coachId === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>
       <select class="j-select" id="inv-status" style="width:auto"><option value="">Any status</option>${Object.entries(d.status).map(([k, v]) => `<option value="${k}" ${S.status === k ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select></div></div>
-      ${list.map(card).join('') || '<p class="muted">No invoices yet.</p>'}
+      <details class="j-card" style="padding:12px 16px;margin-bottom:14px"><summary><b>How it works</b></summary><ol class="small" style="margin:8px 0 0 18px;display:grid;gap:4px">
+        <li>The coach logs each session in <b>My hours</b> (one tap, or Log all as on the register) and ticks who was there. Their own timetabled sessions and covers on record are approved as they log them. Anything else (events, admin, a TBC rate, players that differ from the register) waits for you in Coach hours.</li>
+        <li>By Monday 9am the coach opens <b>My invoices</b>, checks the lines (priced from the register and their rate card) and presses Send to Lee and Ligia.</li>
+        <li>It lands here. You check the flags, set any TBC line and press <b>Approve</b> once. That approves every hour on it too. Then <b>Mark paid</b> when you have paid them.</li></ol></details>
+      ${(d.unbilled || []).length ? `<section class="j-card" style="padding:12px 16px;margin-bottom:14px"><h2 style="font-size:16px;margin:0 0 6px">Not invoiced yet</h2><p class="muted small" style="margin:0 0 8px">Hours logged that are not on an invoice. The coach sends these from My invoices.</p>
+        <ul style="margin:0;padding:0;list-style:none;display:grid;gap:6px">${d.unbilled.map((u) => `<li style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><span><b>${esc(u.coach)}</b> · ${hrs(u.minutes)} in ${u.entries} entr${u.entries === 1 ? 'y' : 'ies'}, ${esc(u.fromLabel)} to ${esc(u.toLabel)}</span>${u.waiting ? `<span class="j-pill j-pill-amber">${u.waiting} waiting in Coach hours</span>` : ''}</li>`).join('')}</ul></section>` : ''}
+      ${list.map(card).join('') || '<p class="muted">No invoices sent yet.</p>'}
       <details class="j-card" style="padding:14px 16px;margin-top:16px" id="inv-cards"><summary><b>Rate cards</b> <span class="muted small">only you and Ligia see these</span></summary><div id="inv-cards-body" style="margin-top:10px"><p class="muted small">Loading…</p></div></details>`
     view().querySelector('#inv-coach').addEventListener('change', (e) => { S.coachId = e.target.value; reload() })
     view().querySelector('#inv-mine')?.addEventListener('click', () => { S.mine = true; reload() })
@@ -216,11 +222,13 @@ export async function renderCoachInvoices(ui) {
       })
     })
     view().querySelector('#inv-send')?.addEventListener('click', async (e) => {
+      // Held before any await: currentTarget is null after the confirm box (Dean, 26 Oct 2026: Send did nothing).
+      const btn = e.currentTarget
       if (draft.some((l) => !S.edits[l.hoursId]?.remove && l.flags.some((f) => f.code !== 'waiting')) && !(await confirmBox('Some lines are flagged (the register, a cover or another coach). Send anyway? Lee or Ligia will check them.', { ok: 'Send' }))) return
-      e.currentTarget.disabled = true
+      btn.disabled = true
       const lines = Object.entries(S.edits).map(([hoursId, x]) => ({ hoursId, ...x }))
       const r = await post('coachInvCreate', { from, to, note: view().querySelector('#inv-note').value, lines, added: S.added })
-      if (!r.ok) { toast(r.data.error); e.currentTarget.disabled = false; return }
+      if (!r.ok) { toast(r.data.error); btn.disabled = false; return }
       S.edits = {}; S.added = []
       toast(r.data.emailed === false ? 'Saved. The email to Lee and Ligia did not go: tell Lee.' : 'Sent to Lee and Ligia'); reload()
     })

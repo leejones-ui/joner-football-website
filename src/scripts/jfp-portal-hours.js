@@ -225,10 +225,12 @@ function entryModal(ui, d, h, reload, sug = null) {
   }
   box.querySelector('#he-go').addEventListener('click', async (e) => {
     if (usesGroup() && !st.groupId && !h) return err('Tap which session, or choose Other.')
-    e.currentTarget.disabled = true
+    // Held before any await: currentTarget is null once the click has finished (Dean, 26 Oct 2026: Save did nothing).
+    const btn = e.currentTarget
+    btn.disabled = true
     const players = [...[...st.picked].map((rowId) => ({ rowId })), ...st.typed.map((name) => ({ name }))]
     const r = await ui.post('hoursSave', { id: h?.id || '', coachId: st.coachId, date: st.date, start: st.start, end: st.end, kind: st.kind, note: st.note ?? h?.note ?? '', groupId: usesGroup() ? st.groupId : '', ...(st.touched || st.groupId || players.length ? { players } : {}) })
-    e.currentTarget.disabled = false
+    btn.disabled = false
     if (!r.ok) return err(r.data.error || 'Could not save.')
     ui.closeModal(); toast(players.length ? `Saved with ${players.length} player${players.length === 1 ? '' : 's'}.` : 'Saved.'); reload()
   })
