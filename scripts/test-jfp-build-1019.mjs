@@ -480,5 +480,21 @@ await test('coach hours, 26 Oct: an own timetabled session with the register mar
   assert.equal((await ok(lee, 'coachInvList', {})).invoices.find((x) => x.id === inv.id).amountCents, amount, 'the amount never changes')
 })
 
+await test('1 on 1s on the register, 26 Oct: yesterday\'s private session shows on the coach\'s Register and Extra sessions, and marks there', async () => {
+  const dean = client()
+  await signIn(dean, 'jonerfootballdean@gmail.com', 'staff')
+  const slot = { id: 'XS-TEST-1ON1', coachId: 'sam', date: day(-1), time: '3:00pm', durationMin: 60, location: 'Belrose HQ', capacity: 1, priceCents: 12000, title: '1 on 1', visibility: 'private', status: 'open', bookings: [{ id: 'BK-T1', status: 'booked', from: 'coach', name: 'Test Private' }] }
+  await kv(['HSET', 'jfp:extra', slot.id, JSON.stringify(slot)])
+  const reg = await ok(sam, 'coachSessions', { coachId: 'all', any: true })
+  const x = reg.extras.find((e) => e.id === slot.id)
+  assert.ok(x && x.bookings[0].name === 'Test Private' && !x.marks['BK-T1'], 'on the Register, not marked')
+  assert.ok(!(await ok(dean, 'coachSessions', { coachId: 'all', any: true })).extras.some((e) => e.id === slot.id), 'another coach never sees it')
+  assert.ok((await ok(sam, 'extraList', {})).slots.some((s) => s.id === slot.id), 'still on Extra sessions the day after')
+  assert.equal((await portal(dean, 'extraMark', { slotId: slot.id, bookingId: 'BK-T1', status: 'Present' })).status, 400, 'not your session')
+  await ok(sam, 'extraMark', { slotId: slot.id, bookingId: 'BK-T1', status: 'Present' })
+  assert.equal((await ok(sam, 'coachSessions', { coachId: 'all', any: true })).extras.find((e) => e.id === slot.id).marks['BK-T1'], 'Present')
+  assert.ok((await ok(lee, 'coachSessions', { coachId: 'all' })).extras.some((e) => e.id === slot.id), 'Lee sees every coach')
+})
+
 console.log(`${passed} passed`)
 process.exit(0)

@@ -3100,6 +3100,21 @@ function pnoteLine(p) {
   return `<span class="jp-pnote">${p.pnotes.map((n) => `<span><b>${esc(n.byName || 'Coach')}</b> ${esc(n.dateLabel)}: ${esc(n.text.length > 160 ? `${n.text.slice(0, 160)}…` : n.text)}</span>`).join('')}</span>`
 }
 
+// The register for 1 on 1s and extra sessions (Lee, 26 Oct 2026: Dean was
+// reminded about his 1 on 1 registers and had nowhere to mark them). The
+// last two weeks and the week ahead, or the week picked.
+function extraRegister(list, { all, today }) {
+  if (!list.length) return ''
+  const left = list.filter((s) => s.date <= today && s.bookings.some((b) => !s.marks[b.id])).length
+  return `<article class="j-card" style="padding:16px;margin-bottom:12px" data-xreg>
+    <h3 style="font-size:17px">1 on 1s and extra sessions</h3>
+    <p class="${left ? 'j-box j-box-amber' : 'muted'} small" style="margin-top:6px">${left ? `<b>${left} to mark.</b> Mark who came, so your hours and invoice match.` : 'Mark who came on the day. Sessions you open in Extra sessions show here.'}</p>
+    ${list.map((s) => `<div style="margin-top:12px"><p class="small"><b>${esc(s.dateLabel.replace(/\s\d{4}$/, ''))}, ${esc(s.time)}</b> · ${esc(s.location)} · ${esc(s.title)} · ${esc(s.durationMin)} min${all ? ` · Coach ${esc(s.coachName)}` : ''}</p>
+      ${s.bookings.map((b) => `<div class="jp-player" style="cursor:default">${avatar('', b.name, 32)}<span class="nm" style="flex:1 1 auto;min-width:0">${esc(b.name)}${s.date <= today && !s.marks[b.id] ? ' <span class="j-pill j-pill-red">Not marked</span>' : ''}</span>
+        <span class="jp-att">${s.date > today ? '<span class="muted small">Opens on the day</span>' : `<button type="button" class="p" data-xr="${esc(s.id)}|${esc(b.id)}|Present" aria-pressed="${s.marks[b.id] === 'Present'}">Here</button><button type="button" class="a" data-xr="${esc(s.id)}|${esc(b.id)}|Absent" aria-pressed="${s.marks[b.id] === 'Absent'}">Away</button>`}</span></div>`).join('')}</div>`).join('')}
+  </article>`
+}
+
 async function renderCoach(keep = false) {
   const admin = P.user.role === 'admin'
   // The Register tab (Lee, 20 Oct 2026): every coach picks any coach (or the
@@ -3176,6 +3191,7 @@ async function renderCoach(keep = false) {
     ${psChips([['unmarked', 'Not marked off', 'red'], ['trial', 'Trials', 'violet'], ['cancelled', 'Cancelled by parent', 'orange'], ['coming', 'Said coming', 'green'], ['notsaid', 'Not said yet', 'grey'], ['unconfirmed', 'Not confirmed', 'grey']].map(([v, l, c]) => ({ key: 'flag', value: v, label: l, color: c, count: flagCount(v) })), (k, v) => F[k] === v)}
     
     ${trialCards(d.trials || [])}
+    ${extraRegister(d.extras || [], { all, today })}
     ${sessions.length ? sessions.map((s) => {
       const date = dateOf(s)
       const att = attOf(s, date)
@@ -3215,6 +3231,15 @@ async function renderCoach(keep = false) {
   view().querySelectorAll('[data-trial-fb]').forEach((b) => b.addEventListener('click', () => trialFeedbackModal((d.trials || []).find((t) => t.rowId === b.dataset.trialFb), d.verdicts)))
   view().querySelectorAll('[data-date]').forEach((sel) => sel.addEventListener('change', () => { P.coachDate[sel.dataset.date] = sel.value; saveCoachDates(); renderCoach(true) }))
   view().querySelectorAll('[data-term]').forEach((b) => b.addEventListener('click', () => termRegister(d.sessions.find((x) => x.id === b.dataset.term))))
+  // 1 on 1s and extra sessions: marked straight on the session (extraMark), like the Extra sessions page.
+  view().querySelectorAll('[data-xr]').forEach((b) => b.addEventListener('click', async () => {
+    const [slotId, bookingId, st] = b.dataset.xr.split('|')
+    const cur = (d.extras || []).find((x) => x.id === slotId)?.marks?.[bookingId]
+    b.disabled = true
+    const r = await post('extraMark', { slotId, bookingId, status: cur === st ? '' : st })
+    if (!r.ok) { b.disabled = false; return toast(r.data.error || 'Could not save.') }
+    renderCoach()
+  }))
   view().querySelectorAll('[data-att]').forEach((b) => b.addEventListener('click', async () => {
     const card = b.closest('[data-sess]')
     const gid = card.dataset.sess

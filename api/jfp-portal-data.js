@@ -11,7 +11,7 @@ import { agentFor, saveAgent, allAgents, agentsView, withAgentTag, agentById, up
 import { moveLoginsParent } from './_jfp-player-logins.js'
 import { asksComing, comingByGroup } from './_jfp-coming.js'
 import { playersHistory, HISTORY_TERMS, playerRecords } from './_jfp-players-history.js'
-import { boardExtras } from './_jfp-extra.js'
+import { boardExtras, registerExtras } from './_jfp-extra.js'
 import { listAppAccess, markAppAccess } from './_jfp-app-access.js'
 import { accountMaps, accountFor } from './_jfp-account-status.js'
 import crypto from 'node:crypto'
@@ -3691,9 +3691,13 @@ async function handle(req, res) {
         const pn = await coachPNotesByRow()
         for (const s of sessions) if (notesOn(s)) for (const p of s.players) { const n = pn.get(p.rowId); if (n?.length) p.pnotes = n.slice(0, 2) }
       }
+      // Extra sessions and private 1 on 1s on the register too (Lee, 26 Oct 2026:
+      // Dean was reminded about his 1 on 1 registers but could not find them).
+      // A coach only ever marks their own; Lee and Ligia see whoever is picked.
+      const extras = await registerExtras(config, { coachId: isAdmin ? (all ? '' : coachId) : me, week, weekEnd }).catch((e) => { console.error('jfp register extras failed', e); return [] })
       const trials = !isAdmin && any && coachId !== me ? [] : coachTrials(sessions, await trialFeedbackAll(), sydneyToday())
       const perWeek = sessions.reduce((t, s) => t + s.durationMin, 0)
-      return res.status(200).json({ success: true, ...(isAdmin || any ? { coachList: coachList(config, false).map((c) => ({ id: c.id, name: c.firstName })) } : {}), trials, verdicts: TRIAL_VERDICTS, coach: all ? 'Whole program' : coachLabel(coachById(config, coachId)), coachPhoto: all ? '' : coachList(config, false).find((c) => c.id === coachId)?.photo || '', all, week, term: config.term, sessions, hours: { perWeekMinutes: perWeek, termMinutes: perWeek * config.weeks, weeks: config.weeks } })
+      return res.status(200).json({ success: true, ...(isAdmin || any ? { coachList: coachList(config, false).map((c) => ({ id: c.id, name: c.firstName })) } : {}), trials, extras, verdicts: TRIAL_VERDICTS, coach: all ? 'Whole program' : coachLabel(coachById(config, coachId)), coachPhoto: all ? '' : coachList(config, false).find((c) => c.id === coachId)?.photo || '', all, week, term: config.term, sessions, hours: { perWeekMinutes: perWeek, termMinutes: perWeek * config.weeks, weeks: config.weeks } })
     }
 
     // A player's football information for their coach (Lee, 15 Oct 2026):

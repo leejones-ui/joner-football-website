@@ -229,6 +229,22 @@ export async function marksFor(s) {
   for (let i = 0; i + 1 < raw.length; i += 2) o[raw[i]] = raw[i + 1]
   return o
 }
+
+// Extra sessions for the Register tab (Lee, 26 Oct 2026): the week picked, or
+// the last two weeks and the week ahead, so a 1 on 1 can still be marked the
+// day after. Only sessions with a player on them. coachId '' is every coach.
+export async function registerExtras(config, { coachId = '', week = '', weekEnd = '', today = sydneyToday() } = {}) {
+  const from = week || addDays(today, -13), to = week ? weekEnd : addDays(today, 6)
+  const slots = (await allSlots()).filter((s) => s.status === 'open' && (!coachId || s.coachId === coachId) && s.date >= from && s.date <= to && liveBookings(s).length)
+  slots.sort((a, b) => `${a.date}${to24h(a.time) || ''}`.localeCompare(`${b.date}${to24h(b.time) || ''}`))
+  const out = []
+  for (const s of slots.slice(0, 100)) out.push({
+    id: s.id, coachId: s.coachId, coachName: coachLabel(coachById(config, s.coachId)), date: s.date, dateLabel: dateLabel(s.date),
+    time: s.time, durationMin: Number(s.durationMin) || 60, location: s.location, title: s.title || 'Extra session',
+    bookings: liveBookings(s).map((b) => ({ id: b.id, name: b.name })), marks: s.date <= today ? await marksFor(s) : {},
+  })
+  return out
+}
 export async function markBooking({ config, principal, isAdmin, slotId, bookingId, status }) {
   const s = await getSlot(slotId)
   if (!s) return { error: 'That session is gone.' }

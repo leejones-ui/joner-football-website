@@ -70,7 +70,10 @@ async function listFor(config, principal, isAdmin, body) {
   const coachId = isAdmin ? clean(body.coachId, 30) : principal.coachId
   const [slots, payreqs] = await Promise.all([allSlots(), listPayreqs()])
   const today = sydneyToday()
-  const mine = slots.filter((s) => s.status === 'open' && (!coachId || s.coachId === coachId) && s.date >= (body.past ? '0000' : today))
+  // The last two weeks' sessions with a player on them stay, so a 1 on 1 can be
+  // marked the day after (Lee, 26 Oct 2026).
+  const back = new Date(Date.parse(`${today}T12:00:00Z`) - 13 * 86400000).toISOString().slice(0, 10)
+  const mine = slots.filter((s) => s.status === 'open' && (!coachId || s.coachId === coachId) && (s.date >= (body.past ? '0000' : today) || (s.date >= back && liveBookings(s).length)))
   const views = []
   for (const s of mine.slice(0, 200)) views.push(forCoach({ ...staffView(config, s, payreqs), marks: s.date <= today ? await marksFor(s) : {} }, isAdmin))
   const [mon, sun] = weekOf(today)
