@@ -4084,7 +4084,7 @@ async function renderPlayersPast(keep = false) {
     const hit = list.filter((p) => has(p.player, p.parent, p.email, p.session, p.coach))
     total = list.length; shown = hit.length
     head = '<th>Player</th><th>Session</th><th>Status</th><th>Parent</th>'
-    rows = hit.slice(0, 500).map((p) => `<tr><td><button type="button" class="ps-link" data-plh='${esc(JSON.stringify({ name: p.player, email: p.email, refs: [{ term: p.term || t, rowId: p.rowId }] }))}'><b>${esc(p.player)}</b></button></td><td class="small">${esc(p.session)}${p.coach ? `<br><span class="muted">${esc(p.coach)}</span>` : ''}</td><td class="small">${esc(p.status)}</td><td class="small">${esc(p.parent)}<br><span class="muted">${esc(p.email)}</span></td></tr>`).join('')
+    rows = hit.slice(0, 500).map((p) => `<tr><td><button type="button" class="ps-link" data-plh='${esc(JSON.stringify({ name: p.player, email: p.email, refs: [{ term: p.term || t, rowId: p.rowId }, ...(p.profile ? [{ term: 'profile', rowId: p.profile }] : [])] }))}'><b>${esc(p.player)}</b></button></td><td class="small">${esc(p.session)}${p.coach ? `<br><span class="muted">${esc(p.coach)}</span>` : ''}</td><td class="small">${esc(p.status)}</td><td class="small">${esc(p.parent)}<br><span class="muted">${esc(p.email)}</span></td></tr>`).join('')
   }
   const title = t === 'master' ? 'JF Master Players' : t === 'all' ? 'All players, past and present' : (PLH.terms || []).find((x) => x.id === t)?.label || 'Past players'
   view().innerHTML = `${psHead({ title, count: shown === total ? total : `${shown} of ${total}` })}

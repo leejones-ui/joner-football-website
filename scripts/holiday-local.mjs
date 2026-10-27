@@ -265,6 +265,15 @@ if (process.env.JFP_SEED && fs.existsSync(process.env.JFP_SEED)) {
   // Older terms and JF Master Players (Players tab, past players): invented.
   airtable.players1.push({ id: recId(), fields: { 'Player Name': 'Olly Oldtimer', 'Parent Name': 'Opal Oldtimer', 'Email': 'old@example.com', 'Session Day': 'Monday', 'Session Time': '4:00pm', 'Location': 'Belrose HQ', 'Coach': 'Lee', 'Status': 'Active', 'Phone Number': '0400999888', 'Medical Notes': 'Asthma, inhaler in bag' } })
   airtable.term2.push({ id: recId(), fields: { 'Player Name': 'Olly Oldtimer', 'Parent Name': 'Opal Oldtimer', 'Email': 'old@example.com', 'Session Day': 'Monday', 'Session Time': '4:00pm', 'Session Location': 'Belrose HQ', 'Coach': 'Sam Yorks', 'Status': 'Active' } })
+  // One player across two terms with a different email each time, linked to one
+  // JFP Player Profile and its waiver (Lee, 27 Oct 2026): one entry, a fuller card.
+  {
+    const profId = recId(), waiverId = recId()
+    airtable.players1.push({ id: recId(), fields: { 'Player Name': 'Penny Profiled', 'Email': 'penny.first@example.com', 'Status': 'Inactive', 'Player': [profId] } })
+    airtable.term2.push({ id: recId(), fields: { 'Player Name': 'Penny Profiled', 'Parent Name': 'Pam Profiled', 'Email': 'penny.later@example.com', 'Session Day': 'Friday', 'Session Time': '6:30am', 'Session Location': 'Rydalmere', 'Coach': 'Sam Yorks', 'Status': 'Active', 'Player': [profId] } })
+    airtable.profiles.push({ id: profId, fields: { 'Player Name': 'Penny Profiled', 'Parent Name': 'Pam Profiled', 'Parent Mobile': '0400111222', 'Family Emails': 'penny.later@example.com', 'Club': 'Invented FC', 'Date of Birth': '2014-01-02', 'Medical Notes': 'Peanut allergy', 'Waivers': [waiverId] } })
+    airtable.waiver.push({ id: waiverId, fields: { 'Player Full Name': 'Penny Profiled', 'Parent/Guardian Name': 'Pam Profiled', 'Parent Email': 'penny.later@example.com', 'Parent Mobile Number': '0400111222', 'Emergency Contact Name': 'Pete Profiled', 'Emergency Contact Phone': '0400333444', 'Date of Birth': '2014-01-02', 'Medical Notes': 'Peanut allergy', 'Term': 'Term 2 2026', 'Waiver Accepted - Full Terms': true } })
+  }
   airtable.masterPlayers.push({ id: recId(), fields: { 'Player Name': 'Olly Oldtimer', 'Parent Names from Sources': 'Opal Oldtimer', 'Source Tables': 'Players, Term 2 Players', 'Review Status': 'Matched' } }, { id: recId(), fields: { 'Player Name': 'Mia Masterlist', 'Parent Names from Sources': 'Mo Masterlist', 'Source Tables': 'JF App', 'Review Status': 'Needs review' } })
   const [riley3, sasha3] = airtable.term3
   const t3pay = (id, name, amount, method, source, extra = {}) => airtable.ledger.push({ id: recId(), fields: { 'Payment ID': id, 'Term': 'Term 3 2026', 'Player Name': name, 'Amount Paid': amount, 'Payment Method': method, 'Payment Status': 'Paid', 'Payment Date': '2026-07-20', 'Source Table': 'Term 3 Players', 'Source Record ID': source, ...extra } })

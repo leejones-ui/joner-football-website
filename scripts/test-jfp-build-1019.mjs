@@ -315,7 +315,7 @@ await test('players across terms and JF Master Players: Lee only, never a phone 
   assert.ok(all.people.some((p) => p.player === 'Ava Ashdown' && p.current))
   assert.ok(!/0400999888|Phone|Date of Birth|Medical/.test(JSON.stringify(all)))
   const t2 = await ok(lee, 'playersHistory', { term: 'term2' })
-  assert.equal(t2.rows.length, 1)
+  assert.equal(t2.rows.filter((r) => r.player === 'Olly Oldtimer').length, 1)
   const m = await ok(lee, 'playersHistory', { term: 'master' })
   assert.equal(m.master.length, 2)
   assert.equal((await portal(lee, 'playersHistory', { term: 'nope' })).status, 400)
