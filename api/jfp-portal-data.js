@@ -137,7 +137,7 @@ function playerView(r, config, roster, { money }) {
     ...(money ? {
       parent: r.parent, email: r.email, phone: r.phone,
       paymentStatus: r.paymentStatus || 'Not set', feeCents: cents(r.feeAud), paidCents: cents(r.paidAud), balanceCents: cents(r.balanceAud),
-      linkNotes: r.linkNotes,
+      linkNotes: r.linkNotes, freePlace: r.freePlace === true,
     } : {}),
   }
 }
@@ -960,6 +960,8 @@ async function setCoachNote(res, principal, config, body) {
 // are recorded or undone on their own. The balance is Airtable's formula.
 // If an open payment link no longer matches the new fee, say so.
 const PAYMENT_TYPES = [SESSION_TYPE, PRO_TYPE, 'JFP 10 weeks', 'JFP Half term (5 weeks)', 'JFP Pathway 10 weeks', 'Sibling / 2 sessions per week', 'JFP Trial', 'JFP Drop-in', 'JFP 1 on 1 casual', 'JFP 1 on 1, 10 weeks', 'JFP pathway 1 on 1', 'JFP Pathway', 'Additional Term 4 session balance']
+const FREE_RE = /\s*\[FREE:[A-Za-z0-9-]+\]/g
+const withFree = (notes, on) => { const base = String(notes || '').replace(FREE_RE, ''); return on ? `${base}${base ? ' ' : ''}[FREE:yes]` : base }
 async function editPlayer(res, principal, config, body) {
   const row = await rowOr404(res, body.rowId); if (!row) return
   const f = body.fields || {}
@@ -969,6 +971,27 @@ async function editPlayer(res, principal, config, body) {
   if ('parent' in f) { fields['Parent Name'] = clean(f.parent, 80); before.parent = row.parent }
   if ('email' in f) { const v = f.email ? validEmail(f.email) : ''; if (f.email && !v) return fail(res, 400, 'That email does not look right.'); fields['Email'] = v; before.email = row.email }
   if ('phone' in f) { fields['Phone'] = clean(f.phone, 30); before.phone = row.phone }
+  // A free place (Lee, 27 Oct 2026): fee A$0, marked Paid, no payment and no
+  // ledger row, so it never shows as income or as owing. Only for a place with
+  // nothing paid: money already taken is undone first, never written off here.
+  const typeAfter = 'paymentType' in f ? f.paymentType : row.paymentType
+  if (f.freePlace === true && !row.freePlace) {
+    if (isSessionType(typeAfter) || /trial/i.test(typeAfter || '')) return fail(res, 400, 'A free place is for a term place, not session by session, Pro sessions or a trial.')
+    if (cents(row.paidAud) > 0) return fail(res, 400, `${row.player} has ${formatAud(cents(row.paidAud))} paid. Undo that payment first, then make it a free place.`)
+    fields['Term 4 Fee'] = 0
+    fields['Term 4 Payment Status'] = 'Paid'
+    fields['Term 4 Notes'] = withFree(row.notes, true)
+    Object.assign(before, { feeAud: row.feeAud, paymentStatus: row.paymentStatus, freePlace: false })
+    delete f.feeAud
+  } else if (f.freePlace === false && row.freePlace) {
+    fields['Term 4 Notes'] = withFree(row.notes, false)
+    before.freePlace = true
+    // Back to an ordinary place: nothing was paid, so it owes whatever fee is set.
+    fields['Term 4 Payment Status'] = 'Unpaid'
+    before.paymentStatus = row.paymentStatus
+  } else if (row.freePlace && 'feeAud' in f && Number(f.feeAud) > 0) {
+    return fail(res, 400, 'This is a free place. Untick Free place to give it a fee.')
+  }
   if ('feeAud' in f) {
     if (f.feeAud === null || f.feeAud === '') { fields['Term 4 Fee'] = null } else {
       const v = Number(f.feeAud)
@@ -983,7 +1006,7 @@ async function editPlayer(res, principal, config, body) {
     }
     before.feeAud = row.feeAud
   }
-  if ('paymentType' in f) { if (f.paymentType && !PAYMENT_TYPES.includes(f.paymentType)) return fail(res, 400, 'Choose a payment type from the list.'); fields['Term 4 Payment Type'] = f.paymentType || null; before.paymentType = row.paymentType }
+  if ('paymentType' in f) { if (f.paymentType && !PAYMENT_TYPES.includes(f.paymentType)) return fail(res, 400, 'Choose a payment type from the list.'); if ((row.freePlace || f.freePlace === true) && f.freePlace !== false && (isSessionType(f.paymentType) || /trial/i.test(f.paymentType || ''))) return fail(res, 400, 'Untick Free place before making this session by session, Pro sessions or a trial.'); fields['Term 4 Payment Type'] = f.paymentType || null; before.paymentType = row.paymentType }
   // Switching to session by session: the term fee goes, so nothing is owing
   // until sessions are billed (the fee becomes what they have paid so far).
   if (fields['Term 4 Payment Type'] && isSessionType(fields['Term 4 Payment Type']) && !isSessionType(row.paymentType) && !('feeAud' in f)) {
@@ -994,7 +1017,7 @@ async function editPlayer(res, principal, config, body) {
   if ('perSessionAud' in f) {
     const v = f.perSessionAud === null || f.perSessionAud === '' ? 0 : Number(f.perSessionAud)
     if (!Number.isFinite(v) || v < 0 || v > 2000) return fail(res, 400, 'Enter the price per session in dollars, for example 50.')
-    fields['Term 4 Notes'] = withPerSession(row.notes, Math.round(v * 100))
+    fields['Term 4 Notes'] = withPerSession(fields['Term 4 Notes'] ?? row.notes, Math.round(v * 100))
     before.perSessionCents = row.perSessionCents
   }
   // The player is their own contact (no parent): a tag on the row's notes.
@@ -1022,7 +1045,7 @@ async function getPlayerProfile(res, config, body) {
   const prof = await findProfile({ key, rowIds: [row.id] })
   const waiver = prof ? null : waiverFor(row.player, { emails: rowEmails(row), phones: [row.phone], dob: row.dob }, roster.waivers)
   const prefill = waiver ? await waiverPrefill(waiver.id) : {}
-  return res.status(200).json({ success: true, row: { rowId: row.id, name: row.player, parent: row.parent, email: row.email, phone: row.phone, ownContact: row.ownContact, paymentType: row.paymentType || '', feeAud: row.feeAud, paidAud: row.paidAud, perSessionCents: row.perSessionCents || null, paymentTypes: PAYMENT_TYPES }, profile: profileView(prof), prefill: { ...prefill, dob: prefill.dob || isoDate(row.dob) || '' }, options: { levels: LEVELS, playingUp: PLAYING_UP, positions: POSITIONS, feet: FEET, years: YEARS, clubs: clubSuggestions(roster.waivers) } })
+  return res.status(200).json({ success: true, row: { rowId: row.id, name: row.player, parent: row.parent, email: row.email, phone: row.phone, ownContact: row.ownContact, paymentType: row.paymentType || '', feeAud: row.feeAud, paidAud: row.paidAud, perSessionCents: row.perSessionCents || null, freePlace: row.freePlace === true, paymentTypes: PAYMENT_TYPES }, profile: profileView(prof), prefill: { ...prefill, dob: prefill.dob || isoDate(row.dob) || '' }, options: { levels: LEVELS, playingUp: PLAYING_UP, positions: POSITIONS, feet: FEET, years: YEARS, clubs: clubSuggestions(roster.waivers) } })
 }
 async function savePlayerProfile(res, principal, config, body) {
   const row = await rowOr404(res, body.rowId); if (!row) return
@@ -1955,7 +1978,7 @@ async function playerPayments(config, rowId) {
   const recordedIds = new Set(ledger.flatMap((l) => [l['Payment ID'], l['Stripe Checkout Session ID'], l['Stripe Payment Intent ID']].filter(Boolean)))
   return {
     rowId: r.id, player: r.player, parent: r.parent, email: r.email, phone: r.phone,
-    feeCents: cents(r.feeAud), paidCents: cents(r.paidAud), status: r.paymentStatus || 'Not set', type: r.paymentType || '',
+    feeCents: cents(r.feeAud), paidCents: cents(r.paidAud), status: r.paymentStatus || 'Not set', type: r.paymentType || '', freePlace: r.freePlace === true,
     notes: r.notes || '', linkNotes: r.linkNotes || '',
     stripe: stripe.map((p) => ({ id: p.id, at: p.at, cents: p.amountCents, refundedCents: p.refundedCents, product: p.product, recorded: recordedIds.has(p.id) || (p.intentId && recordedIds.has(p.intentId)) || Boolean(p.jfpRef), feeCents: p.feeKnown ? p.feeCents : null, payMethod: p.payMethod || '', nextTerm: Boolean(p.isNext) })),
     ledger: ledger.filter((l) => String(l['Source Record ID'] || '').includes(r.id) || (l['Player Name'] || '').split(',').map((x) => x.trim()).includes(r.player)).map((l) => ({ date: l['Payment Date'] || '', method: l['Payment Method'] || '', cents: Math.round(Number(l['Amount Paid'] || 0) * 100), status: l['Payment Status'] || '', notes: l['Notes'] || '' })),

@@ -142,6 +142,10 @@ function term4Row({ id, fields: f }) {
     prepaidSessions: Number(tagOf(notes, 'PREPAID')) || 0,
     // The player is their own contact (no parent): [CONTACT:self] in the notes.
     ownContact: tagOf(notes, 'CONTACT') === 'self',
+    // A free place (Lee, 27 Oct 2026: staff testing, comps): no fee and counts
+    // as paid, so the JF App and Paid lists treat it like any paid place.
+    // [FREE:yes] in the notes, set and cleared only from Edit player.
+    freePlace: tagOf(notes, 'FREE') === 'yes',
     // Paid for by an agent (Lee, 20 Oct 2026): [AGENT:<id>], see _jfp-agents.js.
     agentId: tagOf(notes, 'AGENT'),
     // First session for a player who starts later in the term (staff set it).

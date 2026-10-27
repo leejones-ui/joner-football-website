@@ -2286,6 +2286,7 @@ function editPlayerModal(p) {
     <label class="j-field"><span>Player's full name</span><input class="j-input" id="ep-name" value="${esc(p.player)}"></label>
     <div class="j-two"><label class="j-field"><span>Fee for this place (A$)</span><input class="j-input" id="ep-fee" inputmode="decimal" value="${p.feeCents == null ? '' : p.feeCents / 100}" placeholder="not set"></label>
     <label class="j-field"><span>Payment type</span><select class="j-select" id="ep-type"><option value="">Not set</option>${[...new Set([...PAY_TYPES, p.type].filter(Boolean))].map((t) => `<option ${t === p.type ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></label></div>
+    <label class="j-check" id="ep-free-row"><input type="checkbox" id="ep-free" ${p.freePlace ? 'checked' : ''}> <span>Free place: no fee, counts as paid, gets the JF App. For staff and comps, not trials.</span></label>
     <label class="j-field" id="ep-per-wrap"><span>Price per session (A$), for session by session</span><input class="j-input" id="ep-per" inputmode="decimal" value="${p.perSessionCents ? p.perSessionCents / 100 : ''}" placeholder="e.g. 50"></label>
     <p class="muted small" style="margin-top:-6px">Session by session: they can pay for sessions from their account. A fee with no payment link: they can pay from their account.</p>
     <div id="ep-q-wrap"></div>
@@ -2312,7 +2313,9 @@ function editPlayerModal(p) {
     if (v('#ep-parent') !== (p.parent || '')) fields.parent = v('#ep-parent')
     if (v('#ep-email') !== (p.email || '')) fields.email = v('#ep-email')
     if (v('#ep-phone') !== (p.phone || '')) fields.phone = v('#ep-phone')
-    if ((fee === '' ? null : Math.round(Number(fee) * 100)) !== p.feeCents) fields.feeAud = fee === '' ? null : Number(fee)
+    const free = box.querySelector('#ep-free').checked
+    if (free !== (p.freePlace === true)) fields.freePlace = free
+    if (!free && (fee === '' ? null : Math.round(Number(fee) * 100)) !== p.feeCents) fields.feeAud = fee === '' ? null : Number(fee)
     if (v('#ep-type') !== (p.type || '')) fields.paymentType = v('#ep-type')
     const per = v('#ep-per')
     if ((per === '' ? null : Math.round(Number(per) * 100)) !== (p.perSessionCents || null)) fields.perSessionAud = per === '' ? null : Number(per)
@@ -3646,6 +3649,7 @@ async function plEdit(p) {
       ${qd ? `${commitmentHtml(qd.commitment, qd.commitments)}${quoteHtml('pe', { tiers: qd.quote.tiers, defaultQuote: qd.defaultQuote, run: { whole: qd.termWhole, left: qd.termLeft } })}` : ''}
       <div class="j-two"><label class="j-field"><span>Term 4 fee (A$)</span><input class="j-input" id="pe-fee" inputmode="decimal" value="${esc(d.row.feeAud ?? '')}"></label>
       <label class="j-field"><span>Set the fee from a price <span class="muted">(optional)</span></span><select class="j-select" id="pe-price"><option value="">Choose a price</option>${pr ? `<optgroup label="JFP price list">${(pr.products || []).map((x) => `<option value="${x.cents}" data-type="${esc(x.type)}">${esc(x.label)} · ${esc(money(x.cents))}</option>`).join('')}</optgroup>${customPrices(pr).map((x) => `<option value="${x.cents}" data-type="${x.programme === 'pro' ? 'JFP Pro sessions' : ''}" data-per="${x.perSession ? '1' : ''}">${esc(x.name)} · ${esc(x.amountLabel || money(x.cents))}${x.perSession ? ' a session' : ''}</option>`).join('')}` : ''}</select></label></div>
+      <label class="j-check" id="pe-free-row"><input type="checkbox" id="pe-free" ${d.row.freePlace ? 'checked' : ''}> <span>Free place: no fee, counts as paid, gets the JF App. For staff and comps, not trials.</span></label>
       ${d.row.paidAud ? `<p class="muted small">Paid so far: ${esc(money0(d.row.paidAud))}.</p>` : ''}
       <div id="pe-autocharge"></div>
     </details>
@@ -3679,7 +3683,9 @@ async function plEdit(p) {
     const type = box.querySelector('#pe-type').value
     if (type !== (d.row.paymentType || '')) changed.paymentType = type
     const fee = box.querySelector('#pe-fee').value.trim().replace(/[a$,\s]/gi, '')
-    if (fee !== String(d.row.feeAud ?? '')) changed.feeAud = fee === '' ? null : Number(fee)
+    const free = box.querySelector('#pe-free').checked
+    if (free !== (d.row.freePlace === true)) changed.freePlace = free
+    if (!free && fee !== String(d.row.feeAud ?? '')) changed.feeAud = fee === '' ? null : Number(fee)
     const perNow = box.querySelector('#pe-per').value.trim().replace(/[a$,\s]/gi, '')
     if (perNow !== per) changed.perSessionAud = perNow === '' ? null : Number(perNow)
     const qt = peQuote ? peQuote.read() : { tiers: [] }
