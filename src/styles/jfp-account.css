@@ -166,8 +166,37 @@ body:has(.ja[data-theme="light"]) { background: #F5F5F3 !important; }
 .ja .ja-nav-item .sub { display: block; font-size: 11.5px; font-weight: 500; color: var(--ja-faint); margin-top: 2px; }
 .ja .ja-nav-item .ext { margin-left: auto; width: 14px; height: 14px; opacity: .45; }
 .ja .ja-nav-item .dot { margin-left: auto; width: 8px; height: 8px; border-radius: 50%; background: var(--ja-red); }
-.ja-side-foot { margin-top: auto; padding: 16px 12px 0; border-top: 1px solid var(--ja-line); font-size: 12.5px; color: var(--ja-muted); }
-.ja-side-foot b { display: block; color: var(--ja-hi); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ja-side-foot { position: relative; margin-top: auto; padding: 12px 0 0; border-top: 1px solid var(--ja-line); }
+/* The account button and its menu (Lee, 27 Oct 2026): opens upwards, like the Claude app. */
+.ja-acct-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: 0; border-radius: 12px; background: transparent; color: var(--ja-ink); text-align: left; cursor: pointer; font: inherit; }
+.ja-acct-btn:hover, .ja-acct-btn[aria-expanded="true"] { background: rgb(var(--ja-ov) / .06); }
+.ja-acct-btn .ja-me-av { flex: none; color: var(--ja-hi); font-weight: 700; }
+.ja-acct-tx { flex: 1; min-width: 0; display: grid; }
+.ja-acct-tx b, .ja-acct-tx small, .ja-acct-who b, .ja-acct-who small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ja-acct-tx b { font-size: 14px; font-weight: 650; color: var(--ja-hi); }
+.ja-acct-tx small { font-size: 12px; color: var(--ja-muted); }
+.ja-acct-btn .dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--ja-red); }
+.ja-acct-btn .chev { width: 16px; height: 16px; flex: none; color: var(--ja-muted); transform: rotate(180deg); transition: transform .2s var(--ja-ease); }
+.ja-acct-btn[aria-expanded="true"] .chev { transform: none; }
+/* Fixed, so the side bar's scroll area neither clips nor covers it; placed above the button by the script. */
+.ja-acct-menu { position: fixed; left: 14px; width: 300px; z-index: 60; isolation: isolate; padding: 8px; border-radius: 16px; background: var(--ja-panel); border: 1px solid var(--ja-line-2); box-shadow: 0 18px 50px rgba(0, 0, 0, .28); animation: ja-fade .15s ease; }
+.ja-acct-who { display: grid; padding: 8px 10px 10px; margin-bottom: 4px; border-bottom: 1px solid var(--ja-line); }
+.ja-acct-who b { font-size: 14px; color: var(--ja-hi); }
+.ja-acct-who small { font-size: 12px; color: var(--ja-muted); }
+.ja-acct-menu .ja-mrow { min-height: 40px; padding: 8px 10px; }
+.ja-acct-look { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px; margin-top: 4px; border-top: 1px solid var(--ja-line); font-size: 13px; color: var(--ja-muted); }
+.ja-acct-look .ja-seg2 button { min-height: 30px; min-width: 0; padding: 0 12px; font-size: 12.5px; }
+.ja-acct-out { border-top: 1px solid var(--ja-line); border-radius: 0 0 10px 10px; }
+/* The portal guide card on Home (first few visits, can be closed). */
+.ja-guide { position: relative; display: flex; align-items: center; gap: 16px; margin: 0 0 16px; padding: 14px 52px 14px 14px; border-radius: 18px; background: var(--ja-panel); border: 1px solid var(--ja-line); }
+.ja-guide-img { position: relative; flex: none; width: 168px; aspect-ratio: 16 / 9; border: 0; padding: 0; border-radius: 12px; overflow: hidden; background: #000; cursor: pointer; }
+.ja-guide-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ja-guide-play { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; background: rgba(0, 0, 0, .25); }
+.ja-guide-play svg { width: 34px; height: 34px; padding: 8px; border-radius: 50%; background: var(--ja-red); }
+.ja-guide-tx { min-width: 0; }
+.ja-guide-tx .ja-h3 { margin: 4px 0 4px; }
+.ja-guide-x { position: absolute; top: 10px; right: 10px; }
+@media (max-width: 560px) { .ja-guide { flex-direction: column; align-items: stretch; padding: 12px; } .ja-guide-img { width: 100%; } .ja-guide-tx { padding-right: 36px; } .ja-guide-x { top: 20px; right: 20px; background: rgba(0, 0, 0, .55); color: #fff; } }
 
 @media (min-width: 1024px) {
   .ja-app { display: grid; grid-template-columns: 272px minmax(0, 1fr); }

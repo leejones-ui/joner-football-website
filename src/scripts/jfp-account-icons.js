@@ -33,6 +33,7 @@ export const PATHS = {
   chevron: '<path d="m7 10 5 5 5-5"/>',
   video: '<rect x="2.8" y="6" width="13" height="12" rx="2.4"/><path d="m15.8 10.4 5.4-3v9.2l-5.4-3"/>',
   spark: '<path d="M12 3.5 13.9 9l5.6 1.9-5.6 1.9L12 18.5l-1.9-5.7L4.5 10.9 10.1 9z"/>',
+  logout: '<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5"/><path d="M5 12h11"/>',
   sign: '<path d="M4 19.5h16M6 15.5l9.3-9.3a1.9 1.9 0 0 1 2.7 2.7l-9.3 9.3H6z"/>',
   lock: '<rect x="4.5" y="10.5" width="15" height="10" rx="2.4"/><path d="M8 10.5V7.8a4 4 0 0 1 8 0v2.7"/>',
   receipt: '<path d="M6 3.5h12v17l-2.4-1.6-2.4 1.6-1.2-.8-1.2.8-2.4-1.6L6 20.5z"/><path d="M9 8.5h6M9 12h6"/>',

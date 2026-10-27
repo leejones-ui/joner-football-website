@@ -236,7 +236,6 @@ function nav() {
   const unsigned = unsignedWaivers().length
   const notesItem = { key: 'notes', label: 'Coach notes', icon: 'whistle', count: unreadNotes(D) }
   const reportsItem = { key: 'reports', label: 'Player reports', icon: 'spark', count: unreadReports(D) }
-  const alertsItem = pushOffered(D) ? [{ key: 'alerts', label: 'Notifications', icon: 'bell' }] : []
   // A player's own login (12+): their sessions, notes and videos. No money or family.
   if (D?.playerLogin) return [
     { label: 'My JFP', items: [
@@ -246,7 +245,7 @@ function nav() {
       reportsItem,
       { key: 'news', label: 'Announcements', icon: 'bell', count: unreadNews() },
     ] },
-    { label: 'Manage', items: [{ key: 'cancel', label: "Can't make it", icon: 'xcircle' }, ...alertsItem, { key: 'contact', label: 'Contact us', icon: 'chat' }] },
+    { label: 'Manage', items: [{ key: 'cancel', label: "Can't make it", icon: 'xcircle' }, { key: 'contact', label: 'Contact us', icon: 'chat' }] },
     { label: 'Explore Joner', items: [
       { key: 'videos', label: 'Videos', icon: 'play' },
       { key: 'term', label: `${termShort()} info`, icon: 'info' },
@@ -265,7 +264,6 @@ function nav() {
     ] },
     { label: 'Manage', items: [
       { key: 'cancel', label: "Can't make it", icon: 'xcircle' },
-      ...alertsItem,
       { key: 'keep', label: 'Keep my spot', icon: 'bookmark', dot: Boolean(D?.keep?.open && (D?.nextTerm?.players || []).some((x) => !x.status || x.status === 'invited')) },
       { key: 'info', label: solo() ? 'My profile' : 'Player information', icon: 'user', dot: infoGaps().length > 0 },
       { key: 'waivers', label: 'Waivers', icon: 'sign', dot: unsigned > 0 },
@@ -331,7 +329,6 @@ function renderShell() {
   const inMore = !BAR.some(([k]) => k === current)
   $('ja-tabs').innerHTML = BAR.map(([k, l, i]) => `<button type="button" class="ja-tab" data-go="${k}" aria-current="${current === k ? 'page' : 'false'}">${ic(i)}<span>${k === 'family' && solo() ? 'Me' : l}</span>${k === 'notes' ? newsBadge(unreadNotes(D)) : badge(k === 'fees' ? feesOwing() : k === 'family' ? familyCount() : 0)}</button>`).join('')
     + `<button type="button" class="ja-tab" data-more aria-haspopup="dialog" aria-current="${inMore ? 'page' : 'false'}">${ic('menu')}<span>More</span>${newsBadge(newSessions(D).n)}</button>`
-  $('ja-email').textContent = D?.email || ''
   const unread = unreadNews()
   $('ja-bell').innerHTML = `${ic('bell')}${newsBadge(unread)}`
   $('ja-bell').setAttribute('aria-label', unread ? `Announcements, ${unread} unread` : 'Announcements')
@@ -342,11 +339,45 @@ function renderShell() {
   const av = me?.photo ? `<span class="ja-me-av"><img src="${esc(me.photo)}" alt=""></span>` : `<span class="ja-me-av">${esc(initials(who || D?.email || 'J'))}</span>`
   $('ja-me').innerHTML = `${av}<span class="ja-me-name">${esc(first(who) || 'Account')}</span>`
   $('ja-me').setAttribute('aria-label', `Your account${D?.email ? `, signed in as ${D.email}` : ''}`)
+  // Big screens: the same account, as a button at the foot of the side bar
+  // that opens a menu upwards (Lee, 27 Oct 2026, "like Claude does").
   const foot = document.querySelector('.ja-side-foot')
-  if (foot && !foot.querySelector('.ja-seg2')) foot.insertAdjacentHTML('beforeend', `<div style="margin-top:12px">${themeSwitch()}</div>`)
+  if (foot) {
+    const open = Boolean(foot.querySelector('#ja-acct-menu:not([hidden])'))
+    const dot = acctItems().some((it) => it.dot)
+    foot.innerHTML = `<div class="ja-acct-menu" id="ja-acct-menu" role="menu" aria-label="Your account"${open ? '' : ' hidden'}>
+        <div class="ja-acct-who"><b>${esc(who || 'Your account')}</b><small>${esc(D?.email || '')}</small></div>
+        <div class="ja-mlist">${acctItems().map(moreRow).join('')}</div>
+        <div class="ja-acct-look"><span>Appearance</span>${themeSwitch()}</div>
+        <button type="button" class="ja-mrow ja-acct-out" id="sign-out"><span class="ja-mr-ic">${ic('logout')}</span><span class="ja-mr-tx"><b>Sign out</b></span></button>
+      </div>
+      <button type="button" class="ja-acct-btn" id="ja-acct" aria-haspopup="menu" aria-expanded="${open}" aria-controls="ja-acct-menu">${av}<span class="ja-acct-tx"><b>${esc(who || 'My account')}</b><small>${esc(D?.email || '')}</small></span>${dot ? '<span class="dot" aria-label="Needs attention"></span>' : ''}${ic('chevron', 'chev')}</button>`
+  }
+}
+// The account menu (side bar) and the account sheet (phones) list the same
+// things: profile, fees, notifications, waivers, the portal guide, contact.
+function acctItems() {
+  const own = D?.playerLogin
+  return [
+    own ? null : { key: 'family', label: solo() ? 'My profile' : D?.agent ? 'Your players' : 'Your family', icon: 'user', dot: familyCount() > 0 },
+    own ? null : { key: 'fees', label: 'Fees and payments', icon: 'card', dot: feesOwing() > 0 },
+    pushOffered(D) ? { key: 'alerts', label: 'Notifications', icon: 'bell' } : null,
+    own ? null : { key: 'waivers', label: 'Waivers', icon: 'sign', dot: unsignedWaivers().length > 0 },
+    { guide: true, label: 'Portal guide (video)', icon: 'play' },
+    { key: 'contact', label: 'Contact us', icon: 'chat' },
+  ].filter(Boolean)
+}
+function acctMenu(open) {
+  const m = $('ja-acct-menu'); const b = $('ja-acct')
+  if (!m || !b) return
+  m.hidden = !open
+  b.setAttribute('aria-expanded', String(open))
+  if (open) { const r = b.getBoundingClientRect(); m.style.left = `${r.left}px`; m.style.bottom = `${window.innerHeight - r.top + 8}px` }
+  if (open) m.querySelector('.ja-mrow')?.focus()
 }
 function moreRow(it) {
   const inner = `<span class="ja-mr-ic">${ic(it.icon)}</span><span class="ja-mr-tx"><b>${esc(it.label)}</b></span>${it.count ? newsBadge(it.count) : it.dot ? '<span class="dot" aria-label="Needs attention"></span>' : ''}${it.ext ? ic('ext', 'ja-mr-go') : ic('right', 'ja-mr-go')}`
+  if (it.guide) return `<button type="button" class="ja-mrow" data-guide>${inner}</button>`
   if (it.href) return `<a class="ja-mrow" href="${esc(it.href)}"${it.ext ? ' target="_blank" rel="noopener noreferrer"' : ''}>${inner}</a>`
   return `<button type="button" class="ja-mrow" data-go="${it.key}" aria-current="${current === it.key ? 'page' : 'false'}">${inner}</button>`
 }
@@ -367,12 +398,8 @@ function accountSheet() {
   const me = solo() ? D.players[0] : null
   const who = me?.name || D?.parentName || ''
   const sheet = openSheet({ title: who || 'Your account', subtitle: D?.email ? `Signed in as ${D.email}` : '' })
-  sheet.body.innerHTML = `<div class="ja-more-group"><p class="ja-nav-label">Look</p>${themeSwitch()}</div>
-    <div class="ja-more-group"><p class="ja-nav-label">Your account</p><div class="ja-mlist">
-      ${D?.playerLogin ? '' : moreRow({ key: 'family', label: solo() ? 'My profile' : D?.agent ? 'Your players' : 'Your family', icon: 'user', dot: familyCount() > 0 })}
-      ${D?.playerLogin ? '' : moreRow({ key: 'fees', label: 'Fees and receipts', icon: 'card', dot: feesOwing() > 0 })}
-      ${moreRow({ key: 'contact', label: 'Contact us', icon: 'chat' })}
-    </div></div>${installCard()}`
+  sheet.body.innerHTML = `<div class="ja-more-group"><p class="ja-nav-label">Your account</p><div class="ja-mlist">${acctItems().map(moreRow).join('')}</div></div>
+    <div class="ja-more-group"><p class="ja-nav-label">Appearance</p>${themeSwitch()}</div>${installCard()}`
   sheet.foot.innerHTML = '<button type="button" class="ja-btn ja-btn-line ja-btn-block" id="ja-signout2">Sign out</button>'
 }
 // Add to Home Screen: the steps for iPhone (Safari) and Android (Chrome).
@@ -574,7 +601,7 @@ function renderHome() {
   // A Juniors-only family: the Juniors card and its to do, no JFP "nothing booked".
   if (!D.players.length && D.juniors) {
     el.innerHTML = `<header class="ja-head"><p class="ja-kicker"><i></i>Joners Juniors · ${esc(D.juniors.term)}</p><h1 class="ja-display">${name ? `Hi ${esc(name)}` : 'Welcome'}</h1></header>
-      <div class="ja-home"><div class="ja-stack">${jjHomeCard()}</div><div class="ja-stack">${newsBlock()}${todoCards()}${requestsBlock()}</div></div>${watch}`
+      ${guideCard()}<div class="ja-home"><div class="ja-stack">${jjHomeCard()}</div><div class="ja-stack">${newsBlock()}${todoCards()}${requestsBlock()}</div></div>${watch}`
     return
   }
   // Anyone can have an account (round 2 item 8): nobody booked into a
@@ -582,7 +609,7 @@ function renderHome() {
   if (!D.players.some((p) => p.enrolments.length || p.placeNoSession)) {
     const list = D.players.length ? `<div class="ja-card"><div class="ja-card-head"><h3 class="ja-h3">${D.self ? 'Your profile' : 'Your players'}</h3><button type="button" class="ja-link ja-small" data-go="info">${D.self ? 'My profile' : 'Player information'}</button></div><ul class="ja-list">
       ${D.players.map((p) => `<li class="ja-row">${face(p.name, p.photo)}<div><b>${esc(p.name)}</b><small>Not booked into a session yet</small></div><div class="ja-flags">${p.waiver.onFile ? '<span class="ja-dot ok">Waiver</span>' : `<button type="button" class="ja-dot bad" data-waiver-player="${esc(p.key)}">Sign waiver</button>`}</div></li>`).join('')}</ul></div>` : ''
-    el.innerHTML = `${head}
+    el.innerHTML = `${head}${guideCard()}
       <div class="ja-ticket" style="min-height:420px" data-no-session><img src="${IMG}/photos/ntra-field-900x1100.webp" alt=""><div class="ja-ticket-top"><span class="ja-live"><i></i>${esc(D.term)}</span></div>
         <div class="ja-ticket-body"><h2 class="ja-ticket-date"><span>You're not booked</span><span class="t">into a session yet</span></h2>
         <p class="ja-meta">Pick a session on the timetable. ${D.players.length ? 'Your player details are saved, so booking is quick.' : 'Add your players first and booking is quick.'}</p>
@@ -602,7 +629,7 @@ function renderHome() {
   const finished = upcoming().filter((x) => !x.next)
   const doneBlock = finished.length ? `<div class="ja-card ja-nlist">${finished.map((x) => `<button type="button" class="ja-nrow" data-go="sessions" data-kid="${esc(x.p.key)}"><span class="ja-avatar">${esc(initials(x.p.name))}</span><span class="ja-mr-tx"><b>${esc(x.p.name)}</b><small>${esc(x.e.day)}s ${esc(x.e.time)}, ${esc(x.e.location)} · No more sessions this term</small></span>${ic('right', 'ja-mr-go')}</button>`).join('')}</div>` : ''
   const strip = todoStrip()
-  el.innerHTML = `${head}
+  el.innerHTML = `${head}${guideCard()}
     <div class="ja-home">
       <div class="ja-stack"><p class="ja-label">Next up</p>${nextBlock}${doneBlock}</div>
       <div class="ja-stack">${D.playerLogin ? playerWaiverStep() : strip ? `<p class="ja-label">To do</p>${strip}` : `<div class="ja-strip is-done">${ic('check')}<span class="ja-mr-tx"><b>All sorted</b><small>Nothing to sign or pay right now.</small></span></div>`}${reportsHomeBlock(D)}${makeupsHomeBlock(D)}${notesHomeBlock(D)}${newsBlock()}
@@ -1311,6 +1338,32 @@ function contactSheet() {
 
 // ---------- video player ----------
 
+// The portal guide (Lee, 27 Oct 2026): his walkthrough of the whole portal,
+// Unlisted on YouTube. A card on Home for the first few visits (each can be
+// closed), and always in the account menu.
+const GUIDE = { id: 'xn3YXZ9V9rg', title: 'How to use your JFP portal' }
+const GUIDE_KEY = 'ja-guide'
+const GUIDE_VISITS = 3
+function guideState() { try { return JSON.parse(localStorage.getItem(GUIDE_KEY) || '{}') || {} } catch { return {} } }
+function saveGuide(x) { try { localStorage.setItem(GUIDE_KEY, JSON.stringify({ ...guideState(), ...x })) } catch {} }
+// One visit per browser session, counted once.
+try { if (!sessionStorage.getItem(GUIDE_KEY)) { sessionStorage.setItem(GUIDE_KEY, '1'); saveGuide({ visits: (guideState().visits || 0) + 1 }) } } catch {}
+const guideOn = () => { const g = guideState(); return !g.hidden && !g.watched && (g.visits || 1) <= GUIDE_VISITS }
+function guideCard() {
+  if (!guideOn()) return ''
+  return `<div class="ja-guide" data-guide-card>
+    <button type="button" class="ja-guide-img" data-guide aria-label="Play the portal guide"><img src="https://i.ytimg.com/vi/${GUIDE.id}/mqdefault.jpg" alt="" loading="lazy"><span class="ja-guide-play">${ic('play')}</span></button>
+    <div class="ja-guide-tx"><p class="ja-kicker"><i></i>New to the portal?</p><h3 class="ja-h3">Watch the 11 minute guide</h3><p class="ja-small ja-muted">Lee walks you through everything, and how to put it on your phone's home screen.</p>
+      <p style="margin-top:10px"><button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-guide>Watch the guide</button></p></div>
+    <button type="button" class="ja-round ja-guide-x" data-guide-hide aria-label="Hide the guide">${ic('close')}</button>
+  </div>`
+}
+function playGuide() {
+  saveGuide({ watched: true })
+  document.querySelectorAll('[data-guide-card]').forEach((x) => x.remove())
+  playVideo(GUIDE.id, GUIDE.title)
+}
+
 function playVideo(id, title) {
   const wrap = document.createElement('div')
   wrap.className = 'ja-player'
@@ -1556,12 +1609,19 @@ function waiverSheet(keys) {
 
 // ---------- clicks ----------
 
+// Escape closes the account menu and hands focus back to its button.
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('ja-acct-menu') && !$('ja-acct-menu').hidden) { acctMenu(false); $('ja-acct')?.focus() } })
+
 document.addEventListener('click', async (e) => {
   const ls = e.target.closest('[data-login-set]')
   if (ls) { const p = D.players.find((x) => x.key === ls.dataset.loginSet); if (p) loginSheet(p, D, () => load()); return }
   const t = e.target
   if (t.closest('[data-more]')) return moreSheet()
   if (t.closest('#ja-me')) return accountSheet()
+  if (t.closest('#ja-acct')) return acctMenu($('ja-acct-menu')?.hidden)
+  if (!t.closest('#ja-acct-menu .ja-seg2')) acctMenu(false)
+  if (t.closest('[data-guide]')) { closeSheet(true); return playGuide() }
+  if (t.closest('[data-guide-hide]')) { saveGuide({ hidden: true }); document.querySelectorAll('[data-guide-card]').forEach((x) => x.remove()); return }
   const th = t.closest('[data-theme-pick]')
   if (th) return setTheme(th.dataset.themePick)
   if (t.closest('[data-install]')) return installSheet()
