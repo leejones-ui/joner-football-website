@@ -459,9 +459,23 @@ export async function extraPayCheck(payreqId) {
 // decide who is refunded (overPaid).
 export async function extraSettle(payreqId) {
   if (!payreqId) return { removed: [] }
-  const slots = await allSlots()
-  const s = slots.find((x) => liveBookings(x).some((b) => b.payreqId === payreqId && b.from === 'family'))
-  if (!s) return { removed: [] }
+  const mine = (x) => liveBookings(x).some((b) => b.payreqId === payreqId && b.from === 'family')
+  const found = (await allSlots()).find(mine)
+  if (!found) return { removed: [] }
+  // The same lock as booking, so a family booking now is never lost. A paid
+  // payment must always finish: after about 6 seconds it goes on without it.
+  const lock = `jfp:extra-lock:${found.id}`
+  let held = false
+  for (let i = 0; i < 20 && !held; i++) {
+    held = (await kvCommand(['SET', lock, '1', 'NX', 'EX', '15'])) === 'OK'
+    if (!held) await new Promise((r) => setTimeout(r, 300))
+  }
+  if (!held) console.error('jfp extra settle: went on without the lock', found.id)
+  try { return await settleSlot(found.id, payreqId, mine) } finally { if (held) await kvCommand(['DEL', lock]) }
+}
+async function settleSlot(slotId, payreqId, mine) {
+  const s = (await allSlots()).find((x) => x.id === slotId)
+  if (!s || !mine(s)) return { removed: [] }
   const paid = await paidPayreqs([s])
   if (!paid.has(payreqId)) return { removed: [] }
   const live = liveBookings(s)
@@ -470,13 +484,13 @@ export async function extraSettle(payreqId) {
   const paidFamilies = [...new Set(committed.filter((b) => b.from === 'family').map(leadOf))]
   const over = isWhole(s) ? new Set(committed.map((b) => b.groupId || b.id)).size > 1 : committed.length > s.capacity
   if (over) return { removed: [], slot: s, overPaid: paidFamilies }
-  const room = isWhole(s) ? 0 : s.capacity - committed.length
+  let room = isWhole(s) ? 0 : s.capacity - committed.length
   const waiting = [...new Set(live.filter((b) => b.from === 'family' && !paid.has(leadOf(b))).map((b) => b.groupId || b.id))]
     .map((g) => live.filter((b) => (b.groupId || b.id) === g))
   const at = new Date().toISOString()
   const removed = []
   for (const group of waiting) {
-    if (!isWhole(s) && group.length <= room) continue
+    if (!isWhole(s) && group.length <= room) { room -= group.length; continue }
     for (const x of group) { x.status = 'removed'; x.removedBy = 'system: taken by a paid booking'; x.removedAt = at }
     const lead = group.find((x) => x.payreqId) || group[0]
     removed.push({ payreqId: leadOf(lead), bookingId: lead.id, players: group.map((x) => x.name), email: lead.email || '' })
