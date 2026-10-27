@@ -43,6 +43,7 @@ const addDays = (iso, n) => { const d = new Date(`${iso}T12:00:00Z`); d.setUTCDa
 
 export { cleanExtraPrices, newExtraPrice } from './_jfp-extra-prices.js'
 import { cleanExtraPrices } from './_jfp-extra-prices.js'
+import { getConfig as getHolidayConfig } from './_holiday-store.js'
 
 // ---------- store ----------
 
@@ -62,6 +63,14 @@ export async function groupBookingIds(slotId, bookingId) {
 export async function getSlot(id) { return ID.test(id || '') ? parse(await kvCommand(['HGET', EXTRA, id])) : null }
 async function putSlot(s) { await kvCommand(['HSET', EXTRA, s.id, JSON.stringify(s)]) }
 
+// Holiday prices (Lee, 27 Oct 2026): the coach's holiday rates, so a group
+// of 2 pays the shared price each and 3 or more the group price each.
+export const perPlayerCents = (o, n) => (o.pairCents && n === 2 ? o.pairCents : o.priceCents)
+async function holidayRates(coachId) {
+  const hc = await getHolidayConfig()
+  const tier = hc.coaches?.find((c) => c.id === coachId)?.tier || 'coach'
+  return hc.prices?.[tier] || {}
+}
 export const liveBookings = (s) => (s.bookings || []).filter((b) => b.status !== 'removed')
 export const isWhole = (s) => Array.isArray(s?.options) && s.options.length > 0
 // A whole session is either free (every place) or taken by one group.
@@ -78,7 +87,7 @@ export function optionsSummary(options) {
 }
 // The coach's options, checked: a price each (one Lee or Ligia set, or an
 // amount only they can type), and sizes that make sense.
-function cleanOptions(raw, prices, isAdmin, before) {
+function cleanOptions(raw, prices, isAdmin, before, holiday = {}) {
   const out = []
   for (const o of (Array.isArray(raw) ? raw : []).slice(0, 2)) {
     const type = o?.type === 'one' ? 'one' : o?.type === 'group' ? 'group' : ''
@@ -89,12 +98,19 @@ function cleanOptions(raw, prices, isAdmin, before) {
     if (type === 'group' && (!Number.isInteger(minPlayers) || minPlayers < 2 || minPlayers > maxPlayers)) return { error: `Group: the fewest players is 2 to ${maxPlayers}. A single player books 1 on 1.` }
     const picked = prices.find((p) => p.id === o.priceId)
     const old = before?.options?.find((x) => x.type === type)
-    let priceCents, priceId = ''
-    if (picked) { priceCents = picked.cents; priceId = picked.id }
+    let priceCents, priceId = '', pairCents = 0
+    if (o.priceId === '__holiday') {
+      priceCents = Number(type === 'one' ? holiday.one : holiday.group); priceId = '__holiday'
+      if (type === 'group' && maxPlayers === 2) priceCents = Number(holiday.shared)
+      else if (type === 'group' && minPlayers <= 2 && Number(holiday.shared) > 0) pairCents = Number(holiday.shared)
+      if (!(priceCents > 0)) return { error: 'The holiday prices are not set. Pick a price instead.' }
+    }
+    else if (picked) { priceCents = picked.cents; priceId = picked.id }
     else if (isAdmin && Number.isInteger(Number(o.priceCents)) && Number(o.priceCents) >= 100 && Number(o.priceCents) <= 200000) priceCents = Number(o.priceCents)
-    else if (old && !o.priceId && o.priceCents == null) { priceCents = old.priceCents; priceId = old.priceId || '' }
+    else if (old && !o.priceId && o.priceCents == null) { priceCents = old.priceCents; priceId = old.priceId || ''; if (type === 'group' && minPlayers <= 2) pairCents = old.pairCents || 0 }
     else return { error: `Pick a price for ${type === 'one' ? '1 on 1' : 'the group'}.` }
-    const opt = { id: type, type, minPlayers, maxPlayers, priceId, priceCents, priceLabel: formatAud(priceCents) }
+    const priceLabel = pairCents ? `${formatAud(pairCents)} each for 2, ${formatAud(priceCents)} each for 3 or more` : formatAud(priceCents)
+    const opt = { id: type, type, minPlayers, maxPlayers, priceId, priceCents, ...(pairCents ? { pairCents } : {}), priceLabel }
     out.push({ ...opt, label: optionLabel(opt) })
   }
   if (!out.length) return { error: 'Tick 1 on 1, a group, or both.' }
@@ -145,7 +161,7 @@ export function familyView(config, s) {
     priceCents: s.priceCents, priceLabel: formatAud(s.priceCents), label: s.title || s.priceLabel, visibility: s.visibility, note: s.publicNote || '',
     weekly: kindOf(s) === 'weekly', dayName: new Date(`${s.date}T12:00:00Z`).toLocaleDateString('en-AU', { weekday: 'long', timeZone: 'UTC' }),
     createdAt: s.createdAt || '',
-    ...(isWhole(s) ? { whole: true, options: s.options.map(({ id, type, label, minPlayers, maxPlayers, priceCents, priceLabel }) => ({ id, type, label, minPlayers, maxPlayers, priceCents, priceLabel })), optionsLabel: optionsSummary(s.options) } : {}),
+    ...(isWhole(s) ? { whole: true, options: s.options.map(({ id, type, label, minPlayers, maxPlayers, priceCents, pairCents, priceLabel }) => ({ id, type, label, minPlayers, maxPlayers, priceCents, ...(pairCents ? { pairCents } : {}), priceLabel })), optionsLabel: optionsSummary(s.options) } : {}),
   }
 }
 
@@ -182,12 +198,12 @@ export async function saveSlot({ config, principal, isAdmin, input }) {
   const prices = cleanExtraPrices(config.extraPrices).filter((p) => !p.archived)
   let options = null
   if (input.bookAs === 'whole') {
-    const o = cleanOptions(input.options, prices, isAdmin, before)
+    const o = cleanOptions(input.options, prices, isAdmin, before, await holidayRates(coachId))
     if (o.error) return { error: o.error }
     options = o.options
   }
   if (before && liveBookings(before).length && Boolean(options) !== isWhole(before)) return { error: 'Players are already booked, so how it is booked cannot change. Make a new session instead.' }
-  if (before && options && liveBookings(before).length && JSON.stringify(options.map((x) => [x.type, x.priceCents])) !== JSON.stringify(before.options.map((x) => [x.type, x.priceCents]))) return { error: 'A family has already booked this session, so its options and prices cannot change. Make a new session instead.' }
+  if (before && options && liveBookings(before).length && JSON.stringify(options.map((x) => [x.type, x.priceCents, x.pairCents || 0])) !== JSON.stringify(before.options.map((x) => [x.type, x.priceCents, x.pairCents || 0]))) return { error: 'A family has already booked this session, so its options and prices cannot change. Make a new session instead.' }
   const capacity = options ? Math.max(...options.map((x) => x.maxPlayers)) : Number(input.capacity)
   if (!Number.isInteger(capacity) || capacity < 1 || capacity > 20) return { error: 'Places: 1 to 20.' }
   if (before && !options && liveBookings(before).length > capacity) return { error: `${liveBookings(before).length} players are already booked. Remove one first, or keep more places.` }
@@ -289,7 +305,7 @@ export async function reserveWholeSession({ slotId, optionId, players = [], emai
     }))
     s.bookings = [...(s.bookings || []), ...bookings]
     await putSlot(s)
-    await audit({ by, action: 'extra.book', target: s.id, after: { group: leadId, option: opt.label, players: bookings.map((b) => b.name), cents: opt.priceCents * bookings.length } })
+    await audit({ by, action: 'extra.book', target: s.id, after: { group: leadId, option: opt.label, players: bookings.map((b) => b.name), cents: perPlayerCents(opt, bookings.length) * bookings.length } })
     return { bookings, lead: bookings[0], option: opt, slot: s }
   } finally { await kvCommand(['DEL', `jfp:extra-lock:${slotId}`]) }
 }

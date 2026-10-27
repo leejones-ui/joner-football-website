@@ -177,7 +177,8 @@ function bindPrices(ui, again) {
 function optRow(type, s, d, priceText) {
   const o = s?.options?.find((x) => x.type === type)
   const on = s?.whole ? Boolean(o) : true
-  const priceOpts = `${o ? `<option value="__keep" selected>${d.admin ? `Keep ${esc(o.priceLabel || 'the price')}` : 'Keep it as it is'}</option>` : ''}${d.prices.map((p) => `<option value="${esc(p.id)}">${esc(priceText(p))}</option>`).join('')}${d.admin ? '<option value="__aud">Type an amount</option>' : ''}`
+  // Holiday prices come first and are the default on a new session (Lee, 27 Oct 2026).
+  const priceOpts = `${o ? `<option value="__keep" selected>${d.admin ? `Keep ${esc(o.priceLabel || 'the price')}` : 'Keep it as it is'}</option>` : ''}<option value="__holiday">${type === 'one' ? 'Holiday price' : 'Holiday prices (2 players, or 3 or more)'}</option>${d.prices.map((p) => `<option value="${esc(p.id)}">${esc(priceText(p))}</option>`).join('')}${d.admin ? '<option value="__aud">Type an amount</option>' : ''}`
   return `<div class="j-card" style="padding:10px 12px;margin-bottom:8px">
     <label style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" data-xo-on="${type}" ${on ? 'checked' : ''}> ${type === 'one' ? '1 on 1' : 'Group'}</label>
     <div class="j-two" style="margin-top:6px"><label class="j-field"><span>${d.admin ? 'Price per player' : 'Session'}</span><select class="j-select" data-xo-price="${type}">${priceOpts}</select></label>

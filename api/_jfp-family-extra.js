@@ -12,7 +12,7 @@
 //
 // Families see the coach and what kind of session it is (Lee, 19 Oct 2026:
 // "parents will want to know that"), never another family's details.
-import { listExtraSlots, getExtraSlot, reserveExtraPlace, reserveWholeSession, setBookingCharge } from './_jfp-extra.js'
+import { listExtraSlots, getExtraSlot, reserveExtraPlace, reserveWholeSession, setBookingCharge, perPlayerCents } from './_jfp-extra.js'
 import { createPlayerCharge } from './_jfp-charges.js'
 import { telegramAlert } from './_jfp-notify.js'
 import { getPayreq, clean, formatAud } from './_jfp-store.js'
@@ -104,12 +104,12 @@ async function bookWholeSession({ config, parent, fam, body, siteUrl, slot }) {
     const c = await createPlayerCharge({
       config, principal: { email: parent.email, name: fam.parentName || parent.email },
       ...(first.rowId ? { rowId: first.rowId } : { profileKey: first.profileKey }), email: parent.email, playerName: first.name, parentName: fam.parentName || '',
-      amountCents: opt.priceCents * n, label: `Extra session, ${slot.dateLabel} ${slot.time}, ${opt.type === 'one' ? '1 on 1' : `group of ${n}${others}`}`, kind: 'extra',
+      amountCents: perPlayerCents(opt, n) * n, label: `Extra session, ${slot.dateLabel} ${slot.time}, ${opt.type === 'one' ? '1 on 1' : `group of ${n}${others}`}`, kind: 'extra',
       sessionDate: slot.date, coachId: slot.coachId, ref: `extra:${slot.id}:${lead.id}`, siteUrl,
     })
     if (!c.ok) {
       console.error('jfp family extra charge failed', slot.id, lead.id, c.error)
-      await telegramAlert(`Extra session payment link failed to open: ${slot.dateLabel} ${slot.time} (${slot.id}), whole session ${opt.label} for ${n} (${first.name}), ${parent.email}, ${formatAud(opt.priceCents * n)}. The session is held; send them a payment link.`).catch(() => {})
+      await telegramAlert(`Extra session payment link failed to open: ${slot.dateLabel} ${slot.time} (${slot.id}), whole session ${opt.label} for ${n} (${first.name}), ${parent.email}, ${formatAud(perPlayerCents(opt, n) * n)}. The session is held; send them a payment link.`).catch(() => {})
       return { ok: false, status: 502, code: 'charge', error: 'The session is held for you. We could not open the payment just now; we will send you the payment link.' }
     }
     payreqId = c.payreqId

@@ -38,7 +38,7 @@ export function setExtraLink(query) {
 }
 // A whole session (Lee, 27 Oct 2026): one family takes it, first come first
 // served, as 1 on 1 or a group. Each option with its price per player.
-const optLine = (o) => `${esc(o.label)}: ${esc(o.priceLabel)}${o.type === 'one' ? '' : ' a player'}`
+const optLine = (o) => `${esc(o.label)}: ${esc(o.priceLabel)}${o.type === 'one' || o.pairCents ? '' : ' a player'}`
 function slotCard(s, D, { mine = false } = {}) {
   const full = s.placesLeft < 1
   return `<article class="ja-card" data-xslot="${esc(s.id)}"><p class="ja-kicker"><i></i>${mine ? 'Your session' : esc(s.kind || 'Extra session')}</p>
@@ -208,7 +208,7 @@ function wholePicker(card, D, s) {
     box.innerHTML = Array.from({ length: want }, (_, i) => `<input class="j-input" data-xw-guest maxlength="80" autocomplete="off" placeholder="Friend's full name" value="${esc(typed[i] || '')}" style="margin-top:6px">`).join('')
     const n = mine + [...box.querySelectorAll('input')].filter((x) => x.value.trim()).length
     const need = o.minPlayers > n ? ` · needs ${o.minPlayers - n} more player${o.minPlayers - n === 1 ? '' : 's'}` : ''
-    acts.querySelector('[data-xw-total]').innerHTML = n ? `<b>${n} player${n === 1 ? '' : 's'}: A$${((o.priceCents * n) / 100).toLocaleString('en-AU', { maximumFractionDigits: 2 })}</b>${esc(need)}` : 'Tick your player.'
+    acts.querySelector('[data-xw-total]').innerHTML = n ? `<b>${n} player${n === 1 ? '' : 's'}: A$${(((o.pairCents && n === 2 ? o.pairCents : o.priceCents) * n) / 100).toLocaleString('en-AU', { maximumFractionDigits: 2 })}</b>${esc(need)}` : 'Tick your player.'
   }
   acts.addEventListener('click', (e) => { const b = e.target.closest('[data-xw-opt]'); if (!b) return; acts.querySelectorAll('[data-xw-opt]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); draw() })
   acts.addEventListener('change', (e) => { if (e.target.matches('[data-xw-me]')) draw() })

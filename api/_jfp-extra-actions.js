@@ -22,7 +22,7 @@ function forCoach(v, isAdmin) {
   if (isAdmin || !v) return v
   const { priceCents, priceLabel, ...rest } = v
   // A whole session's options keep their sizes, never their prices.
-  if (Array.isArray(rest.options)) rest.options = rest.options.map(({ priceCents: _c, priceLabel: _l, ...o }) => o)
+  if (Array.isArray(rest.options)) rest.options = rest.options.map(({ priceCents: _c, pairCents: _p, priceLabel: _l, ...o }) => o)
   return rest
 }
 const priceForCoach = (p, isAdmin) => (isAdmin ? { ...p, priceLabel: formatAud(p.cents) } : { id: p.id, label: p.label, durationMin: p.durationMin })

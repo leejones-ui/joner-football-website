@@ -130,4 +130,23 @@ await test('1 on 1 at A$150 on the 11am is not offered (group only); removing th
   assert.equal((await sessions()).find((x) => x.url === one.data.url).amount_total, 15000)
 })
 
+await test('holiday prices (Lee, 27 Oct): 1 on 1 A$150; a group of 2 pays A$100 each, 3 or more A$90 each; coaches get their own holiday rates', async () => {
+  const hc = JSON.parse(await kv(['GET', 'holiday:config']) || 'null') || {}
+  await kv(['SET', 'holiday:config', JSON.stringify({ ...hc, prices: { lee: { one: 15000, shared: 10000, group: 9000 }, coach: { one: 12000, shared: 9000, group: 8000 } }, coaches: [...(hc.coaches || []).filter((c) => c.id !== 'lee' && c.id !== 'dean'), { id: 'lee', name: 'Lee', tier: 'lee' }, { id: 'dean', name: 'Dean', tier: 'coach' }] })])
+  const s = (await ok(L('extraSave', { slot: { coachId: 'lee', date: day, time: '3:00pm', location: 'Belrose HQ', kind: 'oneoff', bookAs: 'whole', options: [{ type: 'one', priceId: '__holiday' }, { type: 'group', priceId: '__holiday', minPlayers: 2, maxPlayers: 4 }] } }))).slot
+  assert.deepEqual(s.options.map((o) => [o.priceCents, o.pairCents || 0, o.priceLabel]), [[15000, 0, 'A$150'], [9000, 10000, 'A$100 each for 2, A$90 each for 3 or more']])
+  const kid = (await account(fam2)).players[0]
+  const me = (await account(fam)).players.find((p) => p.name === famRow.name)
+  const two = await fam.call('/api/jfp-account', { action: 'bookExtra', slotId: s.id, optionId: 'group', playerKeys: [me.key], guests: ['Pair Friend'] })
+  assert.equal(two.status, 200, JSON.stringify(two.data))
+  assert.equal((await sessions()).find((x) => x.url === two.data.url).amount_total, 20000, '2 x A$100')
+  const s3 = (await ok(L('extraSave', { slot: { coachId: 'lee', date: day, time: '5:00pm', location: 'Belrose HQ', kind: 'oneoff', bookAs: 'whole', options: [{ type: 'group', priceId: '__holiday', minPlayers: 2, maxPlayers: 4 }] } }))).slot
+  const three = await fam2.call('/api/jfp-account', { action: 'bookExtra', slotId: s3.id, optionId: 'group', playerKeys: [kid.key], guests: ['Three One', 'Three Two'] })
+  assert.equal(three.status, 200, JSON.stringify(three.data))
+  assert.equal((await sessions()).find((x) => x.url === three.data.url).amount_total, 27000, '3 x A$90')
+  const d = (await ok(D('extraSave', { slot: { date: day, time: '6:00pm', location: 'Belrose HQ', kind: 'oneoff', bookAs: 'whole', options: [{ type: 'one', priceId: '__holiday' }] } }))).slot
+  assert.equal(d.options[0].priceCents, undefined, 'the coach still never sees it')
+  assert.equal((await staffSlot(d.id)).options[0].priceCents, 12000, "Dean's holiday 1 on 1")
+})
+
 console.log(`\n${passed} whole-session extra checks passed`)
