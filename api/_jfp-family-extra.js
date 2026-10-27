@@ -14,7 +14,8 @@
 // "parents will want to know that"), never another family's details.
 import { listExtraSlots, getExtraSlot, reserveExtraPlace, reserveWholeSession, setBookingCharge } from './_jfp-extra.js'
 import { createPlayerCharge } from './_jfp-charges.js'
-import { getPayreq, clean } from './_jfp-store.js'
+import { telegramAlert } from './_jfp-notify.js'
+import { getPayreq, clean, formatAud } from './_jfp-store.js'
 import { profileKey } from './_jfp-profiles.js'
 
 // 1 on 1, shared or a small group, from how many players the session takes.
@@ -63,6 +64,7 @@ export async function bookExtraPlace({ config, parent, fam, body, siteUrl }) {
     })
     if (!c.ok) {
       console.error('jfp family extra charge failed', slot.id, booking.id, c.error)
+      await telegramAlert(`Extra session payment link failed to open: ${slot.dateLabel} ${slot.time} (${slot.id}), ${p.name}, ${parent.email}, ${formatAud(slot.priceCents)}. The place is held; send them a payment link.`).catch(() => {})
       return { ok: false, status: 502, code: 'charge', error: `${p.name}'s place is held. We could not open the payment just now; we will send you the payment link.` }
     }
     payreqId = c.payreqId
@@ -107,6 +109,7 @@ async function bookWholeSession({ config, parent, fam, body, siteUrl, slot }) {
     })
     if (!c.ok) {
       console.error('jfp family extra charge failed', slot.id, lead.id, c.error)
+      await telegramAlert(`Extra session payment link failed to open: ${slot.dateLabel} ${slot.time} (${slot.id}), whole session ${opt.label} for ${n} (${first.name}), ${parent.email}, ${formatAud(opt.priceCents * n)}. The session is held; send them a payment link.`).catch(() => {})
       return { ok: false, status: 502, code: 'charge', error: 'The session is held for you. We could not open the payment just now; we will send you the payment link.' }
     }
     payreqId = c.payreqId

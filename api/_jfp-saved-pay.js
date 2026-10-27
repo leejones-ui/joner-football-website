@@ -69,6 +69,7 @@ import { finaliseJfpBooking } from './_jfp-finalise.js'
 import { sendFamilyNotice } from './_jfp-email.js'
 import { telegramAlert } from './_jfp-notify.js'
 import { listCharges, getCharge, chargeStatus } from './_jfp-charges.js'
+import { groupBookingIds } from './_jfp-extra.js'
 // Cancelled sessions and credits (Lee, 20 Oct 2026).
 import { sessionOffMap } from './_jfp-makeups.js'
 import { creditByRow, useCredit } from './_jfp-credits.js'
@@ -520,7 +521,12 @@ export async function planAutoCharges({ config, nowMs = Date.now(), fresh = true
     const byId = new Map(payreqs.map((q) => [q.id, q]))
     const recs = await kvPipeline(charges.map((c) => ['GET', K.charge(c.id, c.sessionDate)]))
     const refs = charges.map(extraRef)
-    const marks = await kvPipeline(charges.map((c, i) => (refs[i] ? ['HGET', `jfp:att:${refs[i].slotId}:${c.sessionDate}`, refs[i].bookingId] : ['GET', 'jfp:autocharge:none'])))
+    // A whole-session group's one charge sits on its lead booking; it goes by
+    // the whole group's marks: Present if anyone was here, else Absent if
+    // anyone is marked a no-show, and it waits only while nobody is marked.
+    const groups = await Promise.all(refs.map((r) => (r ? groupBookingIds(r.slotId, r.bookingId) : null)))
+    const got = await kvPipeline(charges.map((c, i) => (refs[i] ? ['HMGET', `jfp:att:${refs[i].slotId}:${c.sessionDate}`, ...groups[i]] : ['GET', 'jfp:autocharge:none'])))
+    const marks = got.map((g, i) => { if (!refs[i]) return null; const l = Array.isArray(g) ? g : [g]; return l.includes('Present') ? 'Present' : l.includes('Absent') ? 'Absent' : l.find(Boolean) || null })
     charges.forEach((c, i) => {
       const m = emailsOf(c).map((e) => cm.get(normEmail(e))).find(Boolean)
       if (!m || c.sessionDate < sydneyToday(Date.parse(m.consent?.at || m.savedAt) || 0)) return

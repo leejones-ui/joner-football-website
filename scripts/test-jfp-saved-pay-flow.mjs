@@ -666,8 +666,15 @@ await test('turning auto charge on charges only the sessions after; the extra se
   assert.equal(await rec(zedExtra.charge.id, XDAY), null, 'extra register not marked: waits')
   assert.equal((await payreq(zedExtra.id)).status, 'open')
   assert.ok(r.summary.charged >= 4, JSON.stringify(r.summary)); assert.ok(r.summary.waiting >= 1)
-  // Once marked, the next run charges Zed's extra.
-  await kv(['HSET', `jfp:att:${slot.id}:${XDAY}`, zedBooking, 'Present'])
+  // A whole-session group (Revenue, 27 Oct): the one charge sits on the lead
+  // booking, but any member's mark counts. Zed leads a group with a friend;
+  // only the friend is marked, and the group's charge goes.
+  const xs = JSON.parse(await kv(['HGET', 'jfp:extra', slot.id]))
+  const friend = { ...xs.bookings.find((b) => b.id === zedBooking), id: 'XB-friend-of-zed', name: 'Friend Ofzed', rowId: '', guest: true, payreqId: '', groupId: zedBooking }
+  xs.bookings = xs.bookings.map((b) => (b.id === zedBooking ? { ...b, groupId: zedBooking } : b)).concat(friend)
+  await kv(['HSET', 'jfp:extra', slot.id, JSON.stringify(xs)])
+  await kv(['HSET', `jfp:att:${slot.id}:${XDAY}`, friend.id, 'Present'])
+  assert.match((await ok('autoChargePanel', { now: NOV12 })).preview.find((x) => x.player === 'Zed Zealous' && x.programme === 'extra').why, /^Charge: marked here/)
   const again = await ok('autoChargeRun', { confirm: true, now: NOV12 })
   assert.equal(again.summary.charged, 1, JSON.stringify(again.done))
   assert.equal((await rec(zedExtra.charge.id, XDAY)).status, 'succeeded')

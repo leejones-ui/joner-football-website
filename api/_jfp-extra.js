@@ -52,6 +52,13 @@ export async function allSlots() {
   for (let i = 0; i + 1 < raw.length; i += 2) { const s = parse(raw[i + 1]); if (s) out.push(s) }
   return out.sort((a, b) => `${a.date} ${to24h(a.time)}`.localeCompare(`${b.date} ${to24h(b.time)}`))
 }
+// Every booking id in a whole-session group (just the one id for a place
+// booking), so auto charge reads the whole group's register marks.
+export async function groupBookingIds(slotId, bookingId) {
+  const s = await getSlot(slotId)
+  const ids = (s?.bookings || []).filter((b) => b.groupId === bookingId).map((b) => b.id)
+  return ids.length ? ids : [bookingId]
+}
 export async function getSlot(id) { return ID.test(id || '') ? parse(await kvCommand(['HGET', EXTRA, id])) : null }
 async function putSlot(s) { await kvCommand(['HSET', EXTRA, s.id, JSON.stringify(s)]) }
 
@@ -77,9 +84,9 @@ function cleanOptions(raw, prices, isAdmin, before) {
     const type = o?.type === 'one' ? 'one' : o?.type === 'group' ? 'group' : ''
     if (!type || out.some((x) => x.type === type)) continue
     const maxPlayers = type === 'one' ? 1 : Number(o.maxPlayers)
-    const minPlayers = type === 'one' ? 1 : Number(o.minPlayers) || 1
+    const minPlayers = type === 'one' ? 1 : Number(o.minPlayers) || 2
     if (type === 'group' && (!Number.isInteger(maxPlayers) || maxPlayers < 2 || maxPlayers > 20)) return { error: 'Group: the most players is 2 to 20.' }
-    if (type === 'group' && (!Number.isInteger(minPlayers) || minPlayers < 1 || minPlayers > maxPlayers)) return { error: `Group: the fewest players is 1 to ${maxPlayers}.` }
+    if (type === 'group' && (!Number.isInteger(minPlayers) || minPlayers < 2 || minPlayers > maxPlayers)) return { error: `Group: the fewest players is 2 to ${maxPlayers}. A single player books 1 on 1.` }
     const picked = prices.find((p) => p.id === o.priceId)
     const old = before?.options?.find((x) => x.type === type)
     let priceCents, priceId = ''
@@ -271,6 +278,7 @@ export async function reserveWholeSession({ slotId, optionId, players = [], emai
     const list = players.map((p) => ({ ...p, name: clean(p.name, 80) })).filter((p) => p.name.length >= 2)
     if (list.length !== players.length) return { error: "Enter each player's full name." }
     if (new Set(list.map((p) => p.name.toLowerCase())).size !== list.length) return { error: 'The same player is in twice.' }
+    if (opt.type === 'group' && list.length < 2) return { error: 'A group needs at least 2 players. One player books 1 on 1.' }
     if (list.length < opt.minPlayers) return { error: `${opt.label} needs at least ${opt.minPlayers} players. Add ${opt.minPlayers - list.length} more.` }
     if (list.length > opt.maxPlayers) return { error: `${opt.label} takes up to ${opt.maxPlayers} player${opt.maxPlayers === 1 ? '' : 's'}.` }
     const at = new Date().toISOString()

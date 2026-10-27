@@ -67,6 +67,8 @@ await test('checks: no option ticked, a bad group size, and a coach typing their
   const base = { coachId: 'lee', date: day, time: '1:00pm', location: 'Belrose HQ', kind: 'oneoff', bookAs: 'whole' }
   assert.equal((await L('extraSave', { slot: { ...base, options: [] } })).status, 400)
   assert.equal((await L('extraSave', { slot: { ...base, options: [{ type: 'group', priceId: groupPrice.id, minPlayers: 5, maxPlayers: 4 }] } })).status, 400)
+  const solo = await L('extraSave', { slot: { ...base, options: [{ type: 'group', priceId: groupPrice.id, minPlayers: 1, maxPlayers: 4 }] } })
+  assert.equal(solo.status, 400, 'a group of 1 would be a cheap 1 on 1'); assert.match(solo.data.error, /fewest players is 2/)
   assert.equal((await D('extraSave', { slot: { ...base, coachId: 'dean', options: [{ type: 'one', priceCents: 1000 }] } })).status, 400, 'coaches pick a price Lee set')
 })
 
@@ -83,13 +85,15 @@ await test('families see the options with prices per player, and the booking pag
   assert.deepEqual([card.whole, card.kind, card.options.map((o) => o.priceLabel)], [true, '1 on 1 or a group of up to 4', ['A$150', 'A$60']])
 })
 
-await test('the 11am refuses a group of 2 (needs 3) and a group of 5', async () => {
+await test('the 11am refuses a group of 2 (needs 3) and a group of 5; the 10am group refuses 1 player', async () => {
   const me = (await account(fam)).players.find((p) => p.name === famRow.name)
   const two = await fam.call('/api/jfp-account', { action: 'bookExtra', slotId: elevenAm.id, optionId: 'group', playerKeys: [me.key], guests: ['Sample Friend'] })
   assert.equal(two.status, 409); assert.match(two.data.error, /at least 3/)
   const five = await fam.call('/api/jfp-account', { action: 'bookExtra', slotId: elevenAm.id, optionId: 'group', playerKeys: [me.key], guests: ['Friend One', 'Friend Two', 'Friend Three', 'Friend Four'] })
   assert.equal(five.status, 409)
   assert.equal((await staffSlot(elevenAm.id)).bookings.length, 0, 'nothing is held')
+  const one = await fam.call('/api/jfp-account', { action: 'bookExtra', slotId: tenAm.id, optionId: 'group', playerKeys: [me.key] })
+  assert.equal(one.status, 409, 'one player cannot book the 10am group at the group price'); assert.match(one.data.error, /at least 2/)
 })
 
 await test('a group of 3 books the 10am: one charge of 3 x A$60 on their player; the session is gone for everyone else', async () => {
