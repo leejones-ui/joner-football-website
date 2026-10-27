@@ -74,9 +74,16 @@ export default async function handler(req, res) {
       // made every new account fail with 'timeout-or-duplicate', 27 Oct 2026.)
       const isNew = audience === 'parent' && email.includes('@') && !(await accountOf(email)) && !(await knownFamily(email, config))
       if (isNew && throwawayEmail(email)) return fail(res, 400, 'Please use your everyday email address. Throwaway inboxes cannot open an account.', { code: 'throwaway' })
-      const rc = await verifyRecaptcha(req, body.recaptchaToken, isNew ? { strict: true, openOnError: true } : {})
+      // Strict only once the reCAPTCHA keys are proven to work (JFP_SIGNUP_STRICT=true).
+      // On 27 Oct 2026 Google rejected nearly every token from the site
+      // ('invalid-input-response': the page key and the server secret do not
+      // pair), so a strict check locked every new family out. Until then a new
+      // email is treated like every other form: the emailed 6 digit code, the
+      // throwaway block and the rate limits still stand.
+      const strictNew = isNew && process.env.JFP_SIGNUP_STRICT === 'true'
+      const rc = await verifyRecaptcha(req, body.recaptchaToken, strictNew ? { strict: true, openOnError: true } : {})
       if (!rc.ok) {
-        if (isNew) return fail(res, 400, 'We could not check that you are a person. Refresh the page and try again. Still stuck? Email ligia@jonerfootball.com.', { code: 'human' })
+        if (strictNew) return fail(res, 400, 'We could not check that you are a person. Refresh the page and try again. Still stuck? Email ligia@jonerfootball.com.', { code: 'human' })
         return fail(res, 400, rc.error)
       }
       // Staff: only emails with a role get a code. Everyone gets the same
