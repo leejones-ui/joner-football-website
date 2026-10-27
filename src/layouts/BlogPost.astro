@@ -1,4 +1,5 @@
 ---
+import NewsletterSignup from '../components/NewsletterSignup.astro'
 import BaseLayout from './BaseLayout.astro'
 import EmailCapture from '../components/EmailCapture.astro'
 import { breadcrumbSchema } from '../lib/seoSchema'
@@ -76,6 +77,7 @@ const postSchemas = [
   ogImage={absoluteImage}
   ogType="article"
   schema={postSchemas}
+  hideFooterSignup
 >
   <article class="bg-joner-black">
     <!-- Hero -->
@@ -126,6 +128,17 @@ const postSchemas = [
         <slot />
       </div>
     </div>
+
+    <!-- Lee's letters: the newsletter sign-up -->
+    <section class="nl nl-postbox" aria-labelledby="post-letters-title">
+      <div class="nl-wrap">
+        <div class="nl-rule"><span>Joner Football</span><span>The Newsletter</span></div>
+        <h2 id="post-letters-title">Letters from Lee.</h2>
+        <p class="nl-intro">Real stories from Joner Football and my life, on and off the pitch. Straight from me to you.</p>
+        <NewsletterSignup />
+        <p class="nl-small nl-postbox__read"><a href="/newsletter/">Read the letters</a></p>
+      </div>
+    </section>
 
     <!-- Money page internal links -->
     <section class="bg-joner-black py-10 border-t border-white/10">

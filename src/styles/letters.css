@@ -83,10 +83,42 @@
   .nl-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
-/* Hub: Letters from Lee */
-.hub-letters { padding: 56px 20px 64px; }
-.hub-letters__head { max-width: 1000px; margin: 0 auto; text-align: center; }
-.hub-letters__head h2 { margin: 18px 0 0; font: normal 40px/1.1 Georgia, 'Times New Roman', Times, serif; letter-spacing: -0.5px; color: var(--ink); text-transform: none; font-style: normal; }
-.hub-letters__head p { margin: 12px auto 0; max-width: 34em; font: 17px/1.6 Georgia, 'Times New Roman', Times, serif; color: var(--muted); }
-.hub-letters__all { display: flex; justify-content: center; margin-top: 28px; }
-.hub-letters__all a { display: inline-flex; align-items: center; justify-content: center; min-height: 52px; padding: 14px 28px; width: 100%; max-width: 420px; text-decoration: none; }
+/* "From the blog" link under a letter */
+.nl-related { display: flex; gap: 14px; align-items: center; margin-top: 36px; padding: 12px; border: 1px solid var(--line); background: #F7F3E8; color: var(--ink); text-decoration: none; }
+.nl-related:hover { border-color: var(--ink); }
+.nl-related img { width: 96px; height: 72px; flex: none; object-fit: cover; }
+.nl-related strong { display: block; margin-top: 6px; font: normal 18px/1.3 Georgia, 'Times New Roman', Times, serif; }
+
+/* Hub "Read": letters and blogs side by side */
+.hub-read { padding: 56px 20px 64px; }
+.hub-read__title { margin: 28px 0 0; text-align: center; font: normal 44px/1.05 Georgia, 'Times New Roman', Times, serif; letter-spacing: -0.5px; color: var(--ink); text-transform: none; font-style: normal; }
+.hub-read__grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 40px; margin-top: 32px; }
+.hub-read__col { display: flex; flex-direction: column; gap: 12px; }
+.hub-read__label { color: var(--ink); padding-bottom: 10px; border-bottom: 1px solid var(--ink); }
+.hub-read__intro { margin: 2px 0 6px; font: 16px/1.5 Georgia, 'Times New Roman', Times, serif; color: var(--muted); }
+.hub-read__item { display: flex; gap: 14px; align-items: center; padding: 10px; border: 1px solid var(--line); background: #F7F3E8; color: var(--ink); text-decoration: none; min-height: 92px; }
+.hub-read__item:hover { border-color: var(--ink); }
+.hub-read__item img { width: 96px; height: 72px; flex: none; object-fit: cover; }
+.hub-read__item strong { display: block; margin-top: 6px; font: normal 17px/1.3 Georgia, 'Times New Roman', Times, serif; }
+.hub-read__btn { display: flex; align-items: center; justify-content: center; margin-top: auto; text-decoration: none; text-align: center; }
+.hub-read__btn--line { min-height: 56px; padding: 16px; border: 2px solid var(--ink); border-radius: 8px; color: var(--ink); font: bold 15px/1.2 'Courier New', Courier, monospace; letter-spacing: 2px; text-transform: uppercase; }
+.hub-read__btn--line:hover { background: var(--ink); color: var(--paper); }
+.hub-read__col > .hub-read__btn { margin-top: 12px; }
+@media (min-width: 860px) {
+  .hub-read__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 48px; }
+  .hub-read__col > .hub-read__btn { margin-top: auto; }
+}
+
+/* Blog: letters strip and the sign-up under each post */
+.nl-strip { padding: 48px 16px 56px; }
+.nl-strip__head { max-width: 640px; margin: 0 auto 24px; text-align: center; }
+.nl-strip__head h2 { margin: 24px 0 0; font: normal 38px/1.1 Georgia, 'Times New Roman', Times, serif; letter-spacing: -0.5px; color: var(--ink); text-transform: none; }
+.nl-strip__head p { margin: 10px 0 0; font: 17px/1.6 Georgia, 'Times New Roman', Times, serif; color: var(--muted); }
+.nl-strip__all { display: flex; justify-content: center; margin-top: 24px; }
+.nl-strip__all a { max-width: 420px; display: flex; align-items: center; justify-content: center; text-decoration: none; }
+.nl-postbox { padding: 40px 16px; }
+.nl-postbox .nl-wrap { max-width: 560px; }
+.nl-postbox h2 { margin: 22px 0 0; font: normal 32px/1.1 Georgia, 'Times New Roman', Times, serif; color: var(--ink); text-transform: none; }
+.nl-postbox p.nl-intro { font-size: 17px; }
+.nl-postbox .nl-card { margin-top: 22px; }
+.nl-postbox__read { margin-top: 14px; } .nl-postbox__read a { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; display: inline-flex; align-items: center; min-height: 44px; }

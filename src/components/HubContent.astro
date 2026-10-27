@@ -1,7 +1,8 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
-import LetterCards from './LetterCards.astro'
 import { letters } from '../data/letters'
+import { hubBlogs } from '../data/hubBlogs'
+import '../styles/letters.css'
 
 const APP_LINK = 'https://app.jonerfootball.com'
 const JOIN_LINK = '/app?utm_source=website&utm_medium=hub&utm_campaign=hub_app_cta'
@@ -83,15 +84,34 @@ const TitleTag = titleTag
       </div>
     </section>
 
-    <section class="nl hub-letters" aria-labelledby="hub-letters-title">
-      <div class="hub-letters__head">
-        <div class="nl-rule"><span>Joner Football</span><span>The Newsletter</span></div>
-        <h2 id="hub-letters-title">Letters from Lee.</h2>
-        <p>Real stories from Joner Football and my life, on and off the pitch. Straight from me to you.</p>
-      </div>
+    <section class="nl hub-read" aria-labelledby="hub-read-title">
       <div class="nl-wide">
-        <LetterCards letters={letters.slice(0, 2)} />
-        <div class="hub-letters__all"><a class="nl-btn" href="/newsletter/">Get the next letter</a></div>
+        <div class="nl-rule"><span>Joner Football</span><span>Read</span></div>
+        <h2 id="hub-read-title" class="hub-read__title">Read.</h2>
+        <div class="hub-read__grid">
+          <div class="hub-read__col">
+            <p class="nl-label hub-read__label">Letters from Lee</p>
+            <p class="hub-read__intro">My stories, on and off the pitch.</p>
+            {letters.slice(0, 2).map((l) => (
+              <a class="hub-read__item" href={`/newsletter/${l.slug}/`}>
+                <img src={l.card} alt="" loading="lazy" decoding="async" />
+                <span><span class="nl-label">{l.dateLabel}</span><strong>{l.title}</strong></span>
+              </a>
+            ))}
+            <a class="nl-btn hub-read__btn" href="/newsletter/">Get the next letter</a>
+          </div>
+          <div class="hub-read__col">
+            <p class="nl-label hub-read__label">Joner Blogs</p>
+            <p class="hub-read__intro">Training guides for players, parents and coaches.</p>
+            {hubBlogs.map((post) => (
+              <a class="hub-read__item" href={`/blog/${post.slug}`}>
+                <img src={post.image} alt="" loading="lazy" decoding="async" />
+                <span><span class="nl-label">Blog</span><strong>{post.title}</strong></span>
+              </a>
+            ))}
+            <a class="hub-read__btn hub-read__btn--line" href="/blog">All blogs</a>
+          </div>
+        </div>
       </div>
     </section>
 

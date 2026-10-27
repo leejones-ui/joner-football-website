@@ -1,6 +1,9 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
 import EmailCapture from '../../components/EmailCapture.astro'
+import LetterCards from '../../components/LetterCards.astro'
+import { letters } from '../../data/letters'
+import '../../styles/letters.css'
 import fallbackPosts from '../../data/blogPostFallbacks.json'
 import { sanityClient } from '../../lib/sanityClient'
 
@@ -299,6 +302,19 @@ const blogSchemas = [
           ))}
         </div>
       )}    </div>
+  </section>
+
+  <!-- Lee's letters -->
+  <section class="nl nl-strip" aria-labelledby="blog-letters-title">
+    <div class="nl-wide">
+      <div class="nl-strip__head">
+        <div class="nl-rule"><span>Joner Football</span><span>The Newsletter</span></div>
+        <h2 id="blog-letters-title">Letters from Lee.</h2>
+        <p>Real stories from Joner Football and my life, on and off the pitch. Straight from me to you.</p>
+      </div>
+      <LetterCards letters={letters.slice(0, 2)} />
+      <div class="nl-strip__all"><a class="nl-btn" href="/newsletter/">Get the next letter</a></div>
+    </div>
   </section>
 
   <!-- App CTA -->

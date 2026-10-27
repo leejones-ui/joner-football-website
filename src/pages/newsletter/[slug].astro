@@ -85,6 +85,16 @@ const isExternal = (href = '') => href.startsWith('http')
           })}
         </div>
 
+        {letter.related && (
+          <a class="nl-related" href={`/blog/${letter.related.slug}`}>
+            <img src={letter.related.image} alt="" loading="lazy" decoding="async" />
+            <span>
+              <span class="nl-label">From the blog</span>
+              <strong>{letter.related.title}</strong>
+            </span>
+          </a>
+        )}
+
         <div class="nl-after">
           <p class="nl-label">Get the next letter</p>
           <NewsletterSignup />

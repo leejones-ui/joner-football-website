@@ -1,8 +1,9 @@
 // Lee's newsletters, newest first. Copied word for word from the Brevo campaigns
 // New letters: python3 scripts/newsletter-import.py <campaignId> --apply (see that file).
+// `related` = one Joner Blog that fits the letter, shown under it. Pick it by hand.
 
 export interface LetterBlock { type: 'p' | 'h2' | 'figure' | 'cta' | 'sign' | 'ps'; html?: string; text?: string; src?: string; alt?: string; caption?: string; video?: string; label?: string; href?: string }
-export interface Letter { slug: string; title: string; date: string; dateLabel: string; teaser: string; card: string; cardAlt: string; hero: LetterBlock | null; body: LetterBlock[]; brevoCampaignId?: number }
+export interface Letter { slug: string; title: string; date: string; dateLabel: string; teaser: string; card: string; cardAlt: string; hero: LetterBlock | null; body: LetterBlock[]; brevoCampaignId?: number; related?: { slug: string; title: string; image: string } }
 
 export const letters: Letter[] = [
   {
@@ -355,7 +356,12 @@ export const letters: Letter[] = [
         "html": "What is the one thing you would love to see us film at the HQ next? Hit reply and tell me. I read every one."
       }
     ],
-    "brevoCampaignId": 372
+    "brevoCampaignId": 372,
+    "related": {
+      "slug": "improve-first-touch-football",
+      "title": "How to Improve Your First Touch in Football",
+      "image": "/images/homepage/audience-player.webp"
+    }
   },
   {
     "slug": "every-tuesday-i-played-against-men",
@@ -525,6 +531,11 @@ export const letters: Letter[] = [
         "html": "If you only fix one thing this off season, make it your weak foot. It is the fastest change anyone will notice in a game."
       }
     ],
-    "brevoCampaignId": 340
+    "brevoCampaignId": 340,
+    "related": {
+      "slug": "football-drills-at-home",
+      "title": "10 Football Drills You Can Do Alone at Home",
+      "image": "/images/blog/train-at-home-lee-coaching-photo-final.jpg"
+    }
   }
 ]
