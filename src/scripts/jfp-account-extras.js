@@ -3,7 +3,7 @@
 // is emailed to Lee and Ligia, logged, and listed for staff under Requests in
 // the portal (api/_jfp-extras.js). Built so extra 1 on 1 slots can be listed
 // at the top of the page later (D.extras.slots, empty today).
-import { esc, api, toast } from './jfp-common.js'
+import { esc, api, toast, openSheet } from './jfp-common.js'
 import { ic } from './jfp-account-icons.js'
 import { hero, secHead, pageHead } from './jfp-account-ui.js'
 
@@ -39,17 +39,28 @@ export function setExtraLink(query) {
 // A whole session (Lee, 27 Oct 2026): one family takes it, first come first
 // served, as 1 on 1 or a group. Each option with its price per player.
 const optLine = (o) => `${esc(o.label)}: ${esc(o.priceLabel)}${o.type === 'one' || o.pairCents ? '' : ' a player'}`
+// The card stays short (Lee, 27 Oct 2026: "keep it very simple"): the day,
+// the time, what kind, and a big Book now. Everything else is in the pop-up.
+const kindShort = (s) => (s.whole ? s.options.map((o) => (o.type === 'one' ? '1 on 1' : 'Group')).join(' or ') : s.kind || 'Extra session')
 function slotCard(s, D, { mine = false } = {}) {
   const full = s.placesLeft < 1
-  return `<article class="ja-card" data-xslot="${esc(s.id)}"><p class="ja-kicker"><i></i>${mine ? 'Your session' : esc(s.kind || 'Extra session')}</p>
-    <h3 class="ja-h3" style="margin-top:8px">${esc(s.dateLabel)} · ${esc(s.time)}</h3>
-    <p class="ja-small" style="margin-top:4px"><b>${esc(s.kind || 'Extra session')}</b>${s.coach ? ` with ${esc(s.coach)}` : ''}${s.label && s.label !== s.kind ? ` · ${esc(s.label)}` : ''}${s.weekly && !mine ? ` · <b>Every ${esc(s.dayName)}</b>` : ''}</p>
-    <p class="ja-small ja-muted">${esc(s.location)}${s.durationMin ? ` · ${esc(String(s.durationMin))} min` : ''}${s.whole ? '' : ` · ${esc(s.priceLabel)}`}</p>
-    ${s.whole ? `<ul class="ja-small" style="margin:6px 0 0 18px">${s.options.map((o) => `<li>${optLine(o)}</li>`).join('')}</ul>
-    <p class="ja-small ja-muted">${full ? 'Booked' : 'The first family to book has the whole session.'}${s.note ? ` · ${esc(s.note)}` : ''}</p>`
-    : `<p class="ja-small ja-muted">${full ? 'Full' : `${s.placesLeft} place${s.placesLeft === 1 ? '' : 's'} left`}${s.note ? ` · ${esc(s.note)}` : ''}</p>`}
-    <div class="ja-actions" data-xslot-acts>${full ? '' : `<button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-xbook="${esc(s.id)}">Book</button>`}</div>
-    <p class="j-err" data-xslot-err hidden></p></article>`
+  return `<article class="ja-card" data-xslot="${esc(s.id)}">${mine ? '<p class="ja-kicker"><i></i>Your session</p>' : ''}
+    <h3 class="ja-h3"${mine ? ' style="margin-top:8px"' : ''}>${esc(s.dateLabel)} · ${esc(s.time)}</h3>
+    <p class="ja-small" style="margin-top:4px">${esc(kindShort(s))}</p>
+    <div class="ja-actions">${full ? `<p class="ja-small ja-muted">${s.whole ? 'Booked' : 'Full'}</p>` : `<button type="button" class="ja-btn ja-btn-red ja-btn-lg ja-btn-block" data-xbook="${esc(s.id)}">Book now</button>`}</div></article>`
+}
+// The pop-up: where, how long, the options and prices, then the picker.
+function slotSheet(D, s) {
+  const sheet = openSheet({ title: `${s.dateLabel} · ${s.time}`, subtitle: [s.location, s.durationMin ? `${s.durationMin} min` : ''].filter(Boolean).join(' · ') })
+  const opts = s.whole
+    ? `<ul class="ja-small" style="margin:0 0 4px 18px">${s.options.map((o) => `<li>${optLine(o)}</li>`).join('')}</ul><p class="ja-small ja-muted">The first family to book has the whole session.</p>`
+    : `<p class="ja-small">${esc(s.priceLabel)} · ${s.placesLeft} place${s.placesLeft === 1 ? '' : 's'} left</p>`
+  sheet.body.innerHTML = `<div data-xslot="${esc(s.id)}" style="display:flex;flex-direction:column;gap:12px">
+    <p class="ja-small"><b>${esc(s.kind || 'Extra session')}</b>${s.coach ? ` with ${esc(s.coach)}` : ''}${s.weekly ? ` · Every ${esc(s.dayName)}` : ''}${s.note ? ` · ${esc(s.note)}` : ''}</p>
+    ${opts}
+    <div class="ja-actions" data-xslot-acts></div>
+    <p class="j-err" data-xslot-err hidden></p></div>`
+  bookPicker(sheet.body.querySelector('[data-xslot]'), D, s.id)
 }
 function bookableHtml(D) {
   const x = X(D)
@@ -194,7 +205,7 @@ function wholePicker(card, D, s) {
     <div class="j-field" style="margin:0"><span>Your players</span>${ps.map((p, i) => `<label class="ja-small" style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-xw-me="${esc(p.key)}" ${i === 0 ? 'checked' : ''}> ${esc(p.name)}${p.waiver?.onFile ? '' : ' (waiver needed)'}</label>`).join('')}</div>
     <div class="j-field" style="margin:0" data-xw-guests-wrap><span>Friends coming too <span class="muted">(full names)</span></span><div data-xw-guests></div></div>
     <p class="ja-small" data-xw-total></p>
-    <button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-xbook-go="${esc(s.id)}">Book and pay</button>`
+    <button type="button" class="ja-btn ja-btn-red ja-btn-lg ja-btn-block" data-xbook-go="${esc(s.id)}">Book and pay</button>`
   const opt = () => s.options.find((o) => o.id === acts.querySelector('[data-xw-opt][aria-pressed="true"]')?.dataset.xwOpt) || s.options[0]
   const draw = () => {
     const o = opt()
@@ -223,7 +234,7 @@ function bookPicker(card, D, slotId) {
   const ps = D.players || []
   const acts = card.querySelector('[data-xslot-acts]')
   acts.innerHTML = ps.length
-    ? `<label class="j-field" style="margin:0;flex:1"><span>Which player?</span><select class="j-select" data-xbook-player>${ps.map((p) => `<option value="${esc(p.key)}">${esc(p.name)}${p.waiver?.onFile ? '' : ' (waiver needed)'}</option>`).join('')}</select></label><button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-xbook-go="${esc(slotId)}">Book and pay</button>`
+    ? `<label class="j-field" style="margin:0;flex:1"><span>Which player?</span><select class="j-select" data-xbook-player>${ps.map((p) => `<option value="${esc(p.key)}">${esc(p.name)}${p.waiver?.onFile ? '' : ' (waiver needed)'}</option>`).join('')}</select></label><button type="button" class="ja-btn ja-btn-red ja-btn-lg ja-btn-block" data-xbook-go="${esc(slotId)}">Book and pay</button>`
     : '<p class="ja-small">Add your player first (My profile), then book.</p>'
 }
 async function bookGo(btn, D) {
@@ -258,7 +269,7 @@ async function bookGo(btn, D) {
 // From the page's one click handler. Returns true when the click was ours.
 export function extraClick(t, { D }) {
   const bk = t.closest('[data-xbook]')
-  if (bk && D) { bookPicker(bk.closest('[data-xslot]'), D, bk.dataset.xbook); return true }
+  if (bk && D) { const s = slotById(D, bk.dataset.xbook); if (s) slotSheet(D, s); return true }
   const go = t.closest('[data-xbook-go]')
   if (go && D) { bookGo(go, D); return true }
   const chip = t.closest('[data-x-group] [data-x-chip]')

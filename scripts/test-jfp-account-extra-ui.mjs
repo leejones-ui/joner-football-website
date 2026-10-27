@@ -57,18 +57,19 @@ const BASE = {
   extras: { analysisPriceLabel: '', holidaySlots: 0, slots: [], bookable: [slot('XS-1-AAAAAA'), slot('XS-2-BBBBBB', { placesLeft: 0 })], days: ['Monday'], times: ['After school'], types: ['1 on 1'], mine: [] },
 }
 
-await test('the sessions to book now: date, time, place, price and places left, never a coach; Book, the waiver first, then Book and pay', async () => {
+await test('the sessions to book now: a short card (day, time, kind, Book now); the pop-up has the place, price and places left; the waiver first, then Book and pay', async () => {
   let n = 0
   const p = await openAccount(BASE, { hash: '#extra', onPost: (b) => (b.action === 'bookExtra' ? (n++ ? { success: true, url: 'http://localhost/mock-stripe/?cs=cs_test_x' } : { status: 409, success: false, error: 'That session is full.', code: 'slot' }) : null) })
   const box = p.text('#x-bookable')
   assert.match(box, /Sessions you can book now/)
   assert.match(box, /Tue 20 Oct · 7:30am/)
-  assert.match(box, /Belrose HQ · 60 min · A\$70/)
-  assert.match(box, /2 places left/)
+  assert.ok(!/A\$|Belrose|places left/.test(box), 'no price, place or places on the card')
+  assert.match(box, /Book now/)
   assert.match(box, /Full/)
   assert.ok(!/coach/i.test(box), 'no coach names for families')
   assert.equal(p.d.querySelectorAll('#x-bookable [data-xbook]').length, 1, 'no Book on a full session')
   await p.click('[data-xbook="XS-1-AAAAAA"]')
+  assert.match(p.text('.j-sheet'), /Tue 20 Oct · 7:30am.*Belrose HQ · 60 min.*A\$70 · 2 places left/s)
   const sel = p.$('[data-xbook-player]')
   sel.value = 'beafamily'
   await p.click('[data-xbook-go="XS-1-AAAAAA"]')
@@ -85,8 +86,9 @@ await test('the sessions to book now: date, time, place, price and places left, 
 await test('a private session link (#extra?slot=&k=) shows that session first, and books with its key', async () => {
   const p = await openAccount(BASE, { hash: '#extra?slot=XS-9-CCCCCC&k=secretkey', onPost: (b) => (b.action === 'extraSlot' ? (b.slotId === 'XS-9-CCCCCC' && b.k === 'secretkey' ? { success: true, slot: slot('XS-9-CCCCCC', { visibility: 'private', time: '9:00am', priceLabel: 'A$65' }) } : { status: 404, success: false }) : b.action === 'bookExtra' ? { success: true, paid: true } : null) })
   await p.settle()
-  assert.match(p.text('[data-xslot="XS-9-CCCCCC"]'), /Your session.*9:00am.*A\$65/)
+  assert.match(p.text('[data-xslot="XS-9-CCCCCC"]'), /Your session.*9:00am/)
   await p.click('[data-xbook="XS-9-CCCCCC"]')
+  assert.match(p.text('.j-sheet'), /A\$65/)
   await p.click('[data-xbook-go="XS-9-CCCCCC"]')
   assert.deepEqual(p.posts.filter((b) => b.action === 'bookExtra').at(-1), { action: 'bookExtra', slotId: 'XS-9-CCCCCC', k: 'secretkey', playerKey: 'arifamily' })
   assert.match(p.text('[data-xslot="XS-9-CCCCCC"] [data-xslot-err]'), /Already booked and paid/)
@@ -100,11 +102,12 @@ await test('a private session link (#extra?slot=&k=) shows that session first, a
 await test('a whole session: the options with prices per player, 1 on 1 or a group, friends by name, the total, and the fewest players checked first', async () => {
   const whole = slot('XS-5-EEEEEE', { whole: true, capacity: 4, placesLeft: 4, kind: '1 on 1 or a group of 3 to 4', optionsLabel: '1 on 1 or a group of 3 to 4', options: [{ id: 'one', type: 'one', label: '1 on 1', minPlayers: 1, maxPlayers: 1, priceCents: 15000, priceLabel: 'A$150' }, { id: 'group', type: 'group', label: 'Group of 3 to 4', minPlayers: 3, maxPlayers: 4, priceCents: 6000, priceLabel: 'A$60' }] })
   const p = await openAccount({ ...BASE, extras: { ...BASE.extras, bookable: [whole] } }, { hash: '#extra', onPost: (b) => (b.action === 'bookExtra' ? { success: true, url: 'http://localhost/mock-stripe/?cs=cs_test_w' } : null) })
-  const card = () => p.text('[data-xslot="XS-5-EEEEEE"]')
+  assert.equal(p.text('#x-bookable [data-xslot="XS-5-EEEEEE"]').replace(/\s+/g, ' ').trim(), 'Tue 20 Oct · 7:30am 1 on 1 or Group Book now')
+  await p.click('[data-xbook="XS-5-EEEEEE"]')
+  const card = () => p.text('.j-sheet')
   assert.match(card(), /1 on 1: A\$150/)
   assert.match(card(), /Group of 3 to 4: A\$60 a player/)
   assert.match(card(), /first family to book has the whole session/)
-  await p.click('[data-xbook="XS-5-EEEEEE"]')
   assert.match(card(), /1 player: A\$150/)
   await p.click('[data-xw-opt="group"]')
   const guest = () => p.d.querySelectorAll('[data-xw-guest]')
