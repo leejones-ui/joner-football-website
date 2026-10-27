@@ -19,6 +19,15 @@
 //            end of term, all sharing a seriesId
 // Lee and Ligia see every kind on the Timetable (board).
 //
+// Whole session (Lee, 27 Oct 2026, like holiday training): instead of each
+// player taking a place, the first family to book takes the whole session for
+// their own group, first come first served. The coach offers one or both of
+//   1 on 1   one player, at its price
+//   group    a group of minPlayers to maxPlayers (Lee's 11am: 3 or 4 only)
+// with a price per player for each (slot.options). The booker can bring other
+// players by name; every player is a booking with the same groupId, and the
+// one charge (per player price x players) sits on the first booking.
+//
 // KV: hash jfp:extra, slot id -> slot. Attendance: jfp:att:<slotId>:<date>.
 import crypto from 'node:crypto'
 import { kvCommand, clean, newId, coachById, coachLabel, sydneyToday, to24h, dateLabel, formatAud, audit, locationFor, validEmail } from './_jfp-store.js'
@@ -47,7 +56,43 @@ export async function getSlot(id) { return ID.test(id || '') ? parse(await kvCom
 async function putSlot(s) { await kvCommand(['HSET', EXTRA, s.id, JSON.stringify(s)]) }
 
 export const liveBookings = (s) => (s.bookings || []).filter((b) => b.status !== 'removed')
-export const placesLeft = (s) => Math.max(0, s.capacity - liveBookings(s).length)
+export const isWhole = (s) => Array.isArray(s?.options) && s.options.length > 0
+// A whole session is either free (every place) or taken by one group.
+export const placesLeft = (s) => (isWhole(s) ? (liveBookings(s).length ? 0 : s.capacity) : Math.max(0, s.capacity - liveBookings(s).length))
+const OPTION_LABEL = { one: '1 on 1', group: 'Group' }
+// "1 on 1", "Group of 3 to 4", "Group of up to 4", "Group of 4".
+export function optionLabel(o) {
+  if (o.type === 'one') return OPTION_LABEL.one
+  return o.minPlayers === o.maxPlayers ? `Group of ${o.maxPlayers}` : o.minPlayers <= 2 ? `Group of up to ${o.maxPlayers}` : `Group of ${o.minPlayers} to ${o.maxPlayers}`
+}
+// What families read about a whole session: "1 on 1 or a group of up to 4".
+export function optionsSummary(options) {
+  return options.map((o, i) => (i ? optionLabel(o).replace(/^Group/, 'a group') : optionLabel(o))).join(' or ')
+}
+// The coach's options, checked: a price each (one Lee or Ligia set, or an
+// amount only they can type), and sizes that make sense.
+function cleanOptions(raw, prices, isAdmin, before) {
+  const out = []
+  for (const o of (Array.isArray(raw) ? raw : []).slice(0, 2)) {
+    const type = o?.type === 'one' ? 'one' : o?.type === 'group' ? 'group' : ''
+    if (!type || out.some((x) => x.type === type)) continue
+    const maxPlayers = type === 'one' ? 1 : Number(o.maxPlayers)
+    const minPlayers = type === 'one' ? 1 : Number(o.minPlayers) || 1
+    if (type === 'group' && (!Number.isInteger(maxPlayers) || maxPlayers < 2 || maxPlayers > 20)) return { error: 'Group: the most players is 2 to 20.' }
+    if (type === 'group' && (!Number.isInteger(minPlayers) || minPlayers < 1 || minPlayers > maxPlayers)) return { error: `Group: the fewest players is 1 to ${maxPlayers}.` }
+    const picked = prices.find((p) => p.id === o.priceId)
+    const old = before?.options?.find((x) => x.type === type)
+    let priceCents, priceId = ''
+    if (picked) { priceCents = picked.cents; priceId = picked.id }
+    else if (isAdmin && Number.isInteger(Number(o.priceCents)) && Number(o.priceCents) >= 100 && Number(o.priceCents) <= 200000) priceCents = Number(o.priceCents)
+    else if (old && !o.priceId && o.priceCents == null) { priceCents = old.priceCents; priceId = old.priceId || '' }
+    else return { error: `Pick a price for ${type === 'one' ? '1 on 1' : 'the group'}.` }
+    const opt = { id: type, type, minPlayers, maxPlayers, priceId, priceCents, priceLabel: formatAud(priceCents) }
+    out.push({ ...opt, label: optionLabel(opt) })
+  }
+  if (!out.length) return { error: 'Tick 1 on 1, a group, or both.' }
+  return { options: out }
+}
 export function startMs(s) { const t = to24h(s.time); return t ? sydneyWallToUtcMs(s.date, t) : 0 }
 export const endMs = (s) => startMs(s) + (Number(s.durationMin) || 60) * 60000
 export const KIND_LABEL = { oneoff: 'One-off', private: 'Private link', weekly: 'Weekly slot' }
@@ -75,9 +120,12 @@ export function staffView(config, s, payreqs = []) {
     ...s, token: undefined, kind: kindOf(s), kindLabel: KIND_LABEL[kindOf(s)],
     coachName: coachLabel(coach), dateLabel: dateLabel(s.date), placesLeft: placesLeft(s), priceLabel: formatAud(s.priceCents),
     link: linkFor(s), past: endMs(s) < Date.now(),
+    ...(isWhole(s) ? { whole: true, optionsLabel: optionsSummary(s.options) } : {}),
     bookings: liveBookings(s).map((b) => {
-      const q = b.payreqId ? payreqs.find((x) => x.id === b.payreqId) : null
-      return { ...b, paid: q?.status === 'paid', payStatus: q ? q.status : b.payreqId ? 'unknown' : 'no charge yet' }
+      // A group's players are paid for on the first booking's charge.
+      const lead = b.groupId && !b.payreqId ? liveBookings(s).find((x) => x.id === b.groupId) : null
+      const q = (b.payreqId || lead?.payreqId) ? payreqs.find((x) => x.id === (b.payreqId || lead.payreqId)) : null
+      return { ...b, paid: q?.status === 'paid', payStatus: q ? q.status : b.payreqId ? 'unknown' : 'no charge yet', ...(lead ? { inGroupOf: lead.name } : {}) }
     }),
   }
 }
@@ -90,6 +138,7 @@ export function familyView(config, s) {
     priceCents: s.priceCents, priceLabel: formatAud(s.priceCents), label: s.title || s.priceLabel, visibility: s.visibility, note: s.publicNote || '',
     weekly: kindOf(s) === 'weekly', dayName: new Date(`${s.date}T12:00:00Z`).toLocaleDateString('en-AU', { weekday: 'long', timeZone: 'UTC' }),
     createdAt: s.createdAt || '',
+    ...(isWhole(s) ? { whole: true, options: s.options.map(({ id, type, label, minPlayers, maxPlayers, priceCents, priceLabel }) => ({ id, type, label, minPlayers, maxPlayers, priceCents, priceLabel })), optionsLabel: optionsSummary(s.options) } : {}),
   }
 }
 
@@ -122,28 +171,39 @@ export async function saveSlot({ config, principal, isAdmin, input }) {
   if (!date || date < today || date > addDays(today, EXTRA_DAYS_AHEAD)) return { error: `Pick a date from today to ${dateLabel(addDays(today, EXTRA_DAYS_AHEAD))}.` }
   const time = to24h(input.time) ? clean(input.time, 10) : ''
   if (!time) return { error: 'Pick a start time, like 4:30pm.' }
-  const capacity = Number(input.capacity)
+  // Whole session: the options decide the price and the most players.
+  const prices = cleanExtraPrices(config.extraPrices).filter((p) => !p.archived)
+  let options = null
+  if (input.bookAs === 'whole') {
+    const o = cleanOptions(input.options, prices, isAdmin, before)
+    if (o.error) return { error: o.error }
+    options = o.options
+  }
+  if (before && liveBookings(before).length && Boolean(options) !== isWhole(before)) return { error: 'Players are already booked, so how it is booked cannot change. Make a new session instead.' }
+  if (before && options && liveBookings(before).length && JSON.stringify(options.map((x) => [x.type, x.priceCents])) !== JSON.stringify(before.options.map((x) => [x.type, x.priceCents]))) return { error: 'A family has already booked this session, so its options and prices cannot change. Make a new session instead.' }
+  const capacity = options ? Math.max(...options.map((x) => x.maxPlayers)) : Number(input.capacity)
   if (!Number.isInteger(capacity) || capacity < 1 || capacity > 20) return { error: 'Places: 1 to 20.' }
-  if (before && liveBookings(before).length > capacity) return { error: `${liveBookings(before).length} players are already booked. Remove one first, or keep more places.` }
+  if (before && !options && liveBookings(before).length > capacity) return { error: `${liveBookings(before).length} players are already booked. Remove one first, or keep more places.` }
   const location = clean(input.location, 80)
   if (!location) return { error: 'Where is it?' }
   // The price: one Lee or Ligia set. Only they can type their own amount.
-  const prices = cleanExtraPrices(config.extraPrices).filter((p) => !p.archived)
-  const picked = prices.find((p) => p.id === input.priceId)
+  const picked = options ? null : prices.find((p) => p.id === input.priceId)
   let priceCents, priceLabel, durationMin
-  if (picked) { priceCents = picked.cents; priceLabel = picked.label; durationMin = Number(input.durationMin) || picked.durationMin }
+  // A whole session's headline price is its cheapest option per player.
+  if (options) { const lo = options.reduce((a, b) => (b.priceCents < a.priceCents ? b : a)); priceCents = lo.priceCents; priceLabel = clean(input.title, 60) || optionsSummary(options); durationMin = Number(input.durationMin) || 60 }
+  else if (picked) { priceCents = picked.cents; priceLabel = picked.label; durationMin = Number(input.durationMin) || picked.durationMin }
   else if (isAdmin && Number.isInteger(Number(input.priceCents)) && Number(input.priceCents) >= 100 && Number(input.priceCents) <= 200000) { priceCents = Number(input.priceCents); priceLabel = clean(input.title, 60) || 'Extra session'; durationMin = Number(input.durationMin) || 60 }
   else if (before && !input.priceId) { priceCents = before.priceCents; priceLabel = before.priceLabel; durationMin = Number(input.durationMin) || before.durationMin }
   else return { error: prices.length ? 'Pick a price.' : 'No extra session prices yet. Lee or Ligia add them on the Extra sessions page.' }
   // Paid bookings keep the price they were charged.
-  if (before && liveBookings(before).some((b) => b.payreqId) && priceCents !== before.priceCents) return { error: 'Players are already charged for this session, so its price cannot change. Make a new session instead.' }
+  if (!options && before && liveBookings(before).some((b) => b.payreqId) && priceCents !== before.priceCents) return { error: 'Players are already charged for this session, so its price cannot change. Make a new session instead.' }
   if (!(durationMin >= 15 && durationMin <= 240)) return { error: 'Length: 15 minutes to 4 hours.' }
   // The kind decides who can see it. Anything not clearly public is private.
   const kind = ['oneoff', 'private', 'weekly'].includes(input.kind) ? input.kind : before ? kindOf(before) : input.visibility === 'public' ? 'oneoff' : 'private'
   const visibility = kind === 'private' ? 'private' : 'public'
   const slot = {
     id: before?.id || newId('XS'), coachId, date, time, durationMin, location, capacity,
-    priceId: picked?.id || before?.priceId || '', priceCents, priceLabel,
+    priceId: options ? '' : picked?.id || before?.priceId || '', priceCents, priceLabel, ...(options ? { options } : {}),
     title: clean(input.title, 60) || priceLabel, publicNote: clean(input.publicNote, 200), note: clean(input.note, 300),
     visibility, kind, ...(input.seriesId || before?.seriesId ? { seriesId: clean(input.seriesId, 40) || before.seriesId } : {}),
     token: before?.token || crypto.randomBytes(12).toString('base64url'),
@@ -151,7 +211,7 @@ export async function saveSlot({ config, principal, isAdmin, input }) {
     createdBy: before?.createdBy || principal.email, createdAt: before?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString(),
   }
   await putSlot(slot)
-  await audit({ by: principal.email, action: before ? 'extra.edit' : 'extra.create', target: slot.id, after: { coach: coachId, date, time, kind, visibility, capacity, cents: priceCents } })
+  await audit({ by: principal.email, action: before ? 'extra.edit' : 'extra.create', target: slot.id, after: { coach: coachId, date, time, kind, visibility, capacity, cents: priceCents, ...(options ? { options: options.map((x) => `${x.label} ${x.priceLabel}`) } : {}) } })
   return { slot, created: !before }
 }
 
@@ -180,6 +240,7 @@ export async function reserveExtraPlace({ slotId, rowId = '', profileKey = '', n
     if (email && !em) return { error: 'That email does not look right.' }
     const same = liveBookings(s).find((b) => (rowId && b.rowId === rowId) || (em && b.email === em && b.name.toLowerCase() === nm.toLowerCase()))
     if (same) return { booking: same, already: true, slot: s }
+    if (isWhole(s)) return { error: 'One family books this whole session. Book it from My account, or make a private session for this player.' }
     if (!placesLeft(s)) return { error: 'That session is full.' }
     const booking = { id: newId('XB'), name: nm, email: em, mobile: clean(mobile, 30), rowId: clean(rowId, 30), profileKey: clean(profileKey, 200), payreqId: clean(payreqId, 60), status: 'booked', at: new Date().toISOString(), by, from }
     s.bookings = [...(s.bookings || []), booking]
@@ -188,6 +249,43 @@ export async function reserveExtraPlace({ slotId, rowId = '', profileKey = '', n
     return { booking, slot: s }
   } finally { await kvCommand(['DEL', `jfp:extra-lock:${slotId}`]) }
 }
+// A whole session for one family's group, first come first served. players:
+// [{ name, rowId?, profileKey?, guest? }], the first is the booker's own player.
+// The same family booking again gets their bookings back, never a second group.
+export async function reserveWholeSession({ slotId, optionId, players = [], email, mobile = '', by }) {
+  if ((await kvCommand(['SET', `jfp:extra-lock:${slotId}`, '1', 'NX', 'EX', '15'])) !== 'OK') return { error: 'Someone is booking this session right now. Try again in a moment.' }
+  try {
+    const s = await getSlot(slotId)
+    if (!s || s.status !== 'open' || !isWhole(s)) return { error: 'That session is not open.' }
+    if (startMs(s) < Date.now()) return { error: 'That session has started.' }
+    const em = validEmail(email)
+    if (!em) return { error: 'Sign in again, then book.' }
+    const live = liveBookings(s)
+    if (live.length) {
+      const mine = live.filter((b) => b.email === em && b.groupId)
+      if (mine.length) return { already: true, bookings: mine, lead: mine.find((b) => b.id === b.groupId) || mine[0], slot: s }
+      return { error: 'Another family has just booked this session. It is no longer free.' }
+    }
+    const opt = s.options.find((o) => o.id === optionId)
+    if (!opt) return { error: 'Choose 1 on 1 or a group.' }
+    const list = players.map((p) => ({ ...p, name: clean(p.name, 80) })).filter((p) => p.name.length >= 2)
+    if (list.length !== players.length) return { error: "Enter each player's full name." }
+    if (new Set(list.map((p) => p.name.toLowerCase())).size !== list.length) return { error: 'The same player is in twice.' }
+    if (list.length < opt.minPlayers) return { error: `${opt.label} needs at least ${opt.minPlayers} players. Add ${opt.minPlayers - list.length} more.` }
+    if (list.length > opt.maxPlayers) return { error: `${opt.label} takes up to ${opt.maxPlayers} player${opt.maxPlayers === 1 ? '' : 's'}.` }
+    const at = new Date().toISOString()
+    const leadId = newId('XB')
+    const bookings = list.map((p, i) => ({
+      id: i ? newId('XB') : leadId, groupId: leadId, optionId: opt.id, name: p.name, email: em, mobile: clean(mobile, 30),
+      rowId: clean(p.rowId, 30), profileKey: clean(p.profileKey, 200), ...(p.guest ? { guest: true } : {}), payreqId: '', status: 'booked', at, by, from: 'family',
+    }))
+    s.bookings = [...(s.bookings || []), ...bookings]
+    await putSlot(s)
+    await audit({ by, action: 'extra.book', target: s.id, after: { group: leadId, option: opt.label, players: bookings.map((b) => b.name), cents: opt.priceCents * bookings.length } })
+    return { bookings, lead: bookings[0], option: opt, slot: s }
+  } finally { await kvCommand(['DEL', `jfp:extra-lock:${slotId}`]) }
+}
+
 // The charge made after the place was held.
 export async function setBookingCharge({ slotId, bookingId, payreqId, chargeId = '' }) {
   const s = await getSlot(slotId)
@@ -204,10 +302,14 @@ export async function removeBooking({ principal, isAdmin, slotId, bookingId }) {
   if (!isAdmin && s.coachId !== principal.coachId) return { error: 'Not your session.' }
   const b = (s.bookings || []).find((x) => x.id === bookingId && x.status !== 'removed')
   if (!b) return { error: 'That player is not on this session.' }
-  b.status = 'removed'; b.removedBy = principal.email; b.removedAt = new Date().toISOString()
+  // A whole session's group comes off together; its charge is on the first booking.
+  const group = b.groupId ? s.bookings.filter((x) => x.groupId === b.groupId && x.status !== 'removed') : [b]
+  const at = new Date().toISOString()
+  for (const x of group) { x.status = 'removed'; x.removedBy = principal.email; x.removedAt = at }
   await putSlot(s)
-  await audit({ by: principal.email, action: 'extra.unbook', target: s.id, after: { booking: b.id, player: b.name, charged: Boolean(b.payreqId) } })
-  return { slot: s, booking: b }
+  const lead = group.find((x) => x.payreqId) || b
+  await audit({ by: principal.email, action: 'extra.unbook', target: s.id, after: { booking: b.id, player: group.map((x) => x.name).join(', '), charged: Boolean(lead.payreqId) } })
+  return { slot: s, booking: lead, removed: group.length }
 }
 
 // The coach has been told about a booking a family made themselves.

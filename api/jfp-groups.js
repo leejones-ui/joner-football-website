@@ -53,7 +53,7 @@ export async function weekExtras(config, nowMs = Date.now()) {
   const until = new Date(nowMs + WEEK_MS).toISOString().slice(0, 10)
   try {
     return (await listExtraSlots({ config, publicOnly: true })).filter((s) => s.date <= until).sort((a, b) => `${a.date}${to24h(a.time)}`.localeCompare(`${b.date}${to24h(b.time)}`)).slice(0, 12)
-      .map((s) => ({ id: s.id, date: s.date, dateLabel: s.dateLabel, time: s.time, durationMin: s.durationMin, location: s.location, kind: sessionKind(s.capacity), coach: s.coachName ? `Coach ${s.coachName}` : '', placesLeft: s.placesLeft, full: s.placesLeft <= 0, ...(s.weekly ? { weekly: `Every ${s.dayName}` } : {}) }))
+      .map((s) => ({ id: s.id, date: s.date, dateLabel: s.dateLabel, time: s.time, durationMin: s.durationMin, location: s.location, kind: s.whole ? s.optionsLabel : sessionKind(s.capacity), ...(s.whole ? { whole: true } : {}), coach: s.coachName ? `Coach ${s.coachName}` : '', placesLeft: s.placesLeft, full: s.placesLeft <= 0, ...(s.weekly ? { weekly: `Every ${s.dayName}` } : {}) }))
   } catch (error) { console.error('jfp week extras failed', error.message); return [] }
 }
 

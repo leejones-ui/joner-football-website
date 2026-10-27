@@ -36,13 +36,18 @@ export function setExtraLink(query) {
   const q = new URLSearchParams(query || '')
   LINK = q.get('slot') ? { slot: q.get('slot'), k: q.get('k') || '', state: 'new', data: null } : null
 }
+// A whole session (Lee, 27 Oct 2026): one family takes it, first come first
+// served, as 1 on 1 or a group. Each option with its price per player.
+const optLine = (o) => `${esc(o.label)}: ${esc(o.priceLabel)}${o.type === 'one' ? '' : ' a player'}`
 function slotCard(s, D, { mine = false } = {}) {
   const full = s.placesLeft < 1
   return `<article class="ja-card" data-xslot="${esc(s.id)}"><p class="ja-kicker"><i></i>${mine ? 'Your session' : esc(s.kind || 'Extra session')}</p>
     <h3 class="ja-h3" style="margin-top:8px">${esc(s.dateLabel)} · ${esc(s.time)}</h3>
     <p class="ja-small" style="margin-top:4px"><b>${esc(s.kind || 'Extra session')}</b>${s.coach ? ` with ${esc(s.coach)}` : ''}${s.label && s.label !== s.kind ? ` · ${esc(s.label)}` : ''}${s.weekly && !mine ? ` · <b>Every ${esc(s.dayName)}</b>` : ''}</p>
-    <p class="ja-small ja-muted">${esc(s.location)}${s.durationMin ? ` · ${esc(String(s.durationMin))} min` : ''} · ${esc(s.priceLabel)}</p>
-    <p class="ja-small ja-muted">${full ? 'Full' : `${s.placesLeft} place${s.placesLeft === 1 ? '' : 's'} left`}${s.note ? ` · ${esc(s.note)}` : ''}</p>
+    <p class="ja-small ja-muted">${esc(s.location)}${s.durationMin ? ` · ${esc(String(s.durationMin))} min` : ''}${s.whole ? '' : ` · ${esc(s.priceLabel)}`}</p>
+    ${s.whole ? `<ul class="ja-small" style="margin:6px 0 0 18px">${s.options.map((o) => `<li>${optLine(o)}</li>`).join('')}</ul>
+    <p class="ja-small ja-muted">${full ? 'Booked' : 'The first family to book has the whole session.'}${s.note ? ` · ${esc(s.note)}` : ''}</p>`
+    : `<p class="ja-small ja-muted">${full ? 'Full' : `${s.placesLeft} place${s.placesLeft === 1 ? '' : 's'} left`}${s.note ? ` · ${esc(s.note)}` : ''}</p>`}
     <div class="ja-actions" data-xslot-acts>${full ? '' : `<button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-xbook="${esc(s.id)}">Book</button>`}</div>
     <p class="j-err" data-xslot-err hidden></p></article>`
 }
@@ -177,8 +182,44 @@ async function send(kind, btn, D) {
   toast('Sent. We will be in touch.')
 }
 
+// A whole session: the option, their own players, and friends by name. The
+// total shows as they go; the server checks the sizes again.
+const slotById = (D, id) => (LINK?.data?.id === id ? LINK.data : (X(D).bookable || []).find((s) => s.id === id))
+function wholePicker(card, D, s) {
+  const ps = D.players || []
+  const acts = card.querySelector('[data-xslot-acts]')
+  if (!ps.length) { acts.innerHTML = '<p class="ja-small">Add your player first (My profile), then book.</p>'; return }
+  acts.style.flexDirection = 'column'; acts.style.alignItems = 'stretch'
+  acts.innerHTML = `<div class="j-field" style="margin:0"><span>How do you want it?</span><div class="ja-seg" data-xw-opts>${s.options.map((o, i) => `<button type="button" class="j-chip" data-xw-opt="${esc(o.id)}" aria-pressed="${i === 0}">${esc(o.label)}</button>`).join('')}</div></div>
+    <div class="j-field" style="margin:0"><span>Your players</span>${ps.map((p, i) => `<label class="ja-small" style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-xw-me="${esc(p.key)}" ${i === 0 ? 'checked' : ''}> ${esc(p.name)}${p.waiver?.onFile ? '' : ' (waiver needed)'}</label>`).join('')}</div>
+    <div class="j-field" style="margin:0" data-xw-guests-wrap><span>Friends coming too <span class="muted">(full names)</span></span><div data-xw-guests></div></div>
+    <p class="ja-small" data-xw-total></p>
+    <button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-xbook-go="${esc(s.id)}">Book and pay</button>`
+  const opt = () => s.options.find((o) => o.id === acts.querySelector('[data-xw-opt][aria-pressed="true"]')?.dataset.xwOpt) || s.options[0]
+  const draw = () => {
+    const o = opt()
+    const mine = acts.querySelectorAll('[data-xw-me]:checked').length
+    const box = acts.querySelector('[data-xw-guests]')
+    const typed = [...box.querySelectorAll('input')].map((x) => x.value)
+    const room = Math.max(0, o.maxPlayers - mine)
+    acts.querySelector('[data-xw-guests-wrap]').hidden = room === 0 && !typed.some(Boolean)
+    // One empty box more than the names typed, up to the room left.
+    const want = Math.min(room, typed.filter(Boolean).length + 1)
+    box.innerHTML = Array.from({ length: want }, (_, i) => `<input class="j-input" data-xw-guest maxlength="80" autocomplete="off" placeholder="Friend's full name" value="${esc(typed[i] || '')}" style="margin-top:6px">`).join('')
+    const n = mine + [...box.querySelectorAll('input')].filter((x) => x.value.trim()).length
+    const need = o.minPlayers > n ? ` · needs ${o.minPlayers - n} more player${o.minPlayers - n === 1 ? '' : 's'}` : ''
+    acts.querySelector('[data-xw-total]').innerHTML = n ? `<b>${n} player${n === 1 ? '' : 's'}: A$${((o.priceCents * n) / 100).toLocaleString('en-AU', { maximumFractionDigits: 2 })}</b>${esc(need)}` : 'Tick your player.'
+  }
+  acts.addEventListener('click', (e) => { const b = e.target.closest('[data-xw-opt]'); if (!b) return; acts.querySelectorAll('[data-xw-opt]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); draw() })
+  acts.addEventListener('change', (e) => { if (e.target.matches('[data-xw-me]')) draw() })
+  acts.addEventListener('input', (e) => { if (!e.target.matches('[data-xw-guest]')) return; const pos = [...acts.querySelectorAll('[data-xw-guest]')].indexOf(e.target); const cur = e.target.selectionStart; draw(); const again = acts.querySelectorAll('[data-xw-guest]')[pos]; if (again) { again.focus(); again.setSelectionRange(cur, cur) } })
+  draw()
+}
+
 // Book: pick the player (the waiver first), then hold, charge and pay.
 function bookPicker(card, D, slotId) {
+  const s = slotById(D, slotId)
+  if (s?.whole) return wholePicker(card, D, s)
   const ps = D.players || []
   const acts = card.querySelector('[data-xslot-acts]')
   acts.innerHTML = ps.length
@@ -189,12 +230,22 @@ async function bookGo(btn, D) {
   const card = btn.closest('[data-xslot]')
   const err = card.querySelector('[data-xslot-err]')
   err.hidden = true
-  const key = card.querySelector('[data-xbook-player]')?.value || ''
-  const p = (D.players || []).find((x) => x.key === key)
-  if (p && !p.waiver?.onFile) { err.innerHTML = `Sign ${esc(p.name)}'s waiver first, then book. <button type="button" class="ja-link" data-go="waivers">Sign the waiver</button>`; err.hidden = false; return }
+  const whole = Boolean(card.querySelector('[data-xw-opts]'))
+  const keys = whole ? [...card.querySelectorAll('[data-xw-me]:checked')].map((x) => x.dataset.xwMe) : [card.querySelector('[data-xbook-player]')?.value || '']
+  const key = keys[0] || ''
+  const guests = whole ? [...card.querySelectorAll('[data-xw-guest]')].map((x) => x.value.trim()).filter(Boolean) : []
+  const optionId = whole ? card.querySelector('[data-xw-opt][aria-pressed="true"]')?.dataset.xwOpt || '' : ''
+  if (whole && !keys.length) { err.textContent = 'Tick your player.'; err.hidden = false; return }
+  if (whole) {
+    const o = slotById(D, btn.dataset.xbookGo)?.options.find((x) => x.id === optionId)
+    const n = keys.length + guests.length
+    if (o && n < o.minPlayers) { err.textContent = `${o.label} needs at least ${o.minPlayers} players. Add ${o.minPlayers - n} more.`; err.hidden = false; return }
+  }
+  const p = (D.players || []).find((x) => keys.includes(x.key) && !x.waiver?.onFile)
+  if (p) { err.innerHTML = `Sign ${esc(p.name)}'s waiver first, then book. <button type="button" class="ja-link" data-go="waivers">Sign the waiver</button>`; err.hidden = false; return }
   btn.disabled = true
   btn.textContent = 'Opening'
-  const r = await api('/api/jfp-account', { action: 'bookExtra', slotId: btn.dataset.xbookGo, k: LINK?.slot === btn.dataset.xbookGo ? LINK.k : '', playerKey: key })
+  const r = await api('/api/jfp-account', { action: 'bookExtra', slotId: btn.dataset.xbookGo, k: LINK?.slot === btn.dataset.xbookGo ? LINK.k : '', playerKey: key, ...(whole ? { playerKeys: keys, guests, optionId } : {}) })
   if (r.ok && r.data.url) { location.href = r.data.url; return }
   btn.disabled = false
   btn.textContent = 'Book and pay'

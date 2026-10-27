@@ -45,21 +45,22 @@ export async function renderExtra(ui) {
   const card = (s) => `<div class="j-card" style="padding:14px 16px;margin-bottom:12px" data-xs="${esc(s.id)}">
     <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start">
       <div><b>${esc(s.dateLabel.replace(/\s\d{4}$/, ''))}, ${esc(s.time)}</b> <span class="muted small">${esc(s.durationMin)} min</span><br>
-        <span class="small">${esc(s.location)}${admin ? ` · ${esc(s.coachName)}` : ''} · ${esc(s.title)}${admin && s.priceLabel ? ` · ${esc(s.priceLabel)} each` : ''}</span><br>
+        <span class="small">${esc(s.location)}${admin ? ` · ${esc(s.coachName)}` : ''} · ${esc(s.title)}${admin && s.priceLabel && !s.whole ? ` · ${esc(s.priceLabel)} each` : ''}</span><br>
+        ${s.whole ? `<span class="small">Whole session, first come first served: ${s.options.map((o) => `${esc(o.label)}${admin && o.priceLabel ? ` ${esc(o.priceLabel)}${o.type === 'one' ? '' : ' a player'}` : ''}`).join(' · ')}</span><br>` : ''}
         <span class="j-pill j-pill-${s.kind === 'private' ? 'violet' : s.kind === 'weekly' ? 'green' : 'blue'}">${s.kind === 'private' ? 'Private link: never public' : s.kind === 'weekly' ? 'Weekly slot: public' : 'One-off: public'}</span>
-        <span class="j-pill j-pill-grey">${s.capacity - s.placesLeft} of ${s.capacity} booked</span></div>
+        <span class="j-pill j-pill-grey">${s.whole ? (s.bookings.length ? `Booked: ${s.bookings.length} player${s.bookings.length === 1 ? '' : 's'}` : 'Free') : `${s.capacity - s.placesLeft} of ${s.capacity} booked`}</span></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         <button type="button" class="j-btn j-btn-line j-btn-sm" data-x-copy="${esc(s.id)}">Copy link</button>
-        ${s.placesLeft ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-x-add="${esc(s.id)}">Add a player</button>` : ''}
+        ${s.placesLeft && !s.whole ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-x-add="${esc(s.id)}">Add a player</button>` : ''}
         <button type="button" class="j-btn j-btn-line j-btn-sm" data-x-edit="${esc(s.id)}">Edit</button>
         <button type="button" class="j-btn j-btn-ghost j-btn-sm" data-x-cancel="${esc(s.id)}">Cancel</button>
       </div>
     </div>
-    ${s.bookings.length ? `<ul class="jm-hist" style="margin-top:10px">${s.bookings.map((b) => `<li><span><b>${esc(b.name)}</b><small>${esc(b.email || 'no email')}${b.from === 'family' ? ' · booked themselves' : ''}</small></span><span style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-      ${pill(b)}
+    ${s.bookings.length ? `<ul class="jm-hist" style="margin-top:10px">${s.bookings.map((b) => `<li><span><b>${esc(b.name)}</b><small>${b.guest ? `friend of ${esc(b.inGroupOf || 'the family')} · no JFP waiver, check on the day` : `${esc(b.email || 'no email')}${b.from === 'family' ? ' · booked themselves' : ''}`}</small></span><span style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+      ${b.inGroupOf ? '' : pill(b)}
       ${s.date <= todayIso() ? ['Present', 'Absent'].map((st) => `<button type="button" class="j-btn j-btn-sm ${s.marks?.[b.id] === st ? 'j-btn-dark' : 'j-btn-line'}" data-x-mark="${esc(s.id)}|${esc(b.id)}|${st}">${st}</button>`).join('') : ''}
       ${b.mobile ? `<a class="j-btn j-btn-line j-btn-sm" href="${esc(smsHref(b.mobile, extraText({ name: b.name, coach: coachWord(s), slot: s, email: b.email })))}">Text</a>` : ''}
-      <button type="button" class="j-btn j-btn-ghost j-btn-sm" data-x-rm="${esc(s.id)}|${esc(b.id)}">Remove</button></span></li>`).join('')}</ul>` : '<p class="muted small" style="margin-top:8px">No one booked yet.</p>'}
+      ${b.inGroupOf ? '' : `<button type="button" class="j-btn j-btn-ghost j-btn-sm" data-x-rm="${esc(s.id)}|${esc(b.id)}">${b.groupId ? 'Remove the group' : 'Remove'}</button>`}</span></li>`).join('')}</ul>` : '<p class="muted small" style="margin-top:8px">No one booked yet.</p>'}
   </div>`
   view().innerHTML = `<div class="jp-head"><div><h1>Extra sessions</h1>${psHelp('Open extra hours. Public ones show in families\' accounts to book. Private ones have their own link for a player you have booked yourself. Every payment lands against the player and you.', 'About this page')}${hours ? `<p class="muted small"><b>${esc(hours)}</b></p>` : ''}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">${admin ? `<select class="j-select" id="xs-coach" style="width:auto"><option value="">Every coach</option>${d.coaches.map((c) => `<option value="${esc(c.id)}" ${S.coachId === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>` : ''}<button type="button" class="j-btn j-btn-dark" id="xs-new">+ New extra session</button></div></div>
@@ -171,6 +172,20 @@ function bindPrices(ui, again) {
   }))
 }
 
+// One option of a whole session: on or off, its price per player and, for a
+// group, the fewest and most players. Lee and Ligia can also type an amount.
+function optRow(type, s, d, priceText) {
+  const o = s?.options?.find((x) => x.type === type)
+  const on = s?.whole ? Boolean(o) : true
+  const priceOpts = `${o ? `<option value="__keep" selected>${d.admin ? `Keep ${esc(o.priceLabel || 'the price')}` : 'Keep it as it is'}</option>` : ''}${d.prices.map((p) => `<option value="${esc(p.id)}">${esc(priceText(p))}</option>`).join('')}${d.admin ? '<option value="__aud">Type an amount</option>' : ''}`
+  return `<div class="j-card" style="padding:10px 12px;margin-bottom:8px">
+    <label style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" data-xo-on="${type}" ${on ? 'checked' : ''}> ${type === 'one' ? '1 on 1' : 'Group'}</label>
+    <div class="j-two" style="margin-top:6px"><label class="j-field"><span>${d.admin ? 'Price per player' : 'Session'}</span><select class="j-select" data-xo-price="${type}">${priceOpts}</select></label>
+    ${d.admin ? `<label class="j-field"><span>A$ per player <span class="muted">(if typed)</span></span><input class="j-input" data-xo-aud="${type}" inputmode="decimal" placeholder="e.g. ${type === 'one' ? '150' : '60'}"></label>` : ''}</div>
+    ${type === 'group' ? `<div class="j-two"><label class="j-field"><span>Fewest players</span><input class="j-input" data-xo-min inputmode="numeric" value="${esc(o?.minPlayers || 2)}"></label><label class="j-field"><span>Most players</span><input class="j-input" data-xo-max inputmode="numeric" value="${esc(o?.maxPlayers || 4)}"></label></div>` : ''}
+  </div>`
+}
+
 function slotForm(ui, d, s, done) {
   const { modal, closeModal, post, toast } = ui
   const venues = d.venues || []
@@ -184,9 +199,12 @@ function slotForm(ui, d, s, done) {
     ${d.admin ? `<label class="j-field"><span>Coach</span><select class="j-select" id="xf-coach">${d.coaches.map((c) => `<option value="${esc(c.id)}" ${(s?.coachId || S.coachId) === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>` : ''}
     <div class="j-field"><span>${s ? 'Date' : 'Dates <span class="muted">(tap as many as you like)</span>'}</span><div id="xf-cal"></div></div>
     <div class="j-field"><span>${s ? 'Start' : 'Start times <span class="muted">(each date gets each time)</span>'}</span><div class="xf-times" id="xf-times">${timeBox(to24(s?.time) || '16:30')}${s ? '' : '<button type="button" class="j-btn j-btn-line j-btn-sm" id="xf-time-add">Add another time</button>'}</div></div>
-    <label class="j-field"><span>${d.admin ? 'Price' : 'Session'}</span><select class="j-select" id="xf-price">${s ? `<option value="">${d.admin ? `Keep the price, ${esc(s.priceLabel)}` : 'Keep it as it is'}</option>` : ''}${d.prices.map((p) => `<option value="${esc(p.id)}" data-min="${esc(p.durationMin)}" ${s?.priceId === p.id ? 'selected' : ''}>${esc(priceText(p))}</option>`).join('')}</select></label>
+    <div class="j-field"><span>How families book</span><div class="jp-seg" id="xf-as"><button type="button" data-as="places" aria-pressed="${!s?.whole}">Each player books a place</button><button type="button" data-as="whole" aria-pressed="${Boolean(s?.whole)}">One family books the whole session</button></div>
+      <p class="muted small" id="xf-as-help" style="margin-top:6px"></p></div>
+    <div id="xf-whole" hidden>${optRow('one', s, d, priceText)}${optRow('group', s, d, priceText)}</div>
+    <label class="j-field" id="xf-price-wrap"><span>${d.admin ? 'Price' : 'Session'}</span><select class="j-select" id="xf-price">${s ? `<option value="">${d.admin ? `Keep the price, ${esc(s.priceLabel)}` : 'Keep it as it is'}</option>` : ''}${d.prices.map((p) => `<option value="${esc(p.id)}" data-min="${esc(p.durationMin)}" ${s?.priceId === p.id ? 'selected' : ''}>${esc(priceText(p))}</option>`).join('')}</select></label>
     <div class="j-two"><label class="j-field"><span>Minutes</span><input class="j-input" id="xf-min" inputmode="numeric" value="${esc(s?.durationMin || d.prices[0]?.durationMin || 60)}"></label>
-    <label class="j-field"><span>Places</span><input class="j-input" id="xf-cap" inputmode="numeric" value="${esc(s?.capacity || 1)}"></label></div>
+    <label class="j-field" id="xf-cap-wrap"><span>Places</span><input class="j-input" id="xf-cap" inputmode="numeric" value="${esc(s?.capacity || 1)}"></label></div>
     <label class="j-field"><span>Where</span><select class="j-select" id="xf-loc">${venues.map((v) => `<option ${s?.location === v ? 'selected' : ''}>${esc(v)}</option>`).join('')}<option value="__other" ${s && !venues.includes(s.location) ? 'selected' : ''}>Somewhere else</option></select></label>
     <label class="j-field" id="xf-other-wrap" ${s && !venues.includes(s.location) ? '' : 'hidden'}><span>Place</span><input class="j-input" id="xf-other" value="${esc(s && !venues.includes(s.location) ? s.location : '')}"></label>
     <div class="j-field"><span>What kind of session</span><div class="jp-seg xf-kinds" id="xf-vis">${KINDS.filter(([v]) => !s || v !== 'weekly' || kind0 === 'weekly').map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${kind0 === v}">${esc(l)}</button>`).join('')}</div><p class="muted small" id="xf-kind-help" style="margin-top:6px">${esc(KIND_HELP[kind0])}</p></div>
@@ -219,6 +237,18 @@ function slotForm(ui, d, s, done) {
     if (rm && box.querySelectorAll('[data-xf-time]').length > 1) { rm.closest('.xf-time').remove(); count() }
   })
   box.querySelector('#xf-times').addEventListener('change', count)
+  // Each player books a place, or one family books the whole session (Lee, 27 Oct 2026).
+  let as = s?.whole ? 'whole' : 'places'
+  const AS_HELP = { places: 'Each player books their own place, until the places are gone.', whole: 'First come, first served: the first family to book takes the whole session, as 1 on 1 or a group (they name the friends coming). Tick one or both.' }
+  const showAs = () => {
+    box.querySelectorAll('#xf-as [data-as]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.as === as)))
+    box.querySelector('#xf-as-help').textContent = AS_HELP[as]
+    box.querySelector('#xf-whole').hidden = as !== 'whole'
+    box.querySelector('#xf-price-wrap').hidden = as === 'whole'
+    box.querySelector('#xf-cap-wrap').hidden = as === 'whole'
+  }
+  box.querySelector('#xf-as').addEventListener('click', (e) => { const b = e.target.closest('[data-as]'); if (b) { as = b.dataset.as; showAs() } })
+  showAs()
   let vis = kind0
   const whoBox = box.querySelector('#xf-who')
   const showWho = () => { if (whoBox) whoBox.hidden = vis !== 'private'; count() }
@@ -255,13 +285,25 @@ function slotForm(ui, d, s, done) {
     const ts = [...new Set(times())].map(ampm)
     if (!dates.length) { err.textContent = s ? 'Tap a date.' : 'Tap at least one date.'; err.hidden = false; return }
     if (!ts.length) { err.textContent = 'Add a start time.'; err.hidden = false; return }
+    if (whoBox && vis === 'private' && as === 'whole' && whoName()) { err.textContent = 'A whole session is booked by the family from the link. Clear the player, then copy the link to send them.'; err.hidden = false; return }
     if (whoBox && vis === 'private') {
       const typed = (box.querySelector('#xf-q').value || '').trim()
       const email = (box.querySelector('#xf-email').value || '').trim()
       if (!who && typed && !whoName()) { err.textContent = `Tap ${typed}'s name in the list, or add their details.`; err.hidden = false; return }
       if (whoName() && !who?.hasEmail && !/^\S+@\S+\.\S+$/.test(email)) { err.textContent = 'Add their email so they can pay in their account.'; err.hidden = false; return }
     }
+    let options
+    if (as === 'whole') {
+      options = ['one', 'group'].filter((ty) => box.querySelector(`[data-xo-on="${ty}"]`).checked).map((ty) => {
+        const pick = box.querySelector(`[data-xo-price="${ty}"]`).value
+        const typed = box.querySelector(`[data-xo-aud="${ty}"]`)?.value.trim()
+        // An amount Lee or Ligia typed wins; "keep" sends nothing, so the price stays.
+        return { type: ty, priceId: typed || pick === '__aud' || pick === '__keep' ? '' : pick, ...(typed || pick === '__aud' ? { priceCents: Math.round(Number(typed) * 100) } : {}), ...(ty === 'group' ? { minPlayers: Number(box.querySelector('[data-xo-min]').value), maxPlayers: Number(box.querySelector('[data-xo-max]').value) } : {}) }
+      })
+      if (!options.length) { err.textContent = 'Tick 1 on 1, a group, or both.'; err.hidden = false; return }
+    }
     const slot = {
+      ...(as === 'whole' ? { bookAs: 'whole', options } : {}),
       id: s?.id || '', coachId: box.querySelector('#xf-coach')?.value || '', date: dates[0], time: ts[0],
       priceId: box.querySelector('#xf-price').value, durationMin: Number(box.querySelector('#xf-min').value), capacity: Number(box.querySelector('#xf-cap').value),
       location: loc === '__other' ? box.querySelector('#xf-other').value : loc, kind: vis, visibility: vis === 'private' ? 'private' : 'public', title: box.querySelector('#xf-title').value,

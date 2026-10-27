@@ -21,6 +21,8 @@ const ok = (res, body) => res.status(200).json({ success: true, ...body })
 function forCoach(v, isAdmin) {
   if (isAdmin || !v) return v
   const { priceCents, priceLabel, ...rest } = v
+  // A whole session's options keep their sizes, never their prices.
+  if (Array.isArray(rest.options)) rest.options = rest.options.map(({ priceCents: _c, priceLabel: _l, ...o }) => o)
   return rest
 }
 const priceForCoach = (p, isAdmin) => (isAdmin ? { ...p, priceLabel: formatAud(p.cents) } : { id: p.id, label: p.label, durationMin: p.durationMin })
@@ -112,7 +114,7 @@ export async function extraAction(req, res, principal, config, body, action, isA
     const out = await saveSlot({ config, principal, isAdmin, input: body.slot || {} })
     if (out.error) return no(res, 400, out.error)
     // Lee and Ligia hear when a coach opens a session themselves.
-    if (out.created && !isAdmin) await telegramAlert(`Extra session opened by Coach ${coachLabel(coachById(config, out.slot.coachId))}: ${dateLabel(out.slot.date)} ${out.slot.time}, ${out.slot.location}, ${out.slot.capacity} place${out.slot.capacity === 1 ? '' : 's'}, ${formatAud(out.slot.priceCents)} (${KIND_LABEL[kindOf(out.slot)]}).`).catch(() => {})
+    if (out.created && !isAdmin) await telegramAlert(`Extra session opened by Coach ${coachLabel(coachById(config, out.slot.coachId))}: ${dateLabel(out.slot.date)} ${out.slot.time}, ${out.slot.location}, ${out.slot.options ? `whole session: ${out.slot.options.map((o) => `${o.label} ${o.priceLabel} a player`).join(', ')}` : `${out.slot.capacity} place${out.slot.capacity === 1 ? '' : 's'}, ${formatAud(out.slot.priceCents)}`} (${KIND_LABEL[kindOf(out.slot)]}).`).catch(() => {})
     if (out.created) await announcePublic(config, [out.slot])
     return ok(res, { slot: forCoach(staffView(config, out.slot, await listPayreqs()), isAdmin) })
   }

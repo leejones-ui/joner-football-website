@@ -12,7 +12,7 @@
 //
 // Families see the coach and what kind of session it is (Lee, 19 Oct 2026:
 // "parents will want to know that"), never another family's details.
-import { listExtraSlots, getExtraSlot, reserveExtraPlace, setBookingCharge } from './_jfp-extra.js'
+import { listExtraSlots, getExtraSlot, reserveExtraPlace, reserveWholeSession, setBookingCharge } from './_jfp-extra.js'
 import { createPlayerCharge } from './_jfp-charges.js'
 import { getPayreq, clean } from './_jfp-store.js'
 import { profileKey } from './_jfp-profiles.js'
@@ -27,7 +27,7 @@ export function sessionKind(capacity) {
 export function familySlot(s) {
   if (!s) return null
   const { coachId, coachName, ...rest } = s
-  return { ...rest, coach: coachName ? `Coach ${coachName}` : '', kind: sessionKind(s.capacity) }
+  return { ...rest, coach: coachName ? `Coach ${coachName}` : '', kind: s.whole ? s.optionsLabel : sessionKind(s.capacity) }
 }
 export async function bookableSlots(config) {
   return (await listExtraSlots({ config, publicOnly: true }).catch(() => [])).map(familySlot)
@@ -43,6 +43,7 @@ export async function bookExtraPlace({ config, parent, fam, body, siteUrl }) {
   // The session itself (and the coach it is with), read with its private key if it has one.
   const slot = await getExtraSlot({ config, id: slotId, token: clean(body.k, 80) })
   if (!slot) return { ok: false, status: 404, error: 'That session is not open to book, or the link is not right. Ask Ligia for a new one.' }
+  if (slot.whole) return bookWholeSession({ config, parent, fam, body, siteUrl, slot })
   const p = fam.players.find((x) => x.key === clean(body.playerKey, 80))
   if (!p) return { ok: false, status: 400, error: 'Choose the player.' }
   // The waiver first, as for every payment (nothing is held without it).
@@ -66,6 +67,50 @@ export async function bookExtraPlace({ config, parent, fam, body, siteUrl }) {
     }
     payreqId = c.payreqId
     await setBookingCharge({ slotId: slot.id, bookingId: booking.id, payreqId })
+  }
+  const q = await getPayreq(payreqId)
+  if (q?.status === 'paid') return { ok: true, payreqId, paid: true, already: true }
+  return { ok: true, payreqId, already: Boolean(held.already) }
+}
+
+// A whole session (Lee, 27 Oct 2026): the family picks 1 on 1 or a group, ticks
+// their own players and names any friends coming with them. The first family
+// to book takes the session. One charge on their first player: the per player
+// price times the players. Their own players need a signed waiver; friends are
+// named only, and the coach sees them as guests.
+async function bookWholeSession({ config, parent, fam, body, siteUrl, slot }) {
+  const opt = slot.options.find((o) => o.id === clean(body.optionId, 10))
+  if (!opt) return { ok: false, status: 400, error: 'Choose 1 on 1 or a group.' }
+  const keys = [...new Set((Array.isArray(body.playerKeys) ? body.playerKeys : [body.playerKey]).map((k) => clean(k, 80)).filter(Boolean))]
+  const own = keys.map((k) => fam.players.find((x) => x.key === k))
+  if (!own.length || own.some((x) => !x)) return { ok: false, status: 400, error: 'Choose your player.' }
+  const unsigned = own.find((x) => !x.waiver)
+  if (unsigned) return { ok: false, status: 400, code: 'waiver', error: `Sign ${unsigned.name}'s waiver first, then book.` }
+  const guests = (Array.isArray(body.guests) ? body.guests : []).map((g) => clean(typeof g === 'string' ? g : g?.name, 80)).filter(Boolean).slice(0, 19)
+  const players = [
+    ...own.map((p) => { const row = p.term4.find((r) => r.holdsPlace) || p.term4[0] || null; return { name: p.name, rowId: row?.id || '', profileKey: row ? '' : profileKey(p.name, parent.email) } }),
+    ...guests.map((name) => ({ name, guest: true })),
+  ]
+  const held = await reserveWholeSession({ slotId: slot.id, optionId: opt.id, players, email: parent.email, mobile: clean(body.mobile, 30) || fam.mobile || '', by: parent.email })
+  if (held.error) return { ok: false, status: 409, code: 'slot', error: held.error }
+  const lead = held.lead
+  let payreqId = lead.payreqId || ''
+  if (!payreqId) {
+    const first = players[0]
+    const n = held.bookings.length
+    const others = n > 1 ? ` (${first.name} + ${n - 1})` : ''
+    const c = await createPlayerCharge({
+      config, principal: { email: parent.email, name: fam.parentName || parent.email },
+      ...(first.rowId ? { rowId: first.rowId } : { profileKey: first.profileKey }), email: parent.email, playerName: first.name, parentName: fam.parentName || '',
+      amountCents: opt.priceCents * n, label: `Extra session, ${slot.dateLabel} ${slot.time}, ${opt.type === 'one' ? '1 on 1' : `group of ${n}${others}`}`, kind: 'extra',
+      sessionDate: slot.date, coachId: slot.coachId, ref: `extra:${slot.id}:${lead.id}`, siteUrl,
+    })
+    if (!c.ok) {
+      console.error('jfp family extra charge failed', slot.id, lead.id, c.error)
+      return { ok: false, status: 502, code: 'charge', error: 'The session is held for you. We could not open the payment just now; we will send you the payment link.' }
+    }
+    payreqId = c.payreqId
+    await setBookingCharge({ slotId: slot.id, bookingId: lead.id, payreqId })
   }
   const q = await getPayreq(payreqId)
   if (q?.status === 'paid') return { ok: true, payreqId, paid: true, already: true }
