@@ -20,7 +20,8 @@
 //   requestExtra  Book extra sessions / Book game analysis: a request to
 //               staff (_jfp-extras.js)
 import { stripeFetch, siteUrl, listSlots, getConfig as holidayConfig, slotOwners, publicSlot, signAccessCookie, accessCookieHeader } from './_holiday-store.js'
-import { chargeCheckoutMeta } from './_jfp-charges.js'
+import { chargeCheckoutMeta, listCharges, cancelCharge } from './_jfp-charges.js'
+import { extraPayCheck } from './_jfp-extra.js'
 import { bookableSlots, privateSlot, bookExtraPlace } from './_jfp-family-extra.js'
 import {
   keys, getConfig, getGroup, listGroups, listPayreqs, getPayreq, savePayreq, listApplications, listBookings, familyRecords, familyIndexReady, clean, dateLabel,
@@ -825,6 +826,15 @@ async function pay(req, res, parent, body) {
     const closed = await closeCheckout(q.stripeSessionId)
     if (closed === 'complete') return fail(res, 409, 'This payment has gone through and is being processed. Refresh in a minute.', { code: 'processing' })
     if (closed === 'error') return fail(res, 503, 'Could not check your earlier payment. Try again in a minute.')
+  }
+  // An extra session: only paid bookings hold a place, so check nobody paid first.
+  if (q.reason === 'charge') {
+    const free = await extraPayCheck(q.id)
+    if (!free.ok) {
+      const c = (await listCharges()).find((x) => x.payreqId === q.id)
+      if (c) await cancelCharge({ id: c.id, principal: { email: 'system', name: 'Extra session taken' }, why: 'Another family paid for the session first' }).catch((e) => console.error('jfp extra taken cancel failed', e))
+      return fail(res, 409, free.error, { code: 'taken' })
+    }
   }
   const group = q.groupId ? await getGroup(q.groupId) : null
   const base = siteUrl(req)

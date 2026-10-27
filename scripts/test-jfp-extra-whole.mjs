@@ -96,7 +96,7 @@ await test('the 11am refuses a group of 2 (needs 3) and a group of 5; the 10am g
   assert.equal(one.status, 409, 'one player cannot book the 10am group at the group price'); assert.match(one.data.error, /at least 2/)
 })
 
-await test('a group of 3 books the 10am: one charge of 3 x A$60 on their player; the session is gone for everyone else', async () => {
+await test('a group of 3 books the 10am: one charge of 3 x A$60 on their player; unpaid, it stays open to everyone', async () => {
   const me = (await account(fam)).players.find((p) => p.name === famRow.name)
   const r = await fam.call('/api/jfp-account', { action: 'bookExtra', slotId: tenAm.id, optionId: 'group', playerKeys: [me.key], guests: ['Friend Alpha', 'Friend Beta'] })
   assert.equal(r.status, 200, JSON.stringify(r.data))
@@ -112,10 +112,9 @@ await test('a group of 3 books the 10am: one charge of 3 x A$60 on their player;
   const again = await fam.call('/api/jfp-account', { action: 'bookExtra', slotId: tenAm.id, optionId: 'group', playerKeys: [me.key], guests: ['Friend Alpha', 'Friend Beta'] })
   assert.equal(again.status, 200)
   assert.equal((await staffSlot(tenAm.id)).bookings.length, 3)
-  assert.ok(!(await account(fam2)).extras.bookable.some((x) => x.id === tenAm.id), 'gone from other families')
-  const kid = (await account(fam2)).players[0]
-  const late = await fam2.call('/api/jfp-account', { action: 'bookExtra', slotId: tenAm.id, optionId: 'one', playerKeys: [kid.key] })
-  assert.deepEqual([late.status, late.data.error], [409, 'Another family has just booked this session. It is no longer free.'])
+  // Not paid yet, so it stays open to everyone (Lee, 28 Oct 2026).
+  assert.ok((await account(fam2)).extras.bookable.some((x) => x.id === tenAm.id), 'unpaid: still open to other families')
+  assert.ok((await getJson('/api/jfp-groups')).extras.some((x) => x.id === tenAm.id), 'unpaid: still on the public page')
 })
 
 await test('1 on 1 at A$150 on the 11am is not offered (group only); removing the group frees the 10am and drops the charge', async () => {
@@ -151,4 +150,25 @@ await test('holiday prices (Lee, 27 Oct): 1 on 1 A$150; a group of 2 pays A$100 
   assert.equal((await staffSlot(d.id)).options[0].priceCents, 12000, "Dean's holiday 1 on 1")
 })
 
+
+await test('only a paid booking takes the session (Lee, 28 Oct): two families book the 11am unpaid, the first to pay gets it, the other is stopped before Stripe and their charge cancelled', async () => {
+  const me = (await account(fam)).players.find((p) => p.name === famRow.name)
+  const kid = (await account(fam2)).players[0]
+  const a = await fam.call('/api/jfp-account', { action: 'bookExtra', slotId: elevenAm.id, optionId: 'group', playerKeys: [me.key], guests: ['Friend Gamma', 'Friend Delta'] })
+  assert.equal(a.status, 200, JSON.stringify(a.data))
+  const b = await fam2.call('/api/jfp-account', { action: 'bookExtra', slotId: elevenAm.id, optionId: 'group', playerKeys: [kid.key], guests: ['Friend Echo', 'Friend Foxtrot'] })
+  assert.equal(b.status, 200, JSON.stringify(b.data))
+  assert.equal((await staffSlot(elevenAm.id)).bookings.length, 6, 'both unpaid groups are on the session')
+  await fetch(`${b.data.url}&action=pay`, { redirect: 'manual' })
+  const qa = (await staffSlot(elevenAm.id)).bookings.find((x) => x.email === famRow.email && x.payreqId).payreqId
+  assert.ok(!(await account(fam)).extras.bookable.some((x) => x.id === elevenAm.id), 'paid: gone for everyone else')
+  assert.ok(!(await getJson('/api/jfp-groups')).extras.some((x) => x.id === elevenAm.id), 'paid: gone from the public page')
+  const late = await fam.call('/api/jfp-account', { action: 'pay', payreqId: qa })
+  assert.deepEqual([late.status, late.data.code], [409, 'taken'], JSON.stringify(late.data))
+  assert.match(late.data.error, /another family has just paid/)
+  assert.equal((await payreq(qa)).status, 'cancelled')
+  assert.deepEqual((await staffSlot(elevenAm.id)).bookings.map((x) => x.email), [famRow2.email, famRow2.email, famRow2.email])
+  const again = await fam.call('/api/jfp-account', { action: 'bookExtra', slotId: elevenAm.id, optionId: 'group', playerKeys: [me.key], guests: ['Friend Gamma', 'Friend Delta'] })
+  assert.deepEqual([again.status, again.data.error], [409, 'Another family has just booked this session. It is no longer free.'])
+})
 console.log(`\n${passed} whole-session extra checks passed`)
