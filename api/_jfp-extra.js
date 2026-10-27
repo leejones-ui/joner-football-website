@@ -462,16 +462,36 @@ export async function extraSettle(payreqId) {
   const mine = (x) => liveBookings(x).some((b) => b.payreqId === payreqId && b.from === 'family')
   const found = (await allSlots()).find(mine)
   if (!found) return { removed: [] }
-  // The same lock as booking, so a family booking now is never lost. A paid
-  // payment must always finish: after about 6 seconds it goes on without it.
-  const lock = `jfp:extra-lock:${found.id}`
+  return withSlotLock(found.id, () => settleSlot(found.id, payreqId, mine))
+}
+// The same lock as booking, so a family booking now is never lost. A paid
+// payment must always finish: after about 6 seconds it goes on without it.
+async function withSlotLock(slotId, fn) {
+  const lock = `jfp:extra-lock:${slotId}`
   let held = false
   for (let i = 0; i < 20 && !held; i++) {
     held = (await kvCommand(['SET', lock, '1', 'NX', 'EX', '15'])) === 'OK'
     if (!held) await new Promise((r) => setTimeout(r, 300))
   }
-  if (!held) console.error('jfp extra settle: went on without the lock', found.id)
-  try { return await settleSlot(found.id, payreqId, mine) } finally { if (held) await kvCommand(['DEL', lock]) }
+  if (!held) console.error('jfp extra settle: went on without the lock', slotId)
+  try { return await fn() } finally { if (held) await kvCommand(['DEL', lock]) }
+}
+// A family taken off by extraSettle had paid after all (their charge could
+// not be cancelled): put them back on, so two paid families show and Lee
+// chooses (Revenue agent review, 28 Oct 2026).
+export async function extraRestore(slotId, bookingIds) {
+  const ids = new Set(bookingIds || [])
+  if (!slotId || !ids.size) return { restored: [] }
+  return withSlotLock(slotId, async () => {
+    const s = (await allSlots()).find((x) => x.id === slotId)
+    if (!s) return { restored: [] }
+    const back = (s.bookings || []).filter((b) => ids.has(b.id) && b.status === 'removed' && b.removedBy === 'system: taken by a paid booking')
+    if (!back.length) return { restored: [], slot: s }
+    for (const b of back) { b.status = 'booked'; delete b.removedBy; delete b.removedAt }
+    await putSlot(s)
+    await audit({ by: 'system', action: 'extra.rebook', target: s.id, after: { player: back.map((b) => b.name).join(', '), why: 'they had paid too' } })
+    return { restored: back.map((b) => b.id), slot: s }
+  })
 }
 async function settleSlot(slotId, payreqId, mine) {
   const s = (await allSlots()).find((x) => x.id === slotId)
@@ -493,7 +513,7 @@ async function settleSlot(slotId, payreqId, mine) {
     if (!isWhole(s) && group.length <= room) { room -= group.length; continue }
     for (const x of group) { x.status = 'removed'; x.removedBy = 'system: taken by a paid booking'; x.removedAt = at }
     const lead = group.find((x) => x.payreqId) || group[0]
-    removed.push({ payreqId: leadOf(lead), bookingId: lead.id, players: group.map((x) => x.name), email: lead.email || '' })
+    removed.push({ payreqId: leadOf(lead), bookingId: lead.id, ids: group.map((x) => x.id), players: group.map((x) => x.name), email: lead.email || '' })
   }
   if (!removed.length) return { removed: [], slot: s }
   await putSlot(s)

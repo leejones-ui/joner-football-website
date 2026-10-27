@@ -33,4 +33,29 @@ S.set('jfp:payreq:P-b', JSON.stringify({ id: 'P-b', status: 'paid' }))
 S.set('jfp:extra-lock:XS-1', '1'); setTimeout(() => S.delete('jfp:extra-lock:XS-1'), 700)
 const r2 = await extraSettle('P-b')
 assert.deepEqual(r2.removed, [], 'both paid, full, nobody else to move')
-console.log('ok - extraSettle keeps families while there is room and waits for the booking lock\n2 settle checks passed')
+// Revenue agent review: the family taken off had also just paid (closeCheckout
+// came back 'complete', cancelCharge refuses). They go back on and Lee gets the
+// two-families-paid alert, never "charge cancelled".
+const { settleExtraPaid } = await import('../api/_jfp-extra-settle.js')
+const slot3 = { id: 'XS-3', status: 'open', capacity: 1, date: '2026-11-05', time: '10:00am', location: 'Belrose HQ', bookings: [fam('x', 'P-x'), fam('y', 'P-y')] }
+H.get('jfp:extra').set('XS-3', JSON.stringify(slot3))
+S.set('jfp:payreq:P-x', JSON.stringify({ id: 'P-x', status: 'paid' })); S.set('jfp:payreq:P-y', JSON.stringify({ id: 'P-y', status: 'checkout' }))
+const sent = []
+const r3 = await settleExtraPaid('P-x', {
+  listCharges: async () => [{ id: 'C-x', payreqId: 'P-x', playerName: 'x', amountCents: 7000 }, { id: 'C-y', payreqId: 'P-y', playerName: 'y', amountCents: 7000 }],
+  cancelCharge: async () => ({ ok: false, status: 409, error: 'The family has just paid.' }),
+  telegramAlert: async (t) => { sent.push(t) },
+})
+assert.deepEqual(r3.removed.map((x) => x.payreqId), ['P-y'])
+const after3 = JSON.parse(H.get('jfp:extra').get('XS-3'))
+assert.deepEqual(after3.bookings.map((b) => b.status), ['booked', 'booked'], 'the family that also paid is back on')
+assert.equal(after3.bookings[1].removedBy, undefined)
+assert.equal(sent.length, 1); assert.match(sent[0], /two families have paid/); assert.doesNotMatch(sent[0], /charge is cancelled/)
+// A charge that does cancel still says so.
+const slot4 = { ...slot3, id: 'XS-4', bookings: [fam('w', 'P-w'), fam('z', 'P-z')] }
+H.get('jfp:extra').set('XS-4', JSON.stringify(slot4)); S.set('jfp:payreq:P-z', JSON.stringify({ id: 'P-z', status: 'open' })); S.set('jfp:payreq:P-w', JSON.stringify({ id: 'P-w', status: 'paid' }))
+sent.length = 0
+await settleExtraPaid('P-w', { listCharges: async () => [{ id: 'C-z', payreqId: 'P-z' }], cancelCharge: async () => ({ ok: true }), telegramAlert: async (t) => { sent.push(t) } })
+assert.equal(JSON.parse(H.get('jfp:extra').get('XS-4')).bookings[1].status, 'removed')
+assert.equal(sent.length, 1); assert.match(sent[0], /charge is cancelled/)
+console.log('ok - extraSettle keeps families while there is room and waits for the booking lock\nok - a family that paid too goes back on; Lee is told two paid\n4 settle checks passed')
