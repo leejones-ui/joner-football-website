@@ -761,6 +761,15 @@ body:has(.ja[data-theme="light"]) { background: #F5F5F3 !important; }
 .ja-isteps { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 10px; }
 .ja-isteps li { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 16px; background: var(--ja-panel-2); color: var(--ja-hi); font-size: 15px; }
 .ja-isteps .n { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--ja-red); color: #fff; font-weight: 700; font-size: 14px; }
+/* JF App sign-in steps (sheet). One column everywhere; the email wraps. */
+.ja-wrap, .ja-wrap b { overflow-wrap: anywhere; }
+.ja-appsteps li { align-items: flex-start; line-height: 1.45; }
+.ja-appsteps .tx { min-width: 0; flex: 1; overflow-wrap: anywhere; }
+.ja-appsteps .tx > b { color: var(--ja-hi); }
+.ja-appsteps .ja-store b { color: #fff; }
+.ja-appmail { display: block; margin-top: 6px; padding: 8px 10px; border-radius: 10px; background: var(--ja-panel); border: 1px solid var(--ja-line); font-weight: 600; overflow-wrap: anywhere; }
+.ja-appstores { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.ja-appstores .ja-store { flex: 1 1 150px; min-width: 0; padding: 0 14px; }
 
 /* Today: the next session card. */
 .ja-next { border-radius: 22px; overflow: hidden; background: var(--ja-panel); border: 1px solid var(--ja-line); }
