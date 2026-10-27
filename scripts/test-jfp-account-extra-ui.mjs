@@ -100,9 +100,9 @@ await test('a private session link (#extra?slot=&k=) shows that session first, a
 })
 
 await test('a whole session: the options with prices per player, 1 on 1 or a group, friends by name, the total, and the fewest players checked first', async () => {
-  const whole = slot('XS-5-EEEEEE', { whole: true, capacity: 4, placesLeft: 4, kind: '1 on 1 or a group of 3 to 4', optionsLabel: '1 on 1 or a group of 3 to 4', options: [{ id: 'one', type: 'one', label: '1 on 1', minPlayers: 1, maxPlayers: 1, priceCents: 15000, priceLabel: 'A$150' }, { id: 'group', type: 'group', label: 'Group of 3 to 4', minPlayers: 3, maxPlayers: 4, priceCents: 6000, priceLabel: 'A$60' }] })
+  const whole = slot('XS-5-EEEEEE', { coach: 'Coach Lee Jones', whole: true, capacity: 4, placesLeft: 4, kind: '1 on 1 or a group of 3 to 4', optionsLabel: '1 on 1 or a group of 3 to 4', options: [{ id: 'one', type: 'one', label: '1 on 1', minPlayers: 1, maxPlayers: 1, priceCents: 15000, priceLabel: 'A$150' }, { id: 'group', type: 'group', label: 'Group of 3 to 4', minPlayers: 3, maxPlayers: 4, priceCents: 6000, priceLabel: 'A$60' }] })
   const p = await openAccount({ ...BASE, extras: { ...BASE.extras, bookable: [whole] } }, { hash: '#extra', onPost: (b) => (b.action === 'bookExtra' ? { success: true, url: 'http://localhost/mock-stripe/?cs=cs_test_w' } : null) })
-  assert.equal(p.text('#x-bookable [data-xslot="XS-5-EEEEEE"]').replace(/\s+/g, ' ').trim(), 'Tue 20 Oct · 7:30am 1 on 1 or Group Book now')
+  assert.equal(p.text('#x-bookable [data-xslot="XS-5-EEEEEE"]').replace(/\s+/g, ' ').trim(), 'Tue 20 Oct · 7:30am 1 on 1 or Group with Coach Lee Jones Book now')
   await p.click('[data-xbook="XS-5-EEEEEE"]')
   const card = () => p.text('.j-sheet')
   assert.match(card(), /1 on 1: A\$150/)

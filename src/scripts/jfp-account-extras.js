@@ -40,13 +40,13 @@ export function setExtraLink(query) {
 // served, as 1 on 1 or a group. Each option with its price per player.
 const optLine = (o) => `${esc(o.label)}: ${esc(o.priceLabel)}${o.type === 'one' || o.pairCents ? '' : ' a player'}`
 // The card stays short (Lee, 27 Oct 2026: "keep it very simple"): the day,
-// the time, what kind, and a big Book now. Everything else is in the pop-up.
+// the time, what kind, the coach, and a big Book now. Everything else is in the pop-up.
 const kindShort = (s) => (s.whole ? s.options.map((o) => (o.type === 'one' ? '1 on 1' : 'Group')).join(' or ') : s.kind || 'Extra session')
 function slotCard(s, D, { mine = false } = {}) {
   const full = s.placesLeft < 1
   return `<article class="ja-card" data-xslot="${esc(s.id)}">${mine ? '<p class="ja-kicker"><i></i>Your session</p>' : ''}
     <h3 class="ja-h3"${mine ? ' style="margin-top:8px"' : ''}>${esc(s.dateLabel)} · ${esc(s.time)}</h3>
-    <p class="ja-small" style="margin-top:4px">${esc(kindShort(s))}</p>
+    <p class="ja-small" style="margin-top:4px">${esc(kindShort(s))}${s.coach ? ` with <b>${esc(s.coach)}</b>` : ''}</p>
     <div class="ja-actions">${full ? `<p class="ja-small ja-muted">${s.whole ? 'Booked' : 'Full'}</p>` : `<button type="button" class="ja-btn ja-btn-red ja-btn-lg ja-btn-block" data-xbook="${esc(s.id)}">Book now</button>`}</div></article>`
 }
 // The pop-up: where, how long, the options and prices, then the picker.
@@ -87,7 +87,7 @@ export function renderExtra(el, D) {
   el.innerHTML = `${pageHead('Program', 'Book extra sessions', 'Extra 1 on 1 or small group sessions with our coaches, on top of your JFP group.')}
     ${bookableHtml(D) || '<section class="ja-sec" id="x-bookable"><div class="ja-card"><p class="ja-small">No extra sessions are open to book right now. New ones show here as soon as a coach adds them, or ask for a time below.</p></div></section>'}
     ${slots}
-    <div class="ja-grid ja-grid-3">
+    <div class="ja-grid ja-grid-3" style="margin-top:24px">
       <div class="ja-card ja-info-card">${ic('clock')}<h3 class="ja-h3">1 on 1 in term time</h3><p class="ja-small ja-muted">During the school term, 1 on 1 sessions run in school hours only, from about 7:30am to 2pm.</p></div>
       <div class="ja-card ja-info-card">${ic('sun')}<h3 class="ja-h3">School holidays</h3><p class="ja-small ja-muted">1 on 1 and small group sessions run through the school holidays at Joner Football HQ, Belrose.</p>${x.holidaySlots ? '<p style="margin-top:12px"><a class="ja-btn ja-btn-red ja-btn-sm" href="#holidays">Book holiday training</a></p>' : ''}</div>
       <div class="ja-card ja-info-card">${ic('chat')}<h3 class="ja-h3">Other times</h3><p class="ja-small ja-muted">Need a different time? Ask below. Other times are on request, depending on the coaches.</p></div>

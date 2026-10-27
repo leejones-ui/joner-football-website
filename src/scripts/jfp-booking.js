@@ -103,7 +103,7 @@ function renderExtras() {
   box.innerHTML = `<section class="j-extras" aria-labelledby="extras-h">
     <h2 class="j-step" id="extras-h">Extra sessions coming up</h2>
     <p class="j-hint">Extra sessions in the next 3 weeks. Sign in to book.</p>
-    ${list.length ? `<div class="j-extras-list">${list.map((x) => `<a class="j-extra${x.full ? ' is-full' : ''}" href="/jfp-account/#extra"><b>${esc(x.dateLabel)}, ${esc(x.time)}</b><span>${esc(x.kind)}</span><span class="${x.full ? 'is-full' : 'left'}">${x.full ? (x.whole ? 'Booked' : 'Full') : x.whole ? 'Free to book' : `${x.placesLeft} place${x.placesLeft === 1 ? '' : 's'} left`}</span></a>`).join('')}</div>` : '<div class="j-empty">No extra sessions coming up yet. New ones show here as soon as a coach adds them.</div>'}
+    ${list.length ? `<div class="j-extras-list">${list.map((x) => `<a class="j-extra${x.full ? ' is-full' : ''}" href="/jfp-account/#extra"><b>${esc(x.dateLabel)}, ${esc(x.time)}</b><span>${esc(x.kind)}${x.coach ? ` with <b>${esc(x.coach)}</b>` : ''}</span><span class="${x.full ? 'is-full' : 'left'}">${x.full ? (x.whole ? 'Booked' : 'Full') : x.whole ? 'Free to book' : `${x.placesLeft} place${x.placesLeft === 1 ? '' : 's'} left`}</span></a>`).join('')}</div>` : '<div class="j-empty">No extra sessions coming up yet. New ones show here as soon as a coach adds them.</div>'}
   </section>`
 }
 
