@@ -828,7 +828,10 @@ async function pay(req, res, parent, body) {
   }
   const group = q.groupId ? await getGroup(q.groupId) : null
   const base = siteUrl(req)
-  const name = `${q.reason === 'trial' ? 'JFP trial' : q.next ? `${q.productLabel || q.next.term}` : config.term}: ${q.playerNames.join(', ')}${group ? `, ${group.day} ${group.time}` : ''}${q.reason === 'trial' && q.trialDate ? `, ${dateLabel(q.trialDate)}` : ''}`
+  // A charge (extra session, game analysis) says what it is on Stripe's page
+  // (Lee, 27 Oct 2026), not the term: "Extra session, Thu 5 Nov 10:00am: Riley".
+  const players = q.playerNames.join(', ')
+  const name = q.reason === 'charge' && q.productLabel ? `${q.productLabel}${players && !q.productLabel.includes(players) ? `: ${players}` : ''}` : `${q.reason === 'trial' ? 'JFP trial' : q.next ? `${q.productLabel || q.next.term}` : config.term}: ${q.playerNames.join(', ')}${group ? `, ${group.day} ${group.time}` : ''}${q.reason === 'trial' && q.trialDate ? `, ${dateLabel(q.trialDate)}` : ''}`
   const session = await stripeFetch('/checkout/sessions', {
     method: 'POST',
     body: {
