@@ -321,7 +321,7 @@ await test('players across terms and JF Master Players: Lee only, never a phone 
   assert.equal((await portal(lee, 'playersHistory', { term: 'nope' })).status, 400)
 })
 
-await test('the public booking page lists public extra sessions in the next 7 days, no coach, no price, no private ones', async () => {
+await test('the public booking page lists public extra sessions in the next 3 weeks, no coach, no price, no private ones', async () => {
   const c = client()
   await c.call('/api/jfp-access', { password: 'term4' })
   const g = await c.call('/api/jfp-groups')
@@ -330,9 +330,12 @@ await test('the public booking page lists public extra sessions in the next 7 da
   assert.equal(g.data.extras.filter((x) => ids.has(x.id)).length, 4)
   assert.ok(!/coachId|price|A\$|private|token/i.test(JSON.stringify(g.data.extras)), JSON.stringify(g.data.extras[0]))
   assert.ok(g.data.extras.every((x) => x.kind && x.coach), 'kind of session and coach')
-  const later = await ok(sam, 'extraSave', { slot: { date: day(12), time: '4:00pm', capacity: 2, location: 'Belrose HQ', priceId: (await ok(sam, 'extraList')).prices[0].id, visibility: 'public' } })
+  const pid = (await ok(sam, 'extraList')).prices[0].id
+  const soon = await ok(sam, 'extraSave', { slot: { date: day(12), time: '4:00pm', capacity: 2, location: 'Belrose HQ', priceId: pid, visibility: 'public' } })
+  const later = await ok(sam, 'extraSave', { slot: { date: day(25), time: '4:00pm', capacity: 2, location: 'Belrose HQ', priceId: pid, visibility: 'public' } })
   const g2 = await c.call('/api/jfp-groups')
-  assert.ok(!g2.data.extras.some((x) => x.id === later.slot.id), 'more than a week away is not shown yet')
+  assert.ok(g2.data.extras.some((x) => x.id === soon.slot.id), '12 days away shows (Lee, 27 Oct)')
+  assert.ok(!g2.data.extras.some((x) => x.id === later.slot.id), 'more than 3 weeks away is not shown yet')
 })
 
 await test('free JF App access: paid Term 4 only, the account email only, then it puts them in the Uscreen group JFP by itself', async () => {

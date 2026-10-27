@@ -48,12 +48,13 @@ async function sendCoachPhoto(req, res) {
   return res.status(200).end(Buffer.from(photo.b64, 'base64'))
 }
 
-const WEEK_MS = 7 * 86400000
+// Public extras show for the next 3 weeks (Lee, 27 Oct 2026; was 7 days).
+const WEEK_MS = 21 * 86400000
 export async function weekExtras(config, nowMs = Date.now()) {
   const until = new Date(nowMs + WEEK_MS).toISOString().slice(0, 10)
   try {
     return (await listExtraSlots({ config, publicOnly: true })).filter((s) => s.date <= until).sort((a, b) => `${a.date}${to24h(a.time)}`.localeCompare(`${b.date}${to24h(b.time)}`)).slice(0, 12)
-      .map((s) => ({ id: s.id, date: s.date, dateLabel: s.dateLabel, time: s.time, durationMin: s.durationMin, location: s.location, kind: s.whole ? s.optionsLabel : sessionKind(s.capacity), ...(s.whole ? { whole: true } : {}), coach: s.coachName ? `Coach ${s.coachName}` : '', placesLeft: s.placesLeft, full: s.placesLeft <= 0, ...(s.weekly ? { weekly: `Every ${s.dayName}` } : {}) }))
+      .map((s) => ({ id: s.id, date: s.date, dateLabel: s.dateLabel, time: s.time, durationMin: s.durationMin, location: s.location, kind: s.whole ? s.options.map((o) => (o.type === 'one' ? '1 on 1' : 'Group')).join(' or ') : sessionKind(s.capacity), ...(s.whole ? { whole: true } : {}), coach: s.coachName ? `Coach ${s.coachName}` : '', placesLeft: s.placesLeft, full: s.placesLeft <= 0, ...(s.weekly ? { weekly: `Every ${s.dayName}` } : {}) }))
   } catch (error) { console.error('jfp week extras failed', error.message); return [] }
 }
 
@@ -229,7 +230,7 @@ export default async function handler(req, res) {
       locations,
       coaches,
       groups: list,
-      // Public extra sessions in the next 7 days, on their own tab (Lee, 19 Oct
+      // Public extra sessions in the next 3 weeks, on their own tab (Lee, 19 Oct
       // 2026). A session drops off by itself once it has started. The coach and
       // the kind of session, no price: families book in My account.
       extras: await weekExtras(config),

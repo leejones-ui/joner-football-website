@@ -93,16 +93,17 @@ async function load(quiet) {
   renderPicks()
 }
 
-// Extra sessions in the next 7 days (Lee, 19 Oct 2026): booked in My account.
+// Extra sessions in the next 3 weeks (Lee, 19 Oct 2026; 3 weeks and short cards
+// from 27 Oct): booked in My account.
 function renderExtras() {
   const box = $('extras-week')
   const list = S.data.extras || []
   const n = $('extra-count')
   if (n) { n.hidden = !list.length; n.textContent = String(list.length) }
   box.innerHTML = `<section class="j-extras" aria-labelledby="extras-h">
-    <h2 class="j-step" id="extras-h">Extra sessions this week</h2>
-    <p class="j-hint">Sessions on top of the term in the next 7 days: one-offs and weekly slots. Sign in to book.</p>
-    ${list.length ? `<div class="j-extras-list">${list.map((x) => `<a class="j-extra${x.full ? ' is-full' : ''}" href="/jfp-account/#extra"><b>${esc(x.dateLabel)}, ${esc(x.time)}</b><span><b>${esc(x.kind)}</b>${x.coach ? ` with ${esc(x.coach)}` : ''}</span><span>${esc(String(x.durationMin))} min · ${esc(x.location)}${x.weekly ? ` · ${esc(x.weekly)}` : ''}</span><span class="${x.full ? 'is-full' : 'left'}">${x.full ? (x.whole ? 'Booked' : 'Full') : x.whole ? 'Free to book' : `${x.placesLeft} place${x.placesLeft === 1 ? '' : 's'} left`}</span></a>`).join('')}</div>` : '<div class="j-empty">No extra sessions this week yet. New ones show here as soon as a coach adds them.</div>'}
+    <h2 class="j-step" id="extras-h">Extra sessions coming up</h2>
+    <p class="j-hint">Extra sessions in the next 3 weeks. Sign in to book.</p>
+    ${list.length ? `<div class="j-extras-list">${list.map((x) => `<a class="j-extra${x.full ? ' is-full' : ''}" href="/jfp-account/#extra"><b>${esc(x.dateLabel)}, ${esc(x.time)}</b><span>${esc(x.kind)}</span><span class="${x.full ? 'is-full' : 'left'}">${x.full ? (x.whole ? 'Booked' : 'Full') : x.whole ? 'Free to book' : `${x.placesLeft} place${x.placesLeft === 1 ? '' : 's'} left`}</span></a>`).join('')}</div>` : '<div class="j-empty">No extra sessions coming up yet. New ones show here as soon as a coach adds them.</div>'}
   </section>`
 }
 
