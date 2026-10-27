@@ -44,6 +44,11 @@ process.env.JFP_BOOTSTRAP_SECRET = 'boot'
 process.env.AIRTABLE_API_TOKEN = 'local'
 process.env.AIRTABLE_BASE_ID = 'apphU4R0BtVIu5YqT'
 delete process.env.RECAPTCHA_SECRET_KEY
+// JFP_FAKE_RECAPTCHA=1: a pretend Google check with Google's real rule, each
+// token is accepted ONCE (a second check answers 'timeout-or-duplicate').
+// Tokens starting 'good' pass, anything else fails.
+if (process.env.JFP_FAKE_RECAPTCHA === '1') process.env.RECAPTCHA_SECRET_KEY = 'local'
+const usedTokens = new Set()
 // Joners Juniors website sign-up: its sheet tab and its Stripe webhook secret.
 process.env.JUNIORS_SHEET_ID = 'local-jj-sheet'
 process.env.STRIPE_JUNIORS_WEBHOOK_SECRET = 'whsec_local_juniors'
@@ -568,6 +573,12 @@ const innerFetch = async (url, init = {}) => {
   }
   const u = String(url)
   const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json' } })
+  if (u.startsWith('https://www.google.com/recaptcha/api/siteverify') && process.env.JFP_FAKE_RECAPTCHA === '1') {
+    const token = new URLSearchParams(String(init.body)).get('response') || ''
+    if (usedTokens.has(token)) return json({ success: false, 'error-codes': ['timeout-or-duplicate'] })
+    usedTokens.add(token)
+    return json(token.startsWith('good') ? { success: true, score: 0.9 } : { success: false, 'error-codes': ['invalid-input-response'] })
+  }
   if (u.startsWith('http://kv.local')) {
     const payload = JSON.parse(init.body)
     if (u.endsWith('/pipeline')) return json(payload.map((c) => ({ result: redis(c) })))

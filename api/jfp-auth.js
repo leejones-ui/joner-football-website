@@ -66,15 +66,18 @@ export default async function handler(req, res) {
 
     if (body.action === 'start') {
       const audience = audienceOf(body.audience)
-      const rc = await verifyRecaptcha(req, body.recaptchaToken)
-      if (!rc.ok) return fail(res, 400, rc.error)
       const email = String(body.email || '').trim().toLowerCase()
       // A brand-new email (no account, not a family on file) must pass the
       // human check for real, and cannot be a throwaway inbox (Lee, 19 Oct 2026).
-      if (audience === 'parent' && email.includes('@') && !(await accountOf(email)) && !(await knownFamily(email, config))) {
-        if (throwawayEmail(email)) return fail(res, 400, 'Please use your everyday email address. Throwaway inboxes cannot open an account.', { code: 'throwaway' })
-        const human = await verifyRecaptcha(req, body.recaptchaToken, { strict: true, openOnError: true })
-        if (!human.ok) return fail(res, 400, 'We could not check that you are a person. Refresh the page and try again. Still stuck? Email ligia@jonerfootball.com.', { code: 'human' })
+      // Google accepts each token ONCE, so it is checked exactly once: strictly
+      // for a new email, the normal way for everyone else. (Checking it twice
+      // made every new account fail with 'timeout-or-duplicate', 27 Oct 2026.)
+      const isNew = audience === 'parent' && email.includes('@') && !(await accountOf(email)) && !(await knownFamily(email, config))
+      if (isNew && throwawayEmail(email)) return fail(res, 400, 'Please use your everyday email address. Throwaway inboxes cannot open an account.', { code: 'throwaway' })
+      const rc = await verifyRecaptcha(req, body.recaptchaToken, isNew ? { strict: true, openOnError: true } : {})
+      if (!rc.ok) {
+        if (isNew) return fail(res, 400, 'We could not check that you are a person. Refresh the page and try again. Still stuck? Email ligia@jonerfootball.com.', { code: 'human' })
+        return fail(res, 400, rc.error)
       }
       // Staff: only emails with a role get a code. Everyone gets the same
       // answer, so the form never reveals who has access.
