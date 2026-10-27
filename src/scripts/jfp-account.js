@@ -1810,6 +1810,28 @@ document.addEventListener('click', async (e) => {
     return waiverSheet([wp.dataset.waiverPlayer])
   }
 })
+// A phone left on My account (Lee, 28 Oct 2026: nobody should have to refresh).
+// Coming back after a while, or on a new day, reads the account again, so
+// sessions, notes and extra sessions are today's. Never under an open sheet
+// or while someone is typing.
+{
+  const day = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' })
+  let shown = day(), hiddenAt = 0, readAt = Date.now()
+  const freshen = () => {
+    if (!D || D.viewAs || document.visibilityState !== 'visible') return
+    const away = hiddenAt ? Date.now() - hiddenAt : 0
+    hiddenAt = 0
+    if (day() === shown && away < 5 * 60 * 1000 && Date.now() - readAt < 30 * 60 * 1000) return
+    if (document.querySelector('[aria-modal="true"]') || document.activeElement?.closest?.('input, textarea, select, [contenteditable]')) return
+    shown = day(); readAt = Date.now()
+    const y = window.scrollY
+    load().then(() => window.scrollTo(0, y))
+  }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') hiddenAt = Date.now(); else freshen() })
+  window.addEventListener('pageshow', (e) => { if (e.persisted) { hiddenAt = 1; freshen() } })
+  window.addEventListener('focus', freshen)
+  setInterval(freshen, 60 * 1000)
+}
 window.addEventListener('hashchange', () => { const [h, hq] = location.hash.slice(1).split('?'); if (h === 'extra' && hq) { setExtraLink(hq); const el = pane('extra'); if (el) delete el.dataset.drawn } if (D && PANELS.includes(h) && (h !== current || hq)) show(h) })
 
 // ---------- Joners Juniors: the same login, its own cards ----------

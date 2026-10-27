@@ -27,6 +27,7 @@ import { recordNext, setNextStatus, nextStatuses } from './_jfp-next.js'
 import { noteNewPlayer, alertsOn } from './_jfp-coach-alerts.js'
 import { sendParentConfirmation, sendStaffAlert, sendCoachAlert, sendPaymentReceipt, sendPaymentStaffAlert, sendAttentionAlert, sendQuickPaidAlert, sendChargeReceipt, sendInvoiceReceipt } from './_jfp-email.js'
 import { addChargePayment } from './_jfp-charges.js'
+import { settleExtraPaid } from './_jfp-extra-settle.js'
 import { addInvoicePayment, publicInvoice, invoiceUrl } from './_jfp-invoices.js'
 
 const LEASE_SECONDS = 120
@@ -449,6 +450,7 @@ export async function finaliseJfpBooking(id, session) {
       await save(record)
       if (!isPay) await dropParentHold(record.email, record.id)
       if (isPay) await audit({ by: record.email, action: 'payreq.paid', target: record.id, after: { cents: record.paidCents } })
+      if (isPay) await settleExtraPaid(record.id)
     }
     // A repeat (Stripe retrying, or the parent's success page) finishes what an
     // outage left undone: failed steps, and unclear ones that are safe to repeat.

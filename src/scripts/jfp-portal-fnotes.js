@@ -107,8 +107,8 @@ export async function coachNotesModal(ui, { rowId, name }) {
   if (!r.ok) return toast(r.data.error || 'Could not open the notes.')
   let notes = r.data.notes
   const firstName = String(name || '').split(' ')[0]
-  const box = modal(`<h2 style="margin-bottom:4px">Coach notes on ${esc(firstName)}</h2>
-    <p class="muted small" style="margin-bottom:12px">Only ${esc(firstName)}'s coaches, Lee and Ligia can read these. The family never sees them.</p>
+  const box = modal(`<h2 style="margin-bottom:4px">Private coach note on ${esc(firstName)}</h2>
+    <p class="j-box j-box-amber small" style="margin-bottom:12px"><b>The family does not see this.</b> Only ${esc(firstName)}'s coaches, Lee and Ligia can read it. <button type="button" class="ps-link" id="cn-tofam">Write a note to the family instead</button></p>
     <textarea class="j-input" id="cn-text" rows="4" maxlength="${MAX}" placeholder="Shy at first, good with a friend beside them. Left foot is the focus."></textarea>
     <p class="j-err" id="cn-err" hidden></p>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-dark" id="cn-go">Save note</button></div>
@@ -117,6 +117,7 @@ export async function coachNotesModal(ui, { rowId, name }) {
     box.querySelector('#cn-list').innerHTML = notes.length ? notes.map((n) => noteRow(n)).join('') : '<p class="muted small">No coach notes yet.</p>'
     wirePN(box, ui, notes, (next) => { notes = next; list() })
   }
+  box.querySelector('#cn-tofam').addEventListener('click', () => { ui.closeModal(); familyNotesModal(ui, { rowId, name }) })
   list()
   box.querySelector('#cn-go').addEventListener('click', async (e) => {
     const b = e.currentTarget

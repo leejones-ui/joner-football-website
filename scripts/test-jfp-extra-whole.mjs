@@ -159,15 +159,17 @@ await test('only a paid booking takes the session (Lee, 28 Oct): two families bo
   const b = await fam2.call('/api/jfp-account', { action: 'bookExtra', slotId: elevenAm.id, optionId: 'group', playerKeys: [kid.key], guests: ['Friend Echo', 'Friend Foxtrot'] })
   assert.equal(b.status, 200, JSON.stringify(b.data))
   assert.equal((await staffSlot(elevenAm.id)).bookings.length, 6, 'both unpaid groups are on the session')
-  await fetch(`${b.data.url}&action=pay`, { redirect: 'manual' })
   const qa = (await staffSlot(elevenAm.id)).bookings.find((x) => x.email === famRow.email && x.payreqId).payreqId
+  await fetch(`${b.data.url}&action=pay`, { redirect: 'manual' })
   assert.ok(!(await account(fam)).extras.bookable.some((x) => x.id === elevenAm.id), 'paid: gone for everyone else')
   assert.ok(!(await getJson('/api/jfp-groups')).extras.some((x) => x.id === elevenAm.id), 'paid: gone from the public page')
-  const late = await fam.call('/api/jfp-account', { action: 'pay', payreqId: qa })
-  assert.deepEqual([late.status, late.data.code], [409, 'taken'], JSON.stringify(late.data))
-  assert.match(late.data.error, /another family has just paid/)
-  assert.equal((await payreq(qa)).status, 'cancelled')
+  // The moment the other family pays, this one comes off and its charge is
+  // cancelled (Revenue agent, 28 Oct): not on the register, never auto charged.
+  assert.equal((await payreq(qa)).status, 'cancelled', 'the unpaid family is cancelled as soon as the other pays')
   assert.deepEqual((await staffSlot(elevenAm.id)).bookings.map((x) => x.email), [famRow2.email, famRow2.email, famRow2.email])
+  assert.ok(!JSON.stringify((await account(fam)).extras.mine || []).includes(elevenAm.id), 'not booked in their account any more')
+  const late = await fam.call('/api/jfp-account', { action: 'pay', payreqId: qa })
+  assert.ok(late.status >= 400, JSON.stringify(late.data))
   const again = await fam.call('/api/jfp-account', { action: 'bookExtra', slotId: elevenAm.id, optionId: 'group', playerKeys: [me.key], guests: ['Friend Gamma', 'Friend Delta'] })
   assert.deepEqual([again.status, again.data.error], [409, 'Another family has just booked this session. It is no longer free.'])
 })

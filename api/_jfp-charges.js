@@ -15,6 +15,7 @@ import crypto from 'node:crypto'
 import { kvCommand, kvPipeline, kvGetJson, kvSetJson, clean, newId, formatAud, savePayreq, getPayreq, normName, audit, sydneyToday, validEmail, coachById, coachLabel, closeCheckout, rowEmails, emailsIn } from './_jfp-store.js'
 import { getTerm4Row } from './_jfp-airtable.js'
 import { fillFees } from './_jfp-stripe.js'
+import { settleExtraPaid } from './_jfp-extra-settle.js'
 
 export const CHARGE_KINDS = { extra: 'Extra session', analysis: 'Video analysis', invoice: 'Invoice' }
 export const CHARGE_ID = /^CHG-\d{10,16}-[0-9A-F]{6}$/
@@ -182,7 +183,7 @@ export async function settleChargePayreq(c) {
   // Paid in full another way: the request reads 'paid' (getPayreq is how the
   // coach side checks a booking is paid), marked paidOffline with the method.
   if (c.status === 'cancelled') await savePayreq({ ...q, status: 'cancelled', stripeSessionId: '', cancelledAt: new Date().toISOString(), cancelReason: 'Charge cancelled' })
-  else if (left <= 0) { const last = (c.payments || []).at(-1) || {}; await savePayreq({ ...q, status: 'paid', stripeSessionId: '', paidAt: new Date().toISOString(), paidCents: paidOf(c), paidOffline: true, paidMethod: last.method || 'other' }) }
+  else if (left <= 0) { const last = (c.payments || []).at(-1) || {}; await savePayreq({ ...q, status: 'paid', stripeSessionId: '', paidAt: new Date().toISOString(), paidCents: paidOf(c), paidOffline: true, paidMethod: last.method || 'other' }); await settleExtraPaid(q.id) }
   else await savePayreq({ ...q, amountCents: left, status: 'open', stripeSessionId: '' })
   return { ok: true }
 }

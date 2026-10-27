@@ -263,6 +263,29 @@ const bankUiBase = () => ({ post, toast })
 const REFRESH_MS = 30 * 60 * 1000
 // New cancellations, trials, accounts and requests show up within 30 minutes, whatever page is open.
 setInterval(() => { if (P.user && document.visibilityState === 'visible') { checkCancelAlerts(); checkTrialAlerts(); checkAccountAlerts(); checkAbsenceAlerts(); checkRequestAlerts(); checkAskAlerts(); checkStaffAlerts() } }, REFRESH_MS)
+// A phone left on the portal overnight (Lee, 28 Oct 2026: Dean tapped Here on
+// the Register and nothing happened until he refreshed). The page still held
+// yesterday's date, so today's session read "not happened yet" and its buttons
+// were off. Coming back to the page after a while, or a new day, re-reads the
+// open page.
+const sydToday = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' })
+const AWAY_MS = 5 * 60 * 1000
+let shownDay = sydToday(), hiddenAt = 0, lastRead = Date.now()
+function freshen() {
+  if (!P.user || !P.tab || document.visibilityState !== 'visible') return
+  const away = hiddenAt ? Date.now() - hiddenAt : 0
+  hiddenAt = 0
+  if (sydToday() === shownDay && away < AWAY_MS && Date.now() - lastRead < REFRESH_MS) return
+  shownDay = sydToday(); lastRead = Date.now()
+  // Never under an open form: someone may be typing.
+  if (document.querySelector('.jp-modal, #jp-side') || document.activeElement?.closest?.('input, textarea, select, [contenteditable]')) return
+  const y = window.scrollY
+  go(P.tab, { quiet: true }).then(() => window.scrollTo(0, y))
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') hiddenAt = Date.now(); else freshen() })
+window.addEventListener('pageshow', (e) => { if (e.persisted) { hiddenAt = hiddenAt || 1; freshen() } })
+window.addEventListener('focus', freshen)
+setInterval(freshen, 60 * 1000)
 // The red count on Requests (Lee, 18 Oct 2026: it showed nothing until the
 // page was opened, then 4). One count everywhere, read when the portal opens
 // and every two minutes: new applications and waitlist, plus extra session
@@ -3282,8 +3305,8 @@ async function renderCoach(keep = false) {
       if (date === sess.nextDate) sess.attendance = day
     }
     if (r.data?.airtable === 'failed') toast('Saved here. Airtable attendance did not update; it will not affect the session.')
-    // Keep the "not marked off" counts right (Lee and Ligia check these).
-    if (admin || F.flag === 'unmarked') { const y = window.scrollY; renderCoach(true).then(() => window.scrollTo(0, y)) }
+    // Keep the "not marked off" counts right for everyone (Lee, 28 Oct 2026).
+    { const y = window.scrollY; renderCoach(true).then(() => window.scrollTo(0, y)) }
   }))
 }
 
@@ -3313,7 +3336,7 @@ async function coachPlayerModal(rowId, coachId) {
     <div class="j-box j-box-grey" style="margin-top:10px"><b>Attendance this term</b><p style="margin-top:4px">${p.attendance?.marked ? `Came to ${esc(p.attendance.came)} of ${esc(p.attendance.marked)} marked sessions` : 'Nothing marked yet'}${p.attendance?.sessions && p.attendance.sessions !== p.attendance.marked ? ` <span class="muted small">(${esc(p.attendance.sessions)} run, ${esc(p.attendance.sessions - p.attendance.marked)} not marked)</span>` : ''}</p></div>
     ${p.note || p.startsLabel ? `<div class="j-box j-box-amber" style="margin-top:10px"><b>Note from Lee and Ligia</b><p style="margin-top:4px">${esc([p.startsLabel, p.note].filter(Boolean).join(' · '))}</p></div>` : ''}
     ${empty ? `<p class="muted small" style="margin-top:10px">The family has not added ${esc(first)}'s football details yet. They do it in their account under Player information.</p>` : ''}
-    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-line" id="cp-coachnotes">Coach notes</button><button type="button" class="j-btn j-btn-line" id="cp-fnote">Note or homework</button><button type="button" class="j-btn j-btn-dark" id="cp-report">Write player report</button></div>`)
+    <div class="cp-foot" style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;flex-wrap:wrap"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-line" id="cp-coachnotes" title="Only coaches, Lee and Ligia see these">Private coach note</button><button type="button" class="j-btn j-btn-line" id="cp-fnote" title="The family sees it in My account">Note to family</button><button type="button" class="j-btn j-btn-dark" id="cp-report">Write player report</button></div>`)
   document.getElementById('cp-fnote')?.addEventListener('click', () => { closeModal(); familyNotesModal({ post, modal, closeModal, confirmBox }, { rowId, name: p.name }) })
   document.getElementById('cp-coachnotes')?.addEventListener('click', () => { closeModal(); coachNotesModal({ post, modal, closeModal, confirmBox }, { rowId, name: p.name }) })
   document.getElementById('cp-report')?.addEventListener('click', () => writeReportFor(reportsUi(), rowId))

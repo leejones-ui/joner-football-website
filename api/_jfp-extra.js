@@ -451,3 +451,38 @@ export async function extraPayCheck(payreqId) {
   await audit({ by: 'system', action: 'extra.unbook', target: s.id, after: { booking: b.id, player: group.map((x) => x.name).join(', '), why: 'another family paid first' } })
   return { ok: false, booking: b, slot: s, error: s.status === 'open' ? 'Sorry, another family has just paid for this session, so it is no longer free. Nothing was charged.' : 'That session is no longer running. Nothing was charged.' }
 }
+
+// A family has just paid (Revenue agent review, 28 Oct 2026). Families still
+// to pay who no longer fit come off, so they are not on the register or
+// charged for a session another family paid for. Two families paying at the
+// same moment can both get through Checkout: then nobody is moved and staff
+// decide who is refunded (overPaid).
+export async function extraSettle(payreqId) {
+  if (!payreqId) return { removed: [] }
+  const slots = await allSlots()
+  const s = slots.find((x) => liveBookings(x).some((b) => b.payreqId === payreqId && b.from === 'family'))
+  if (!s) return { removed: [] }
+  const paid = await paidPayreqs([s])
+  if (!paid.has(payreqId)) return { removed: [] }
+  const live = liveBookings(s)
+  const leadOf = (b) => leadPayreq(s, b)
+  const committed = committedBookings(s, paid)
+  const paidFamilies = [...new Set(committed.filter((b) => b.from === 'family').map(leadOf))]
+  const over = isWhole(s) ? new Set(committed.map((b) => b.groupId || b.id)).size > 1 : committed.length > s.capacity
+  if (over) return { removed: [], slot: s, overPaid: paidFamilies }
+  const room = isWhole(s) ? 0 : s.capacity - committed.length
+  const waiting = [...new Set(live.filter((b) => b.from === 'family' && !paid.has(leadOf(b))).map((b) => b.groupId || b.id))]
+    .map((g) => live.filter((b) => (b.groupId || b.id) === g))
+  const at = new Date().toISOString()
+  const removed = []
+  for (const group of waiting) {
+    if (!isWhole(s) && group.length <= room) continue
+    for (const x of group) { x.status = 'removed'; x.removedBy = 'system: taken by a paid booking'; x.removedAt = at }
+    const lead = group.find((x) => x.payreqId) || group[0]
+    removed.push({ payreqId: leadOf(lead), bookingId: lead.id, players: group.map((x) => x.name), email: lead.email || '' })
+  }
+  if (!removed.length) return { removed: [], slot: s }
+  await putSlot(s)
+  for (const r of removed) await audit({ by: 'system', action: 'extra.unbook', target: s.id, after: { booking: r.bookingId, player: r.players.join(', '), why: 'another family paid first' } })
+  return { removed, slot: s }
+}
