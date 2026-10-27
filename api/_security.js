@@ -83,6 +83,9 @@ export async function verifyRecaptcha(req, token, opts = {}) {
     const minScore = Number(process.env.RECAPTCHA_MIN_SCORE || 0.5)
     if (data.success && (typeof data.score !== 'number' || data.score >= minScore)) return { ok: true, score: data.score }
 
+    // Why a check failed (score, Google's error codes, the hostname and action
+    // the token was made for). No token, email or IP is logged.
+    if (strict) console.warn('reCAPTCHA strict check failed', JSON.stringify({ success: data.success, score: data.score, minScore, errors: data['error-codes'], hostname: data.hostname, action: data.action }))
     if (!strict) {
       console.warn('reCAPTCHA verification failed; fail-open to protect customer form submissions.', {
         score: data.score,
