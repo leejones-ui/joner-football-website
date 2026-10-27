@@ -826,10 +826,10 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
   .ps-meta { margin-left: 0; width: 100%; }
   .ps-table thead { display: none; }
   .ps-table, .ps-table tbody { display: block; }
-  .ps-table tr { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 12px 14px; border-bottom: 1px solid var(--j-line); }
+  .ps-table tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 12px 14px; border-bottom: 1px solid var(--j-line); }
   .ps-table tbody tr:last-child { border-bottom: 0; }
   .ps-table td { display: block; padding: 0; border: 0; }
-  .ps-table td[data-col="who"] { grid-column: 1; }
+  .ps-table td[data-col="who"] { grid-column: 1; min-width: 0; overflow-wrap: anywhere; }
   .ps-table td[data-col="pay"] { grid-column: 2; grid-row: 1; text-align: right; }
   .ps-table td[data-col="group"], .ps-table td[data-col="flags"] { grid-column: 1 / -1; padding-left: 44px; font-size: 13px; }
   .ps-table td[data-col="football"], .ps-table td.ps-end { display: none; }
@@ -838,6 +838,8 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
 /* The site's "Skip to content" link uses .sr-only too: show it when it has focus. */
 a.sr-only[href="#main-content"]:focus { position: fixed !important; top: 16px; left: 16px; z-index: 100; width: auto; height: auto; margin: 0; padding: 8px 16px; overflow: visible; clip: auto; white-space: normal; border-radius: 4px; background: #dc2626; color: #fff; }
 .ps-who b { white-space: nowrap; }
+.ps-who > :last-child { min-width: 0; }
+@media (max-width: 760px) { .ps-who b { white-space: normal; overflow-wrap: anywhere; } }
 @media (min-width: 761px) and (max-width: 1180px) {
   .ps-table th[data-col="football"], .ps-table td[data-col="football"] { display: none; }
 }

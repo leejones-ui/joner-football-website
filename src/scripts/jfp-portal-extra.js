@@ -347,7 +347,7 @@ function sentBox(ui, b, slot, n, problem) {
 
 function addPlayer(ui, s, done) {
   const { modal, closeModal, post, toast, copy } = ui
-  const box = modal(`<h2 style="margin-bottom:4px">Add a player</h2><p class="muted small" style="margin-bottom:12px">${esc(s.dateLabel.replace(/\s\d{4}$/, ''))}, ${esc(s.time)} at ${esc(s.location)}. It shows in their account to pay, ${esc(s.priceLabel)}.</p>
+  const box = modal(`<h2 style="margin-bottom:4px">Add a player</h2><p class="muted small" style="margin-bottom:12px">${esc(s.dateLabel.replace(/\s\d{4}$/, ''))}, ${esc(s.time)} at ${esc(s.location)}. It shows in their account to pay${s.priceLabel ? `, ${esc(s.priceLabel)}` : ''}.</p>
     <label class="j-field"><span>Find a JFP player</span><input class="j-input" id="xa-q" placeholder="Start typing a name" autocomplete="off"></label>
     <div id="xa-res"></div>
     <p class="muted small" style="margin:6px 0 8px">Not a JFP player? Fill in their details.</p>
@@ -378,7 +378,7 @@ function addPlayer(ui, s, done) {
     const slot = r.data.slot
     const text = extraText({ name: b.name, coach: coachWord(slot), slot, email: b.email })
     closeModal()
-    const doneBox = modal(`<h2 style="margin-bottom:6px">${esc(b.name)} is booked in</h2><p class="muted small" style="margin-bottom:12px">${r.data.chargeError ? `<b>The payment did not go into their account:</b> ${esc(r.data.chargeError)}` : `It is in their account (${esc(b.email)}) to pay, ${esc(slot.priceLabel)}.`} Send them the link:</p>
+    const doneBox = modal(`<h2 style="margin-bottom:6px">${esc(b.name)} is booked in</h2><p class="muted small" style="margin-bottom:12px">${r.data.chargeError ? `<b>The payment did not go into their account:</b> ${esc(r.data.chargeError)}` : `It is in their account (${esc(b.email)}) to pay${slot.priceLabel ? `, ${esc(slot.priceLabel)}` : ''}.`} Send them the link:</p>
       <label class="j-field"><span>The text</span><textarea class="j-textarea" id="xd-text" rows="9">${esc(text)}</textarea></label>
       <div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-line" id="xd-copy">Copy link</button>${b.mobile ? `<a class="j-btn j-btn-dark" id="xd-sms" href="${esc(smsHref(b.mobile, text))}">Text from my phone</a>` : ''}</div>`)
     doneBox.querySelector('#xd-copy').addEventListener('click', () => copy(slot.link))

@@ -57,7 +57,7 @@ function noteRow(n) {
 function wire(root, ui, notes, done) {
   const { post, confirmBox } = ui
   root.querySelectorAll('[data-fn-del]').forEach((b) => b.addEventListener('click', async () => {
-    if (!(await confirmBox('Delete this note? The family stops seeing it at once.', { ok: 'Delete', danger: true }))) return
+    if (!(await confirmBox('Delete this note? The family stops seeing it at once.', { ok: 'Delete', danger: true, over: true }))) return
     const r = await post('familyNoteDelete', { id: b.dataset.fnDel })
     if (!r.ok) return toast(r.data.error || 'Could not delete.')
     toast('Deleted.'); done(notes.filter((n) => n.id !== b.dataset.fnDel))
@@ -134,7 +134,7 @@ export async function coachNotesModal(ui, { rowId, name }) {
 function wirePN(root, ui, notes, done) {
   const { post, confirmBox } = ui
   root.querySelectorAll('[data-fn-del]').forEach((b) => b.addEventListener('click', async () => {
-    if (!(await confirmBox('Delete this coach note?', { ok: 'Delete', danger: true }))) return
+    if (!(await confirmBox('Delete this coach note?', { ok: 'Delete', danger: true, over: true }))) return
     const r = await post('coachPNoteDelete', { id: b.dataset.fnDel })
     if (!r.ok) return toast(r.data.error || 'Could not delete.')
     toast('Deleted.'); done(notes.filter((n) => n.id !== b.dataset.fnDel))

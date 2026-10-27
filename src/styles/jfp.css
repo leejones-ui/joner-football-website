@@ -738,7 +738,7 @@ body.has-picks .j-toast { bottom: calc(92px + env(safe-area-inset-bottom)); }
    its bottom edge while the form scrolls, so Send is always in reach. Pop-ups
    size to the visible screen (dvh), not the screen behind the browser bars. */
 .jp-modal-foot { position: sticky; bottom: -20px; z-index: 2; margin: 12px -20px -20px; padding: 12px 20px calc(12px + env(safe-area-inset-bottom)); background: var(--j-surface); border-top: 1px solid var(--j-line); }
-@media (max-width: 640px) { .rp-dots button { width: 44px; height: 44px; } .rp-rate-in { gap: 6px; } }
+@media (max-width: 640px) { .rp-dots button { width: 44px; height: 44px; } .rp-rate-in { gap: 6px; flex-wrap: wrap; } }
 @media (max-width: 640px) {
   .jp-modal-foot { flex-wrap: nowrap !important; align-items: stretch; }
   .jp-modal-foot > span { flex: 1; display: flex; gap: 8px; flex-wrap: nowrap !important; }

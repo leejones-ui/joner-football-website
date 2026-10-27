@@ -21,7 +21,7 @@
 //               staff (_jfp-extras.js)
 import { stripeFetch, siteUrl, listSlots, getConfig as holidayConfig, slotOwners, publicSlot, signAccessCookie, accessCookieHeader } from './_holiday-store.js'
 import { chargeCheckoutMeta, listCharges, cancelCharge } from './_jfp-charges.js'
-import { extraPayCheck } from './_jfp-extra.js'
+import { extraPayCheck, allSlots, liveBookings, paidPayreqs, leadPayreq } from './_jfp-extra.js'
 import { bookableSlots, privateSlot, bookExtraPlace } from './_jfp-family-extra.js'
 import {
   keys, getConfig, getGroup, listGroups, listPayreqs, getPayreq, savePayreq, listApplications, listBookings, familyRecords, familyIndexReady, clean, dateLabel,
@@ -364,6 +364,28 @@ async function overview(res, parent, body = {}, opts = {}) {
 // What the two booking pages need: the game analysis price if Lee set one,
 // whether holiday training slots are open, slots to book (none yet), and
 // this family's own requests.
+// Extra sessions this family is booked on, today on (Lee, 28 Oct 2026: a
+// paid extra session showed nowhere in My account). Friends they named come
+// with them; Paid or To pay from the payment link.
+async function bookedExtras(email) {
+  const today = sydneyToday()
+  const slots = (await allSlots()).filter((s) => s.date >= today && s.status !== 'cancelled' && liveBookings(s).some((b) => b.email === email))
+  if (!slots.length) return []
+  const paid = await paidPayreqs(slots)
+  return slots.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).map((s) => {
+    const live = liveBookings(s)
+    const ours = live.filter((b) => b.email === email)
+    const groups = new Set(ours.map((b) => b.groupId).filter(Boolean))
+    const all = [...ours, ...live.filter((b) => b.groupId && groups.has(b.groupId) && !ours.includes(b))]
+    // Paid goes by the family's lead booking (friends have no link of their
+    // own). A family booking with no link: the charge did not open and Lee was
+    // told to send one. Booked by a coach or staff: no paid label at all.
+    const fam = ours.find((b) => b.from === 'family')
+    const pay = fam ? leadPayreq(s, fam) : ''
+    const state = !fam ? 'none' : !pay ? 'link' : paid.has(pay) ? 'paid' : 'unpaid'
+    return { id: s.id, date: s.date, dateLabel: dateLabel(s.date), time: s.time, location: s.location, durationMin: s.durationMin || 60, players: all.map((b) => b.name), state, paid: state === 'paid', payreqId: pay }
+  })
+}
 async function extrasView(config, email, jfp = false) {
   const [holiday, mine, seen] = await Promise.all([
     holidaySessions().catch((e) => { console.error('jfp account holiday sessions failed', e); return { label: '', sessions: [] } }),
@@ -373,7 +395,8 @@ async function extrasView(config, email, jfp = false) {
   const price = analysisPrice(config)
   // Extra sessions coaches opened to book now (money engineer, _jfp-family-extra.js).
   const bookable = await bookableSlots(config)
-  return { analysisPriceLabel: price?.label || '', analysisPackages: gaPackages(config), analysisJfp: jfp, holidaySlots: holiday.sessions.filter((s) => !s.full).length, holiday, seen, slots: extraSlots(), bookable, days: EXTRA_DAYS, times: EXTRA_TIMES, types: EXTRA_TYPES, mine }
+  const booked = await bookedExtras(email).catch((e) => { console.error('jfp account booked extras failed', e); return [] })
+  return { booked, analysisPriceLabel: price?.label || '', analysisPackages: gaPackages(config), analysisJfp: jfp, holidaySlots: holiday.sessions.filter((s) => !s.full).length, holiday, seen, slots: extraSlots(), bookable, days: EXTRA_DAYS, times: EXTRA_TIMES, types: EXTRA_TYPES, mine }
 }
 
 // Holiday training sessions still to come (Lee, 19 Oct 2026: show what is on

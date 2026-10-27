@@ -451,9 +451,22 @@ function modal(html, { wide = false } = {}) {
   return box
 }
 function closeModal() { $('jp-scrim')?.remove(); $('jp-modal')?.remove() }
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeModal(); closeMenu() } })
+document.addEventListener('keydown', (e) => { if (e.key !== 'Escape') return; const over = document.querySelector('.jp-confirm-over [data-no]'); if (over) return over.click(); closeModal(); closeMenu() })
 
-function confirmBox(message, { ok = 'Yes', danger = false } = {}) {
+function confirmBox(message, { ok = 'Yes', danger = false, over = false } = {}) {
+  // over: on top of the open pop-up, which stays open (Lee, 28 Oct 2026: Cancel
+  // on Delete this note shut the notes too).
+  if (over && $('jp-modal')) return new Promise((resolve) => {
+    const wrap = document.createElement('div')
+    wrap.className = 'jp-confirm-over'
+    wrap.innerHTML = `<div class="jp-modal" role="alertdialog" aria-modal="true"><p style="font-size:15px;margin-bottom:18px">${message}</p><div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="j-btn j-btn-line" data-no>Cancel</button><button type="button" class="j-btn ${danger ? 'j-btn-danger' : 'j-btn-dark'}" data-yes>${esc(ok)}</button></div></div>`
+    document.querySelector('.jfp').appendChild(wrap)
+    const end = (v) => { wrap.remove(); resolve(v) }
+    wrap.querySelector('[data-no]').addEventListener('click', () => end(false))
+    wrap.querySelector('[data-yes]').addEventListener('click', () => end(true))
+    wrap.addEventListener('click', (e) => { if (e.target === wrap) end(false) })
+    setTimeout(() => wrap.querySelector('[data-no]').focus(), 30)
+  })
   return new Promise((resolve) => {
     const box = modal(`<p style="font-size:15px;margin-bottom:18px">${message}</p><div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="j-btn j-btn-line" data-no>Cancel</button><button type="button" class="j-btn ${danger ? 'j-btn-danger' : 'j-btn-dark'}" data-yes>${esc(ok)}</button></div>`)
     box.querySelector('[data-no]').addEventListener('click', () => { closeModal(); resolve(false) })
@@ -3148,14 +3161,24 @@ function pnoteLine(p) {
 // The register for 1 on 1s and extra sessions (Lee, 26 Oct 2026: Dean was
 // reminded about his 1 on 1 registers and had nowhere to mark them). The
 // last two weeks and the week ahead, or the week picked.
+// A session has started: an earlier day, or today once its start time has
+// passed in Sydney (28 Oct 2026: a 5pm session read "happened" at 9am).
+function hasStarted(date, time, today) {
+  if (date !== today) return date < today
+  const [h, m] = new Date().toLocaleTimeString('en-GB', { timeZone: 'Australia/Sydney', hour12: false }).split(':').map(Number)
+  const t = String(time || '').trim().toLowerCase().match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/)
+  if (!t) return true
+  let sh = Number(t[1]); if (t[3]) sh = (sh % 12) + (t[3] === 'pm' ? 12 : 0)
+  return h * 60 + m >= sh * 60 + Number(t[2] || 0)
+}
 function extraRegister(list, { all, today }) {
   if (!list.length) return ''
-  const left = list.filter((s) => s.date <= today && s.bookings.some((b) => !s.marks[b.id])).length
+  const left = list.filter((s) => hasStarted(s.date, s.time, today) && s.bookings.some((b) => !s.marks[b.id])).length
   return `<article class="j-card" style="padding:16px;margin-bottom:12px" data-xreg>
     <h3 style="font-size:17px">1 on 1s and extra sessions</h3>
     <p class="${left ? 'j-box j-box-amber' : 'muted'} small" style="margin-top:6px">${left ? `<b>${left} to mark.</b> Mark who came, so your hours and invoice match.` : 'Mark who came on the day. Sessions you open in Extra sessions show here.'}</p>
     ${list.map((s) => `<div style="margin-top:12px"><p class="small"><b>${esc(s.dateLabel.replace(/\s\d{4}$/, ''))}, ${esc(s.time)}</b> · ${esc(s.location)} · ${esc(s.title)} · ${esc(s.durationMin)} min${all ? ` · Coach ${esc(s.coachName)}` : ''}</p>
-      ${s.bookings.map((b) => `<div class="jp-player" style="cursor:default">${avatar('', b.name, 32)}<span class="nm" style="flex:1 1 auto;min-width:0">${esc(b.name)}${s.date <= today && !s.marks[b.id] ? ' <span class="j-pill j-pill-red">Not marked</span>' : ''}</span>
+      ${s.bookings.map((b) => `<div class="jp-player" style="cursor:default">${avatar('', b.name, 32)}<span class="nm" style="flex:1 1 auto;min-width:0">${esc(b.name)}${hasStarted(s.date, s.time, today) && !s.marks[b.id] ? ' <span class="j-pill j-pill-red">Not marked</span>' : ''}</span>
         <span class="jp-att">${s.date > today ? '<span class="muted small">Opens on the day</span>' : `<button type="button" class="p" data-xr="${esc(s.id)}|${esc(b.id)}|Present" aria-pressed="${s.marks[b.id] === 'Present'}">Here</button><button type="button" class="a" data-xr="${esc(s.id)}|${esc(b.id)}|Absent" aria-pressed="${s.marks[b.id] === 'Absent'}">Away</button>`}</span></div>`).join('')}</div>`).join('')}
   </article>`
 }
@@ -3190,7 +3213,9 @@ async function renderCoach(keep = false) {
   const dateOf = (s) => (s.dates.some((x) => x.iso === P.coachDate[s.id]) ? P.coachDate[s.id] : P.regWeek ? s.nextDate : lastRun(s) || s.nextDate)
   const early = (date) => !admin && date > today
   // Not marked off (Lee, 19 Oct 2026): the session has happened (today or before) and the player has no Here or Away.
-  const unmarked = (s, p, date) => date <= today && !attOf(s, date)[p.rowId]
+  // Today counts once the session has started (hasStarted).
+  const started = (s, date) => hasStarted(date, s.time, today)
+  const unmarked = (s, p, date) => started(s, date) && !attOf(s, date)[p.rowId]
   // I'm coming (Lee, 20 Oct 2026): session by session and Pro players say which dates they will be at.
   const saysComing = (s, p, date) => Boolean(p.bySession && (s.comingBy?.[date] || {})[p.rowId])
   const notSaid = (s, p, date) => Boolean(p.bySession && date >= today && !attOf(s, date)[p.rowId] && !saysComing(s, p, date) && !(s.cancelledBy?.[date] || {})[p.rowId])
@@ -3249,7 +3274,7 @@ async function renderCoach(keep = false) {
         <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><div><h3 style="font-size:17px">${esc(s.day)} ${esc(s.time)} · ${esc(s.location)}</h3><p class="muted small">${all && s.coachName ? `<b>Coach ${esc(s.coachName)}</b> · ` : ''}${esc(s.label)}${s.minAge != null ? ` · ages ${s.minAge} to ${s.maxAge}` : ''} · ${s.durationMin} min · ${s.players.length} player${s.players.length === 1 ? '' : 's'}</p></div>
           <span class="jp-reg-tools"><select class="j-select" style="width:auto" data-date="${esc(s.id)}" aria-label="Session date">${s.dates.map((x, i) => `<option value="${esc(x.iso)}" ${x.iso === date ? 'selected' : ''}>Week ${i + 1} · ${esc(x.label)}${Object.keys(attOf(s, x.iso)).length ? ' ✓' : ''}</option>`).join('')}</select><button type="button" class="j-btn j-btn-line" data-term="${esc(s.id)}">Whole term</button></span></div>
         ${off ? '<p class="j-box j-box-grey small" style="margin-top:10px">This session has not happened yet. The register opens on the day.</p>' : ''}
-        ${date <= today ? (() => { const left = s.players.filter((p) => onDate(s, p, date) && unmarked(s, p, date)).length; return left ? `<p class="j-box j-box-amber small" style="margin-top:10px"><b>${left} not marked off</b> for ${esc(s.dates.find((x) => x.iso === date)?.label || date)}</p>` : s.players.some((p) => onDate(s, p, date)) ? `<p class="small" style="margin-top:8px;color:var(--j-green,#15803d)">✓ All marked off for ${esc(s.dates.find((x) => x.iso === date)?.label || date)}</p>` : '' })() : ''}
+        ${started(s, date) ? (() => { const left = s.players.filter((p) => onDate(s, p, date) && unmarked(s, p, date)).length; return left ? `<p class="j-box j-box-amber small" style="margin-top:10px"><b>${left} not marked off</b> for ${esc(s.dates.find((x) => x.iso === date)?.label || date)}</p>` : s.players.some((p) => onDate(s, p, date)) ? `<p class="small" style="margin-top:8px;color:var(--j-green,#15803d)">✓ All marked off for ${esc(s.dates.find((x) => x.iso === date)?.label || date)}</p>` : '' })() : ''}
         ${comingLine(s, date)}
         ${cancelledNow ? `<p class="j-box j-box-red small" style="margin-top:10px"><b>Session cancelled</b> (${esc(cancelledNow)}). There is no register for this date.</p>` : ''}
         <div style="margin-top:10px" ${cancelledNow ? 'hidden' : ''}>${s.players.filter((p) => showP(s, p)).map((p) => `<div class="jp-player" style="cursor:default">${avatar(p.photo, p.name, 32)}<span class="nm" style="flex:1 1 auto;min-width:0">${p.juniors ? esc(p.name) : `<button type="button" class="ps-link jp-cp-name" data-cp="${esc(p.rowId)}" aria-label="About ${esc(p.name)}">${esc(p.name)}</button>`}${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}${!p.mine ? ` <span class="muted small">· ${esc(p.coach)}</span>` : ''}${comingPill(s, p, date)}${(s.cancelledBy?.[date] || {})[p.rowId] ? ` <span class="j-pill j-pill-amber" title="${esc(`${s.cancelledBy[date][p.rowId].reason}, ${s.cancelledBy[date][p.rowId].notice}`)}">Cancelled by parent</span>` : ''}${p.trial ? ' <span class="j-pill j-pill-blue">Trial</span>' : ''}${p.noFilm ? ' <span class="j-pill j-pill-red" title="The family said no to filming and photos">No filming</span>' : ''}${p.status !== 'Confirmed' ? ` <span class="j-pill j-pill-amber">${esc(p.status)}</span>` : ''}${noteLine(p, date)}${pnoteLine(p)}</span>

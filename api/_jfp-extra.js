@@ -77,7 +77,7 @@ export const isWhole = (s) => Array.isArray(s?.options) && s.options.length > 0
 // and never pays must not take the session off the booking page). A player a
 // coach or staff put on counts at once. paid: a Set of paid payreq ids
 // (paidPayreqs); without it every live booking counts (the staff view).
-const leadPayreq = (s, b) => b.payreqId || (b.groupId ? (s.bookings || []).find((x) => x.id === b.groupId)?.payreqId : '') || ''
+export const leadPayreq = (s, b) => b.payreqId || (b.groupId ? (s.bookings || []).find((x) => x.id === b.groupId)?.payreqId : '') || ''
 export const committedBookings = (s, paid) => liveBookings(s).filter((b) => !paid || b.from !== 'family' || paid.has(leadPayreq(s, b)))
 // A whole session is either free (every place) or taken by one group.
 export const placesLeft = (s, paid) => { const n = committedBookings(s, paid).length; return isWhole(s) ? (n ? 0 : s.capacity) : Math.max(0, s.capacity - n) }

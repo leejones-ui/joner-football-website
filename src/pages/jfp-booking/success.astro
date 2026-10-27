@@ -75,6 +75,16 @@ import '../../styles/jfp.css'
       $('help').hidden = true
       return
     }
+    // A charge, an invoice or a quick link (extra session, game analysis, Lee
+    // 28 Oct 2026): what was paid for, never a term place or the kit step.
+    if (p.what) {
+      hero('Payment complete', 'Thank you', `Your payment for ${p.what} is done. We have emailed you a receipt.`)
+      $('details').innerHTML = [['For', p.what], ...((names || []).length ? [['Player', names.join(', ')]] : []), ['Paid', p.priceLabel], ['Reference', p.id]].map(([k2, v]) => `<dt>${esc(k2)}</dt><dd>${esc(v)}</dd>`).join('')
+      $('calendar').hidden = true
+      $('card').hidden = false
+      $('help').hidden = true
+      return
+    }
     // Session by session (billed by staff or prepaid from My account): the
     // sessions are paid; no term place and no kit step.
     if (p.sessions) {

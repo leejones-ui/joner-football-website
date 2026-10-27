@@ -437,7 +437,9 @@ function show(panel, { keepScroll = false } = {}) {
   requestAnimationFrame(syncRails)
 }
 const pane = (k) => document.querySelector(`[data-pane="${k}"]`)
-const DRAW = { home: () => renderHome(), sessions: () => renderSessions(), fees: () => renderFees(), family: () => renderFamily(), news: () => renderNews(), info: () => renderInfo(), waivers: () => renderWaivers(), cancel: () => renderCancel(), keep: () => renderKeep(), term: () => renderTerm(), holidays: () => renderHolidays(), extra: () => renderExtra(pane('extra'), D), analysis: () => renderAnalysis(pane('analysis'), D), videos: () => renderVideos(), app: () => renderApp(), contact: () => renderContact(), notes: () => renderNotes(pane('notes'), D, () => renderShell()), reports: () => renderReports(pane('reports'), D, () => renderShell()), alerts: () => renderAlerts(pane('alerts'), D) }
+// Read notes or a report: the badges and Home's New cards update (28 Oct 2026).
+function afterRead() { renderShell(); const h = pane('home'); if (h) { delete h.dataset.drawn; if (current === 'home') drawPane('home') } }
+const DRAW = { home: () => renderHome(), sessions: () => renderSessions(), fees: () => renderFees(), family: () => renderFamily(), news: () => renderNews(), info: () => renderInfo(), waivers: () => renderWaivers(), cancel: () => renderCancel(), keep: () => renderKeep(), term: () => renderTerm(), holidays: () => renderHolidays(), extra: () => renderExtra(pane('extra'), D), analysis: () => renderAnalysis(pane('analysis'), D), videos: () => renderVideos(), app: () => renderApp(), contact: () => renderContact(), notes: () => renderNotes(pane('notes'), D, afterRead), reports: () => renderReports(pane('reports'), D, afterRead), alerts: () => renderAlerts(pane('alerts'), D) }
 function drawPane(panel) { DRAW[panel]?.(); const el = document.querySelector(`[data-pane="${panel}"]`); if (el) el.dataset.drawn = '1' }
 
 function render() {
@@ -601,7 +603,7 @@ function renderHome() {
   // A Juniors-only family: the Juniors card and its to do, no JFP "nothing booked".
   if (!D.players.length && D.juniors) {
     el.innerHTML = `<header class="ja-head"><p class="ja-kicker"><i></i>Joners Juniors · ${esc(D.juniors.term)}</p><h1 class="ja-display">${name ? `Hi ${esc(name)}` : 'Welcome'}</h1></header>
-      ${guideCard()}<div class="ja-home"><div class="ja-stack">${jjHomeCard()}</div><div class="ja-stack">${newsBlock()}${todoCards()}${requestsBlock()}</div></div>${watch}`
+      ${guideCard()}<div class="ja-home"><div class="ja-stack">${jjHomeCard()}</div><div class="ja-stack">${bookedExtrasBlock(D)}${newsBlock()}${todoCards()}${requestsBlock()}</div></div>${watch}`
     return
   }
   // Anyone can have an account (round 2 item 8): nobody booked into a
@@ -615,7 +617,7 @@ function renderHome() {
         <p class="ja-meta">Pick a session on the timetable. ${D.players.length ? 'Your player details are saved, so booking is quick.' : 'Add your players first and booking is quick.'}</p>
         <div class="ja-actions"><a class="ja-btn ja-btn-red" href="${esc(D.bookUrl || '/jfp-booking/')}">Book a session</a><button type="button" class="ja-btn ja-btn-glass" data-add-player>${D.players.length ? 'Add another player' : 'Add a player'}</button></div>
         <p class="ja-small" style="margin-top:14px;color:rgba(255,255,255,.75)">Booked with another email? Sign out and use that one. Already train with us? <button type="button" class="ja-link" data-go="contact" style="color:#fff">Contact us</button></p></div></div>
-      <div class="ja-stack" style="margin-top:14px">${newsBlock()}${todoCards()}${list}${requestsBlock()}</div>${promos}${watch}`
+      <div class="ja-stack" style="margin-top:14px">${bookedExtrasBlock(D)}${newsBlock()}${todoCards()}${list}${requestsBlock()}</div>${promos}${watch}`
     return
   }
   const ups = upcoming().filter((x) => x.next)
@@ -632,7 +634,7 @@ function renderHome() {
   el.innerHTML = `${head}${guideCard()}
     <div class="ja-home">
       <div class="ja-stack"><p class="ja-label">Next up</p>${nextBlock}${doneBlock}</div>
-      <div class="ja-stack">${D.playerLogin ? playerWaiverStep() : strip ? `<p class="ja-label">To do</p>${strip}` : `<div class="ja-strip is-done">${ic('check')}<span class="ja-mr-tx"><b>All sorted</b><small>Nothing to sign or pay right now.</small></span></div>`}${reportsHomeBlock(D)}${makeupsHomeBlock(D)}${notesHomeBlock(D)}${newsBlock()}
+      <div class="ja-stack">${D.playerLogin ? playerWaiverStep() : strip ? `<p class="ja-label">To do</p>${strip}` : `<div class="ja-strip is-done">${ic('check')}<span class="ja-mr-tx"><b>All sorted</b><small>Nothing to sign or pay right now.</small></span></div>`}${reportsHomeBlock(D)}${bookedExtrasBlock(D)}${makeupsHomeBlock(D)}${notesHomeBlock(D)}${newsBlock()}
         ${jjHomeCard()}${notBooked.length ? `<div class="ja-card"><p class="ja-small ja-muted">${notBooked.map((p) => p.placeNoSession ? `<b class="ja-ink">${esc(p.name)}</b> has a place. We will confirm the day and time.` : `<b class="ja-ink">${esc(p.name)}</b> is not booked this term. <a class="ja-link" href="${links.booking}">See the timetable</a>`).join('<br>')}</p></div>` : ''}${requestsBlock()}</div>
     </div>
     ${D.playerLogin ? '' : promos}${watch}`
@@ -654,12 +656,18 @@ function requestsBlock() {
 
 // ---------- my sessions ----------
 
+// Extra sessions this family is booked on (28 Oct 2026), on Home and Sessions.
+function bookedExtrasBlock(D, { label = true } = {}) {
+  const list = D.extras?.booked || []
+  if (!list.length) return ''
+  return `${label ? '<p class="ja-label">Extra sessions booked</p>' : ''}${list.map((x) => `<article class="ja-card ja-xbooked"><p class="ja-kicker"><i></i>Extra session</p><h3 class="ja-h3" style="margin-top:6px">${esc(x.dateLabel)} · ${esc(x.time)}</h3><p class="ja-small">${esc(x.location)} · ${esc(String(x.durationMin))} min</p><p class="ja-small">${esc(x.players.join(', '))}</p>${x.state === 'paid' ? '<p style="margin-top:8px"><span class="ja-tag green">Paid</span></p>' : x.state === 'unpaid' ? '<p style="margin-top:8px"><span class="ja-tag amber">Not paid yet</span> <button type="button" class="ja-btn ja-btn-sm ja-btn-red" data-go="fees">Pay now</button></p><p class="ja-small ja-muted" style="margin-top:6px">The place is yours once it is paid. Until then another family can still take it.</p>' : x.state === 'link' ? '<p class="ja-small ja-muted" style="margin-top:8px">Payment link on its way.</p>' : ''}</article>`).join('')}`
+}
 function renderSessions() {
   const el = document.querySelector('[data-pane="sessions"]')
   if (!D.players.some((p) => p.enrolments.length)) {
     el.innerHTML = D.juniors
       ? `${pageHead('My sessions', D.juniors.term, 'Every Joners Juniors class this term. The next one is marked.')}${jjSessions()}`
-      : `${pageHead('My sessions', D.term, 'Nothing booked yet.')}<a class="ja-btn ja-btn-red" href="${links.booking}">See the timetable</a>`
+      : `${pageHead('My sessions', D.term, (D.extras?.booked || []).length ? '' : 'Nothing booked yet.')}${bookedExtrasBlock(D)}<a class="ja-btn ja-btn-red" href="${links.booking}" style="margin-top:12px">See the timetable</a>`
     return
   }
   // Redesign (17 Oct 2026): a chip per player, past dates fold into one
@@ -668,7 +676,7 @@ function renderSessions() {
   const kids = D.players.filter((p) => p.enrolments.length)
   if (sessKid !== 'all' && !kids.some((p) => p.key === sessKid)) sessKid = 'all'
   const chips = kids.length > 1 || D.juniors ? `<div class="ja-kchips" role="group" aria-label="Show sessions for">${[['all', 'All'], ...kids.map((p) => [p.key, first(p.name)])].map(([k, l]) => `<button type="button" class="ja-kchip" data-kid-pick="${esc(k)}" aria-pressed="${sessKid === k}">${k === 'all' ? '' : `<span class="ja-avatar">${esc(initials(kids.find((p) => p.key === k)?.name))}</span>`}${esc(l)}</button>`).join('')}</div>` : ''
-  el.innerHTML = `${pageHead(D.term, 'Sessions', '')}${chips}<div class="ja-sgrid">
+  el.innerHTML = `${pageHead(D.term, 'Sessions', '')}${chips}${bookedExtrasBlock(D) ? `<div class="ja-stack" style="margin-bottom:16px">${bookedExtrasBlock(D)}</div>` : ''}<div class="ja-sgrid">
     ${kids.filter((p) => sessKid === 'all' || p.key === sessKid).map((p) => p.enrolments.map((e) => {
       const future = new Map((e.sessions || []).map((s) => [s.label, s]))
       const told = new Map((e.cancelled || []).map((c) => [c.label, c]))
@@ -1083,7 +1091,7 @@ function renderFees() {
   api('/api/jfp-account', { action: 'fees' }).then((r) => {
     if (r.status === 401) return showSignIn()
     FEES = r.ok ? r.data.fees : { error: r.data.error || 'Could not load your payments.' }
-    if (current === 'fees') fillFees()
+    fillFees()
   })
 }
 function fillFees() {
@@ -1100,7 +1108,7 @@ function fillFees() {
 function plainPlaces(html) {
   return String(html || '')
     .replace(/Group to be confirmed/g, 'Day and time to come')
-    .replace(/Paid A\$0 of A\$0\.( Pay the rest above\.)?/g, 'No fee set yet. We will send a payment link if anything is due.')
+    .replace(/Paid A\$0 of A\$0\.( The rest is still to pay\.)?/g, 'No fee set yet. We will send a payment link if anything is due.')
 }
 
 // ---------- family ----------

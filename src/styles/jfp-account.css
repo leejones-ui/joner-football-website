@@ -643,6 +643,7 @@ body:has(.ja[data-theme="light"]) { background: #F5F5F3 !important; }
 .ja-paidfull b { display: block; color: var(--ja-hi); font-size: 15px; }
 .ja .ja-amt-s { display: block; font-family: var(--ja-display); font-size: 28px; line-height: 1; color: var(--ja-hi); margin-top: 4px; }
 .ja-paidfull small { display: block; color: var(--ja-muted); font-size: 12.5px; margin-top: 4px; }
+@media (max-width: 380px) { .ja-paidfull { grid-template-columns: 40px minmax(0, 1fr); } .ja-paidfull > .ja-btn { grid-column: 1 / -1; justify-self: start; } }
 
 /* Payment history: one tidy line each. */
 .ja-hist-total { font-size: 14px; color: var(--ja-muted); margin: 0 0 12px; }
@@ -825,6 +826,7 @@ body:has(.ja[data-theme="light"]) { background: #F5F5F3 !important; }
 /* One "to sort" line. */
 .ja .ja-strip { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 16px; border-radius: 18px; border: 1px solid var(--ja-line); background: var(--ja-panel); color: var(--ja-hi); text-align: left; cursor: pointer; font: inherit; }
 .ja-strip .n { flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--ja-panel-3); color: var(--ja-hi); font-weight: 750; font-size: 15px; }
+.ja-strip .n svg { width: 18px; height: 18px; }
 .ja-strip.is-pay, .ja-strip.is-flat { border-color: rgba(232, 0, 13, .35); }
 .ja-strip.is-pay .n, .ja-strip.is-flat .n { background: var(--ja-red); color: #fff; }
 .ja .ja-strip.is-done, .ja .ja-strip.is-flat { cursor: default; }

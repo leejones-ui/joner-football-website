@@ -213,12 +213,12 @@ async function openEditor(ui, rowId) {
       const r = await post('reportSave', { id: st.id, rowId, fields: f })
       if (!r.ok) {
         st.dirty = true
-        if (box.isConnected) { $('#rp-saved').textContent = 'Not saved'; const err = $('#rp-err'); err.textContent = r.data.error || 'Could not save. What you typed is kept on this device.'; err.hidden = false }
+        if (box.isConnected) { $('#rp-saved').textContent = 'Not saved'; const err = $('#rp-err'); err.textContent = r.data.error || 'Could not save. What you typed is kept on this device.'; err.dataset.from = 'save'; err.hidden = false }
         return false
       }
       st.id = r.data.report.id
       if (!st.dirty) localPut(rowId, { id: st.id, f, at: r.data.report.updatedAt || new Date().toISOString(), synced: true })
-      if (box.isConnected) { $('#rp-saved').textContent = 'Saved as a draft'; $('#rp-err').hidden = true }
+      if (box.isConnected) { $('#rp-saved').textContent = 'Saved as a draft'; const err = $('#rp-err'); if (err.dataset.from === 'save') { err.hidden = true; err.dataset.from = '' } }
       return true
     })()
     const ok = await st.saving
@@ -256,7 +256,7 @@ async function openEditor(ui, rowId) {
   $('#rp-next-step').addEventListener('click', async (e) => {
     const err = $('#rp-err'); err.hidden = true
     const scoredN = form.attrs.filter((a) => f.ratings[a.k] > 0).length
-    if (!scoredN && !f.feedback.trim()) { err.textContent = 'Add some ratings or feedback first.'; err.hidden = false; return }
+    if (!scoredN && !f.feedback.trim()) { err.textContent = 'Add some ratings or feedback first.'; err.dataset.from = ''; err.hidden = false; err.scrollIntoView({ block: 'center', behavior: 'smooth' }); return }
     const btn = e.currentTarget; btn.disabled = true
     try {
       if (!(await needSaved())) return

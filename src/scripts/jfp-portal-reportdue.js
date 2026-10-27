@@ -18,7 +18,7 @@ export async function mountReportDue(box, { post, toast }, { always = false } = 
   if (!d.admin) {
     if (!me || !me.total) { box.innerHTML = ''; return }
     html = me.left
-      ? `<div class="j-box ${over ? 'j-box-red' : 'j-box-amber'} small" style="margin:8px 0"><b>${over ? 'Player reports overdue' : `Player reports due by ${esc(d.endLabel)}`}.</b> You have sent ${me.sent} of ${me.total}. <a href="#reports">Write them now</a>${me.missing.length ? `<br><span class="muted">Still to do: ${esc(me.missing.slice(0, 12).map((m) => m.name).join(', '))}${me.missing.length > 12 ? ` and ${me.missing.length - 12} more` : ''}</span>` : ''}</div>`
+      ? `<div class="j-box ${over ? 'j-box-red' : 'j-box-amber'} small" style="margin:8px 0"><b>${over ? 'Player reports overdue' : `Player reports due by ${esc(d.endLabel)}`}.</b> You have sent ${me.sent} of ${me.total}. <a href="#reports" data-tab="reports">Write them now</a>${me.missing.length ? `<br><span class="muted">Still to do: ${esc(me.missing.slice(0, 12).map((m) => m.name).join(', '))}${me.missing.length > 12 ? ` and ${me.missing.length - 12} more` : ''}</span>` : ''}</div>`
       : `<div class="j-box j-box-green small" style="margin:8px 0"><b>All ${me.total} player reports sent.</b> Thank you.</div>`
   } else {
     const behind = d.coaches.filter((c) => c.left)

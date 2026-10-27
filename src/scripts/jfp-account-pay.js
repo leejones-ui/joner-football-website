@@ -239,7 +239,7 @@ export function placeCards(F, D) {
       return `<article class="ja-card ja-place is-paid">${head}<div class="ja-paidfull">${ic('check')}<div><b>Paid in full</b><span class="ja-amt-s">${esc(x.paidLabel)}</span>${r?.dateLabel ? `<small>Paid ${esc(r.dateLabel)}${r.method ? ` · ${esc(r.method)}` : ''}</small>` : ''}</div>${r?.receiptUrl ? `<a class="ja-btn ja-btn-line ja-btn-sm" href="${esc(r.receiptUrl)}" target="_blank" rel="noopener noreferrer">${ic('receipt')}Receipt</a>` : ''}</div></article>`
     }
     const body = x.kind === 'term'
-      ? `<p class="ja-small ja-muted">Paid ${esc(x.paidLabel)} of ${esc(x.feeLabel)}.${x.owingCents ? ' Pay the rest above.' : ''}</p>`
+      ? `<p class="ja-small ja-muted">Paid ${esc(x.paidLabel)} of ${esc(x.feeLabel)}.${x.owingCents ? ' The rest is still to pay.' : ''}</p>`
       : x.kind === 'trial' ? `<p class="ja-small ja-muted">Trial paid ${esc(x.paidLabel)}.</p>`
         : `<p class="ja-small ja-muted">Paid ${esc(x.paidLabel)} for sessions so far${x.owingCents ? `, ${esc(money(x.owingCents))} billed to pay` : ''}${x.prepaidSessions ? `. ${esc(x.prepaidSessions)} session${x.prepaidSessions > 1 ? 's' : ''} paid ahead` : ''}.</p>${x.commitment ? `<p class="ja-small ja-muted">Committed to ${esc(x.commitment.sessions)} sessions, ${esc(x.commitment.left)} to come${x.commitment.leftDates.length ? `: ${esc(x.commitment.leftDates.join(', '))}` : ''}.</p>` : ''}`
     return `<article class="ja-card ja-place">${head}${body}</article>`

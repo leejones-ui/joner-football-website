@@ -14,7 +14,7 @@ export function reportsHomeBlock(D) {
   const list = (D?.reports || []).filter((r) => r.unread)
   if (!list.length) return ''
   const r = list[0]
-  return `<p class="ja-label">New player report</p><button type="button" class="ja-strip" data-go="reports">${ic('spark')}<span class="ja-mr-tx"><b>${esc(list.length > 1 ? `${list.length} new player reports` : `${first(r.player)}'s Term ${r.termNo} ${r.year} report`)}</b><small>From the coach. Tap to read it and save the PDF.</small></span>${ic('chevron')}</button>`
+  return `<p class="ja-label">New player report</p><button type="button" class="ja-strip" data-go="reports"><span class="n" aria-hidden="true">${ic('spark')}</span><span class="ja-mr-tx"><b>${esc(list.length > 1 ? `${list.length} new player reports` : `${first(r.player)}'s Term ${r.termNo} ${r.year} report`)}</b><small>From the coach. Tap to read it and save the PDF.</small></span>${ic('right', 'ja-mr-go')}</button>`
 }
 
 export async function renderReports(el, D, after) {
