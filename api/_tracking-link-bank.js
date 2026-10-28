@@ -1,3 +1,6 @@
+export const APP_STORE_URL = 'https://apps.apple.com/au/app/joner-football-app/id6737069275'
+export const GOOGLE_PLAY_URL = 'https://play.google.com/store/apps/details?id=tv.uscreen.jonerfootball'
+
 export const TRACKING_LINK_BANK = Object.freeze({
   'instagram': { channel: 'social', source: 'main_instagram', campaign: 'app-evergreen', content: 'bio', destination: '/join' },
   'main-instagram': { channel: 'social', source: 'main_instagram', campaign: 'app-evergreen', content: 'bio', destination: '/join' },
@@ -35,11 +38,16 @@ export const TRACKING_LINK_BANK = Object.freeze({
   'meta-ad': { channel: 'paid_social', source: 'meta_ads', campaign: 'meta-app', content: 'ad', destination: '/join' },
   'google': { channel: 'organic_search', source: 'google', campaign: 'organic-search', content: 'search', destination: '/join' },
   'google-ad': { channel: 'paid_search', source: 'google_ads', campaign: 'google-app', content: 'ad', destination: '/join' },
+  // Linktree "JF App" button: straight to the App Store with ct=main_instagram_linktree.
+  'linktree-app': { channel: 'social', source: 'main_instagram_linktree', campaign: 'linktree', content: 'jf-app-button', destination: APP_STORE_URL },
+  'linktree-android': { channel: 'social', source: 'main_instagram_linktree', campaign: 'linktree', content: 'jf-app-button', destination: GOOGLE_PLAY_URL },
 })
 
 export const TRACKING_DESTINATIONS = Object.freeze({
   join: '/join',
   app: '/app',
+  'app-store': APP_STORE_URL,
+  'google-play': GOOGLE_PLAY_URL,
   home: '/',
   'football-training-app': '/football-training-app',
   'free-watch': '/free-bundle/watch',
@@ -132,4 +140,26 @@ export function getTrackingDestination(key, fallback = '/join') {
 export function getTrackingDestinationToken(key, fallback = 'join') {
   const token = String(key || '').trim().toLowerCase()
   return TRACKING_DESTINATIONS[token] ? token : fallback
+}
+
+// App store destinations take store campaign params, not UTMs. Apple: ct is
+// the campaign (40 chars max) and pt the provider token from App Store
+// Connect (APPLE_APP_STORE_PROVIDER_TOKEN, optional). Google Play: referrer.
+export function isAppStoreDestination(url) {
+  return url?.hostname === 'apps.apple.com' || url?.hostname === 'play.google.com'
+}
+export function applyStoreCampaign(url, { source, medium, campaign } = {}) {
+  const slug = (value, max) => String(value || '').toLowerCase().replace(/[^a-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, max)
+  const ct = slug(source, 40) || 'website'
+  if (url.hostname === 'apps.apple.com') {
+    url.searchParams.set('ct', ct)
+    const pt = slug(process.env.APPLE_APP_STORE_PROVIDER_TOKEN, 40)
+    if (pt) url.searchParams.set('pt', pt)
+    url.searchParams.set('mt', '8')
+  } else if (url.hostname === 'play.google.com') {
+    let referrer = `utm_source=${ct}&utm_medium=${slug(medium, 40) || 'referral'}`
+    if (slug(campaign, 60)) referrer += `&utm_campaign=${slug(campaign, 60)}`
+    url.searchParams.set('referrer', referrer)
+  }
+  return url
 }

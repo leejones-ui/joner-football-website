@@ -25,6 +25,7 @@ function response() {
 }
 
 for (const token of Object.keys(TRACKING_LINK_BANK)) {
+  if (/^https:\/\/(apps\.apple|play\.google)\.com\//.test(TRACKING_LINK_BANK[token].destination)) continue
   const res = response()
   await handler(request(token), res)
   assert.equal(res.statusCode, 302, token)

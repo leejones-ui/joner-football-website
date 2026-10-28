@@ -1,4 +1,4 @@
-import { getTrackingDestination, getTrackingDestinationToken, getTrackingLink } from './_tracking-link-bank.js'
+import { applyStoreCampaign, getTrackingDestination, getTrackingDestinationToken, getTrackingLink, isAppStoreDestination } from './_tracking-link-bank.js'
 import { createOrTouchJourney, journeyStoreConfigured } from './_journey-ledger.js'
 
 const safe = (value, max = 240) => String(value || '').trim().slice(0, max)
@@ -10,6 +10,13 @@ export default async function handler(req, res) {
   if (!link.source) return res.status(404).json({ success: false, error: 'Unknown tracking link' })
 
   const destination = new URL(getTrackingDestination(req.query?.to, link.destination), 'https://jonerfootball.com')
+  if (isAppStoreDestination(destination)) {
+    // App stores ignore UTMs and cannot carry the website journey cookie, so
+    // they get store campaign params only (Apple ct/pt, Google Play referrer).
+    applyStoreCampaign(destination, { source: link.source, medium: link.channel, campaign: safe(req.query?.campaign) || link.campaign })
+    res.setHeader('Cache-Control', 'private, no-store, max-age=0')
+    return res.redirect(302, destination.toString())
+  }
   destination.searchParams.set('utm_source', link.source)
   destination.searchParams.set('utm_medium', link.channel)
   destination.searchParams.set('utm_campaign', safe(req.query?.campaign) || link.campaign)

@@ -612,6 +612,47 @@ const allSchemas = schema
           catch (e) { return false; }
         }
 
+        // App store campaign links. Apple only reports a ct campaign in App
+        // Analytics when the provider token (pt) is present: paste it from App
+        // Store Connect > App Analytics > Campaigns. Until then ct still rides
+        // along on every App Store link. Google Play reads the referrer param.
+        var APPLE_PROVIDER_TOKEN = '';
+        function storeSlug(value, max) {
+          var raw = String(value || '').toLowerCase();
+          var marker = raw.indexOf('__jfa1__');
+          if (marker !== -1) raw = raw.slice(0, marker);
+          return raw.replace(/[^a-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, max || 40);
+        }
+        function storeCampaignSource(params) {
+          var source = storeSlug(params && (params.get('source_taxonomy') || params.get('utm_source')), 40);
+          return source && source !== 'direct' ? source : 'website';
+        }
+        function decorateStoreLink(anchor, params) {
+          if (!anchor || !anchor.href) return;
+          var url;
+          try { url = new URL(anchor.href, window.location.href); } catch (e) { return; }
+          var source = storeCampaignSource(params);
+          if (url.hostname === 'apps.apple.com') {
+            url.searchParams.set('ct', source);
+            if (APPLE_PROVIDER_TOKEN) url.searchParams.set('pt', APPLE_PROVIDER_TOKEN);
+            url.searchParams.set('mt', '8');
+          } else if (url.hostname === 'play.google.com') {
+            var medium = source === 'website' ? 'website' : (storeSlug(params && params.get('utm_medium'), 40) || 'referral');
+            var referrer = 'utm_source=' + source + '&utm_medium=' + medium;
+            var campaign = storeSlug(params && params.get('utm_campaign'), 60);
+            if (campaign) referrer += '&utm_campaign=' + campaign;
+            url.searchParams.set('referrer', referrer);
+          } else {
+            return;
+          }
+          anchor.href = url.toString();
+        }
+        function decorateStoreLinks(params) {
+          document.querySelectorAll('a[href*="apps.apple.com"], a[href*="play.google.com"]').forEach(function (anchor) {
+            decorateStoreLink(anchor, params);
+          });
+        }
+
         function getCookie(name) {
           var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
           return match ? decodeURIComponent(match[2]) : '';
@@ -826,6 +867,7 @@ const allSchemas = schema
           }
 
           decorateAppOutboundLinks(trackingParams);
+          decorateStoreLinks(trackingParams);
           if (window.JonerAttribution && window.JonerAttribution.recordEvent) {
             window.JonerAttribution.recordEvent('page_view', Object.assign({
               path: window.location.pathname || '/',
@@ -840,6 +882,7 @@ const allSchemas = schema
           });
           window.addEventListener('load', function () {
             decorateAppOutboundLinks(collectTrackingParams());
+            decorateStoreLinks(collectTrackingParams());
           }, { once: true });
 
           document.addEventListener('click', function (event) {
@@ -851,6 +894,7 @@ const allSchemas = schema
             }
             var anchor = event.target && event.target.closest ? event.target.closest('a[href]') : null;
             if (!anchor) return;
+            decorateStoreLink(anchor, collectTrackingParams());
             trackMoneyClick(anchor);
             if (!isAppOutboundLink(anchor)) return;
             if (!readJourneyToken()) {
