@@ -7,7 +7,7 @@ import { createOrTouchJourney, linkJourneyIdentity } from '../api/_journey-ledge
 import { reconcilePayment, applySignupUtmFallback, journeyLandingPage } from '../api/checkout-bridge.js'
 import { mergeReliableSale } from '../api/_reliability-ledger.js'
 import { reconcileUnknownSales } from '../api/attribution-cron.js'
-import reportHandler, { reportRange, reportLimit, buyerCoverage } from '../api/attribution-report.js'
+import reportHandler, { reportRange, reportLimit, buyerCoverage, trialOutcomes, trialHistoryTo } from '../api/attribution-report.js'
 import goHandler from '../api/go.js'
 
 const id = 'jfy_' + 'b'.repeat(24)
@@ -169,6 +169,39 @@ assert.equal(narrow.body.range_totals.new_buyers_by_acquisition.app_store, 20)
 const outside = await call({ from: '2020-01-01', to: '2020-02-01', days: '7' })
 assert.equal(outside.body.coverage.new_buyers, 0, 'from/to win over days')
 assert.equal((await call({ days: 'x' })).code, 400)
+assert.deepEqual(Object.keys(narrow.body.range_totals.trial_outcomes).slice(0, 4), ['started', 'in_trial', 'converted', 'not_converted'])
+assert.equal(narrow.body.range_totals.trial_outcomes.started, 1); assert.equal(narrow.body.range_totals.trial_outcomes.in_trial, 1)
+assert.equal(narrow.body.range_totals.paid_invoices !== undefined, true, 'existing range_totals fields kept')
+
+// 4b. Trial outcomes per buyer: converts with a positive payment by trial end + 14 days.
+{
+  const D = 86400000, t0 = Date.parse('2026-09-01T00:00:00Z'), nowT = Date.parse('2026-10-01T00:00:00Z')
+  const at = (ms) => new Date(ms).toISOString()
+  const trial = (user, startMs, extra = {}) => ({ sale_id: `trial:${user}:${startMs}`, kind: 'payment', trial: true, amount: 0, uscreen_user_id: user, occurred_at: at(startMs), ...extra })
+  const pay = (user, ms, extra = {}) => ({ sale_id: `pay:${user}:${ms}`, kind: 'payment', amount: 20, uscreen_user_id: user, occurred_at: at(ms), ...extra })
+  const range = [
+    trial('conv', t0 + 1 * D), trial('conv', t0 + 2 * D), // same buyer twice: counted once
+    trial('late', t0 + 1 * D),                            // pays day 25: past 7 + 14
+    trial('lapsed', t0 + 3 * D),                          // never pays, deadline passed
+    trial('waiting', t0 + 25 * D),                        // deadline after now
+    trial('app', t0 + 5 * D, { billing_origin: 'apple' }),
+    trial('refund', t0 + 4 * D),
+    trial('verified', t0 + 6 * D, { trial: null, payment_verification: { verified: true, trial: true, amount: 0 } }),
+    trial('outside', t0 - 5 * D),
+  ]
+  const history = [...range,
+    pay('conv', t0 + 9 * D),
+    pay('late', t0 + 25 * D),
+    pay('app', t0 + 24 * D, { billing_origin: 'apple' }),
+    pay('refund', t0 + 8 * D, { kind: 'refund' }),
+    pay('verified', t0 + 27 * D, { amount: 0, payment_verification: { verified: true, amount: 15 } }), // after the range end: matched from history
+  ]
+  const outcome = trialOutcomes(range, history, { from: at(t0), to: at(t0 + 26 * D) }, nowT)
+  assert.deepEqual({ s: outcome.started, i: outcome.in_trial, c: outcome.converted, n: outcome.not_converted, a: outcome.app_store_started }, { s: 7, i: 1, c: 3, n: 3, a: 1 })
+  assert.equal(outcome.converted + outcome.in_trial + outcome.not_converted, outcome.started)
+  assert.equal(trialHistoryTo('2026-09-01T00:00:00Z', '2026-09-02T00:00:00Z', nowT), '2026-10-01T00:00:00.000Z', 'at least 30 days past the start')
+  assert.equal(trialHistoryTo('2026-07-01T00:00:00Z', '2026-08-15T00:00:00Z', nowT), '2026-09-05T00:00:00.000Z', 'to + trial + grace')
+}
 
 // 5. Linktree JF App tracked link goes to the App Store with ct.
 const res = { headers: {}, status(c) { this.code = c; return this }, setHeader(k, v) { this.headers[k] = v }, redirect(c, l) { this.code = c; this.location = l; return this }, json(b) { this.body = b; return this } }

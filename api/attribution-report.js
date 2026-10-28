@@ -117,6 +117,64 @@ export function buyerCoverage(sales) {
   }
 }
 
+// Trial outcomes per buyer. A trial started in [from,to) converts when the
+// same buyer has a positive payment by trial end + 14 days; until then it is
+// in_trial, after that not_converted. Trial end is the row's trial_ends_at,
+// else start + TRIAL_DAYS (7, as in _trial-cohort.js). App store trials count
+// when the ledger flags them as trials.
+export const TRIAL_DAYS = 7
+export const TRIAL_GRACE_DAYS = 14
+const DAY = 86400000
+// History read for matching: at least 30 days past the range start and far
+// enough past `to` to cover a trial started at the end of the range.
+export function trialHistoryTo(from, to, now = Date.now()) {
+  const fromMs = Date.parse(from), toMs = Date.parse(to)
+  const wanted = Math.max(toMs, fromMs + 30 * DAY, toMs + (TRIAL_DAYS + TRIAL_GRACE_DAYS) * DAY)
+  return new Date(Math.max(toMs, Math.min(wanted, now + DAY))).toISOString()
+}
+const saleAt = (sale) => Date.parse(sale.occurred_at || sale.paid_at || '') || 0
+export function isTrialSale(sale) {
+  if (sale.kind === 'refund') return false
+  return sale.trial === true || sale.payment_verification?.trial === true || sale.category === 'trial'
+}
+function isPositivePayment(sale) {
+  if (sale.kind === 'refund' || isTrialSale(sale)) return false
+  const amount = Number(sale.payment_verification?.verified ? sale.payment_verification.amount : (sale.amount ?? sale.webhook_amount))
+  return amount > 0
+}
+export function trialOutcomes(rangeSales, historySales = rangeSales, { from, to } = {}, now = Date.now()) {
+  const fromMs = from ? Date.parse(from) : -Infinity, toMs = to ? Date.parse(to) : Infinity
+  const trials = new Map()
+  for (const sale of rangeSales) {
+    if (!isTrialSale(sale)) continue
+    const at = saleAt(sale)
+    if (!at || at < fromMs || at >= toMs) continue
+    const key = buyerKey(sale)
+    const prev = trials.get(key)
+    if (!prev || at < prev.start) {
+      const endsAt = Date.parse(sale.trial_ends_at || '')
+      trials.set(key, { start: at, end: Number.isFinite(endsAt) && endsAt > at ? endsAt : at + TRIAL_DAYS * DAY, app: isAppStoreSale(sale) })
+    }
+  }
+  const payments = new Map()
+  for (const sale of historySales) {
+    if (!isPositivePayment(sale)) continue
+    const key = buyerKey(sale)
+    if (!payments.has(key)) payments.set(key, [])
+    payments.get(key).push(saleAt(sale))
+  }
+  const out = { started: trials.size, in_trial: 0, converted: 0, not_converted: 0, app_store_started: 0, trial_days: TRIAL_DAYS, grace_days: TRIAL_GRACE_DAYS }
+  for (const [key, trial] of trials) {
+    if (trial.app) out.app_store_started++
+    const deadline = trial.end + TRIAL_GRACE_DAYS * DAY
+    const paid = (payments.get(key) || []).some((at) => at >= trial.start && at <= deadline)
+    if (paid) out.converted++
+    else if (now <= deadline) out.in_trial++
+    else out.not_converted++
+  }
+  return out
+}
+
 // New buyers per acquisition channel and per specific source, whole range.
 export function rangeAcquisitionTotals(sales) {
   const byAcquisition = {}, bySource = {}
@@ -183,8 +241,14 @@ export default async function handler(req, res) {
     if (range.error) return json(res, 400, { success: false, error: range.error })
     const { from, to } = range
     const [inventory, health, alerts, failures] = await Promise.all([
-      readReliableRange({ from, to }), getHealth(), listAlerts(20), listWebhookFailures().catch(() => []),
+      readReliableRange({ from, to: trialHistoryTo(from, to) }), getHealth(), listAlerts(20), listWebhookFailures().catch(() => []),
     ])
+    // The scan reaches past `to` only so trial conversions can be matched;
+    // every other figure uses the requested [from,to) range.
+    const toMs = Date.parse(to)
+    const historySales = inventory.sales
+    inventory.sales = historySales.filter((row) => (Date.parse(row.occurred_at || row.paid_at) || 0) < toMs)
+    inventory.coverage = { ...inventory.coverage, to, trial_history_to: inventory.coverage.to }
     // Canonical records are joined only by the existing per-user key and invoice proof.
     // The range scan returns KV order, not time order. Newest first, so the
     // display limit shows the most recent sales rather than an arbitrary slice.
@@ -253,7 +317,7 @@ export default async function handler(req, res) {
       success: true,
       generated_at: new Date().toISOString(),
       coverage: { ...inventory.coverage, ...buyerCoverage(allSales), display_limit: limit, returned_records: sales.length, totals_scope: 'All stored records in range, independently of display limit; revenue includes only verified invoices.', invoice_reads: invoiceReads, range_days: range.days },
-      range_totals: { ...rangeTotals, ...rangeAcquisitionTotals(allSales) },
+      range_totals: { ...rangeTotals, ...rangeAcquisitionTotals(allSales), trial_outcomes: trialOutcomes(allSales, historySales, { from, to }) },
       deployment: {
         commit: process.env.VERCEL_GIT_COMMIT_SHA || null,
         branch: process.env.VERCEL_GIT_COMMIT_REF || null,
