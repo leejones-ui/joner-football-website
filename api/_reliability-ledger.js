@@ -44,7 +44,7 @@ function meaningful(value) {
   return Boolean(text && !['unknown', 'none', 'null', 'direct', 'no_safe_join'].includes(text))
 }
 
-function mergeReliableSale(existing, incoming) {
+export function mergeReliableSale(existing, incoming) {
   const patch = Object.fromEntries(Object.entries(incoming).filter(([, value]) => value !== undefined && value !== null && value !== ''))
   const merged = {
     ...(existing || {}),
@@ -55,6 +55,14 @@ function mergeReliableSale(existing, incoming) {
     updated_at: new Date().toISOString(),
   }
   if (meaningful(existing?.acquisition) && !meaningful(incoming?.acquisition)) merged.acquisition = existing.acquisition
+  // A Uscreen signup-UTM inference never replaces a journey-joined source.
+  const existingJoined = meaningful(existing?.acquisition) && String(existing?.confidence || '').toLowerCase() !== 'inferred'
+  if (existingJoined && String(incoming?.confidence || '').toLowerCase() === 'inferred') {
+    for (const key of ['acquisition', 'confidence', 'evidence', 'source', 'medium', 'campaign', 'adset', 'ad', 'placement', 'landing_page', 'last_page', 'journey_id', 'join_method']) {
+      if (key in existing) merged[key] = existing[key]
+      else delete merged[key]
+    }
+  }
   return merged
 }
 

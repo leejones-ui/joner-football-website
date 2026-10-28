@@ -1,7 +1,7 @@
 import { reconcileInvoiceLedger } from './_invoice-ledger-reconciliation.js'
 import { listReliableSales, appendReliableSale, listWebhookFailures } from './_reliability-ledger.js'
-import { reconcilePayment } from './checkout-bridge.js'
-import { attemptFirstPaidAutoSend } from './_uscreen-webhook.js'
+import { reconcilePayment, applySignupUtmFallback } from './checkout-bridge.js'
+import { attemptFirstPaidAutoSend, fetchCustomerSignupAttribution } from './_uscreen-webhook.js'
 import { setHealthField, bumpHealthCounter, getHealth, recordAlert } from './_attribution-health.js'
 
 // Hourly reconciliation and retry for the sales attribution system.
@@ -93,31 +93,48 @@ async function retryFirstPaidCandidates(limit = 25) {
   return out
 }
 
-// Step B: re-reconcile recent unknown sales. A checkout identity that arrived
-// after the payment webhook makes the email-hash join succeed on retry.
-async function reconcileUnknownSales(limit = 50) {
-  const out = { checked: 0, reclassified: 0 }
-  const sales = await listReliableSales(fetch, 200)
+// Step B: re-reconcile unknown sales. A checkout identity that arrived after
+// the payment webhook makes the email-hash join succeed on retry. When no
+// journey joins, the buyer's Uscreen signup UTMs classify the sale with
+// confidence 'inferred' (evidence 'uscreen_signup_utm'). That fallback also
+// sweeps older unknown rows outside the 7-day journey window, once per row.
+// An inferred row is retried for a journey join inside the window and is only
+// replaced by a real join, never by another inference; an exact join is never
+// overwritten (meaningful non-inferred rows are skipped entirely).
+const SIGNUP_UTM_CHECK_VERSION = 'v1-2026-10-28'
+export async function reconcileUnknownSales(limit = 50, { fetchSignup = fetchCustomerSignupAttribution, list = listReliableSales, append = appendReliableSale, reconcile = reconcilePayment, signupReads = 25 } = {}) {
+  const out = { checked: 0, reclassified: 0, signup_utm_checked: 0, signup_utm_reclassified: 0 }
+  const sales = await list(fetch, 200)
+  let reads = 0
   for (const sale of sales) {
     if (out.checked >= limit) break
-    if (meaningfulAcquisition(sale.acquisition)) continue
     if (sale.kind === 'refund') continue
-    const occurred = Date.parse(sale.occurred_at || '') || 0
-    if (!occurred || Date.now() - occurred > RETRY_WINDOW_MS) continue
+    const inferredRow = String(sale.confidence || '').toLowerCase() === 'inferred'
+    if (meaningfulAcquisition(sale.acquisition) && !inferredRow) continue
     if (!sale.email_sha256 && !sale.uscreen_user_id) continue
+    const occurred = Date.parse(sale.occurred_at || '') || 0
+    const inWindow = occurred && Date.now() - occurred <= RETRY_WINDOW_MS
+    const signupDue = !inferredRow && sale.uscreen_user_id && sale.signup_utm_checked !== SIGNUP_UTM_CHECK_VERSION && reads < signupReads
+    if (!inWindow && !signupDue) continue
     out.checked += 1
+    let signup
+    if (signupDue) {
+      reads += 1
+      out.signup_utm_checked += 1
+      try { signup = await fetchSignup(sale.uscreen_user_id) } catch { signup = undefined }
+    }
     let reconciliation
     try {
-      reconciliation = await reconcilePayment({
-        user_id: sale.uscreen_user_id,
-        email_hash: sale.email_sha256,
-        journey_id: sale.journey_id,
-        event_date: sale.occurred_at,
-      })
+      reconciliation = inWindow
+        ? await reconcile({ user_id: sale.uscreen_user_id, email_hash: sale.email_sha256, journey_id: sale.journey_id, event_date: sale.occurred_at, uscreen_signup_utms: signup })
+        : applySignupUtmFallback({ classification: 'unknown', confidence: 'none', evidence: ['outside_journey_retry_window'], join_method: 'none' }, signup)
     } catch { continue }
     const attempts = Number(sale.reconcile_attempts || 0) + 1
-    if (meaningfulAcquisition(reconciliation?.classification)) {
-      await appendReliableSale({
+    const stamp = { reconcile_attempts: attempts, last_reconciled_at: new Date().toISOString(), ...(signupDue ? { signup_utm_checked: SIGNUP_UTM_CHECK_VERSION } : {}) }
+    const joined = Boolean(reconciliation?.journey_id)
+    const accept = meaningfulAcquisition(reconciliation?.classification) && (!inferredRow || joined)
+    if (accept) {
+      await append({
         ...sale,
         acquisition: reconciliation.classification,
         confidence: reconciliation.confidence,
@@ -128,19 +145,20 @@ async function reconcileUnknownSales(limit = 50) {
         adset: reconciliation.adset,
         ad: reconciliation.ad,
         placement: reconciliation.placement,
-        landing_page: reconciliation.landing_page,
+        landing_page: reconciliation.landing_page || sale.landing_page,
+        last_page: reconciliation.last_page || sale.last_page,
         journey_id: reconciliation.journey_id,
         join_method: reconciliation.join_method,
         has_fbc: Boolean(reconciliation.fbc) || sale.has_fbc,
         has_fbp: Boolean(reconciliation.fbp) || sale.has_fbp,
         has_fbclid: Boolean(reconciliation.fbclid) || sale.has_fbclid,
-        reconcile_attempts: attempts,
-        last_reconciled_at: new Date().toISOString(),
+        ...stamp,
       })
       out.reclassified += 1
-      await bumpHealthCounter('reconcile_reclassified')
+      if (reconciliation.confidence === 'inferred') out.signup_utm_reclassified += 1
+      await bumpHealthCounter('reconcile_reclassified').catch(() => {})
     } else {
-      await appendReliableSale({ ...sale, reconcile_attempts: attempts, last_reconciled_at: new Date().toISOString() })
+      await append({ ...sale, ...stamp })
     }
   }
   return out
@@ -190,10 +208,12 @@ async function checkInvoiceContinuity({ deep }) {
           const { sha256 } = await import('./_attribution-ledger.js')
           emailHash = sha256(email)
         }
+        const signup = await fetchCustomerSignupAttribution(invoice.user_id).catch(() => undefined)
         reconciliation = await reconcilePayment({
           user_id: invoice.user_id,
           email_hash: emailHash,
           event_date: new Date(paidAtMs).toISOString(),
+          uscreen_signup_utms: signup,
         })
       } catch { reconciliation = { classification: 'unknown', confidence: 'none', evidence: ['continuity_reconcile_error'] } }
       await appendReliableSale({
@@ -219,6 +239,7 @@ async function checkInvoiceContinuity({ deep }) {
         adset: reconciliation?.adset,
         ad: reconciliation?.ad,
         placement: reconciliation?.placement,
+        landing_page: reconciliation?.landing_page,
         journey_id: reconciliation?.journey_id,
         join_method: reconciliation?.join_method,
       })
@@ -253,7 +274,7 @@ export default async function handler(req, res) {
   try {
     summary.invoiceMoney = await reconcileInvoiceLedger({ limit: deep ? 25 : 10 })
     summary.firstPaid = await retryFirstPaidCandidates(deep ? 100 : 25)
-    summary.unknowns = await reconcileUnknownSales(deep ? 150 : 50)
+    summary.unknowns = await reconcileUnknownSales(deep ? 150 : 50, { signupReads: deep ? 100 : 25 })
     summary.continuity = await checkInvoiceContinuity({ deep })
     summary.health = await evaluateHealth()
     await setHealthField('cron_last_run_at', new Date().toISOString())

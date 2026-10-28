@@ -1,13 +1,14 @@
 import crypto from 'node:crypto'
+import { isMetaPaidTouch, isOrganicSocialTouch, isOrganicSocialMedium, normalizeSource, normalizeMedium, isPaidMedium } from './_source-taxonomy.js'
 
 export const LEDGER_TTL_SECONDS = 90 * 24 * 60 * 60
 export const MAX_SALES = 50
 export const JOURNEY_COOKIE = 'jfa_journey'
-export const ATTRIBUTION_CLASSES = new Set(['exact_paid_meta', 'meta', 'email', 'organic', 'direct', 'referral', 'apple', 'google', 'unknown'])
+export const ATTRIBUTION_CLASSES = new Set(['exact_paid_meta', 'meta', 'organic_social', 'email', 'organic', 'direct', 'referral', 'apple', 'google', 'unknown'])
 export const FIRST_PARTY_TRACKING_KEYS = ['gclid', 'ttclid', 'msclkid', 'ga_client_id', 'ga_session_id', 'source_detail', 'link_token', 'source_taxonomy']
 
 const MAX = { journey: 80, event: 80, text: 240, url: 1000 }
-const TRACKING_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid', 'fbc', 'fbp', 'gclid', 'ttclid', 'msclkid', 'ga_client_id', 'ga_session_id', 'source_detail', 'link_token', 'source_taxonomy', 'campaign', 'campaign_id', 'adset', 'adset_id', 'ad', 'ad_id', 'placement']
+const TRACKING_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'utm_id', 'fbclid', 'fbc', 'fbp', 'gclid', 'ttclid', 'msclkid', 'ga_client_id', 'ga_session_id', 'source_detail', 'link_token', 'source_taxonomy', 'campaign', 'campaign_id', 'adset', 'adset_id', 'ad', 'ad_id', 'placement']
 const EVENT_NAMES = new Set(['page_view', 'cta_click', 'checkout_click', 'checkout_bridge', 'checkout_identity', 'form_start', 'form_submit', 'purchase', 'subscription', 'refund', 'renewal'])
 
 export function clean(value, max = MAX.text) {
@@ -114,44 +115,65 @@ export function classifyAttribution({ journey, payment = {}, now = Date.now() } 
   return { classification: 'unknown', confidence: 'none', evidence: ['no_safe_join'] }
 }
 
+// Meta paid only: a paid medium or a campaign/ad-set/ad id is required. An
+// fbclid (or the fbc cookie built from it) on its own is not paid evidence,
+// because organic Facebook and Instagram link clicks carry one too.
 export function isMetaTouch(touch = {}) {
-  const source = String(touch.utm_source || touch.source || '').toLowerCase()
-  const medium = String(touch.utm_medium || '').toLowerCase().replace(/[- ]/g, '_')
-  return Boolean(
-    touch.fbclid
-    || touch.fbc
-    || ['facebook', 'instagram', 'meta'].includes(source)
-    || medium === 'paid_social'
-    || medium === 'paidsocial'
-  )
+  return isMetaPaidTouch(touch)
 }
 
 export function isExactPaidMeta(touch = {}) {
-  const source = String(touch.utm_source || touch.source || '').toLowerCase()
-  const medium = String(touch.utm_medium || '').toLowerCase().replace(/[- ]/g, '_')
+  const source = normalizeSource(touch.utm_source || touch.source)
+  const medium = normalizeMedium(touch.utm_medium)
   const clickIdentity = Boolean(touch.fbclid || touch.fbc)
-  const campaignId = touch.campaign_id || touch.campaign
+  const campaignId = touch.campaign_id || touch.utm_id || touch.campaign
   const adsetId = touch.adset_id || touch.adset
   const adId = touch.ad_id || touch.ad
-  return Boolean(clickIdentity && campaignId && adsetId && adId && (medium === 'paid_social' || medium === 'paidsocial' || source === 'facebook' || source === 'instagram' || source === 'meta'))
+  if (isOrganicSocialMedium(medium)) return false
+  return Boolean(clickIdentity && campaignId && adsetId && adId && (isPaidMedium(medium) || ['facebook', 'instagram', 'meta', 'meta_ads'].includes(source)))
 }
 
-function classifyTouch(touch = {}) {
-  const source = String(touch.utm_source || touch.source || '').toLowerCase()
+export function classifyTouch(touch = {}) {
+  const source = normalizeSource(touch.utm_source || touch.source)
+  const medium = normalizeMedium(touch.utm_medium)
   if (touch.apple || source.includes('apple')) return 'apple'
   if (isExactPaidMeta(touch)) return 'exact_paid_meta'
-  // Meta source/click proof is still a Meta sale when the ad URL did not
-  // preserve every campaign, ad-set, or ad identifier. Keep exact ad-level
-  // proof separate, but do not mislabel a known Meta conversion as unknown.
+  // Meta paid evidence without every campaign, ad-set and ad id is still a
+  // Meta ad sale. Keep exact ad-level proof separate.
   if (isMetaTouch(touch)) return 'meta'
-  if (touch.utm_medium === 'organic' || source.includes('organic')) return 'organic'
+  // Organic social keeps the specific source (main_instagram, manychat_facebook,
+  // youtube_coaches...) on the sale's source field; this is the channel.
+  if (isOrganicSocialTouch({ ...touch, utm_source: source, utm_medium: medium, fbclid: undefined, fbc: undefined })) return 'organic_social'
+  if (medium === 'organic' || source.includes('organic')) return 'organic'
   if (source.includes('google') || touch.gclid) return 'google'
-  if (source === 'email' || source.includes('newsletter') || source.includes('brevo')) return 'email'
-  if (source === 'referral' || touch.utm_medium === 'referral' || touch.referrer) return 'referral'
-  if (source === 'direct' || touch.utm_medium === 'direct') return 'direct'
-  if (source || touch.utm_campaign || touch.referrer) return 'unknown'
+  if (source === 'email' || source === 'brevo/email' || source === 'lee_manual_email' || source.includes('newsletter') || source.includes('brevo') || medium === 'email') return 'email'
+  // A Meta click id with no paid evidence and no other source is organic social.
+  if (!source && (touch.fbclid || touch.fbc)) return 'organic_social'
+  if (source === 'referral' || medium === 'referral' || touch.referrer) return 'referral'
+  if (source === 'direct' || medium === 'direct') return 'direct'
   // Missing first-touch evidence is not proof of a direct visit.
   return 'unknown'
+}
+
+// Fallback for a sale with no journey join: classify from the buyer's
+// signup-time UTMs that Uscreen stores on the customer. Never "exact": the
+// result is confidence 'inferred' with evidence 'uscreen_signup_utm', and a
+// caller must only apply it when no journey join succeeded.
+export function classifySignupUtms(utms = {}) {
+  const touch = {}
+  for (const key of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'utm_id', 'campaign_id', 'adset_id', 'ad_id', 'placement', 'fbclid', 'fbc', 'gclid', 'referrer']) {
+    const value = clean(utms?.[key], key === 'fbc' || key === 'fbclid' ? 500 : 240)
+    if (value) touch[key] = value
+  }
+  if (!Object.keys(touch).length) return undefined
+  const classification = classifyTouch(touch)
+  if (!classification || classification === 'unknown') return undefined
+  return {
+    classification: classification === 'exact_paid_meta' ? 'meta' : classification,
+    confidence: 'inferred',
+    evidence: ['uscreen_signup_utm'],
+    touch,
+  }
 }
 
 function getKvConfig() {

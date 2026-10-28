@@ -173,6 +173,9 @@ export async function mergeCustomerSignupAttribution(eventData, fetchImpl = fetc
   const decoded = decodeUscreenSource(signup.utm_source)
   if (decoded.jf_journey_id && !merged.jf_journey_id) merged.jf_journey_id = decoded.jf_journey_id
   merged.jf_attribution_fallback = 'uscreen_customer_signup_utms'
+  // Kept as its own object so reconcilePayment can classify the sale from the
+  // signup UTMs (confidence 'inferred') when no journey join exists.
+  merged.uscreen_signup_utms = signup
   return merged
 }
 
@@ -853,6 +856,7 @@ export async function processUscreenPayload(data) {
         ad: reconciliation.ad,
         placement: reconciliation.placement,
         landing_page: reconciliation.landing_page,
+        last_page: reconciliation.last_page,
         journey_id: reconciliation.journey_id,
         first_touch: reconciliation.first_touch,
         last_touch: reconciliation.last_touch,

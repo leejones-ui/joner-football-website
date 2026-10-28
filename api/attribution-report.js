@@ -48,6 +48,91 @@ export function mergedSales(legacy, reliable) {
 }
 
 function json(res, status, body) { return res.status(status).json(body) }
+
+// Query params (dashboard contract, 28 Oct 2026):
+//   limit  rows returned, 1-200 (default 50). Totals never depend on it.
+//   days   whole days back from `to` (or now), 1-3660.
+//   from / to  ISO dates or timestamps, interval [from,to). They win over days.
+// Default range: the last 30 days.
+export function reportLimit(value) {
+  return Math.min(Math.max(Math.floor(Number(value)) || 50, 1), 200)
+}
+export function reportRange(query = {}, now = Date.now()) {
+  const days = /^\d+$/.test(String(query.days ?? '').trim()) ? Math.min(Math.max(Number(query.days), 1), 3660) : undefined
+  if (query.days !== undefined && query.days !== '' && days === undefined) return { error: 'Invalid days' }
+  const rawFrom = query.from ? String(query.from) : undefined
+  const rawTo = query.to ? String(query.to) : undefined
+  const toMs = rawTo ? Date.parse(rawTo) : now
+  const fromMs = rawFrom ? Date.parse(rawFrom) : toMs - (days || 30) * 86400000
+  if (!Number.isFinite(fromMs) || !Number.isFinite(toMs) || fromMs >= toMs) return { error: 'Invalid from/to range' }
+  return {
+    from: rawFrom || new Date(fromMs).toISOString(),
+    to: rawTo || new Date(toMs).toISOString(),
+    days: rawFrom ? Math.round((toMs - fromMs) / 86400000 * 100) / 100 : (days || 30),
+  }
+}
+
+const APP_STORE_ORIGINS = new Set(['apple', 'android', 'amazon', 'roku', 'external_apple', 'external_google', 'google_play', 'ios', 'app_store', 'play_store'])
+const unknownAcquisition = (value) => ['unknown', 'none', 'null', ''].includes(String(value || '').toLowerCase())
+export function isAppStoreSale(sale) {
+  return sale.payment_channel === 'native_app' || sale.payment_verification?.channel === 'native_app'
+    || APP_STORE_ORIGINS.has(String(sale.billing_origin || sale.payment_verification?.provider || '').toLowerCase())
+}
+// A new buyer is a positive, non-trial first payment (not a renewal or refund).
+export function isNewBuyerSale(sale) {
+  if (sale.kind !== 'payment' || sale.trial === true) return false
+  if (sale.category && ['renewal', 'refund', 'trial', 'freebie', 'zero_value'].includes(sale.category)) return false
+  const amount = Number(sale.payment_verification?.verified ? sale.payment_verification.amount : (sale.amount ?? sale.webhook_amount))
+  return amount > 0
+}
+const buyerKey = (sale) => String(sale.uscreen_user_id || sale.customer_reference || (sale.email_sha256 ? String(sale.email_sha256).slice(0, 16) : '') || `sale:${sale.sale_id}`)
+
+// Coverage over the whole requested range, deduped per buyer:
+// new_buyers = tracked_buyers + untracked_buyers + app_store_buyers.
+// App store buyers pay inside the iOS/Android app, so web attribution cannot
+// see them; they are counted on their own and left out of the rate.
+export function buyerCoverage(sales) {
+  const buyers = new Map()
+  for (const sale of sales) {
+    if (!isNewBuyerSale(sale)) continue
+    const key = buyerKey(sale)
+    const prev = buyers.get(key) || { app: false, tracked: false }
+    const app = prev.app || isAppStoreSale(sale)
+    buyers.set(key, { app, tracked: prev.tracked || !unknownAcquisition(sale.acquisition) })
+  }
+  let tracked = 0, untracked = 0, appStore = 0
+  for (const buyer of buyers.values()) {
+    if (buyer.app) appStore++
+    else if (buyer.tracked) tracked++
+    else untracked++
+  }
+  const web = tracked + untracked
+  return {
+    new_buyers: buyers.size,
+    tracked_buyers: tracked,
+    untracked_buyers: untracked,
+    app_store_buyers: appStore,
+    tracked_rate: web ? Number((tracked / web).toFixed(3)) : null,
+    tracked_rate_scope: 'tracked_buyers / (tracked_buyers + untracked_buyers); app store buyers excluded',
+  }
+}
+
+// New buyers per acquisition channel and per specific source, whole range.
+export function rangeAcquisitionTotals(sales) {
+  const byAcquisition = {}, bySource = {}
+  const seen = new Set()
+  for (const sale of sales) {
+    if (!isNewBuyerSale(sale)) continue
+    const key = buyerKey(sale)
+    if (seen.has(key)) continue
+    seen.add(key)
+    const acquisition = isAppStoreSale(sale) ? 'app_store' : (unknownAcquisition(sale.acquisition) ? 'unknown' : String(sale.acquisition).toLowerCase())
+    byAcquisition[acquisition] = (byAcquisition[acquisition] || 0) + 1
+    const source = String(sale.source_taxonomy && sale.source_taxonomy !== 'unknown' ? sale.source_taxonomy : (sale.source || acquisition)).toLowerCase().slice(0, 60)
+    bySource[source] = (bySource[source] || 0) + 1
+  }
+  return { new_buyers: seen.size, new_buyers_by_acquisition: byAcquisition, new_buyers_by_source: bySource }
+}
 function authorized(req) {
   const expected = process.env.ATTRIBUTION_REPORT_TOKEN || process.env.OWNER_API_TOKEN
   const actual = String(req.headers?.authorization || '')
@@ -93,10 +178,10 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') return json(res, 405, { success: false, error: 'Method not allowed' })
   try {
     const ids = String(req.query?.journey_ids || '').split(',').map((id) => id.trim()).filter(Boolean).slice(0, 100)
-    const limit = Math.min(Math.max(Number(req.query?.limit) || 50, 1), 200)
-    const from = String(req.query?.from || new Date(Date.now() - 30 * 86400000).toISOString())
-    const to = String(req.query?.to || new Date().toISOString())
-    if (!Number.isFinite(Date.parse(from)) || !Number.isFinite(Date.parse(to)) || Date.parse(from) >= Date.parse(to)) return json(res, 400, { success: false, error: 'Invalid from/to range' })
+    const limit = reportLimit(req.query?.limit)
+    const range = reportRange(req.query)
+    if (range.error) return json(res, 400, { success: false, error: range.error })
+    const { from, to } = range
     const [inventory, health, alerts, failures] = await Promise.all([
       readReliableRange({ from, to }), getHealth(), listAlerts(20), listWebhookFailures().catch(() => []),
     ])
@@ -167,8 +252,8 @@ export default async function handler(req, res) {
     return json(res, 200, {
       success: true,
       generated_at: new Date().toISOString(),
-      coverage: { ...inventory.coverage, display_limit: limit, returned_records: sales.length, totals_scope: 'All stored records in range, independently of display limit; revenue includes only verified invoices.', invoice_reads: invoiceReads },
-      range_totals: rangeTotals,
+      coverage: { ...inventory.coverage, ...buyerCoverage(allSales), display_limit: limit, returned_records: sales.length, totals_scope: 'All stored records in range, independently of display limit; revenue includes only verified invoices.', invoice_reads: invoiceReads, range_days: range.days },
+      range_totals: { ...rangeTotals, ...rangeAcquisitionTotals(allSales) },
       deployment: {
         commit: process.env.VERCEL_GIT_COMMIT_SHA || null,
         branch: process.env.VERCEL_GIT_COMMIT_REF || null,

@@ -1,11 +1,54 @@
-import { getJourney, normalizeJourneyId, sanitizeIdentity, sha256, classifyAttribution, getEmailJourneyCandidates, indexEmailJourney } from './_attribution-ledger.js'
+import { getJourney, normalizeJourneyId, sanitizeIdentity, sha256, classifyAttribution, classifySignupUtms, getEmailJourneyCandidates, indexEmailJourney } from './_attribution-ledger.js'
+import { decodeUscreenSource } from './_attribution.js'
 import { getJourneyByUscreenUserId, getSignedJourney, linkJourneyIdentity, verifyJourneyToken } from './_journey-ledger.js'
 
 function json(res, status, body) { return res.status(status).json(body) }
 function cors(req, res) { const origin = req.headers?.origin; if (origin === 'https://app.jonerfootball.com') res.setHeader('Access-Control-Allow-Origin', origin); res.setHeader('Vary', 'Origin'); res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS'); res.setHeader('Access-Control-Allow-Headers', 'content-type') }
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
 
-export async function reconcilePayment(payment) {
+// Landing page for a sale. Legacy jfa touches carry landing_url/path; signed
+// journeys keep the page outside the touch as first_page_path (where the
+// journey landed) and latest_page_path.
+export function journeyLandingPage(journey) {
+  const touch = journey?.last_touch || journey?.first_touch || {}
+  return touch.landing_url || touch.path || journey?.first_page_path || journey?.latest_page_path || undefined
+}
+
+// No journey join: classify from the buyer's Uscreen signup UTMs. Confidence is
+// 'inferred' and evidence 'uscreen_signup_utm'. Only ever applied when the
+// journey reconciliation found no journey, so it can never replace an exact join.
+export function applySignupUtmFallback(result, signupUtms) {
+  if (!result || result.journey_id) return result
+  if (result.classification && !['unknown', 'none'].includes(String(result.classification).toLowerCase())) return result
+  if (!signupUtms || typeof signupUtms !== 'object') return result
+  const decoded = decodeUscreenSource(signupUtms.utm_source)
+  const utms = { ...signupUtms, ...Object.fromEntries(Object.entries(decoded).filter(([key, value]) => value && key !== 'encoded_source' && key !== 'jf_journey_id')) }
+  const inferred = classifySignupUtms(utms)
+  if (!inferred) return result
+  const touch = inferred.touch
+  return {
+    ...result,
+    classification: inferred.classification,
+    confidence: inferred.confidence,
+    evidence: [...(result.evidence || []), ...inferred.evidence],
+    join_method: 'uscreen_signup_utm',
+    source: touch.utm_source,
+    medium: touch.utm_medium,
+    campaign: touch.campaign_id || touch.utm_campaign,
+    adset: touch.adset_id,
+    ad: touch.ad_id,
+    placement: touch.placement,
+    fbclid: result.fbclid || touch.fbclid,
+    fbc: result.fbc || touch.fbc,
+  }
+}
+
+export async function reconcilePayment(payment = {}) {
+  const result = await reconcileJourney(payment)
+  return applySignupUtmFallback(result, payment.uscreen_signup_utms)
+}
+
+async function reconcileJourney(payment) {
   const withTouch = (result, journey) => {
     const touch = journey?.last_touch || journey?.first_touch || {}
     return {
@@ -17,7 +60,8 @@ export async function reconcilePayment(payment) {
       adset: touch.adset_id || touch.adset,
       ad: touch.ad_id || touch.ad,
       placement: touch.placement,
-      landing_page: touch.landing_url || touch.path,
+      landing_page: journeyLandingPage(journey),
+      last_page: journey?.latest_page_path,
       fbc: touch.fbc,
       fbp: touch.fbp,
       fbclid: touch.fbclid,

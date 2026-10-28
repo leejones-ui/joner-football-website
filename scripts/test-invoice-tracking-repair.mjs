@@ -23,7 +23,14 @@ assert.equal(sale.last_touch.ad_id,undefined,'Do not invent current ad identity'
 assert.equal(verificationChecks(sale,{...canonical,uscreenOrderId:'999',reconciliation:{paymentId:'999'}}).event_accepted,false)
 assert.equal(verificationChecks(sale,{...canonical,metaEvent:{custom_data:{value:227.31,currency:'USD'}}}).event_money_correct,true)
 assert.equal(acquisitionCategory({source:'facebook',medium:'social',acquisition:'meta'}),'organic_social')
-assert.equal(acquisitionCategory({source:'facebook',acquisition:'meta'}),'unknown')
+// 28 Oct 2026: Meta paid needs a paid medium or a campaign/ad id. A bare
+// Facebook source (legacy 'meta' rows built from an fbclid) is organic social.
+assert.equal(acquisitionCategory({source:'facebook',acquisition:'meta'}),'organic_social')
+assert.equal(acquisitionCategory({source:'facebook',medium:'paid_social',acquisition:'meta'}),'unknown')
+assert.equal(acquisitionCategory({source:'main_instagram',medium:'social',acquisition:'unknown'}),'organic_social')
+assert.equal(acquisitionCategory({source:'manychat_facebook',medium:'automation',acquisition:'unknown'}),'organic_social')
+assert.equal(acquisitionCategory({source:'youtube-es',acquisition:'unknown'}),'organic_social')
+assert.equal(acquisitionCategory({acquisition:'organic_social'}),'organic_social')
 assert.equal(saleCategory({...sale,kind:'renewal'}),'renewal')
 const totals=aggregateVerifiedSales([sale,{...sale,payment_verification:{...truth,invoiceId:'102',amount:13.9,currency:'GBP'}}],true)
 assert.deepEqual(totals.revenue_by_currency,{USD:227.31,GBP:13.9});assert.equal(totals.roas,null)

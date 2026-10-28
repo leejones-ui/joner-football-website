@@ -1,4 +1,5 @@
 // Payment truth is independent of acquisition and transport receipt.
+import { isOrganicSocialTouch, isMetaPaidTouch } from './_source-taxonomy.js'
 const id = (v) => v == null ? '' : String(v).trim()
 const minorUnits = { USD: 2, GBP: 2, AUD: 2, EUR: 2, CAD: 2, NZD: 2, JPY: 0, KRW: 0, BHD: 3, KWD: 3 }
 export function moneyPair(amount, currency) {
@@ -60,12 +61,15 @@ export function acquisitionCategory(sale) {
   const checks = sale.proof_checks || verificationChecks(sale)
   if (checks.ad_identified) return 'paid_meta'
   const touch = sale.last_touch || {}
-  const source = id(touch.utm_source || sale.source).toLowerCase()
-  const medium = id(touch.utm_medium || sale.medium).toLowerCase()
-  if (['fb','facebook','ig','instagram'].includes(source) && ['social','organic','organic_social'].includes(medium)) return 'organic_social'
-  // An unlabeled Facebook source is unknown paid-vs-organic, not an ad.
-  if (['meta','facebook','instagram','paid_social'].includes(id(sale.acquisition).toLowerCase())) return 'unknown'
-  return ['email','organic','referral','direct'].includes(sale.acquisition) ? sale.acquisition : 'unknown'
+  const evidence = { ...touch, utm_source: touch.utm_source || sale.source, utm_medium: touch.utm_medium || sale.medium }
+  const acquisition = id(sale.acquisition).toLowerCase()
+  // Canonical list (_source-taxonomy.js): main_instagram, app_instagram,
+  // manychat_*, youtube*, tiktok... with no paid evidence are organic social.
+  if (acquisition === 'organic_social') return 'organic_social'
+  if (!isMetaPaidTouch(evidence) && (evidence.utm_source || evidence.utm_medium) && isOrganicSocialTouch({ ...evidence, fbclid: undefined, fbc: undefined })) return 'organic_social'
+  // A Meta sale without a verifiable ad id stays unknown paid-vs-organic here.
+  if (['meta','facebook','instagram','paid_social'].includes(acquisition)) return 'unknown'
+  return ['email','organic','referral','direct'].includes(acquisition) ? acquisition : 'unknown'
 }
 export function aggregateVerifiedSales(sales, complete) {
   const out = { records: sales.length, paid_invoices: 0, first_payments: 0, renewals: 0, trials: 0, freebies: 0, unverified: 0, revenue_by_currency: {}, roas: null, roas_reason: 'Spend, acquisition and reporting windows must be reconciled in the same currency.' }
