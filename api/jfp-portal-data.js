@@ -67,7 +67,7 @@ import { holidayMoneyData, holidaySizes, HOLIDAY_BANK } from './_holiday-money.j
 import { proMoneyData, isProRow, PRO_BANK } from './_jfp-pro-money.js'
 import { billPlan, afterBill, billLine, coveredOf, withQuote } from './_jfp-quote.js'
 import { playerQuote, saveQuote, saveDefaultQuote, addQuote, termRun } from './_jfp-quote-staff.js'
-import { linkProfile, accountsWithNoSession, allAccounts } from './_jfp-account-open.js'
+import { linkProfile, accountsWithNoSession, allAccounts, accountOf } from './_jfp-account-open.js'
 import { removedPlayers, removedMatches, removedPrefill, reasonCounts, removedSource, backNote, markAddedBack } from './_jfp-removed.js'
 import { campsMoneyData, campsStripe } from './_jfp-camps.js'
 import { isPeriodId, periodOf as holidayPeriodOf, periodLabel, pickablePeriods, rangeLabel, OTHER, OTHER_LABEL } from './_holiday-periods.js'
@@ -82,6 +82,7 @@ import { feePdfAttachment, docForPayreq, docForInvoice, pdfDownload } from './_j
 import { invoiceRefOf } from './_jfp-bank-match.js'
 // Saved card or bank account, auto-charge after each session (claude/card-on-file).
 import { accountAlerts, newAccountsData } from './_jfp-new-accounts.js'
+import { viewAccount, allAccountView, linkExistingPlayer, mergeAccounts, mergePreview, changeContactEmail, markReviewed, archiveAccount, restoreAccount, deleteEmptyAccount } from './_jfp-account-admin.js'
 import { followUpsAll, saveFollowUp, cameFrom, trialStage, pipelineCounts, STEPS, OUTCOMES } from './_jfp-trial-track.js'
 import { sessionValueAction } from './_jfp-session-value.js'
 import { ABSENCE_ACTIONS, absenceAction } from './_jfp-absence.js'
@@ -3587,6 +3588,61 @@ async function handle(req, res) {
     const principal = await staffPrincipal(req, config)
     if (!principal) return fail(res, 401, 'Please sign in.')
     const isAdmin = principal.role === 'admin'
+
+    // Account lifecycle actions are deliberately a separate admin gate. The
+    // normal New accounts list is read-only; destructive operations require a
+    // second explicit confirmation in the request body.
+    if (action === 'accountManage') {
+      if (!isAdmin) return fail(res, 403, 'Only Lee or Ligia can manage accounts.')
+      const op = clean(body.op, 40)
+      const profiles = await allProfiles().catch(() => [])
+      const roster = await loadRoster()
+      const [payments, waivers, sessions] = await Promise.all([
+        listPayreqs().catch(() => []),
+        Promise.resolve(roster.waivers || []),
+        Promise.resolve((roster.players || []).filter((r) => r.holdsPlace || r.groupId || r.sessionId)),
+      ])
+      const deps = { profiles, roster, payments, waivers, sessions }
+      if (op === 'list') return res.status(200).json({ success: true, accounts: await allAccountView(deps) })
+      if (op === 'view') {
+        const account = await viewAccount(body.email, deps)
+        return account ? res.status(200).json({ success: true, account }) : fail(res, 404, 'Account not found.')
+      }
+      if (op === 'mergePreview') {
+        const source = await accountOf(body.sourceEmail); const target = await accountOf(body.targetEmail)
+        const preview = mergePreview(source, target, deps)
+        return preview.ok ? res.status(200).json({ success: true, preview }) : fail(res, 409, preview.error)
+      }
+      if (op === 'mergeConfirm') {
+        if (body.confirm !== true) return fail(res, 400, 'Confirm the merge explicitly.')
+        const result = await mergeAccounts(body.sourceEmail, body.targetEmail, principal.email, deps)
+        return result.ok ? res.status(200).json(result) : fail(res, result.status || 409, result.error, result)
+      }
+      if (op === 'changeEmail') {
+        const result = await changeContactEmail(body.email, body.newEmail, principal.email, { profiles })
+        return result.ok ? res.status(200).json(result) : fail(res, result.status || 400, result.error)
+      }
+      if (op === 'review') {
+        const result = await markReviewed(body.email, principal.email)
+        return result.ok ? res.status(200).json(result) : fail(res, result.status || 404, result.error)
+      }
+      if (op === 'archive' || op === 'restore') {
+        const result = op === 'archive' ? await archiveAccount(body.email, principal.email) : await restoreAccount(body.email, principal.email)
+        return result.ok ? res.status(200).json(result) : fail(res, result.status || 404, result.error)
+      }
+      if (op === 'delete') {
+        if (body.confirm !== true) return fail(res, 400, 'Confirm permanent deletion explicitly.')
+        const result = await deleteEmptyAccount(body.email, principal.email, deps)
+        return result.ok ? res.status(200).json(result) : fail(res, result.status || 409, result.error, result)
+      }
+      if (op === 'linkPlayer') {
+        const p = profiles.find((x) => (body.profileId && x.id === body.profileId) || (body.profileKey && x.key === body.profileKey))
+        if (!p) return fail(res, 404, 'Player profile not found.')
+        const result = await linkExistingPlayer(body.email, { key: p.key, name: p.name, accountEmails: p.emails }, principal.email)
+        return result.ok ? res.status(200).json(result) : fail(res, result.status || 409, result.error)
+      }
+      return fail(res, 400, 'Unknown account action.')
+    }
 
     // ---------- coach and admin ----------
     if (action === 'me') {

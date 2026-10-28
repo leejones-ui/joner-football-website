@@ -390,7 +390,7 @@ async function renderNewAccounts(keep = false) {
     ${d.accounts.map((a, i) => `<tr><td data-col="who"><b>${esc(a.parent || a.email)}</b>${a.isNew ? ' <span class="ps-badge red"><i></i>New</span>' : ''}${a.kind === 'family' ? ' <span class="ps-tag">Known family</span>' : ''}<span class="ps-sub">${esc(a.email)}${a.mobile ? ` · ${esc(a.mobile)}` : ''}</span>${whereCell(a)}</td>
       <td data-col="group">${a.players.map((p) => `<div>${esc(p.name)}${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}${p.session ? ` <span class="muted small">· ${esc(p.session)}</span>` : ''}${p.club || p.level ? `<span class="ps-sub">${esc([p.club, p.level].filter(Boolean).join(' · '))}</span>` : ''}</div>`).join('') || '<span class="muted">None added yet</span>'}<div style="margin-top:4px">${tag(a)}</div></td>
       <td data-col="pay" class="small" style="white-space:nowrap">${esc(ago(a.createdAt))}${a.lastSignIn ? `<span class="ps-sub">Last in ${esc(ago(a.lastSignIn))}</span>` : ''}</td>
-      <td class="ps-end ps-keep">${a.players.filter((p) => !p.session).map((p, j) => `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-na-add="${i}:${j}" style="margin:2px 0">Add ${esc(p.name.split(' ')[0])} to a group</button>`).join('<br>')}</td></tr>`).join('') || `<tr><td colspan="4"><div class="ps-empty">${show === 'new' ? 'No new accounts yet. They show here as soon as someone signs up.' : show === 'away' ? 'Nobody from outside Sydney yet.' : 'No accounts yet.'}</div></td></tr>`}
+      <td class="ps-end ps-keep"><button type="button" class="j-btn j-btn-line j-btn-sm" data-na-actions="${i}" aria-label="Account actions for ${esc(a.email)}">Actions ▾</button>${a.players.filter((p) => !p.session).map((p, j) => `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-na-add="${i}:${j}" style="margin:2px 0">Add ${esc(p.name.split(' ')[0])} to a group</button>`).join('<br>')}</td></tr>`).join('') || `<tr><td colspan="4"><div class="ps-empty">${show === 'new' ? 'No new accounts yet. They show here as soon as someone signs up.' : show === 'away' ? 'Nobody from outside Sydney yet.' : 'No accounts yet.'}</div></td></tr>`}
     </tbody></table></div>`
   view().querySelectorAll('[data-na-show]').forEach((b) => b.addEventListener('click', () => { P.naShow = b.dataset.naShow; renderNewAccounts() }))
   view().querySelectorAll('[data-na-add]').forEach((b) => b.addEventListener('click', () => {
@@ -398,6 +398,41 @@ async function renderNewAccounts(keep = false) {
     const a = d.accounts[i], p = a.players.filter((x) => !x.session)[j]
     acctAddToGroup({ key: p.key, name: p.name, dob: p.dob, self: p.self, parentName: a.parent, mobile: a.mobile, email: a.email, club: p.club, level: p.level })
   }))
+  view().querySelectorAll('[data-na-actions]').forEach((b) => b.addEventListener('click', () => {
+    const a = d.accounts[Number(b.dataset.naActions)]
+    accountActionsMenu(b, a)
+  }))
+}
+
+async function accountAdmin(op, body = {}) {
+  const r = await post('accountManage', { op, ...body })
+  if (!r.ok) throw new Error(r.data.error || 'Account action failed')
+  return r.data
+}
+function accountActionsMenu(anchor, a) {
+  const archived = a.accountState === 'archived'
+  menu(anchor, [
+    { key: 'view', label: 'View account', run: async () => { try { const d = await accountAdmin('view', { email: a.email }); const refs = Object.entries(d.account.references || {}).filter(([, n]) => n).map(([k, n]) => `${k}: ${n}`).join(' · ') || 'No linked history found'; modal(`<h2>Account</h2><p><b>${esc(d.account.email)}</b></p><p class="muted small">State: ${esc(d.account.state)} · ${esc(refs)}</p><p class="muted small">Players: ${(d.account.players || []).map((p) => esc(p.name || p.key)).join(', ') || 'none'}</p><div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Close</button></div>`) } catch (e) { toast(e.message) } } },
+    { key: 'review', label: 'Mark reviewed', run: async () => { try { await accountAdmin('review', { email: a.email }); toast('Account marked reviewed'); renderNewAccounts() } catch (e) { toast(e.message) } } },
+    { key: 'email', label: 'Change contact email', run: () => changeAccountEmail(a) },
+    { key: 'link', label: 'Link existing player', run: () => linkAccountPlayer(a) },
+    { key: 'merge', label: 'Merge another account into this one', run: () => mergeAccountInto(a) },
+    '-',
+    { key: archived ? 'restore' : 'archive', label: archived ? 'Restore account' : 'Archive account', run: async () => { if (!await confirmBox(`${archived ? 'Restore' : 'Archive'} <b>${esc(a.email)}</b>?`, { ok: archived ? 'Restore' : 'Archive', danger: !archived })) return; try { await accountAdmin(archived ? 'restore' : 'archive', { email: a.email }); toast(archived ? 'Account restored' : 'Account archived'); renderNewAccounts() } catch (e) { toast(e.message) } } },
+    { key: 'delete', label: 'Permanently delete empty account', danger: true, run: async () => { if (!await confirmBox(`Permanently delete <b>${esc(a.email)}</b>? This is allowed only when the account has no linked players or history.`, { ok: 'Delete permanently', danger: true })) return; try { await accountAdmin('delete', { email: a.email, confirm: true }); toast('Empty account deleted'); renderNewAccounts() } catch (e) { toast(e.message) } } },
+  ])
+}
+function changeAccountEmail(a) {
+  const box = modal(`<h2>Change contact email</h2><p class="muted small">The old address is retained as an archived redirect. Existing history is not changed.</p><label class="j-field"><span>New email</span><input class="j-input" id="ae-email" type="email"></label><p class="j-err" id="ae-err" hidden></p><div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="ae-go">Change email</button></div>`)
+  box.querySelector('#ae-go').addEventListener('click', async () => { try { await accountAdmin('changeEmail', { email: a.email, newEmail: box.querySelector('#ae-email').value }); closeModal(); toast('Contact email changed'); renderNewAccounts() } catch (e) { box.querySelector('#ae-err').textContent = e.message; box.querySelector('#ae-err').hidden = false } })
+}
+function linkAccountPlayer(a) {
+  const box = modal(`<h2>Link existing player</h2><p class="muted small">Enter the exact Player Key from the Players tab. A player already linked to another account cannot be linked here; merge accounts instead.</p><label class="j-field"><span>Player key</span><input class="j-input" id="al-key"></label><p class="j-err" id="al-err" hidden></p><div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="al-go">Link player</button></div>`)
+  box.querySelector('#al-go').addEventListener('click', async () => { try { await accountAdmin('linkPlayer', { email: a.email, profileKey: box.querySelector('#al-key').value.trim() }); closeModal(); toast('Player linked'); renderNewAccounts() } catch (e) { box.querySelector('#al-err').textContent = e.message; box.querySelector('#al-err').hidden = false } })
+}
+function mergeAccountInto(target) {
+  const box = modal(`<h2>Merge another account</h2><p class="muted small">The source account is archived after the merge. Term 4 rows, payments, waivers, sessions and audit history are preserved.</p><label class="j-field"><span>Source account email</span><input class="j-input" id="am-email" type="email"></label><p class="j-err" id="am-err" hidden></p><div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="am-preview">Preview merge</button></div>`)
+  box.querySelector('#am-preview').addEventListener('click', async () => { try { const sourceEmail = box.querySelector('#am-email').value.trim(); const d = await accountAdmin('mergePreview', { sourceEmail, targetEmail: target.email }); const p = d.preview.preview; if (!await confirmBox(`Merge <b>${esc(sourceEmail)}</b> into <b>${esc(target.email)}</b>? ${p.playersAdded} new player link(s), ${p.profilesLinked} profile(s). Linked history will be preserved.`, { ok: 'Confirm merge', danger: true, over: true })) return; await accountAdmin('mergeConfirm', { sourceEmail, targetEmail: target.email, confirm: true }); closeModal(); toast('Accounts merged; source archived'); renderNewAccounts() } catch (e) { box.querySelector('#am-err').textContent = e.message; box.querySelector('#am-err').hidden = false } })
 }
 
 // Auto sync (Lee, 12 Oct 2026; every 30 minutes from 18 Oct 2026): the page

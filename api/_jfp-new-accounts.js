@@ -48,7 +48,7 @@ export async function newAccountsData(principal, config, { profiles, roster, sho
     const parent = profs.find((p) => p.parentName)?.parentName || rows[0]?.parent || ''
     const mobile = profs.find((p) => p.parentMobile)?.parentMobile || rows[0]?.phone || ''
     const booked = players.some((p) => p.session)
-    return { email, kind: a.kind, createdAt: a.createdAt, isNew: a.kind === 'new' && ms(a.createdAt) > since, parent, mobile, players, booked, status: booked ? 'booked' : players.length ? 'players' : 'empty', lastSignIn: signedIn[email] || '', ...whereView(a) }
+    return { email, kind: a.kind, createdAt: a.createdAt, isNew: a.kind === 'new' && ms(a.createdAt) > since, parent, mobile, players, booked, status: booked ? 'booked' : players.length ? 'players' : 'empty', accountState: a.archivedAt ? 'archived' : a.reviewedAt ? 'reviewed' : 'active', reviewedAt: a.reviewedAt || '', lastSignIn: signedIn[email] || '', ...whereView(a) }
   }).sort((a, b) => ms(b.createdAt) - ms(a.createdAt)).slice(0, 300)
   const newOnes = all.filter((a) => a.kind === 'new')
   const week = Date.now() - 7 * 86400000
