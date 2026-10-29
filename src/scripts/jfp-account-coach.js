@@ -48,13 +48,15 @@ export function coachSheet(id) {
   const off = [['Hobbies', c.hobbies], ['Favourite player or team', c.favourite], ['Fun fact', c.funFact], ['Speaks', c.languages]].filter(([, v]) => v)
   const gal = c.gallery || []
   sheet.body.innerHTML = `<div class="ja-cp">
-    <div class="ja-cp-hero">${face(c, 112)}${facts.length ? `<div class="ja-cp-facts">${facts.map((f) => `<span>${esc(f)}</span>`).join('')}</div>` : ''}</div>
+    <div class="ja-cp-hero">${face(c, 112)}${facts.length ? `<div class="ja-cp-facts">${facts.map((f) => `<span>${esc(f)}</span>`).join('')}</div>` : ''}${c.coachesOn?.length ? `<div class="ja-cp-on">${ic('calendar')}<span>${c.coachesOn.map((x) => `<span>${esc(x)}</span>`).join('')}</span></div>` : ''}${c.helloVideo ? `<a class="ja-btn ja-btn-red ja-cp-hello" href="${esc(c.helloVideo)}" target="_blank" rel="noopener noreferrer">${ic('play')}Watch ${esc(first(c.name))} say hello</a>` : ''}</div>
     ${c.about ? `<div class="ja-cp-about">${paras(c.about)}</div>` : `<p class="ja-muted">${esc(first(c.name))} has not written a profile yet.</p>`}
     ${gal.length ? `<section class="ja-cp-sec"><h4 class="ja-cp-h">On the pitch</h4><div class="ja-cp-gal">${gal.map((g, i) => `<button type="button" class="ja-cp-ph" data-gal="${i}"><img src="${esc(g.url)}" alt="${esc(g.caption || `${first(c.name)} coaching`)}" loading="lazy">${g.caption ? `<small>${esc(g.caption)}</small>` : ''}</button>`).join('')}</div></section>` : ''}
+    ${c.askMe ? `<div class="ja-cp-ask"><h4 class="ja-cp-h">Ask me about</h4><p>${esc(c.askMe)}</p></div>` : ''}
     ${c.leaveWith ? `<blockquote class="ja-cp-quote"><h4 class="ja-cp-h">What I want every player to leave with</h4>${paras(c.leaveWith)}</blockquote>` : ''}
     ${sec('Playing', rows(c.playing, (x) => x.level))}
     ${sec('Coaching', rows(c.coaching, (x) => x.team))}
     ${sec('Qualifications', c.quals?.length ? `<div class="ja-cp-tags">${c.quals.map((q) => `<span>${esc(q.name)}${q.year ? ` <i>${esc(q.year)}</i>` : ''}</span>`).join('')}</div>` : '')}
+    ${c.drill ? sec('My favourite drill', `<div class="ja-cp-rows"><div class="ja-cp-row"><span><b>${esc(c.drill.name)}</b>${c.drill.url ? '<small>In the Joner Football app</small>' : ''}</span>${c.drill.url ? `<a class="ja-btn ja-btn-line ja-btn-sm" href="${esc(c.drill.url)}" target="_blank" rel="noopener noreferrer">Watch</a>` : ''}</div></div>`) : ''}
     ${sec('Off the pitch', off.length ? `<dl class="ja-cp-off">${off.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>` : '')}
     ${c.links?.length ? `<div class="ja-cp-sec ja-cp-links">${c.links.map((l, i) => `<a class="ja-btn ${i ? 'ja-btn-line' : 'ja-btn-red'} ja-btn-block" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.label)}${ic('ext', 'ext')}</a>`).join('')}</div>` : ''}
   </div>`

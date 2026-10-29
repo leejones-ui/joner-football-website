@@ -347,7 +347,7 @@ async function overview(res, parent, body = {}, opts = {}) {
     kitUrl: config.kitUrl,
     kitPriceLabel: config.kitPriceLabel,
     // Our coaches (Lee, 29 Oct 2026): every finished coach profile, while Lee has them on.
-    ourCoaches: cprof ? cprof.familyCoaches(config, cprofAll, coachPhotoUrl) : [],
+    ourCoaches: cprof ? cprof.familyCoaches(config, cprofAll, coachPhotoUrl, groups) : [],
     players,
     todo,
     // Order on sign in (Lee, 13 Oct 2026): 1 waiver, 2 pay, 3 player details.

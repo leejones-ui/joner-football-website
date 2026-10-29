@@ -3,7 +3,7 @@
 // Our coaches; families see their own coach's only while Lee has
 // config.coachProfilesFamilies on (it was "no coach names for families"
 // from 14 Oct until then). No private or compliance details live here.
-import { kvCommand, kvSetJson, clean, audit, coachById, coachLabel } from './_jfp-store.js'
+import { kvCommand, kvSetJson, clean, audit, coachById, coachLabel, DAYS, locationFor } from './_jfp-store.js'
 
 export const KEY = 'jfp:coach-profiles'
 export const GALLERY_MAX = 8
@@ -39,6 +39,10 @@ export function cleanProfile(input = {}, { canSetRole = false, before = {} } = {
     // Off the pitch (Lee, 29 Oct 2026: "people love this").
     hobbies: para(input.hobbies, 300),
     funFact: para(input.funFact, 300),
+    // Round 3 (Lee, 29 Oct 2026): a short hello video, "Ask me about", a favourite drill.
+    helloVideo: cleanUrl(input.helloVideo),
+    askMe: clean(input.askMe, 160),
+    drill: (() => { const name = clean(input.drill?.name, 80); return name ? { name, url: cleanUrl(input.drill?.url) } : null })(),
     // Coaching photos (up to 8): uploaded one at a time by coachGalleryPhoto, never by the form.
     gallery: list(input.gallery, GALLERY_MAX, (x) => (Number.isInteger(Number(x?.v)) && Number(x.v) > 0 ? { v: Number(x.v), caption: clean(x?.caption, 80) } : null)),
     // Links on the profile (Lee, 29 Oct 2026: his About page and Coaching Pros).
@@ -73,10 +77,20 @@ export const forFamilies = (p) => String(p?.about || '').trim().length >= 80
 
 // Our coaches for families: every coach with a finished profile, the head
 // coach first, then by role, then longest at Joner Football.
-export function familyCoaches(config, all, photoUrl) {
+// coachesOn: where and when each coach runs a group, by venue ("Belrose HQ: Mon, Tue").
+export function coachesOn(config, groups, coachId) {
+  const by = new Map()
+  for (const g of (groups || []).filter((g) => g.coachId === coachId || (g.extraCoachIds || []).includes(coachId))) {
+    const v = locationFor(config, g.location).name || g.location
+    if (!by.has(v)) by.set(v, new Set())
+    by.get(v).add(g.day)
+  }
+  return [...by].map(([v, days]) => `${v}: ${[...days].sort((a, b) => DAYS.indexOf(a) - DAYS.indexOf(b)).map((d) => String(d).slice(0, 3)).join(', ')}`)
+}
+export function familyCoaches(config, all, photoUrl, groups = []) {
   const rank = (p) => { const i = ROLES.indexOf(p.role); return i < 0 ? ROLES.length : i }
   return config.coaches.filter((c) => forFamilies(all[c.id]))
-    .map((c) => profileView(config, c, all[c.id], c.photoV ? photoUrl(c) : ''))
+    .map((c) => ({ ...profileView(config, c, all[c.id], c.photoV ? photoUrl(c) : ''), coachesOn: coachesOn(config, groups, c.id) }))
     .sort((a, b) => rank(a) - rank(b) || String(a.joined || '9999').localeCompare(String(b.joined || '9999')))
 }
 
