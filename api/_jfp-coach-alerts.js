@@ -191,6 +191,9 @@ export async function registerSweep({ config, now = Date.now() }) {
     for (const date of dates) {
       const t = to24h(g.time)
       if (!t) continue
+      // A group made mid-term has no register for the weeks before it existed
+      // (Luke, Wed 6:30am NTRA, made 29 Oct: texted about 28 Oct).
+      if (g.createdAt && date < sydneyToday(Date.parse(g.createdAt))) continue
       const endMs = sydneyWallToUtcMs(date, t) + (Number(g.durationMin) || 60) * 60000
       // Only sessions that ended after the reminders were switched on.
       if (endMs < since || now - endMs < FIRST_AFTER_MS || now - endMs > GIVE_UP_MS) continue
