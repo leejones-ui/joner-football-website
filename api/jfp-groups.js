@@ -48,6 +48,17 @@ async function sendCoachPhoto(req, res) {
   return res.status(200).end(Buffer.from(photo.b64, 'base64'))
 }
 
+// A coaching photo from a coach's profile. Public like the profile photo.
+async function sendGalleryPhoto(req, res) {
+  const id = String(req.query?.coachGallery || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 30)
+  const v = String(req.query?.g || '').replace(/\D/g, '').slice(0, 16)
+  const photo = id && v ? await kvGetJson(`jfp:coach-gallery:${id}:${v}`) : null
+  if (!photo?.b64 || !/^image\/(jpeg|png|webp)$/.test(photo.type || '')) return res.status(404).end()
+  res.setHeader('Content-Type', photo.type)
+  res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
+  return res.status(200).end(Buffer.from(photo.b64, 'base64'))
+}
+
 // Public extras show for the next 3 weeks (Lee, 27 Oct 2026; was 7 days).
 const WEEK_MS = 21 * 86400000
 export async function weekExtras(config, nowMs = Date.now()) {
@@ -104,6 +115,7 @@ export function publicGroup(g, config, left) {
 
 export default async function handler(req, res) {
   if (req.method === 'GET' && req.query?.coachPhoto) return sendCoachPhoto(req, res)
+  if (req.method === 'GET' && req.query?.coachGallery) return sendGalleryPhoto(req, res)
   // The hourly Vercel cron gives back places from offers not paid within 7
   // days. A family loading the timetable never changes anything (review, 5 Oct).
   // Every 5 minutes: coach alerts (new player in your group, register not done).

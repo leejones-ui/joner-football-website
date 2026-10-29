@@ -39,3 +39,17 @@ console.log('ok - archive/restore')
 console.log('ok - empty-only delete')
 console.log('ok - duplicate prevention')
 console.log('4 account admin checks passed')
+
+// Second parent: a same-named copy without a place folds into the family's player.
+{
+  const { joinPlan, foldValues } = await import('../api/_jfp-account-admin.js')
+  const mum = { id: 'r1', name: 'Nicholas Casella', key: 'nicholascasella|mum@x.com', emails: ['mum@x.com'], rowIds: ['recT4'], club: 'NWS Spirit', level: '' }
+  const dupe = { id: 'r2', name: 'nicholas casella', key: 'nicholascasella|dad@x.com', emails: ['dad@x.com'], rowIds: [], club: 'Spirit fc', level: 'BYL' }
+  const plan = joinPlan('dad@x.com', 'mum@x.com', [mum, dupe])
+  assert.equal(plan.ok, true)
+  assert.equal(plan.folds.length, 1)
+  assert.deepEqual(foldValues(dupe, mum), { level: 'BYL' }, 'only blanks are filled')
+  assert.equal(joinPlan('dad@x.com', 'mum@x.com', [mum, { ...dupe, rowIds: ['recX'] }]).ok, false, 'two places is a hand check')
+  assert.equal(joinPlan('dad@x.com', 'dad@x.com', [mum]).ok, false)
+  console.log('ok - second parent join')
+}

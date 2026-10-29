@@ -415,8 +415,9 @@ function accountActionsMenu(anchor, a) {
     { key: 'view', label: 'View account', run: async () => { try { const d = await accountAdmin('view', { email: a.email }); const refs = Object.entries(d.account.references || {}).filter(([, n]) => n).map(([k, n]) => `${k}: ${n}`).join(' · ') || 'No linked history found'; modal(`<h2>Account</h2><p><b>${esc(d.account.email)}</b></p><p class="muted small">State: ${esc(d.account.state)} · ${esc(refs)}</p><p class="muted small">Players: ${(d.account.players || []).map((p) => esc(p.name || p.key)).join(', ') || 'none'}</p><div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Close</button></div>`) } catch (e) { toast(e.message) } } },
     { key: 'review', label: 'Mark reviewed', run: async () => { try { await accountAdmin('review', { email: a.email }); toast('Account marked reviewed'); renderNewAccounts() } catch (e) { toast(e.message) } } },
     { key: 'email', label: 'Change contact email', run: () => changeAccountEmail(a) },
+    { key: 'family', label: 'Add this parent to a family', run: () => joinAccountFamily(a) },
     { key: 'link', label: 'Link existing player', run: () => linkAccountPlayer(a) },
-    { key: 'merge', label: 'Merge another account into this one', run: () => mergeAccountInto(a) },
+    { key: 'merge', label: 'Merge a duplicate account (same person)', run: () => mergeAccountInto(a) },
     '-',
     { key: archived ? 'restore' : 'archive', label: archived ? 'Restore account' : 'Archive account', run: async () => { if (!await confirmBox(`${archived ? 'Restore' : 'Archive'} <b>${esc(a.email)}</b>?`, { ok: archived ? 'Restore' : 'Archive', danger: !archived })) return; try { await accountAdmin(archived ? 'restore' : 'archive', { email: a.email }); toast(archived ? 'Account restored' : 'Account archived'); renderNewAccounts() } catch (e) { toast(e.message) } } },
     { key: 'delete', label: 'Permanently delete empty account', danger: true, run: async () => { if (!await confirmBox(`Permanently delete <b>${esc(a.email)}</b>? This is allowed only when the account has no linked players or history.`, { ok: 'Delete permanently', danger: true })) return; try { await accountAdmin('delete', { email: a.email, confirm: true }); toast('Empty account deleted'); renderNewAccounts() } catch (e) { toast(e.message) } } },
@@ -430,8 +431,33 @@ function linkAccountPlayer(a) {
   const box = modal(`<h2>Link existing player</h2><p class="muted small">Enter the exact Player Key from the Players tab. A player already linked to another account cannot be linked here; merge accounts instead.</p><label class="j-field"><span>Player key</span><input class="j-input" id="al-key"></label><p class="j-err" id="al-err" hidden></p><div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="al-go">Link player</button></div>`)
   box.querySelector('#al-go').addEventListener('click', async () => { try { await accountAdmin('linkPlayer', { email: a.email, profileKey: box.querySelector('#al-key').value.trim() }); closeModal(); toast('Player linked'); renderNewAccounts() } catch (e) { box.querySelector('#al-err').textContent = e.message; box.querySelector('#al-err').hidden = false } })
 }
+// Second parent (Lee, 29 Oct 2026): both parents keep their own sign-in and see the same children.
+function joinAccountFamily(a) {
+  const box = modal(`<h2>Add ${esc(a.parent || a.email)} to a family</h2><p class="muted small">Both parents keep their own sign-in and see the same children. If this parent already added the same child, the copy is folded into the family's player and their answers only fill blanks.</p><label class="j-field"><span>Find the family: player name or parent email</span><input class="j-input" id="af-q" autocomplete="off" placeholder="e.g. Casella"></label><div id="af-list" class="af-list"></div><p class="j-err" id="af-err" hidden></p><div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button></div>`)
+  const err = (m) => { box.querySelector('#af-err').textContent = m; box.querySelector('#af-err').hidden = false }
+  let t = 0
+  box.querySelector('#af-q').addEventListener('input', (e) => {
+    clearTimeout(t); t = setTimeout(async () => {
+      try {
+        const d = await accountAdmin('familySearch', { q: e.target.value.trim(), email: a.email })
+        const list = box.querySelector('#af-list')
+        list.innerHTML = d.families.map((f, i) => `<button type="button" class="af-fam" data-af="${i}"><b>${f.players.map((p) => esc(p.name)).join(', ')}</b><span class="muted small">${f.emails.map(esc).join(' · ')}${f.players.some((p) => p.place) ? ' · has a place this term' : ''}</span></button>`).join('') || (e.target.value.trim().length > 1 ? '<p class="muted small">No family found.</p>' : '')
+        list.querySelectorAll('[data-af]').forEach((b) => b.addEventListener('click', async () => {
+          const f = d.families[Number(b.dataset.af)]
+          try {
+            const pv = await accountAdmin('joinPreview', { email: a.email, familyEmail: f.email })
+            const fold = pv.folded.length ? ` Their own copy of <b>${pv.folded.map(esc).join(', ')}</b> is folded into the family's player.` : ''
+            if (!await confirmBox(`Add <b>${esc(a.email)}</b> to the family of <b>${pv.players.map(esc).join(', ')}</b> (${esc(f.email)})?${fold} Nobody is emailed.`, { ok: 'Add to family', over: true })) return
+            await accountAdmin('joinFamily', { email: a.email, familyEmail: f.email, confirm: true }); closeModal(); toast('Parent added to the family'); renderNewAccounts()
+          } catch (x) { err(x.message) }
+        }))
+      } catch (x) { err(x.message) }
+    }, 250)
+  })
+  box.querySelector('#af-q').focus()
+}
 function mergeAccountInto(target) {
-  const box = modal(`<h2>Merge another account</h2><p class="muted small">The source account is archived after the merge. Term 4 rows, payments, waivers, sessions and audit history are preserved.</p><label class="j-field"><span>Source account email</span><input class="j-input" id="am-email" type="email"></label><p class="j-err" id="am-err" hidden></p><div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="am-preview">Preview merge</button></div>`)
+  const box = modal(`<h2>Merge a duplicate account</h2><p class="muted small">Use this only when one person made two accounts. For a second parent, use Add this parent to a family. The source account is archived after the merge. Term 4 rows, payments, waivers, sessions and audit history are preserved.</p><label class="j-field"><span>Source account email</span><input class="j-input" id="am-email" type="email"></label><p class="j-err" id="am-err" hidden></p><div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="am-preview">Preview merge</button></div>`)
   box.querySelector('#am-preview').addEventListener('click', async () => { try { const sourceEmail = box.querySelector('#am-email').value.trim(); const d = await accountAdmin('mergePreview', { sourceEmail, targetEmail: target.email }); const p = d.preview.preview; if (!await confirmBox(`Merge <b>${esc(sourceEmail)}</b> into <b>${esc(target.email)}</b>? ${p.playersAdded} new player link(s), ${p.profilesLinked} profile(s). Linked history will be preserved.`, { ok: 'Confirm merge', danger: true, over: true })) return; await accountAdmin('mergeConfirm', { sourceEmail, targetEmail: target.email, confirm: true }); closeModal(); toast('Accounts merged; source archived'); renderNewAccounts() } catch (e) { box.querySelector('#am-err').textContent = e.message; box.querySelector('#am-err').hidden = false } })
 }
 

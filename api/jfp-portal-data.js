@@ -82,7 +82,7 @@ import { feePdfAttachment, docForPayreq, docForInvoice, pdfDownload } from './_j
 import { invoiceRefOf } from './_jfp-bank-match.js'
 // Saved card or bank account, auto-charge after each session (claude/card-on-file).
 import { accountAlerts, newAccountsData } from './_jfp-new-accounts.js'
-import { viewAccount, allAccountView, linkExistingPlayer, mergeAccounts, mergePreview, changeContactEmail, markReviewed, archiveAccount, restoreAccount, deleteEmptyAccount } from './_jfp-account-admin.js'
+import { viewAccount, allAccountView, linkExistingPlayer, mergeAccounts, mergePreview, changeContactEmail, markReviewed, archiveAccount, restoreAccount, deleteEmptyAccount, joinPlan, joinFamily } from './_jfp-account-admin.js'
 import { followUpsAll, saveFollowUp, cameFrom, trialStage, pipelineCounts, STEPS, OUTCOMES } from './_jfp-trial-track.js'
 import { sessionValueAction } from './_jfp-session-value.js'
 import { ABSENCE_ACTIONS, absenceAction } from './_jfp-absence.js'
@@ -3635,6 +3635,29 @@ async function handle(req, res) {
         const result = await deleteEmptyAccount(body.email, principal.email, deps)
         return result.ok ? res.status(200).json(result) : fail(res, result.status || 409, result.error, result)
       }
+      if (op === 'familySearch') {
+        // Families by player name or parent email, for Add this parent to a family.
+        const q = clean(body.q, 80).toLowerCase(); const me = clean(body.email, 120).toLowerCase()
+        if (q.length < 2) return res.status(200).json({ success: true, families: [] })
+        const fams = {}
+        for (const p of profiles) {
+          if (!p.emails.length || p.emails.includes(me)) continue
+          if (!(p.name.toLowerCase().includes(q) || p.emails.some((e) => e.includes(q)))) continue
+          const fe = p.emails[0]
+          fams[fe] ||= { email: fe, emails: p.emails, players: [] }
+          fams[fe].players.push({ name: p.name, club: p.club || '', place: p.rowIds.length > 0 })
+        }
+        return res.status(200).json({ success: true, families: Object.values(fams).slice(0, 8) })
+      }
+      if (op === 'joinPreview') {
+        const plan = joinPlan(body.email, body.familyEmail, profiles)
+        return plan.ok ? res.status(200).json({ success: true, players: plan.family.map((p) => p.name), folded: plan.folds.map((x) => x.from.name) }) : fail(res, 409, plan.error)
+      }
+      if (op === 'joinFamily') {
+        if (body.confirm !== true) return fail(res, 400, 'Confirm first.')
+        const result = await joinFamily(body.email, body.familyEmail, principal.email, { profiles })
+        return result.ok ? res.status(200).json(result) : fail(res, result.status || 409, result.error)
+      }
       if (op === 'linkPlayer') {
         const p = profiles.find((x) => (body.profileId && x.id === body.profileId) || (body.profileKey && x.key === body.profileKey))
         if (!p) return fail(res, 404, 'Player profile not found.')
@@ -3670,9 +3693,18 @@ async function handle(req, res) {
     }
     // Coach profiles (Lee, 20 Oct 2026): a coach edits their own, Lee and
     // Ligia any; every coach reads them all on Our coaches.
-    if (action === 'coachProfiles' || action === 'coachProfileSave' || action === 'coachProfilesFamilies') {
+    if (action === 'coachProfiles' || action === 'coachProfileSave' || action === 'coachProfilesFamilies' || action === 'coachGalleryPhoto') {
       const cp = await import('./_jfp-coach-profiles.js')
       const myCoachId = principal.coachId || config.coaches.find((c) => c.email && c.email === principal.email)?.id || ''
+      if (action === 'coachGalleryPhoto') {
+        const coachId = clean(body.coachId, 30) || myCoachId
+        if (!coachById(config, coachId)) return fail(res, 400, 'Choose a coach.')
+        if (!isAdmin && coachId !== myCoachId) return fail(res, 403, 'You can only change your own profile.')
+        const out = await cp.galleryPhoto({ principal, coachId, body })
+        if (out.error) return fail(res, 400, out.error)
+        const c = coachById(config, coachId)
+        return res.status(200).json({ success: true, profile: cp.profileView(config, c, out.profile, c.photoV ? coachPhotoUrl(c) : '') })
+      }
       if (action === 'coachProfileSave') {
         const coachId = clean(body.coachId, 30) || myCoachId
         if (!coachId) return fail(res, 400, 'Your login is not linked to a coach yet. Ask Lee.')

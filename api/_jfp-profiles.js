@@ -100,7 +100,8 @@ export async function allProfiles() {
   do {
     const q = new URLSearchParams({ pageSize: '100', ...(offset ? { offset } : {}) })
     const d = await airtable(`${PROFILES_TABLE}?${q}`)
-    out.push(...(d.records || []).map(fromRecord))
+    // A copy folded into a family's player (Second parent added) stays in Airtable but out of every list.
+    out.push(...(d.records || []).map(fromRecord).filter((p) => !String(p.updatedFrom || '').startsWith('Joined into ')))
     offset = d.offset || ''
   } while (offset)
   return out

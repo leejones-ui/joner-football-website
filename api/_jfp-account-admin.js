@@ -3,7 +3,8 @@
 // session records are never edited or deleted by this module.
 import { ACCOUNTS, allAccounts, accountOf } from './_jfp-account-open.js'
 import { kvCommand, audit, clean, validEmail, normName } from './_jfp-store.js'
-import { profileKey, saveProfile } from './_jfp-profiles.js'
+import { profileKey, saveProfile, PROFILE_KEYS, PROFILES_TABLE } from './_jfp-profiles.js'
+import { airtable } from './_jfp-airtable.js'
 
 export const ACCOUNT_STATES = new Set(['active', 'reviewed', 'archived'])
 const emailOf = (v) => validEmail(v)
@@ -146,6 +147,64 @@ export async function linkExistingPlayer(accountEmail, player, by) {
   await saveAccount(next)
   await audit({ by, action: 'account.linkPlayer', target: accountEmail, after: { player: key } })
   return { ok: true, account: next }
+}
+
+// Second parent (Lee, 29 Oct 2026): "paul casella is the dad of Nicholas
+// Casella, i just tried adding the dad to the casella family". Adding a parent
+// to a family puts their email on every player of that family, so both
+// parents see the same children. Neither account is archived. A same-named
+// player the new parent made themselves (no Term 4 place) is folded into the
+// family's player: their answers fill only the blanks, then the copy is
+// unlinked (emails emptied, marked "Joined into <key>"). Nothing is deleted.
+export const JOINED = 'Joined into '
+const sameName = (a, b) => normName(a) === normName(b)
+export function joinPlan(parentEmail, familyEmail, profiles = []) {
+  const pe = String(parentEmail || '').toLowerCase(), fe = String(familyEmail || '').toLowerCase()
+  if (!pe || !fe) return { ok: false, error: 'Both emails are required.' }
+  if (pe === fe) return { ok: false, error: 'That is the same account.' }
+  const family = profiles.filter((p) => p.emails.includes(fe))
+  if (!family.length) return { ok: false, error: 'That family has no players yet.' }
+  const mine = profiles.filter((p) => p.emails.includes(pe) && !p.emails.includes(fe))
+  const folds = [], clashes = []
+  for (const m of mine) {
+    const f = family.find((x) => sameName(x.name, m.name))
+    if (!f) continue
+    if (m.rowIds.length && f.rowIds.length) clashes.push(m.name)
+    else folds.push({ from: m, into: f })
+  }
+  if (clashes.length) return { ok: false, error: `${clashes.join(', ')} has a place on both accounts. Ask Claude to check these by hand.` }
+  return { ok: true, family, folds, add: family.filter((f) => !f.emails.includes(pe)) }
+}
+export function foldValues(from, into) {
+  const v = {}
+  for (const k of PROFILE_KEYS) {
+    const empty = (x) => x == null || x === '' || (Array.isArray(x) && !x.length)
+    if (empty(into[k]) && !empty(from[k])) v[k] = from[k]
+  }
+  return v
+}
+export async function joinFamily(parentEmail, familyEmail, by, { profiles = [] } = {}) {
+  const pe = String(parentEmail || '').toLowerCase(), fe = String(familyEmail || '').toLowerCase()
+  const plan = joinPlan(pe, fe, profiles)
+  if (!plan.ok) return { ...plan, status: 409 }
+  const account = await accountOf(pe)
+  if (!account) return { ok: false, status: 404, error: 'Account not found.' }
+  const lk = await lock(`join:${pe}`)
+  try {
+    for (const { from, into } of plan.folds) {
+      // The family's player keeps its key and Term 4 place; the copy's Term 4 ids (if any) move across.
+      await saveProfile({ existing: into, name: into.name, key: into.key, emails: [pe], rowIds: from.rowIds, values: foldValues(from, into), by, from: 'Second parent added' })
+      await airtable(PROFILES_TABLE, { method: 'PATCH', body: { typecast: true, records: [{ id: from.id, fields: { 'Family Emails': '', 'Term 4 Record IDs': '', 'Updated At': new Date().toISOString(), 'Updated By': clean(by, 100), 'Updated From': `${JOINED}${into.key}`.slice(0, 200) } }] } })
+    }
+    for (const f of plan.add) if (!plan.folds.some((x) => x.into.id === f.id)) await saveProfile({ existing: f, name: f.name, key: f.key, emails: [pe], rowIds: [], values: {}, by, from: 'Second parent added' })
+    const gone = new Set(plan.folds.map((x) => x.from.key))
+    const players = (account.players || []).filter((p) => !gone.has(p.key))
+    for (const f of plan.family) if (!players.some((p) => p.key === f.key)) players.push({ key: f.key, name: f.name, linkedAt: new Date().toISOString(), linkedBy: clean(by, 120) })
+    const next = { ...account, players, familyWith: [...new Set([...(account.familyWith || []), fe])], archivedAt: '', archivedBy: '', mergedInto: '' }
+    await saveAccount(next)
+    await audit({ by, action: 'account.joinFamily', target: pe, after: { family: fe, players: plan.family.map((p) => p.key), folded: plan.folds.map((x) => `${x.from.key} -> ${x.into.key}`) } })
+    return { ok: true, account: next, players: plan.family.map((p) => p.name), folded: plan.folds.map((x) => x.from.name) }
+  } finally { await unlock(lk) }
 }
 
 export async function allAccountView(deps = {}) { const all = await allAccounts(); return Object.values(all).map((a) => ({ ...a, state: accountState(a), references: Object.fromEntries(Object.entries(accountReferences(a, deps)).map(([k, v]) => [k, v.length])) })) }

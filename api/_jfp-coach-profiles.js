@@ -3,9 +3,12 @@
 // Our coaches; families see their own coach's only while Lee has
 // config.coachProfilesFamilies on (it was "no coach names for families"
 // from 14 Oct until then). No private or compliance details live here.
-import { kvCommand, clean, audit, coachById, coachLabel } from './_jfp-store.js'
+import { kvCommand, kvSetJson, clean, audit, coachById, coachLabel } from './_jfp-store.js'
 
 export const KEY = 'jfp:coach-profiles'
+export const GALLERY_MAX = 8
+export const galleryKey = (coachId, v) => `jfp:coach-gallery:${coachId}:${v}`
+export const galleryUrl = (coachId, v) => `/api/jfp-groups?coachGallery=${encodeURIComponent(coachId)}&g=${v}`
 export const ROLES = ['Head coach', 'Senior coach', 'Coach', 'Assistant coach', 'Goalkeeper coach']
 export const AGES = ['Under 8s', '8 to 11', '12 to 14', '15 to 17', 'Adults']
 // Same ids as the Session ideas topics.
@@ -13,6 +16,8 @@ export const SKILLS = [['speed', 'Speed and agility'], ['ball', 'Ball mastery'],
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
 const parse = (x) => { try { return JSON.parse(x) } catch { return null } }
+// Paragraphs kept (Lee, 29 Oct 2026: the about read as one block).
+const para = (v, max) => String(v ?? '').replace(/\r/g, '').replace(/[ \t]+/g, ' ').replace(/ ?\n ?/g, '\n').replace(/\n{3,}/g, '\n\n').trim().slice(0, max)
 const list = (v, max, fn) => (Array.isArray(v) ? v : []).slice(0, max).map(fn).filter(Boolean)
 
 // Everything a coach can save, trimmed. Bad values drop out rather than fail.
@@ -21,7 +26,7 @@ export function cleanProfile(input = {}, { canSetRole = false, before = {} } = {
   return {
     role: canSetRole ? (ROLES.includes(input.role) ? input.role : '') : (before.role || ''),
     joined,
-    about: clean(input.about, 900),
+    about: para(input.about, 1600),
     highest: clean(input.highest, 120),
     playing: list(input.playing, 10, (x) => { const club = clean(x?.club, 80); return club ? { club, level: clean(x?.level, 60), years: clean(x?.years, 30) } : null }),
     coaching: list(input.coaching, 10, (x) => { const club = clean(x?.club, 80); return club ? { club, team: clean(x?.team, 60), years: clean(x?.years, 30) } : null }),
@@ -30,7 +35,12 @@ export function cleanProfile(input = {}, { canSetRole = false, before = {} } = {
     ages: list(input.ages, 5, (x) => (AGES.includes(x) ? x : null)),
     languages: clean(input.languages, 120),
     favourite: clean(input.favourite, 120),
-    leaveWith: clean(input.leaveWith, 240),
+    leaveWith: para(input.leaveWith, 600),
+    // Off the pitch (Lee, 29 Oct 2026: "people love this").
+    hobbies: para(input.hobbies, 300),
+    funFact: para(input.funFact, 300),
+    // Coaching photos (up to 8): uploaded one at a time by coachGalleryPhoto, never by the form.
+    gallery: list(input.gallery, GALLERY_MAX, (x) => (Number.isInteger(Number(x?.v)) && Number(x.v) > 0 ? { v: Number(x.v), caption: clean(x?.caption, 80) } : null)),
     // Links on the profile (Lee, 29 Oct 2026: his About page and Coaching Pros).
     links: list(input.links, 6, (x) => { const label = clean(x?.label, 60); const url = cleanUrl(x?.url); return label && url ? { label, url } : null }),
   }
@@ -74,15 +84,42 @@ export function filled(p) { return Boolean(p && (p.about || p.joined || p.playin
 
 // What anyone allowed to see a profile gets. Never an email or phone.
 export function profileView(config, c, p = {}, photoUrl = '') {
-  return { id: c.id, name: coachLabel(c), firstName: c.name, photo: photoUrl, ...cleanProfile(p, { canSetRole: true }), since: sinceLabel(p.joined), filled: filled(p), updatedAt: p.updatedAt || '' }
+  const v = cleanProfile(p, { canSetRole: true })
+  return { id: c.id, name: coachLabel(c), firstName: c.name, photo: photoUrl, ...v, gallery: v.gallery.map((g) => ({ ...g, url: galleryUrl(c.id, g.v) })), since: sinceLabel(p.joined), filled: filled(p), updatedAt: p.updatedAt || '' }
 }
 
 export async function saveProfile({ config, principal, coachId, input, isAdmin }) {
   const c = coachById(config, coachId)
   if (!c) return { error: 'That coach is not on the list.' }
   const before = await getProfile(coachId)
-  const next = { ...cleanProfile(input, { canSetRole: isAdmin, before }), updatedAt: new Date().toISOString(), updatedBy: principal.email }
+  const next = { ...cleanProfile({ ...input, gallery: before.gallery }, { canSetRole: isAdmin, before }), updatedAt: new Date().toISOString(), updatedBy: principal.email }
   await kvCommand(['HSET', KEY, coachId, JSON.stringify(next)])
   await audit({ by: principal.email, action: 'coach.profile.save', target: coachId, after: { fields: Object.keys(next).filter((k) => next[k] && (!Array.isArray(next[k]) || next[k].length)) } })
+  return { profile: next }
+}
+
+// One coaching photo in or out (resized in the browser to at most 1400px).
+// Stored in KV like the profile photo, served with a versioned, immutable URL.
+export async function galleryPhoto({ principal, coachId, body }) {
+  const before = await getProfile(coachId)
+  let gallery = cleanProfile(before).gallery
+  if (body.remove) {
+    const v = Number(body.remove)
+    gallery = gallery.filter((g) => g.v !== v)
+    await kvCommand(['DEL', galleryKey(coachId, v)])
+  } else if (body.caption != null && body.v) {
+    gallery = gallery.map((g) => (g.v === Number(body.v) ? { ...g, caption: clean(body.caption, 80) } : g))
+  } else {
+    if (gallery.length >= GALLERY_MAX) return { error: `Up to ${GALLERY_MAX} photos. Remove one first.` }
+    const m = String(body.dataUrl || '').match(/^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/)
+    if (!m) return { error: 'Choose a JPG, PNG or WebP photo.' }
+    if (m[2].length > 900000) return { error: 'That photo is too big. Try a smaller one.' }
+    const v = Date.now()
+    await kvSetJson(galleryKey(coachId, v), { type: m[1], b64: m[2], by: principal.email, at: new Date().toISOString() })
+    gallery = [...gallery, { v, caption: clean(body.newCaption, 80) }]
+  }
+  const next = { ...before, gallery, updatedAt: new Date().toISOString(), updatedBy: principal.email }
+  await kvCommand(['HSET', KEY, coachId, JSON.stringify(next)])
+  await audit({ by: principal.email, action: body.remove ? 'coach.gallery.remove' : 'coach.gallery', target: coachId })
   return { profile: next }
 }
