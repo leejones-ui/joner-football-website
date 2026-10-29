@@ -575,7 +575,7 @@ function annDate(a) {
 function annFrom(a) {
   const w = a.author || { kind: 'jf', name: 'Joner Football' }
   const pic = w.photo ? `<img class="ja-ann-av" src="${esc(w.photo)}" alt="" loading="lazy" decoding="async">`
-    : w.kind === 'jf' ? '<span class="ja-ann-av is-jf"><img src="/images/joner-logo-white-nav.png" alt=""></span>'
+    : w.kind === 'jf' ? '<img class="ja-ann-av" src="/apple-touch-icon.png" alt="" decoding="async">'
       : `<span class="ja-ann-av">${esc((w.name || 'J').slice(0, 1))}</span>`
   return `<div class="ja-ann-from">${pic}<div><b>${esc(w.name)}</b>${w.line ? `<span>${esc(w.line)}</span>` : ''}</div></div>`
 }
