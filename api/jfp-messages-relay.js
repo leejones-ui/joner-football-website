@@ -6,7 +6,7 @@ import crypto from 'node:crypto'
 import { getConfig, audit, clean, coachById, getApplication } from './_jfp-store.js'
 import { loadRoster } from './_jfp-airtable.js'
 import {
-  listMsgs, getMsg, saveMsg, event, claim, keys, sha, familyPhone, doNotContact, getPrefs, saveRelay, routeStatus, textHoursOpen, LEASE_SECONDS, normalisePhone,
+  listTextQueue, getMsg, saveMsg, event, claim, keys, sha, familyPhone, doNotContact, getPrefs, saveRelay, routeStatus, textHoursOpen, LEASE_SECONDS, normalisePhone,
 } from './_jfp-messages.js'
 import { coachTextHoursOpen } from './_jfp-coach-alerts.js'
 import { stillValid } from './jfp-messages.js'
@@ -33,7 +33,7 @@ async function claimNext(req, res, body) {
   const famOpen = textHoursOpen(), coachOpen = coachTextHoursOpen()
   if (!famOpen && !coachOpen) return res.status(200).json({ success: true, message: null, waiting: 'outside texting hours' })
   const route = await routeStatus()
-  const queued = (await listMsgs()).filter((m) => m.channel === 'text' && m.status === 'queued' && (m.coachId ? coachOpen : famOpen)).reverse()
+  const queued = (await listTextQueue()).filter((m) => m.status === 'queued' && (m.coachId ? coachOpen : famOpen))
   if (!queued.length) return res.status(200).json({ success: true, message: null })
   const config = await getConfig()
   const [roster, prefs] = await Promise.all([loadRoster({ fresh: true }), getPrefs()])

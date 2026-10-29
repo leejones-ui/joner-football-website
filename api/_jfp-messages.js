@@ -37,6 +37,11 @@ export const keys = {
   route: () => 'jfp:msg-route',
   // Phone hash -> when a text to it failed because it does not take iMessage.
   noImsg: () => 'jfp:msg-noimsg',
+  // Texts still waiting for the Mac or being sent (queued, claimed). The relay
+  // polls about every 30 seconds and reads only these (29 Oct 2026: reading
+  // the last 400 messages on every poll was most of the Upstash bandwidth).
+  textQueue: () => 'jfp:msgs:textq',
+  textQueueReady: () => 'jfp:msgs:textq:ready',
 }
 
 export const sha = (s) => crypto.createHash('sha256').update(String(s)).digest('hex')
@@ -120,7 +125,29 @@ export async function getMsg(id) { const c = clean(id, 60); return c ? kvGetJson
 export async function saveMsg(m) {
   await kvSetJson(keys.msg(m.id), m, LONG)
   await kvCommand(['ZADD', keys.index(), String(Date.parse(m.createdAt)), m.id])
+  await kvCommand(inTextQueue(m) ? ['ZADD', keys.textQueue(), String(Date.parse(m.createdAt)), m.id] : ['ZREM', keys.textQueue(), m.id])
   return m
+}
+const inTextQueue = (m) => m.channel === 'text' && (m.status === 'queued' || m.status === 'claimed')
+
+// The texts in the queue, oldest first. The first call after this shipped
+// fills the queue once from the full list.
+export async function listTextQueue() {
+  if (!(await kvCommand(['GET', keys.textQueueReady()]))) {
+    const live = (await listMsgs()).filter(inTextQueue).reverse()
+    if (live.length) await kvCommand(['ZADD', keys.textQueue(), ...live.flatMap((m) => [String(Date.parse(m.createdAt)), m.id])])
+    await kvCommand(['SET', keys.textQueueReady(), new Date().toISOString()])
+    return live
+  }
+  const ids = (await kvCommand(['ZRANGE', keys.textQueue(), '0', '199'])) || []
+  const out = []
+  for (const id of ids) {
+    const m = await kvGetJson(keys.msg(id))
+    if (!m) { await kvCommand(['ZREM', keys.textQueue(), id]); continue }
+    const settled = await settleLease(m)
+    if (inTextQueue(settled)) out.push(settled)
+  }
+  return out
 }
 export async function listMsgs(limit = 400) {
   const ids = (await kvCommand(['ZREVRANGE', keys.index(), '0', String(limit - 1)])) || []
