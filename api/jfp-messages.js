@@ -418,21 +418,43 @@ async function unverifyRoute(res, principal) {
 // press Send: that press is the approval. It goes out from the work number
 // through the office Mac like every portal text, between 8am and 8pm, and
 // never to a family that said no to texts or is marked Do Not Contact.
-async function quickText(res, principal, body) {
-  // From a request (Lee, 16 Oct 2026: text them straight away when accepting,
-  // offering a trial or declining): the parent's own mobile and email from the
-  // request, whether or not they have a Term 4 row yet.
-  let rows
+// From a request (Lee, 16 Oct 2026: text them straight away when accepting,
+// offering a trial or declining): the parent's own mobile and email from the
+// request, whether or not they have a Term 4 row yet. null: request not found.
+async function quickRows(body, fresh = true) {
   if (body.requestId) {
     const a = await getApplication(body.requestId)
-    if (!a) return fail(res, 404, 'Request not found.')
-    rows = (a.players || []).map((p) => ({ id: '', player: p.name, parent: a.parentName || '', email: a.email || '', phone: a.mobile || '', ownContact: false }))
-    if (!rows.length) rows = [{ id: '', player: '', parent: a.parentName || '', email: a.email || '', phone: a.mobile || '', ownContact: false }]
-  } else {
-    const roster = await loadRoster({ fresh: true })
-    const ids = (Array.isArray(body.rowIds) ? body.rowIds : [body.rowId]).map((x) => clean(x, 30)).filter(Boolean)
-    rows = roster.players.filter((r) => ids.includes(r.id))
+    if (!a) return null
+    const rows = (a.players || []).map((p) => ({ id: '', player: p.name, parent: a.parentName || '', email: a.email || '', phone: a.mobile || '', ownContact: false }))
+    return rows.length ? rows : [{ id: '', player: '', parent: a.parentName || '', email: a.email || '', phone: a.mobile || '', ownContact: false }]
   }
+  const roster = await loadRoster({ fresh })
+  const ids = (Array.isArray(body.rowIds) ? body.rowIds : [body.rowId]).map((x) => clean(x, 30)).filter(Boolean)
+  return roster.players.filter((r) => ids.includes(r.id))
+}
+
+// Does this family's mobile take iMessage? Only known after a portal text to
+// it failed (Jaxon, 29 Oct 2026). The composer then says to use WhatsApp.
+async function textHint(res, body) {
+  const rows = await quickRows(body, false)
+  const ph = rows?.length ? familyPhone(rows) : {}
+  const at = ph.phone ? await kvCommand(['HGET', keys.noImsg(), sha(ph.phone)]) : null
+  return res.status(200).json({ success: true, noImessage: Boolean(at), since: at || '' })
+}
+
+// WhatsApp goes from Lee's or Ligia's own phone (wa.me link), so the portal
+// only knows it was opened, not that it was sent.
+async function whatsappOpened(res, principal, body) {
+  const rows = await quickRows(body, false)
+  if (!rows?.length) return fail(res, 404, 'Player not found.')
+  const ph = familyPhone(rows)
+  await audit({ by: principal.email, action: 'message.whatsapp.opened', target: rows[0].email || body.requestId || '', after: { players: rows.map((r) => r.player), to: maskPhone(ph.phone || ''), chars: String(body.text || '').length } })
+  return res.status(200).json({ success: true })
+}
+
+async function quickText(res, principal, body) {
+  const rows = await quickRows(body)
+  if (!rows) return fail(res, 404, 'Request not found.')
   if (!rows.length) return fail(res, 404, 'Player not found in Airtable.')
   // A player who is their own contact is called by their first name, never "this family".
   const self = rows.every((r) => r.ownContact)
@@ -492,6 +514,8 @@ async function handle(req, res) {
     if (JJ_MESSAGE_ACTIONS.has(action)) return await jjMessagesAction(req, res, principal, config, body, action)
     if (action === 'overview') return res.status(200).json({ ...(await overview(req, config)), isOwner: isOwner(principal), me: principal.email })
     if (action === 'quickText') return await quickText(res, principal, body)
+    if (action === 'textHint') return await textHint(res, body)
+    if (action === 'whatsappOpened') return await whatsappOpened(res, principal, body)
     if (action === 'prepare') return await prepare(req, res, principal, config, body)
     // The account guide to everyone (Lee, 16 Oct 2026): _jfp-guide-actions.js.
     if (GUIDE_ACTIONS.has(action)) return await guideAction(req, res, principal, config, body, action)

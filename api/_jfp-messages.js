@@ -35,6 +35,8 @@ export const keys = {
   prefs: () => 'jfp:msg-prefs',
   relay: () => 'jfp:msg-relay',
   route: () => 'jfp:msg-route',
+  // Phone hash -> when a text to it failed because it does not take iMessage.
+  noImsg: () => 'jfp:msg-noimsg',
 }
 
 export const sha = (s) => crypto.createHash('sha256').update(String(s)).digest('hex')

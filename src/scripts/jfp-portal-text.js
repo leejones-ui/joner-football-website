@@ -8,12 +8,15 @@ import { esc, api } from './jfp-common.js'
 const tel = (m) => { const d = String(m || '').replace(/\D/g, ''); return d.startsWith('04') ? `+61${d.slice(1)}` : d.startsWith('614') ? `+${d}` : d }
 // iPhones and Macs take sms:<number>&body=, everything else ?body=.
 const smsHref = (mobile, text) => `sms:${tel(mobile)}${/iPhone|iPad|Macintosh/.test(navigator.userAgent) ? '&' : '?'}body=${encodeURIComponent(text)}`
+// WhatsApp from Lee's or Ligia's own phone or laptop, words filled in (Lee,
+// 29 Oct 2026: for families without iMessage, like Jaxon).
+export const waHref = (mobile, text) => `https://wa.me/${tel(mobile).replace(/\D/g, '')}?text=${encodeURIComponent(text)}`
 const STATE = {
   queued: ['grey', 'Waiting for the office Mac. It goes in the next minute (texts wait until 8am overnight).'],
   claimed: ['blue', 'The office Mac is sending it now.'],
   sent: ['green', 'Sent from 0404 780 351.'],
   delivered: ['green', 'Sent.'],
-  failed: ['red', 'Not delivered. They may not use iMessage: use Text from my phone.'],
+  failed: ['red', 'Not delivered. This number may not take iMessage: send it on WhatsApp.'],
   unknown: ['amber', 'The Mac could not confirm it. Check Messages on the office Mac before sending again.'],
   cancelled: ['amber', 'Not sent.'],
   expired: ['amber', 'Not sent in time.'],
@@ -29,13 +32,23 @@ export function textComposer({ modal, toast, rowIds = [], requestId = '', parent
     <div id="tx-status" style="margin-top:8px"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:12px">
       <button type="button" class="j-btn j-btn-line" data-close>Close</button>
-      ${mobile ? '<a class="j-btn j-btn-line" id="tx-phone" href="#">Text from my phone</a>' : ''}
+      ${mobile ? '<a class="j-btn j-btn-line" id="tx-phone" href="#">Text from my phone</a><a class="j-btn j-btn-line" id="tx-wa" href="#" target="_blank" rel="noopener">WhatsApp</a>' : ''}
       <button type="button" class="j-btn j-btn-dark" id="tx-send">Send from 0404 780 351</button>
     </div>`, { wide: true })
   const area = box.querySelector('#tx-text')
-  const count = () => { const n = area.value.length; box.querySelector('#tx-count').textContent = `${n} characters${n > 160 ? `, ${Math.ceil(n / 153)} texts` : ''}`; const a = box.querySelector('#tx-phone'); if (a) a.href = smsHref(mobile, area.value) }
+  const wa = box.querySelector('#tx-wa')
+  const count = () => { const n = area.value.length; box.querySelector('#tx-count').textContent = `${n} characters${n > 160 ? `, ${Math.ceil(n / 153)} texts` : ''}`; const a = box.querySelector('#tx-phone'); if (a) a.href = smsHref(mobile, area.value); if (wa) wa.href = waHref(mobile, area.value) }
   area.addEventListener('input', count)
   count()
+  const ids = requestId ? { requestId } : { rowIds }
+  // No iMessage on this number: WhatsApp becomes the main button.
+  const preferWa = () => { if (!wa) return; wa.classList.replace('j-btn-line', 'j-btn-dark'); const send = box.querySelector('#tx-send'); send.classList.replace('j-btn-dark', 'j-btn-line') }
+  wa?.addEventListener('click', () => { api('/api/jfp-messages', { action: 'whatsappOpened', ...ids, text: area.value }).catch(() => {}) })
+  if (wa) api('/api/jfp-messages', { action: 'textHint', ...ids }).then((h) => {
+    if (!h.ok || !h.data.noImessage || !document.body.contains(box)) return
+    preferWa()
+    status('amber', `<b>This number does not take iMessage.</b> A text from 0404 780 351 did not reach them${h.data.since ? ` on ${esc(new Date(h.data.since).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }))}` : ''}. Send it on WhatsApp instead.`)
+  }).catch(() => {})
   // Always in view (Lee, 19 Oct 2026: "when i click, nothing happens"): on a
   // phone the status box can sit off screen above the buttons.
   const status = (cls, html) => { const s = box.querySelector('#tx-status'); s.innerHTML = `<div class="j-box j-box-${cls} small" role="status">${html}</div>`; s.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' }) }
@@ -62,6 +75,7 @@ export function textComposer({ modal, toast, rowIds = [], requestId = '', parent
       const st = g.ok ? g.data.message.status : 'queued'
       const [cls, words] = STATE[st] || STATE.queued
       status(cls, `<b>${esc(g.data?.message?.statusLabel || st)}</b>. ${esc(words)}${st === 'queued' && !r.data.hoursOpen ? ' Outside 8am to 8pm, so it goes at 8am.' : ''}`)
+      if (st === 'failed') preferWa()
       if (!['queued', 'claimed'].includes(st)) break
       await new Promise((res) => setTimeout(res, 3000))
     }

@@ -18,6 +18,7 @@ const KIND_HELP = {
 const S = { coachId: '', data: null }
 const tel = (m) => { const d = String(m || '').replace(/\D/g, ''); return d.startsWith('04') ? `+61${d.slice(1)}` : d }
 const smsHref = (mobile, text) => `sms:${tel(mobile)}${/iPhone|iPad|Macintosh/.test(navigator.userAgent) ? '&' : '?'}body=${encodeURIComponent(text)}`
+const waHref = (mobile, text) => `https://wa.me/${tel(mobile).replace(/\D/g, '')}?text=${encodeURIComponent(text)}`
 const first = (s) => String(s || '').trim().split(/\s+/)[0] || 'there'
 // "16:30" from the time box as "4:30pm", the way groups are written.
 const ampm = (hhmm) => { const [h, m] = String(hhmm || '').split(':').map(Number); if (!Number.isInteger(h)) return ''; return `${((h + 11) % 12) + 1}:${String(m || 0).padStart(2, '0')}${h < 12 ? 'am' : 'pm'}` }
@@ -59,7 +60,7 @@ export async function renderExtra(ui) {
     ${s.bookings.length ? `<ul class="jm-hist" style="margin-top:10px">${s.bookings.map((b) => `<li><span><b>${esc(b.name)}</b><small>${b.guest ? `friend of ${esc(b.inGroupOf || 'the family')} · no JFP waiver, check on the day` : `${esc(b.email || 'no email')}${b.from === 'family' ? ' · booked themselves' : ''}`}</small></span><span style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
       ${b.inGroupOf ? '' : pill(b)}
       ${s.date <= todayIso() ? ['Present', 'Absent'].map((st) => `<button type="button" class="j-btn j-btn-sm ${s.marks?.[b.id] === st ? 'j-btn-dark' : 'j-btn-line'}" data-x-mark="${esc(s.id)}|${esc(b.id)}|${st}">${st}</button>`).join('') : ''}
-      ${b.mobile ? `<a class="j-btn j-btn-line j-btn-sm" href="${esc(smsHref(b.mobile, extraText({ name: b.name, coach: coachWord(s), slot: s, email: b.email })))}">Text</a>` : ''}
+      ${b.mobile ? `<a class="j-btn j-btn-line j-btn-sm" href="${esc(smsHref(b.mobile, extraText({ name: b.name, coach: coachWord(s), slot: s, email: b.email })))}">Text</a><a class="j-btn j-btn-line j-btn-sm" target="_blank" rel="noopener" href="${esc(waHref(b.mobile, extraText({ name: b.name, coach: coachWord(s), slot: s, email: b.email })))}">WhatsApp</a>` : ''}
       ${b.inGroupOf ? '' : `<button type="button" class="j-btn j-btn-ghost j-btn-sm" data-x-rm="${esc(s.id)}|${esc(b.id)}">${b.groupId ? 'Remove the group' : 'Remove'}</button>`}</span></li>`).join('')}</ul>` : '<p class="muted small" style="margin-top:8px">No one booked yet.</p>'}
   </div>`
   view().innerHTML = `<div class="jp-head"><div><h1>Extra sessions</h1>${psHelp('Open extra hours. Public ones show in families\' accounts to book. Private ones have their own link for a player you have booked yourself. Every payment lands against the player and you.', 'About this page')}${hours ? `<p class="muted small"><b>${esc(hours)}</b></p>` : ''}</div>
@@ -339,9 +340,9 @@ function sentBox(ui, b, slot, n, problem) {
   const box = modal(`<h2 style="margin-bottom:6px">Sent to ${esc(b.name)}</h2>
     <p class="muted small" style="margin-bottom:12px">${problem ? `<b>Check this:</b> ${esc(problem)}<br>` : ''}${n > 1 ? `${n} sessions are` : 'The session is'} in their account to pay, and they have an email with a Pay button${b.email ? ` (${esc(b.email)})` : ''}. You can also text them:</p>
     <label class="j-field"><span>The text</span><textarea class="j-textarea" id="xd-text" rows="8">${esc(text)}</textarea></label>
-    <div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Done</button><button type="button" class="j-btn j-btn-line" id="xd-copy">Copy link</button>${b.mobile ? `<a class="j-btn j-btn-dark" id="xd-sms" href="${esc(smsHref(b.mobile, text))}">Text from my phone</a>` : ''}</div>`)
+    <div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Done</button><button type="button" class="j-btn j-btn-line" id="xd-copy">Copy link</button>${b.mobile ? `<a class="j-btn j-btn-line" id="xd-wa" target="_blank" rel="noopener" href="${esc(waHref(b.mobile, text))}">WhatsApp</a><a class="j-btn j-btn-dark" id="xd-sms" href="${esc(smsHref(b.mobile, text))}">Text from my phone</a>` : ''}</div>`)
   box.querySelector('#xd-copy').addEventListener('click', () => copy(slot.link))
-  box.querySelector('#xd-text').addEventListener('input', (ev) => { const a = box.querySelector('#xd-sms'); if (a) a.href = smsHref(b.mobile, ev.target.value) })
+  box.querySelector('#xd-text').addEventListener('input', (ev) => { const a = box.querySelector('#xd-sms'); if (a) a.href = smsHref(b.mobile, ev.target.value); const w = box.querySelector('#xd-wa'); if (w) w.href = waHref(b.mobile, ev.target.value) })
 
 }
 
@@ -380,9 +381,9 @@ function addPlayer(ui, s, done) {
     closeModal()
     const doneBox = modal(`<h2 style="margin-bottom:6px">${esc(b.name)} is booked in</h2><p class="muted small" style="margin-bottom:12px">${r.data.chargeError ? `<b>The payment did not go into their account:</b> ${esc(r.data.chargeError)}` : `It is in their account (${esc(b.email)}) to pay${slot.priceLabel ? `, ${esc(slot.priceLabel)}` : ''}.`} Send them the link:</p>
       <label class="j-field"><span>The text</span><textarea class="j-textarea" id="xd-text" rows="9">${esc(text)}</textarea></label>
-      <div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-line" id="xd-copy">Copy link</button>${b.mobile ? `<a class="j-btn j-btn-dark" id="xd-sms" href="${esc(smsHref(b.mobile, text))}">Text from my phone</a>` : ''}</div>`)
+      <div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-line" id="xd-copy">Copy link</button>${b.mobile ? `<a class="j-btn j-btn-line" id="xd-wa" target="_blank" rel="noopener" href="${esc(waHref(b.mobile, text))}">WhatsApp</a><a class="j-btn j-btn-dark" id="xd-sms" href="${esc(smsHref(b.mobile, text))}">Text from my phone</a>` : ''}</div>`)
     doneBox.querySelector('#xd-copy').addEventListener('click', () => copy(slot.link))
-    doneBox.querySelector('#xd-text').addEventListener('input', (ev) => { const a = doneBox.querySelector('#xd-sms'); if (a) a.href = smsHref(b.mobile, ev.target.value) })
+    doneBox.querySelector('#xd-text').addEventListener('input', (ev) => { const a = doneBox.querySelector('#xd-sms'); if (a) a.href = smsHref(b.mobile, ev.target.value); const w = doneBox.querySelector('#xd-wa'); if (w) w.href = waHref(b.mobile, ev.target.value) })
     toast(r.data.chargeError ? `Added, but the payment did not go into their account: ${r.data.chargeError}` : r.data.already ? 'Already on this session' : 'Added. It is in their account to pay.', 8000)
     done()
   })

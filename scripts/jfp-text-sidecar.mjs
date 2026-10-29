@@ -71,6 +71,28 @@ async function readBack(to, text, since) {
   return { found: false }
 }
 
+// What Messages itself says about our message (Jaxon, 29 Oct 2026: the text
+// was in the chat, so it read back as sent, but Messages had failed it with
+// error 22 because his number no longer takes iMessage). Waits up to ~20s for
+// Messages to settle: sent, delivered, or an error.
+const CHAT_DB = `${os.homedir()}/Library/Messages/chat.db`
+function msgState(guid) {
+  if (!/^[0-9A-F-]{36}$/i.test(guid || '')) return null
+  const r = spawnSync('/usr/bin/sqlite3', ['-readonly', CHAT_DB, `select is_sent, is_delivered, error, service from message where guid='${guid}'`], { encoding: 'utf8', timeout: 10000 })
+  const [sent, delivered, error, service] = (r.stdout || '').trim().split('|')
+  if (r.status !== 0 || sent === undefined || sent === '') return null
+  return { sent: sent === '1', delivered: delivered === '1', error: Number(error) || 0, service: service || '' }
+}
+async function settle(guid) {
+  let st = null
+  for (let i = 0; i < 8; i++) {
+    st = msgState(guid)
+    if (!st || st.error || (st.sent && (st.delivered || st.service !== 'iMessage'))) break
+    await sleep(2500)
+  }
+  return st
+}
+
 async function sendOne(job) {
   // The text must be exactly what was approved.
   if (sha(job.text) !== job.textHash) return relay('receipt', { id: job.id, textHash: job.textHash, outcome: 'failed', error: 'text did not match what was approved; not sent' })
@@ -78,12 +100,17 @@ async function sendOne(job) {
   const r = imsg(['send', '--to', job.to, '--text', job.text, '--service', SERVICE, '--json'])
   if (r.error && r.error.code === 'ENOENT') return relay('receipt', { id: job.id, textHash: job.textHash, outcome: 'failed', error: 'imsg not found; not sent' })
   const back = await readBack(job.to, job.text, since)
-  let outcome = 'unknown', error = ''
-  if (back.found) outcome = 'sent'
+  let outcome = 'unknown', error = '', code = ''
+  const st = back.found ? await settle(back.providerId) : null
+  if (back.found && st?.error) {
+    outcome = 'failed'
+    error = `Messages could not send it (error ${st.error})${st.service === 'iMessage' ? ': this number does not take iMessage' : ''}`
+    if (st.service === 'iMessage') code = 'no_imessage'
+  } else if (back.found) outcome = 'sent'
   else if (r.code !== 0) error = `imsg exit ${r.code}: ${(r.err || r.out).replace(/\+?\d[\d\s]{7,}/g, '[number]').slice(0, 200)}`
   else error = 'imsg said sent, but it was not found in Messages afterwards'
-  log(`text ${job.id}: ${outcome}${back.service ? ` via ${back.service}` : ''} (asked for ${SERVICE})`)
-  return relay('receipt', { id: job.id, textHash: job.textHash, outcome, service: back.service || '', sender: back.sender || '', providerId: back.providerId || '', readback: back, error })
+  log(`text ${job.id}: ${outcome}${back.service ? ` via ${back.service}` : ''} (asked for ${SERVICE})${st ? ` state sent=${st.sent} delivered=${st.delivered} error=${st.error}` : ''}`)
+  return relay('receipt', { id: job.id, textHash: job.textHash, outcome, code, delivered: Boolean(st?.delivered), service: back.service || '', sender: back.sender || '', providerId: back.providerId || '', readback: back, error })
 }
 
 async function once() {

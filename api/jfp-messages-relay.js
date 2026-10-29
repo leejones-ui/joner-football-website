@@ -91,9 +91,14 @@ async function receipt(res, body) {
     at: new Date().toISOString(), outcome, service: clean(body.service, 20), sender, providerId: clean(body.providerId, 80),
     readback: { found: body.readback?.found === true, isFromMe: body.readback?.isFromMe === true, at: clean(body.readback?.at, 40) },
     error: clean(body.error, 300), host: clean(body.host, 60), senderMismatch,
+    code: clean(body.code, 30), delivered: body.delivered === true,
   }
+  // Remember a number that does not take iMessage, so the portal says
+  // "use WhatsApp" next time; a delivered iMessage clears it.
+  if (m.target?.hash && outcome === 'failed' && m.receipt.code === 'no_imessage') await kvCommand(['HSET', keys.noImsg(), m.target.hash, m.receipt.at])
+  if (m.target?.hash && outcome === 'sent' && m.receipt.delivered && m.receipt.service === 'iMessage') await kvCommand(['HDEL', keys.noImsg(), m.target.hash])
   m.leaseUntil = ''
-  event(m, 'relay', outcome === 'sent' ? `sent by ${m.receipt.service || 'Messages'} (read back from Messages)` : outcome === 'failed' ? 'not sent' : 'unclear: check Messages before doing anything', { error: m.receipt.error })
+  event(m, 'relay', outcome === 'sent' ? `sent by ${m.receipt.service || 'Messages'} (read back from Messages)` : outcome === 'failed' ? (m.receipt.code === 'no_imessage' ? 'not sent: this number does not take iMessage' : 'not sent') : 'unclear: check Messages before doing anything', { error: m.receipt.error })
   await saveMsg(m)
   await kvCommand(['DEL', keys.lease(m.id)])
   await audit({ by: 'relay', action: `message.text.${outcome}`, target: m.id, after: { service: m.receipt.service, senderMismatch } })
