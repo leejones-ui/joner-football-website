@@ -346,6 +346,8 @@ async function overview(res, parent, body = {}, opts = {}) {
     waiverVersion: config.waiverVersion,
     kitUrl: config.kitUrl,
     kitPriceLabel: config.kitPriceLabel,
+    // Our coaches (Lee, 29 Oct 2026): every finished coach profile, while Lee has them on.
+    ourCoaches: cprof ? cprof.familyCoaches(config, cprofAll, coachPhotoUrl) : [],
     players,
     todo,
     // Order on sign in (Lee, 13 Oct 2026): 1 waiver, 2 pay, 3 player details.
@@ -1048,7 +1050,7 @@ async function playerView(login) {
     announcements: await announcementsFor({ groupIds: rows.map((r) => r.groupId), locationIds: rows.map((r) => locationFor(config, r.location).id), email: login.email, config }),
     notes: (d.notes || []).filter((n) => rowIds.has(n.rowId)),
     reports: await reportsSummary(login.email, login),
-    push: d.push, term: d.term, termStart: d.termStart, weeks: d.weeks, venues: d.venues, reasons: d.reasons, noteMax: d.noteMax,
+    push: d.push, term: d.term, termStart: d.termStart, weeks: d.weeks, venues: d.venues, reasons: d.reasons, noteMax: d.noteMax, ourCoaches: d.ourCoaches || [],
     todo: [], owed: [], paid: [], requests: [], bookings: [], juniors: null, nextTerm: null, keep: { name: d.keep?.name || '', open: false, players: [] }, extras: null,
   }, rowIds, byAgent }
 }

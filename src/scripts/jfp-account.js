@@ -16,7 +16,7 @@ import { mountSavedPay, savedReturn, forgetSaved } from './jfp-account-saved.js'
 import { renderReports, reportsHomeBlock, unreadReports } from './jfp-account-reports.js'
 import { newSessions, markSeen, newSessionsPopup } from './jfp-account-new.js'
 import { askWhere } from './jfp-account-where.js'
-import { coachRow, coachSheet } from './jfp-account-coach.js'
+import { coachRow, coachSheet, renderCoaches } from './jfp-account-coach.js'
 import { attendanceLine, pastMark, unreadNotes, notesHomeBlock, makeupsHomeBlock, askMakeup, renderNotes, renderAlerts, pushOffered, loginRow, loginSheet } from './jfp-account-more.js'
 
 const q = new URLSearchParams(location.search)
@@ -24,7 +24,7 @@ let D = null
 let PROF = null
 // Fees (14 Oct 2026): read when the Fees tab first opens, again after each load.
 let FEES = null
-const PANELS = ['home', 'sessions', 'fees', 'family', 'news', 'notes', 'reports', 'alerts', 'info', 'waivers', 'cancel', 'keep', 'term', 'holidays', 'extra', 'analysis', 'videos', 'app', 'contact']
+const PANELS = ['home', 'sessions', 'fees', 'family', 'news', 'notes', 'reports', 'alerts', 'info', 'waivers', 'cancel', 'keep', 'term', 'coaches', 'holidays', 'extra', 'analysis', 'videos', 'app', 'contact']
 let current = 'home'
 const KIT_URL = 'https://www.besteamsport.com.au/collections/joner-football'
 const IMG = '/images/jfp-account'
@@ -232,6 +232,7 @@ function face(name, photo, extra = '') {
 // offers). Sections open and close and are remembered on this device; the
 // section holding the open page always stays open. Phones: the same two
 // sections in the More sheet.
+const coachesItem = () => (D?.ourCoaches?.length ? [{ key: 'coaches', label: 'Our coaches', icon: 'users' }] : [])
 function nav() {
   const unsigned = unsignedWaivers().length
   const notesItem = { key: 'notes', label: 'Coach notes', icon: 'whistle', count: unreadNotes(D) }
@@ -249,6 +250,7 @@ function nav() {
     { label: 'Explore Joner', items: [
       { key: 'videos', label: 'Videos', icon: 'play' },
       { key: 'term', label: `${termShort()} info`, icon: 'info' },
+      ...coachesItem(),
       { key: 'app', label: 'The JF App', icon: 'phone' },
     ] },
   ]
@@ -271,6 +273,7 @@ function nav() {
     ] },
     { label: 'Explore Joner', items: [
       { key: 'term', label: `${termShort()} info`, icon: 'info' },
+      ...coachesItem(),
       { key: 'holidays', label: 'Holiday training', icon: 'sun', count: newSessions(D).holiday.length },
       { key: 'extra', label: 'Book extra sessions', icon: 'calplus', count: newSessions(D).extra.length },
       { key: 'analysis', label: 'Game analysis', icon: 'video' },
@@ -439,7 +442,7 @@ function show(panel, { keepScroll = false } = {}) {
 const pane = (k) => document.querySelector(`[data-pane="${k}"]`)
 // Read notes or a report: the badges and Home's New cards update (28 Oct 2026).
 function afterRead() { renderShell(); const h = pane('home'); if (h) { delete h.dataset.drawn; if (current === 'home') drawPane('home') } }
-const DRAW = { home: () => renderHome(), sessions: () => renderSessions(), fees: () => renderFees(), family: () => renderFamily(), news: () => renderNews(), info: () => renderInfo(), waivers: () => renderWaivers(), cancel: () => renderCancel(), keep: () => renderKeep(), term: () => renderTerm(), holidays: () => renderHolidays(), extra: () => renderExtra(pane('extra'), D), analysis: () => renderAnalysis(pane('analysis'), D), videos: () => renderVideos(), app: () => renderApp(), contact: () => renderContact(), notes: () => renderNotes(pane('notes'), D, afterRead), reports: () => renderReports(pane('reports'), D, afterRead), alerts: () => renderAlerts(pane('alerts'), D) }
+const DRAW = { home: () => renderHome(), sessions: () => renderSessions(), fees: () => renderFees(), family: () => renderFamily(), news: () => renderNews(), info: () => renderInfo(), waivers: () => renderWaivers(), cancel: () => renderCancel(), keep: () => renderKeep(), term: () => renderTerm(), coaches: () => renderCoaches(pane('coaches'), D), holidays: () => renderHolidays(), extra: () => renderExtra(pane('extra'), D), analysis: () => renderAnalysis(pane('analysis'), D), videos: () => renderVideos(), app: () => renderApp(), contact: () => renderContact(), notes: () => renderNotes(pane('notes'), D, afterRead), reports: () => renderReports(pane('reports'), D, afterRead), alerts: () => renderAlerts(pane('alerts'), D) }
 function drawPane(panel) { DRAW[panel]?.(); const el = document.querySelector(`[data-pane="${panel}"]`); if (el) el.dataset.drawn = '1' }
 
 function render() {
@@ -1072,7 +1075,7 @@ function renderTerm() {
     ['1 on 1 training', oneToOneSummary],
   ]
   el.innerHTML = `${hero({ img: `${IMG}/photos/ntra-field-1600x900.webp`, imgSmall: `${IMG}/photos/ntra-field-900x1100.webp`, kicker: 'About', title: esc(D.term), lede: `${weeks} weeks of small-group training at Belrose HQ, North Turramurra and Rydalmere${D.termStart ? `, from the week of ${esc(niceIso(D.termStart))}` : ''}.` })}
-    <section class="ja-sec">${secHead('How the term works')}<div class="ja-facts">${facts.map(([t, d], i) => `<div class="ja-fact"><span class="n">${String(i + 1).padStart(2, '0')}</span><h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div></section>
+    <section class="ja-sec">${secHead('How the term works')}<div class="ja-facts">${facts.map(([t, d], i) => `<div class="ja-fact"><span class="n">${String(i + 1).padStart(2, '0')}</span><h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}${D.ourCoaches?.length ? `<div class="ja-fact"><span class="n">${String(facts.length + 1).padStart(2, '0')}</span><h3>Our coaches</h3><p>Meet the coaches who run every session.</p><div class="ja-fact-link"><button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-go="coaches">Meet our coaches</button></div></div>` : ''}</div></section>
     <section class="ja-sec">${secHead('Want more?')}<div class="ja-grid ja-grid-2">${termExtras.map((x) => `<div class="ja-card" style="padding:22px"><h3 class="ja-h3">${esc(x.title)}</h3><p class="ja-small ja-muted" style="margin:6px 0 14px">${esc(x.text)}</p><button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-go="${esc(x.key)}">${esc(x.cta)}</button></div>`).join('')}</div></section>
     <section class="ja-sec ja-split">
       <div class="ja-card" style="padding:26px"><p class="ja-kicker"><i></i>Every session</p><h2 class="ja-h2" style="margin-top:10px">Come ready</h2>

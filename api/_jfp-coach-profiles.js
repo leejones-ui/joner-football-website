@@ -31,7 +31,15 @@ export function cleanProfile(input = {}, { canSetRole = false, before = {} } = {
     languages: clean(input.languages, 120),
     favourite: clean(input.favourite, 120),
     leaveWith: clean(input.leaveWith, 240),
+    // Links on the profile (Lee, 29 Oct 2026: his About page and Coaching Pros).
+    links: list(input.links, 6, (x) => { const label = clean(x?.label, 60); const url = cleanUrl(x?.url); return label && url ? { label, url } : null }),
   }
+}
+// https only, or a page on this site ("/about").
+function cleanUrl(v) {
+  const u = clean(v, 300)
+  if (/^\/[^/]/.test(u)) return u
+  try { const x = new URL(u); return x.protocol === 'https:' ? x.href : '' } catch { return '' }
 }
 
 // "Since March 2021 · 5 years". Under a year: "Since March 2026".
@@ -50,6 +58,18 @@ export async function allProfiles() {
   for (let i = 0; i < flat.length; i += 2) out[flat[i]] = parse(flat[i + 1]) || {}
   return out
 }
+// Finished enough for families to see (Lee, 29 Oct 2026: never a half-empty card).
+export const forFamilies = (p) => String(p?.about || '').trim().length >= 80
+
+// Our coaches for families: every coach with a finished profile, the head
+// coach first, then by role, then longest at Joner Football.
+export function familyCoaches(config, all, photoUrl) {
+  const rank = (p) => { const i = ROLES.indexOf(p.role); return i < 0 ? ROLES.length : i }
+  return config.coaches.filter((c) => forFamilies(all[c.id]))
+    .map((c) => profileView(config, c, all[c.id], c.photoV ? photoUrl(c) : ''))
+    .sort((a, b) => rank(a) - rank(b) || String(a.joined || '9999').localeCompare(String(b.joined || '9999')))
+}
+
 export function filled(p) { return Boolean(p && (p.about || p.joined || p.playing?.length || p.coaching?.length || p.quals?.length)) }
 
 // What anyone allowed to see a profile gets. Never an email or phone.

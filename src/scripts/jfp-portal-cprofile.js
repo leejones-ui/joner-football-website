@@ -24,12 +24,13 @@ export function profileHtml(c, meta) {
     ${sec('Coaches best', [c.skills?.length ? `<div class="cp-tags">${c.skills.map((s) => `<i>${esc(skill(s))}</i>`).join('')}</div>` : '', c.ages?.length ? `<p class="small" style="margin-top:6px"><b>Ages:</b> ${esc(c.ages.join(', '))}</p>` : ''].join(''))}
     ${sec('Speaks', c.languages ? `<p>${esc(c.languages)}</p>` : '')}
     ${sec('Favourite player or team', c.favourite ? `<p>${esc(c.favourite)}</p>` : '')}
-    ${sec('What I want every player to leave with', c.leaveWith ? `<p class="cp-about">${esc(c.leaveWith)}</p>` : '')}`
+    ${sec('What I want every player to leave with', c.leaveWith ? `<p class="cp-about">${esc(c.leaveWith)}</p>` : '')}
+    ${sec('Links', rows(c.links, (x) => `<li><a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.label)}</a></li>`))}`
 }
 
 // The edit form. mount() fills `box`; onSaved gets the saved profile.
 export function profileForm(box, { post, toast }, c, meta, onSaved) {
-  let p = { ...c, playing: [...(c.playing || [])], coaching: [...(c.coaching || [])], quals: [...(c.quals || [])] }
+  let p = { ...c, playing: [...(c.playing || [])], coaching: [...(c.coaching || [])], quals: [...(c.quals || [])], links: [...(c.links || [])] }
   const nowY = new Date().getFullYear()
   const [jy, jm] = (p.joined || '').split('-')
   const repeat = (key, list, cols) => `<div class="cp-rep" data-rep="${key}">${(list.length ? list : [{}]).map((x) => `<div class="cp-rep-row">${cols.map(([f, label, ph, w]) => `<label class="j-field" style="flex:${w || 1}"><span>${esc(label)}</span><input class="j-input" data-k="${f}" value="${esc(x[f] || '')}" placeholder="${esc(ph)}" maxlength="100"></label>`).join('')}<button type="button" class="j-btn j-btn-ghost j-btn-sm" data-rm aria-label="Remove">✕</button></div>`).join('')}</div>
@@ -51,12 +52,13 @@ export function profileForm(box, { post, toast }, c, meta, onSaved) {
         <label class="j-field"><span>Languages you speak</span><input class="j-input" name="languages" value="${esc(p.languages || '')}" maxlength="120" placeholder="English, Portuguese"></label>
         <label class="j-field"><span>Favourite player or team</span><input class="j-input" name="favourite" value="${esc(p.favourite || '')}" maxlength="120"></label>
         <label class="j-field"><span>What you want every player to leave with</span><input class="j-input" name="leaveWith" value="${esc(p.leaveWith || '')}" maxlength="240" placeholder="Confidence on the ball, and wanting to come back next week."></label></div>
+      <div class="cp-block"><h3>Links</h3><p class="muted small" style="margin:-4px 0 8px">Your own page, videos or a highlight reel. Families see them as buttons on your profile.</p>${repeat('links', p.links, [['label', 'Button words', 'Watch me coach the pros', 2], ['url', 'Link', 'https://youtube.com/...', 2]])}</div>
       <p class="muted small">Saves straight away. Every coach, Lee and Ligia can read it${meta.families ? ', and families see it in My account' : ''}.</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="submit" class="j-btn j-btn-dark j-btn-lg">Save profile</button></div></form>`
     const f = box.querySelector('form')
     const grabRep = (key) => [...f.querySelectorAll(`[data-rep="${key}"] .cp-rep-row`)].map((r) => Object.fromEntries([...r.querySelectorAll('[data-k]')].map((i) => [i.dataset.k, i.value.trim()])))
     const grab = () => {
-      p = { ...p, role: f.role ? f.role.value : p.role, joined: f.jy.value && f.jm.value ? `${f.jy.value}-${f.jm.value}` : '', about: f.about.value.trim(), highest: f.highest.value.trim(), playing: grabRep('playing'), coaching: grabRep('coaching'), quals: grabRep('quals'), skills: [...f.querySelectorAll('[name="skills"]:checked')].map((x) => x.value), ages: [...f.querySelectorAll('[name="ages"]:checked')].map((x) => x.value), languages: f.languages.value.trim(), favourite: f.favourite.value.trim(), leaveWith: f.leaveWith.value.trim() }
+      p = { ...p, role: f.role ? f.role.value : p.role, joined: f.jy.value && f.jm.value ? `${f.jy.value}-${f.jm.value}` : '', about: f.about.value.trim(), highest: f.highest.value.trim(), playing: grabRep('playing'), coaching: grabRep('coaching'), quals: grabRep('quals'), links: grabRep('links'), skills: [...f.querySelectorAll('[name="skills"]:checked')].map((x) => x.value), ages: [...f.querySelectorAll('[name="ages"]:checked')].map((x) => x.value), languages: f.languages.value.trim(), favourite: f.favourite.value.trim(), leaveWith: f.leaveWith.value.trim() }
     }
     f.querySelectorAll('[data-add]').forEach((b) => b.addEventListener('click', () => { grab(); p[b.dataset.add] = [...p[b.dataset.add], {}]; draw() }))
     f.querySelectorAll('[data-rm]').forEach((b) => b.addEventListener('click', () => { const row = b.closest('.cp-rep-row'); const key = b.closest('[data-rep]').dataset.rep; const i = [...row.parentNode.children].indexOf(row); grab(); p[key] = p[key].filter((_, j) => j !== i); draw() }))
@@ -64,7 +66,7 @@ export function profileForm(box, { post, toast }, c, meta, onSaved) {
       e.preventDefault(); grab()
       if ((f.jy.value && !f.jm.value) || (!f.jy.value && f.jm.value)) return toast('Pick the month and the year you started.')
       const btn = f.querySelector('[type="submit"]'); btn.disabled = true
-      const r = await post('coachProfileSave', { coachId: c.id, profile: { ...p, playing: p.playing.filter((x) => x.club), coaching: p.coaching.filter((x) => x.club), quals: p.quals.filter((x) => x.name) } })
+      const r = await post('coachProfileSave', { coachId: c.id, profile: { ...p, playing: p.playing.filter((x) => x.club), coaching: p.coaching.filter((x) => x.club), quals: p.quals.filter((x) => x.name), links: p.links.filter((x) => x.label && x.url) } })
       btn.disabled = false
       if (!r.ok) return toast(r.data.error)
       toast('Profile saved'); onSaved?.(r.data.profile)

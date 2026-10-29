@@ -955,6 +955,15 @@ body:has(.ja[data-theme="light"]) { background: #F5F5F3 !important; }
 .ja-coach-chip small { font-size: 11px; opacity: .7; }
 .ja-cp-sec { margin-top: 14px; }
 .ja-cp-list { margin: 4px 0 0; padding-left: 18px; display: grid; gap: 4px; }
+.ja-coaches { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; align-items: stretch; }
+.ja-coach-card { display: flex; gap: 16px; margin: 0; vertical-align: top; align-items: flex-start; text-align: left; font: inherit; color: inherit; cursor: pointer; padding: 20px; width: 100%; }
+.ja-coach-card:hover { border-color: var(--ja-red, #E8000D); }
+.ja-coach-txt { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ja-coach-txt small { font-size: 12px; }
+.ja-coach-more { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; font-size: 13px; color: var(--ja-red, #E8000D); }
+.ja-coach-more svg { width: 14px; height: 14px; }
+.ja-cp-links { display: grid; gap: 10px; margin-top: 20px; }
+.ja-fact-link { margin-top: 10px; }
 
 /* Progress over the terms (Lee, 20 Oct 2026): one card a player on Player
    reports. Phone first; the chart and list use the theme tokens, so light
