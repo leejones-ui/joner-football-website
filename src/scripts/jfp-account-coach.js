@@ -57,7 +57,7 @@ export function coachSheet(id) {
     ${sec('Playing', rows(c.playing, (x) => x.level))}
     ${sec('Coaching', rows(c.coaching, (x) => x.team))}
     ${sec('Qualifications', c.quals?.length ? `<div class="ja-cp-tags">${c.quals.map((q) => `<span>${esc(q.name)}${q.year ? ` <i>${esc(q.year)}</i>` : ''}</span>`).join('')}</div>` : '')}
-    ${c.drill ? sec('My favourite drill', `<div class="ja-cp-rows"><div class="ja-cp-row"><span><b>${esc(c.drill.name)}</b>${c.drill.url ? '<small>In the Joner Football app</small>' : ''}</span>${c.drill.url ? `<a class="ja-btn ja-btn-line ja-btn-sm" href="${esc(c.drill.url)}" target="_blank" rel="noopener noreferrer">Watch</a>` : ''}</div></div>`) : ''}
+    ${c.drill ? sec('My favourite drill', `<div class="ja-cp-rows"><div class="ja-cp-row"><span><b>${esc(c.drill.name)}</b>${c.drill.url ? `<small>${/youtube\.com|youtu\.be/.test(c.drill.url) ? 'On YouTube' : /app\.jonerfootball\.com/.test(c.drill.url) ? 'In the Joner Football app' : 'Watch the video'}</small>` : ''}</span>${c.drill.url ? `<a class="ja-btn ja-btn-line ja-btn-sm" href="${esc(c.drill.url)}" target="_blank" rel="noopener noreferrer">Watch</a>` : ''}</div></div>`) : ''}
     ${sec('Off the pitch', off.length ? `<dl class="ja-cp-off">${off.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>` : '')}
     ${c.links?.length > 1 ? `<div class="ja-cp-sec ja-cp-links">${c.links.slice(1).map((l) => `<a class="ja-btn ja-btn-line ja-btn-block" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.label)}${ic('ext', 'ext')}</a>`).join('')}</div>` : ''}
   </div>`
