@@ -34,7 +34,9 @@ export function renderCoaches(el, D) {
 
 // The full profile (Lee, 29 Oct 2026: "clean that up in terms of it all
 // matching"): one row style for playing and coaching, qualifications as tags,
-// coaching photos, Off the pitch, and the leave-with line as a quote.
+// coaching photos, Off the pitch, and the leave-with line as a quote. The
+// first link sits at the top, under the photo (Lee: "the more about Lee
+// button at the top").
 // "Coaches best" is no longer shown to families.
 const paras = (t) => String(t || '').split(/\n+/).map((x) => x.trim()).filter(Boolean).map((x) => `<p>${esc(x)}</p>`).join('')
 export function coachSheet(id) {
@@ -48,7 +50,7 @@ export function coachSheet(id) {
   const off = [['Hobbies', c.hobbies], ['Favourite team', c.favTeam], ['Favourite players', c.favPlayers], ...(c.favTeam || c.favPlayers ? [] : [['Favourite player or team', c.favourite]]), ['Fun fact', c.funFact], ['Speaks', c.languages]].filter(([, v]) => v)
   const gal = c.gallery || []
   sheet.body.innerHTML = `<div class="ja-cp">
-    <div class="ja-cp-hero">${face(c, 112)}${facts.length ? `<div class="ja-cp-facts">${facts.map((f) => `<span>${esc(f)}</span>`).join('')}</div>` : ''}${c.coachesOn?.length ? `<div class="ja-cp-on">${ic('calendar')}<span>${c.coachesOn.map((x) => `<span>${esc(x)}</span>`).join('')}</span></div>` : ''}</div>
+    <div class="ja-cp-hero">${face(c, 112)}${facts.length ? `<div class="ja-cp-facts">${facts.map((f) => `<span>${esc(f)}</span>`).join('')}</div>` : ''}${c.links?.[0] ? `<a class="ja-btn ja-btn-red ja-cp-top-link" href="${esc(c.links[0].url)}" target="_blank" rel="noopener noreferrer">${esc(c.links[0].label)}${ic('ext', 'ext')}</a>` : ''}${c.coachesOn?.length ? `<div class="ja-cp-on">${ic('calendar')}<span>${c.coachesOn.map((x) => `<span>${esc(x)}</span>`).join('')}</span></div>` : ''}</div>
     ${c.about ? `<div class="ja-cp-about">${paras(c.about)}</div>` : `<p class="ja-muted">${esc(first(c.name))} has not written a profile yet.</p>`}
     ${gal.length ? `<section class="ja-cp-sec"><h4 class="ja-cp-h">On the pitch</h4><div class="ja-cp-gal">${gal.map((g, i) => `<button type="button" class="ja-cp-ph" data-gal="${i}"><img src="${esc(g.url)}" alt="${esc(g.caption || `${first(c.name)} coaching`)}" loading="lazy">${g.caption ? `<small>${esc(g.caption)}</small>` : ''}</button>`).join('')}</div></section>` : ''}
     ${c.leaveWith ? `<blockquote class="ja-cp-quote"><h4 class="ja-cp-h">What I want every player to leave with</h4>${paras(c.leaveWith)}</blockquote>` : ''}
@@ -57,7 +59,7 @@ export function coachSheet(id) {
     ${sec('Qualifications', c.quals?.length ? `<div class="ja-cp-tags">${c.quals.map((q) => `<span>${esc(q.name)}${q.year ? ` <i>${esc(q.year)}</i>` : ''}</span>`).join('')}</div>` : '')}
     ${c.drill ? sec('My favourite drill', `<div class="ja-cp-rows"><div class="ja-cp-row"><span><b>${esc(c.drill.name)}</b>${c.drill.url ? '<small>In the Joner Football app</small>' : ''}</span>${c.drill.url ? `<a class="ja-btn ja-btn-line ja-btn-sm" href="${esc(c.drill.url)}" target="_blank" rel="noopener noreferrer">Watch</a>` : ''}</div></div>`) : ''}
     ${sec('Off the pitch', off.length ? `<dl class="ja-cp-off">${off.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>` : '')}
-    ${c.links?.length ? `<div class="ja-cp-sec ja-cp-links">${c.links.map((l, i) => `<a class="ja-btn ${i ? 'ja-btn-line' : 'ja-btn-red'} ja-btn-block" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.label)}${ic('ext', 'ext')}</a>`).join('')}</div>` : ''}
+    ${c.links?.length > 1 ? `<div class="ja-cp-sec ja-cp-links">${c.links.slice(1).map((l) => `<a class="ja-btn ja-btn-line ja-btn-block" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.label)}${ic('ext', 'ext')}</a>`).join('')}</div>` : ''}
   </div>`
   // A coaching photo full size; tap anywhere to close.
   sheet.body.querySelectorAll('[data-gal]').forEach((b) => b.addEventListener('click', () => {
