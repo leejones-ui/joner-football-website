@@ -39,9 +39,9 @@ export function cleanProfile(input = {}, { canSetRole = false, before = {} } = {
     // Off the pitch (Lee, 29 Oct 2026: "people love this").
     hobbies: para(input.hobbies, 300),
     funFact: para(input.funFact, 300),
-    // Round 3 (Lee, 29 Oct 2026): a short hello video, "Ask me about", a favourite drill.
-    helloVideo: cleanUrl(input.helloVideo),
-    askMe: clean(input.askMe, 160),
+    favTeam: clean(input.favTeam, 120),
+    favPlayers: clean(input.favPlayers, 200),
+    // A favourite drill, linked to it in the JF App (Lee, 29 Oct 2026).
     drill: (() => { const name = clean(input.drill?.name, 80); return name ? { name, url: cleanUrl(input.drill?.url) } : null })(),
     // Coaching photos (up to 8): uploaded one at a time by coachGalleryPhoto, never by the form.
     gallery: list(input.gallery, GALLERY_MAX, (x) => (Number.isInteger(Number(x?.v)) && Number(x.v) > 0 ? { v: Number(x.v), caption: clean(x?.caption, 80) } : null)),

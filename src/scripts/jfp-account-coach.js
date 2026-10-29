@@ -45,13 +45,12 @@ export function coachSheet(id) {
   const sec = (t, body) => (body ? `<section class="ja-cp-sec"><h4 class="ja-cp-h">${esc(t)}</h4>${body}</section>` : '')
   const rows = (list, sub) => (list?.length ? `<div class="ja-cp-rows">${list.map((x) => `<div class="ja-cp-row"><span><b>${esc(x.club)}</b>${sub(x) ? `<small>${esc(sub(x))}</small>` : ''}</span>${x.years ? `<em>${esc(x.years)}</em>` : ''}</div>`).join('')}</div>` : '')
   const facts = [c.highest, c.quals?.[0]?.name, since ? `JF since ${since.replace(/^\w+ /, '')}` : ''].filter(Boolean)
-  const off = [['Hobbies', c.hobbies], ['Favourite player or team', c.favourite], ['Fun fact', c.funFact], ['Speaks', c.languages]].filter(([, v]) => v)
+  const off = [['Hobbies', c.hobbies], ['Favourite team', c.favTeam], ['Favourite players', c.favPlayers], ...(c.favTeam || c.favPlayers ? [] : [['Favourite player or team', c.favourite]]), ['Fun fact', c.funFact], ['Speaks', c.languages]].filter(([, v]) => v)
   const gal = c.gallery || []
   sheet.body.innerHTML = `<div class="ja-cp">
-    <div class="ja-cp-hero">${face(c, 112)}${facts.length ? `<div class="ja-cp-facts">${facts.map((f) => `<span>${esc(f)}</span>`).join('')}</div>` : ''}${c.coachesOn?.length ? `<div class="ja-cp-on">${ic('calendar')}<span>${c.coachesOn.map((x) => `<span>${esc(x)}</span>`).join('')}</span></div>` : ''}${c.helloVideo ? `<a class="ja-btn ja-btn-red ja-cp-hello" href="${esc(c.helloVideo)}" target="_blank" rel="noopener noreferrer">${ic('play')}Watch ${esc(first(c.name))} say hello</a>` : ''}</div>
+    <div class="ja-cp-hero">${face(c, 112)}${facts.length ? `<div class="ja-cp-facts">${facts.map((f) => `<span>${esc(f)}</span>`).join('')}</div>` : ''}${c.coachesOn?.length ? `<div class="ja-cp-on">${ic('calendar')}<span>${c.coachesOn.map((x) => `<span>${esc(x)}</span>`).join('')}</span></div>` : ''}</div>
     ${c.about ? `<div class="ja-cp-about">${paras(c.about)}</div>` : `<p class="ja-muted">${esc(first(c.name))} has not written a profile yet.</p>`}
     ${gal.length ? `<section class="ja-cp-sec"><h4 class="ja-cp-h">On the pitch</h4><div class="ja-cp-gal">${gal.map((g, i) => `<button type="button" class="ja-cp-ph" data-gal="${i}"><img src="${esc(g.url)}" alt="${esc(g.caption || `${first(c.name)} coaching`)}" loading="lazy">${g.caption ? `<small>${esc(g.caption)}</small>` : ''}</button>`).join('')}</div></section>` : ''}
-    ${c.askMe ? `<div class="ja-cp-ask"><h4 class="ja-cp-h">Ask me about</h4><p>${esc(c.askMe)}</p></div>` : ''}
     ${c.leaveWith ? `<blockquote class="ja-cp-quote"><h4 class="ja-cp-h">What I want every player to leave with</h4>${paras(c.leaveWith)}</blockquote>` : ''}
     ${sec('Playing', rows(c.playing, (x) => x.level))}
     ${sec('Coaching', rows(c.coaching, (x) => x.team))}

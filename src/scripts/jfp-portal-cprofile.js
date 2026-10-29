@@ -22,8 +22,8 @@ export function profileHtml(c, meta) {
     ${sec('Coaching', rows(c.coaching, (x) => `<li><b>${esc(x.club)}</b>${x.team ? ` · ${esc(x.team)}` : ''}${x.years ? ` <span class="muted">${esc(x.years)}</span>` : ''}</li>`))}
     ${sec('Qualifications', rows(c.quals, (x) => `<li>${esc(x.name)}${x.year ? ` <span class="muted">${esc(x.year)}</span>` : ''}</li>`))}
     ${sec('What I want every player to leave with', c.leaveWith ? `<p class="cp-about" style="white-space:pre-line">${esc(c.leaveWith)}</p>` : '')}
-    ${sec('Say hello', [c.helloVideo ? `<p><a href="${esc(c.helloVideo)}" target="_blank" rel="noopener noreferrer">Hello video</a></p>` : '', c.askMe ? `<p><b>Ask me about:</b> ${esc(c.askMe)}</p>` : '', c.drill ? `<p><b>Favourite drill:</b> ${c.drill.url ? `<a href="${esc(c.drill.url)}" target="_blank" rel="noopener noreferrer">${esc(c.drill.name)}</a>` : esc(c.drill.name)}</p>` : ''].join(''))}
-    ${sec('Off the pitch', [['Hobbies', c.hobbies], ['Favourite player or team', c.favourite], ['Fun fact', c.funFact], ['Speaks', c.languages]].filter(([, v]) => v).map(([k, v]) => `<p><b>${esc(k)}:</b> ${esc(v)}</p>`).join(''))}
+    ${sec('Favourite drill', [c.drill ? `<p><b>Favourite drill:</b> ${c.drill.url ? `<a href="${esc(c.drill.url)}" target="_blank" rel="noopener noreferrer">${esc(c.drill.name)}</a>` : esc(c.drill.name)}</p>` : ''].join(''))}
+    ${sec('Off the pitch', [['Hobbies', c.hobbies], ['Favourite team', c.favTeam], ['Favourite players', c.favPlayers], ['Favourite player or team', c.favTeam || c.favPlayers ? '' : c.favourite], ['Fun fact', c.funFact], ['Speaks', c.languages]].filter(([, v]) => v).map(([k, v]) => `<p><b>${esc(k)}:</b> ${esc(v)}</p>`).join(''))}
     ${sec('Links', rows(c.links, (x) => `<li><a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.label)}</a></li>`))}`
 }
 
@@ -46,14 +46,13 @@ export function profileForm(box, { post, toast }, c, meta, onSaved) {
       <div class="cp-block"><h3>Coaching</h3>${repeat('coaching', p.coaching, [['club', 'Club or academy', 'Joner Football', 2], ['team', 'Team or age group', 'U12 SAP', 1.4], ['years', 'Years', '2021 to now', 1.2]])}</div>
       <div class="cp-block"><h3>Qualifications</h3>${repeat('quals', p.quals, [['name', 'Qualification', 'Football Australia C Licence', 3], ['year', 'Year', '2023', 1]])}</div>
       <div class="cp-block"><h3>What you want every player to leave with</h3><label class="j-field"><span>Families see this as a quote on your profile</span><textarea class="j-textarea" name="leaveWith" rows="4" maxlength="600" placeholder="Confidence on the ball, and wanting to come back next week.">${esc(p.leaveWith || '')}</textarea></label></div>
-      <div class="cp-block"><h3>Say hello</h3>
-        <label class="j-field"><span>A short hello video (20 to 30 seconds: YouTube, Instagram or a JF App link)</span><input class="j-input" name="helloVideo" value="${esc(p.helloVideo || '')}" maxlength="300" placeholder="https://youtube.com/shorts/..."></label>
-        <label class="j-field"><span>Ask me about</span><input class="j-input" name="askMe" value="${esc(p.askMe || '')}" maxlength="160" placeholder="My time at Everton"></label>
+      <div class="cp-block"><h3>Your favourite drill</h3>
         <div class="j-two"><label class="j-field"><span>Your favourite drill</span><input class="j-input" name="drillName" value="${esc(p.drill?.name || '')}" maxlength="80" placeholder="Rondo 4v1"></label>
         <label class="j-field"><span>Link to it in the JF App (optional)</span><input class="j-input" name="drillUrl" value="${esc(p.drill?.url || '')}" maxlength="300" placeholder="https://app.jonerfootball.com/programs/..."></label></div></div>
       <div class="cp-block"><h3>Off the pitch</h3><p class="muted small" style="margin:-4px 0 8px">Families love getting to know you. Fill in what you are happy to share.</p>
         <label class="j-field"><span>Hobbies and interests</span><input class="j-input" name="hobbies" value="${esc(p.hobbies || '')}" maxlength="300" placeholder="Golf, the beach, coffee with my dog"></label>
-        <label class="j-field"><span>Favourite player or team</span><input class="j-input" name="favourite" value="${esc(p.favourite || '')}" maxlength="120"></label>
+        <div class="j-two"><label class="j-field"><span>Favourite team</span><input class="j-input" name="favTeam" value="${esc(p.favTeam || (p.favPlayers ? '' : p.favourite) || '')}" maxlength="120" placeholder="Liverpool FC"></label>
+        <label class="j-field"><span>Favourite players</span><input class="j-input" name="favPlayers" value="${esc(p.favPlayers || '')}" maxlength="200" placeholder="Steven Gerrard, Messi"></label></div>
         <label class="j-field"><span>A fun fact about you</span><input class="j-input" name="funFact" value="${esc(p.funFact || '')}" maxlength="300" placeholder="I once juggled a ball for an hour straight"></label>
         <label class="j-field"><span>Languages you speak</span><input class="j-input" name="languages" value="${esc(p.languages || '')}" maxlength="120" placeholder="English, Portuguese"></label></div>
       <div class="cp-block"><h3>Coaching photos</h3><p class="muted small" style="margin:-4px 0 8px">Up to 8 photos of you coaching. They save as soon as you add them and show on your profile for families.</p><div class="cp-galed" id="cp-galed"></div></div>
@@ -63,7 +62,7 @@ export function profileForm(box, { post, toast }, c, meta, onSaved) {
     const f = box.querySelector('form')
     const grabRep = (key) => [...f.querySelectorAll(`[data-rep="${key}"] .cp-rep-row`)].map((r) => Object.fromEntries([...r.querySelectorAll('[data-k]')].map((i) => [i.dataset.k, i.value.trim()])))
     const grab = () => {
-      p = { ...p, role: f.role ? f.role.value : p.role, joined: f.jy.value && f.jm.value ? `${f.jy.value}-${f.jm.value}` : '', about: f.about.value.trim(), highest: f.highest.value.trim(), playing: grabRep('playing'), coaching: grabRep('coaching'), quals: grabRep('quals'), links: grabRep('links'), languages: f.languages.value.trim(), favourite: f.favourite.value.trim(), leaveWith: f.leaveWith.value.trim(), hobbies: f.hobbies.value.trim(), funFact: f.funFact.value.trim(), helloVideo: f.helloVideo.value.trim(), askMe: f.askMe.value.trim(), drill: { name: f.drillName.value.trim(), url: f.drillUrl.value.trim() } }
+      p = { ...p, role: f.role ? f.role.value : p.role, joined: f.jy.value && f.jm.value ? `${f.jy.value}-${f.jm.value}` : '', about: f.about.value.trim(), highest: f.highest.value.trim(), playing: grabRep('playing'), coaching: grabRep('coaching'), quals: grabRep('quals'), links: grabRep('links'), languages: f.languages.value.trim(), favourite: '', favTeam: f.favTeam.value.trim(), favPlayers: f.favPlayers.value.trim(), leaveWith: f.leaveWith.value.trim(), hobbies: f.hobbies.value.trim(), funFact: f.funFact.value.trim(), drill: { name: f.drillName.value.trim(), url: f.drillUrl.value.trim() } }
     }
     drawGallery(box.querySelector('#cp-galed'), { post, toast }, c.id, p.gallery || [], (g) => { p.gallery = g })
     f.querySelectorAll('[data-add]').forEach((b) => b.addEventListener('click', () => { grab(); p[b.dataset.add] = [...p[b.dataset.add], {}]; draw() }))

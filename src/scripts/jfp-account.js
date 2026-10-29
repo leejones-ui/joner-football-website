@@ -1070,12 +1070,20 @@ function renderTerm() {
   const el = document.querySelector('[data-pane="term"]')
   const weeks = D.weeks || 10
   const facts = [
-    ...termInfo.filter(([t]) => t !== 'New booking system'),
+    // Paying is not shown here (Lee, 29 Oct 2026: "remove the paying bit").
+    ...termInfo.filter(([t]) => t !== 'New booking system' && t !== 'Paying'),
     ['Groups', groupingLine],
     ['1 on 1 training', oneToOneSummary],
   ]
+  // 07 to 09 (Lee, 29 Oct 2026): Progress reports and Our coaches link to their pages; Our method closes the grid.
+  const linkFact = (t, d, go, label) => `<h3>${esc(t)}</h3><p>${esc(d)}</p><div class="ja-fact-link"><button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-go="${go}">${esc(label)}</button></div>`
+  const more = [
+    linkFact('Progress reports', 'Coaches send each player a report with what they are doing well and what to work on next. You get it by email and in My account.', 'reports', 'See player reports'),
+    ...(D.ourCoaches?.length ? [linkFact('Our coaches', 'Meet the coaches who run every session.', 'coaches', 'Meet our coaches')] : []),
+    `<h3>Our method</h3><p>Technique above everything. Our program is one of a kind, built on more than 10 years of coaching. Every session is built around the ball: first touch, dribbling, 1v1s and finishing, with lots of touches, very little standing in lines and positive energy from start to finish. Master the ball, and the game opens up.</p>`,
+  ]
   el.innerHTML = `${hero({ img: `${IMG}/photos/ntra-field-1600x900.webp`, imgSmall: `${IMG}/photos/ntra-field-900x1100.webp`, kicker: 'About', title: esc(D.term), lede: `${weeks} weeks of small-group training at Belrose HQ, North Turramurra and Rydalmere${D.termStart ? `, from the week of ${esc(niceIso(D.termStart))}` : ''}.` })}
-    <section class="ja-sec">${secHead('How the term works')}<div class="ja-facts">${facts.map(([t, d], i) => `<div class="ja-fact"><span class="n">${String(i + 1).padStart(2, '0')}</span><h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}${D.ourCoaches?.length ? `<div class="ja-fact"><span class="n">${String(facts.length + 1).padStart(2, '0')}</span><h3>Our coaches</h3><p>Meet the coaches who run every session.</p><div class="ja-fact-link"><button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-go="coaches">Meet our coaches</button></div></div>` : ''}</div></section>
+    <section class="ja-sec">${secHead('How the term works')}<div class="ja-facts">${[...facts.map(([t, d]) => `<h3>${esc(t)}</h3><p>${esc(d)}</p>`), ...more].map((body, i) => `<div class="ja-fact"><span class="n">${String(i + 1).padStart(2, '0')}</span>${body}</div>`).join('')}</div></section>
     <section class="ja-sec">${secHead('Want more?')}<div class="ja-grid ja-grid-2">${termExtras.map((x) => `<div class="ja-card" style="padding:22px"><h3 class="ja-h3">${esc(x.title)}</h3><p class="ja-small ja-muted" style="margin:6px 0 14px">${esc(x.text)}</p><button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-go="${esc(x.key)}">${esc(x.cta)}</button></div>`).join('')}</div></section>
     <section class="ja-sec ja-split">
       <div class="ja-card" style="padding:26px"><p class="ja-kicker"><i></i>Every session</p><h2 class="ja-h2" style="margin-top:10px">Come ready</h2>
