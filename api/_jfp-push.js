@@ -155,7 +155,7 @@ export async function pushFamilyNote(rec, row) {
 }
 
 export async function pushAnnouncement(a) {
-  if (!pushPublicKey() || a.from > sydneyToday()) return { sent: 0 }
+  if (!pushPublicKey() || a.from > sydneyToday() || (a.status && a.status !== 'live')) return { sent: 0 }
   const { loadRoster } = await import('./_jfp-airtable.js')
   const config = await getConfig()
   const rows = (await loadRoster()).players.filter((r) => r.holdsPlace && (a.audience?.type === 'all' || (a.audience?.type === 'group' && r.groupId === a.audience.id) || (a.audience?.type === 'location' && locationFor(config, r.location).id === a.audience.id)))
@@ -180,9 +180,9 @@ export async function pushTick(nowMs = Date.now()) {
   const [config, roster, groups, cancels, payreqs, covers] = await Promise.all([getConfig(), loadRoster(), listGroups(), listCancels(), listPayreqs(), coversList()])
   // Announcements set to start on a later day go out the evening they start.
   try {
-    const { allAnnouncements } = await import('./_jfp-announce.js')
+    const { allAnnouncements, isLive } = await import('./_jfp-announce.js')
     const today = sydneyToday(nowMs)
-    for (const a of (await allAnnouncements()).filter((a) => a.from <= today && (!a.until || a.until >= today))) await pushAnnouncement(a)
+    for (const a of (await allAnnouncements()).filter((a) => isLive(a) && a.from <= today && (!a.until || a.until >= today))) await pushAnnouncement(a)
   } catch (error) { console.error('jfp push announcements failed', error) }
   const byGroup = Object.fromEntries(groups.map((g) => [g.id, g]))
   const tomorrow = sydneyToday(nowMs + 24 * 3600 * 1000)

@@ -881,12 +881,38 @@ body:has(.ja[data-theme="light"]) { background: #F5F5F3 !important; }
 .ja-scard .ja-dates { grid-template-columns: minmax(0, 1fr); }
 
 /* Announcements on Home (17 Oct 2026): one-way notices, no replies. */
-.jfp.ja .ja-news{display:grid;gap:8px;border-left:3px solid var(--ja-red,#E10600)}
 .jfp.ja .ja-news-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--ja-muted)}
 .jfp.ja .ja-news-body{font-size:15px;line-height:1.5;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
 .jfp.ja .ja-news-body.is-full{display:block;-webkit-line-clamp:unset}
-.jfp.ja .ja-news .ja-btn{justify-self:start}
 .jfp.ja .ja-news-body a{color:var(--ja-red,#E10600);font-weight:600;text-decoration:underline;text-underline-offset:2px;overflow-wrap:anywhere}
+/* Announcement cards, option A (Lee, 29 Oct 2026): date block down the side,
+   red when pinned; optional red button; who it is from with a photo. */
+.jfp.ja .ja-news{display:grid;gap:10px}
+.jfp.ja .ja-news > .ja-btn{justify-self:start}
+.jfp.ja .ja-news-list{display:grid;gap:14px}
+.jfp.ja .ja-ann{display:grid;grid-template-columns:76px minmax(0,1fr);background:var(--ja-panel);border:1px solid var(--ja-line);border-radius:20px;overflow:hidden}
+.jfp.ja .ja-ann.is-unread{box-shadow:0 0 0 1.5px var(--ja-red) inset}
+.jfp.ja .ja-ann-date{background:var(--ja-hi);color:var(--ja-lo);display:flex;flex-direction:column;align-items:center;padding:18px 0;gap:3px}
+.jfp.ja .ja-ann.is-pinned .ja-ann-date{background:var(--ja-red);color:#fff}
+.jfp.ja .ja-ann-date .d{font:400 34px/1 Anton,Impact,sans-serif}
+.jfp.ja .ja-ann-date .m{font:700 11px/1 Inter,system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;opacity:.8}
+.jfp.ja .ja-ann-date .w{font:600 11px/1 Inter,system-ui,sans-serif;opacity:.65;margin-top:3px}
+.jfp.ja .ja-ann-main{padding:18px 20px 20px;display:grid;gap:10px;align-content:start;min-width:0}
+.jfp.ja .ja-ann-tags{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0}
+.jfp.ja .ja-ann-tags .ja-tag{margin-left:0}
+.jfp.ja .ja-tag.dark{background:var(--ja-hi);color:var(--ja-lo)}
+.jfp.ja .ja-ann-for{font-size:12px;color:var(--ja-muted)}
+.jfp.ja .ja-ann-title{font:800 19px/1.25 Inter,system-ui,sans-serif;margin:0;color:var(--ja-hi);overflow-wrap:anywhere}
+.jfp.ja .ja-ann .ja-news-body{margin:0}
+.jfp.ja .ja-ann-cta{justify-self:start;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:10px 20px;border-radius:999px;background:var(--ja-red);color:#fff;font:700 14px/1.2 Inter,system-ui,sans-serif;text-decoration:none;max-width:100%}
+.jfp.ja .ja-ann-cta:hover{filter:brightness(1.08)}
+.jfp.ja .ja-ann-cta:focus-visible{outline:2px solid var(--ja-hi);outline-offset:3px}
+.jfp.ja .ja-ann-from{display:flex;align-items:center;gap:10px;margin-top:4px}
+.jfp.ja .ja-ann-from b{display:block;font-size:14px;color:var(--ja-hi)}
+.jfp.ja .ja-ann-from span{display:block;font-size:12px;color:var(--ja-muted)}
+.jfp.ja .ja-ann-av{width:38px;height:38px;border-radius:50%;object-fit:cover;flex:none;background:#0B0B0B;color:#fff;display:inline-grid;place-items:center;font:400 16px Anton,Impact,sans-serif;overflow:hidden}
+.jfp.ja .ja-ann-av.is-jf img{width:26px;height:26px;object-fit:contain}
+@media (max-width:420px){.jfp.ja .ja-ann{grid-template-columns:60px minmax(0,1fr)}.jfp.ja .ja-ann-date .d{font-size:28px}.jfp.ja .ja-ann-main{padding:16px}}
 /* Announcements bell and unread count (17 Oct 2026). */
 .ja .ja-bar-r { display: inline-flex; align-items: center; gap: 8px; }
 .ja .ja-bell { position: relative; width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid var(--ja-line-2); background: var(--ja-panel-2); color: var(--ja-hi); display: inline-grid; place-items: center; cursor: pointer; flex: none; }
@@ -894,7 +920,6 @@ body:has(.ja[data-theme="light"]) { background: #F5F5F3 !important; }
 .ja .ja-nbadge { display: inline-block; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--ja-red); color: #fff; font: 700 11px/20px Inter, system-ui, sans-serif; text-align: center; }
 .ja .ja-bell .ja-nbadge { position: absolute; top: -4px; right: -4px; box-shadow: 0 0 0 2px var(--ja-bg); }
 .ja .ja-nav-item .ja-nbadge { margin-left: auto; }
-.jfp.ja .ja-news.is-unread { box-shadow: 0 0 0 1.5px var(--ja-red) inset; }
 /* Cards side by side in a grid line up at the top (Lee, 17 Oct 2026): the
    stacked-card gap is for lists, never for grid columns. */
 .jfp.ja :is(.ja-grid, .ja-home, .ja-places, .ja-pay-grid, .ja-sgrid, .ja-kids, .ja-split, .ja-opts-grid, .ja-keep) > .ja-card + .ja-card { margin-top: 0; }

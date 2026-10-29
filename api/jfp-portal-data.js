@@ -51,7 +51,7 @@ import { emailErrorText, emailsTo } from './_jfp-email-log.js'
 import { contactWords, withOwnContact, isAdult } from './_jfp-contact.js'
 import { telegramAlert } from './_jfp-notify.js'
 import { EXTRA_ACTIONS, extraAction } from './_jfp-extra-actions.js'
-import { ANNOUNCE_ACTIONS, announceAction } from './_jfp-announce.js'
+import { ANNOUNCE_ACTIONS, ANNOUNCE_COACH_ACTIONS, announceAction } from './_jfp-announce.js'
 import { HOURS_ACTIONS, hoursAction } from './_jfp-hours.js'
 import { INVOICE_ACTIONS, invoiceAction } from './_jfp-coach-invoices.js'
 import { FAMILY_NOTE_ACTIONS, familyNoteAction, coachPNotesByRow } from './_jfp-family-notes.js'
@@ -3865,6 +3865,8 @@ async function handle(req, res) {
     // Extra sessions (Lee, 14 Oct 2026): coaches run their own; Lee and Ligia see all.
     if (EXTRA_ACTIONS.has(action)) return await extraAction(req, res, principal, config, body, action, isAdmin)
 
+    // Announcements: coaches write their own, Lee or Ligia approves (29 Oct 2026; _jfp-announce.js).
+    if (!isAdmin && ANNOUNCE_COACH_ACTIONS.has(action)) return await announceAction(req, res, principal, config, body, action, await listGroups())
     if (!isAdmin) return fail(res, 403, 'Not allowed.')
     if (MAKEUP_ADMIN_ACTIONS.has(action)) {
       const out = action === 'emergencyCancel' ? await emergencyCancel({ principal, config, body }) : action === 'emergencyUncancel' ? await emergencyUncancel({ principal, body }) : action === 'emergencyEmail' ? await emergencyEmail({ principal, config, body }) : action === 'makeupUpdate' ? await makeupUpdate({ principal, config, body }) : { status: 200, ...(await makeupsList({ config })) }

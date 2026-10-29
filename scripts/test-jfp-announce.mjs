@@ -110,7 +110,9 @@ await test('notices reach everyone, one location or one group, and only from the
   assert.deepEqual(new Set(r), new Set(['Tuesday 4:20 runs late', 'Welcome to Term 4', 'HQ car park works']))
   assert.deepEqual(new Set(t), new Set(['Welcome to Term 4', 'HQ car park works']), 'the Wednesday family does not see the Tuesday notice')
   const one = (await acct(riley, 'overview')).data.announcements.find((a) => a.title === 'Welcome to Term 4')
-  assert.deepEqual(Object.keys(one).sort(), ['body', 'dateLabel', 'forLabel', 'from', 'id', 'pinned', 'read', 'title'], 'families never see who posted it')
+  assert.deepEqual(Object.keys(one).sort(), ['author', 'body', 'button', 'dateLabel', 'forLabel', 'from', 'id', 'pinned', 'read', 'title'], 'families never see staff emails')
+  assert.deepEqual(Object.keys(one.author).sort(), ['kind', 'line', 'name', 'photo'])
+  assert.ok(!JSON.stringify(one).includes('@'), 'no email addresses reach families')
   assert.equal(one.body, 'Great to have you.\nSee you at training.')
 })
 
@@ -148,12 +150,59 @@ await test('unread: new notices start unread; opening marks them read for that f
   assert.equal(anon.status, 401, 'signed-out marks are refused')
 })
 
-await test('coaches and families cannot post', async () => {
+await test('From: Lee Jones, Joner Football or a coach; the button link is checked', async () => {
+  const a = await save({ title: 'From Lee', body: 'Hello families', author: { type: 'lee' }, button: { label: 'Book extra sessions', url: 'https://jonerfootball.com/jfp-booking#extra' } })
+  assert.equal(a.status, 'live', 'Lee posts straight away')
+  assert.deepEqual(a.button, { label: 'Book extra sessions', url: '/jfp-booking#extra' }, 'our own site is kept as a path')
+  const c = await save({ title: 'From Dean', body: 'Hello from Dean', author: { type: 'coach', coachId: 'dean' } })
+  const fam = (await acct(riley, 'overview')).data.announcements
+  assert.equal(fam.find((x) => x.id === a.id).author.name, 'Lee Jones')
+  assert.equal(fam.find((x) => x.id === c.id).author.name, 'Dean McDonnell')
+  assert.equal(fam.find((x) => x.id === c.id).author.line, 'Coach, Joner Football')
+  assert.equal(fam.find((x) => x.title === 'Brand new notice').author.name, 'Joner Football', 'no author = Joner Football')
+  for (const url of ['javascript:alert(1)', 'not a link']) assert.equal((await portal(lee, 'announceSave', { title: 'Bad link', body: 'Bad link here', button: { label: 'Go', url } })).status, 400, url)
+  assert.equal((await portal(lee, 'announceSave', { title: 'No words', body: 'Button with no words', button: { label: '', url: '/jfp-booking' } })).status, 400)
+  assert.equal((await portal(lee, 'announceSave', { title: 'No coach', body: 'Coach missing', author: { type: 'coach', coachId: 'nobody' } })).status, 400)
+})
+
+await test('a coach writes one, it waits for Lee or Ligia, families see it only once approved', async () => {
   const sam = client(); await signIn(sam, 'jonerfootballsam@gmail.com', 'staff')
-  assert.equal((await portal(sam, 'announceSave', { title: 'Coach post', body: 'Hello all' })).status, 403)
-  assert.equal((await portal(sam, 'announceList')).status, 403)
+  const tg = (await telegrams()).length
+  const r = await portal(sam, 'announceSave', { title: 'Coach post', body: 'Hello all', author: { type: 'lee' } })
+  assert.equal(r.status, 200, JSON.stringify(r.data))
+  const p = r.data.announcement
+  assert.equal(p.status, 'pending')
+  assert.deepEqual(p.author, { type: 'coach', coachId: 'sam' }, 'a coach always signs as themselves')
+  assert.ok(!(await seen(third)).includes('Coach post'), 'families do not see it yet')
+  assert.ok((await telegrams()).slice(tg).some((m) => /Sam York wants to post/.test(JSON.stringify(m))), 'Lee and Ligia are told')
+  const mine = (await portal(sam, 'announceList')).data.announcements
+  assert.deepEqual(mine.map((x) => x.title), ['Coach post'], 'a coach sees only their own')
+  assert.equal((await portal(sam, 'announceDecide', { id: p.id, decision: 'approve' })).status, 403, 'a coach cannot approve')
+  assert.equal((await portal(sam, 'announceDelete', { id: (await portal(lee, 'announceList')).data.announcements.find((x) => x.title === 'From Lee').id })).status, 404, 'nor touch anyone else\'s')
+  const ligia = client(); await signIn(ligia, 'ligia@jonerfootball.com', 'staff')
+  const list = (await portal(ligia, 'announceList')).data.announcements
+  assert.equal(list[0].id, p.id, 'waiting ones come first for Lee and Ligia')
+  const ok = await portal(ligia, 'announceDecide', { id: p.id, decision: 'approve' })
+  assert.equal(ok.status, 200, JSON.stringify(ok.data))
+  assert.equal((await portal(ligia, 'announceDecide', { id: p.id, decision: 'approve' })).status, 409, 'decided once')
+  const fam = (await acct(third, 'overview')).data.announcements.find((x) => x.id === p.id)
+  assert.equal(fam.author.name, 'Sam York')
+  // A coach edit of a live notice goes back to waiting.
+  const e = await portal(sam, 'announceSave', { id: p.id, title: 'Coach post edited', body: 'Hello all again' })
+  assert.equal(e.data.announcement.status, 'pending')
+  assert.ok(!(await seen(third)).some((t) => /Coach post/.test(t)), 'hidden again until approved')
+  const no = await portal(lee, 'announceDecide', { id: p.id, decision: 'decline', note: 'Say which week' })
+  assert.equal(no.status, 200)
+  const back = (await portal(sam, 'announceList')).data.announcements[0]
+  assert.equal(back.status, 'declined'); assert.equal(back.declineNote, 'Say which week')
+  assert.ok(!(await seen(third)).some((t) => /Coach post/.test(t)))
+  const log = JSON.stringify((await portal(lee, 'audit')).data)
+  for (const a of ['announce.approve', 'announce.decline']) assert.ok(log.includes(a), a)
+})
+
+await test('families cannot post', async () => {
   assert.notEqual((await portal(riley, 'announceSave', { title: 'Parent post', body: 'Hello all' })).status, 200)
-  assert.ok(!(await seen(third)).includes('Coach post'))
+  assert.ok(!(await seen(third)).includes('Parent post'))
 })
 
 await test('nothing was emailed or texted by posting', async () => {

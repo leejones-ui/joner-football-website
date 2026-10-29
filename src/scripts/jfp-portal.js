@@ -74,7 +74,7 @@ async function showSignIn() {
 const NAV = {
   // Three groups, not one long Coaching list (Lee, 19 Oct 2026).
   coach: [
-    ['My coaching', [['program', 'Program'], ['coach', 'My sessions'], ['register', 'Register'], ['extra', 'Extra sessions'], ['reports', 'Player reports'], ['cancellations', 'Cancellations']]],
+    ['My coaching', [['program', 'Program'], ['coach', 'My sessions'], ['register', 'Register'], ['extra', 'Extra sessions'], ['reports', 'Player reports'], ['cancellations', 'Cancellations'], ['announce', 'Announcements']]],
     ['Time and pay', [['staff', 'Cover and time off'], ['hours', 'My hours'], ['cinvoices', 'My invoices']]],
     ['Ideas and plans', [['ideas', 'Session ideas'], ['plans', 'Session plans'], ['help', 'Who handles what'], ['team', 'Our coaches'], ['profile', 'My profile']]],
   ],

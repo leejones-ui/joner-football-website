@@ -561,22 +561,44 @@ function todoSheet() {
 
 // Announcements (Lee, 17 Oct 2026): one-way notices from Joner Football,
 // newest (or pinned) first. Families read them here; there is no reply.
+// Look (Lee picked option A, 29 Oct 2026): a date block down the side (red
+// when pinned), the notice, an optional red button, and who it is from with
+// their photo (Lee Jones, Joner Football or a coach).
 const annBody = (t) => linkify(t).replace(/\n/g, '<br>')
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+function annDate(a) {
+  const [y, m, d] = String(a.from || '').split('-').map(Number)
+  if (!y) return `<div class="ja-ann-date" aria-hidden="true"></div>`
+  const wd = new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-AU', { weekday: 'short', timeZone: 'UTC' })
+  return `<div class="ja-ann-date" aria-hidden="true"><span class="d">${d}</span><span class="m">${MON[m - 1]}</span><span class="w">${esc(wd)}</span></div>`
+}
+function annFrom(a) {
+  const w = a.author || { kind: 'jf', name: 'Joner Football' }
+  const pic = w.photo ? `<img class="ja-ann-av" src="${esc(w.photo)}" alt="" loading="lazy" decoding="async">`
+    : w.kind === 'jf' ? '<span class="ja-ann-av is-jf"><img src="/images/joner-logo-white-nav.png" alt=""></span>'
+      : `<span class="ja-ann-av">${esc((w.name || 'J').slice(0, 1))}</span>`
+  return `<div class="ja-ann-from">${pic}<div><b>${esc(w.name)}</b>${w.line ? `<span>${esc(w.line)}</span>` : ''}</div></div>`
+}
+function annCard(a, full) {
+  const tags = `${a.read ? '' : '<span class="ja-tag red">New</span>'}${a.pinned ? '<span class="ja-tag dark">Pinned</span>' : ''}${a.forLabel ? `<span class="ja-ann-for">${esc(a.forLabel)}</span>` : ''}`
+  const own = a.button?.url?.startsWith('/')
+  const btn = a.button ? `<a class="ja-ann-cta" href="${esc(a.button.url)}"${own ? '' : ' target="_blank" rel="noopener noreferrer"'}>${esc(a.button.label)} <span aria-hidden="true">→</span></a>` : ''
+  return `<article class="ja-ann${a.pinned ? ' is-pinned' : ''}${a.read ? '' : ' is-unread'}" aria-label="${a.read ? 'New: ' : ''}${esc(a.title)}, ${esc(a.dateLabel)}">
+    ${annDate(a)}<div class="ja-ann-main">${tags ? `<p class="ja-ann-tags">${tags}</p>` : ''}<h3 class="ja-ann-title">${esc(a.title)}</h3>
+    <p class="ja-news-body${full ? ' is-full' : ''}">${annBody(a.body)}</p>${btn}${annFrom(a)}</div></article>`
+}
 function newsBlock() {
   const list = D?.announcements || []
   if (!list.length) return ''
-  const a = list[0]
-  return `<p class="ja-label">From Joner Football</p><article class="ja-card ja-news" aria-label="Announcement: ${esc(a.title)}">
-    <p class="ja-news-meta">${!a.read ? '<span class="ja-tag red">New</span>' : ''}${a.pinned ? '<span class="ja-tag">Pinned</span>' : ''}<span>${esc(a.dateLabel)}${a.forLabel ? ` · ${esc(a.forLabel)}` : ''}</span></p>
-    <h3 class="ja-h3">${esc(a.title)}</h3><p class="ja-news-body">${annBody(a.body)}</p>
-    ${list.length > 1 ? `<button type="button" class="ja-btn ja-btn-ghost ja-btn-sm" data-go="news">See all ${list.length} announcements</button>` : ''}</article>`
+  return `<p class="ja-label">From Joner Football</p><div class="ja-news">${annCard(list[0], false)}
+    ${list.length > 1 ? `<button type="button" class="ja-btn ja-btn-ghost ja-btn-sm" data-go="news">See all ${list.length} announcements</button>` : ''}</div>`
 }
 // The Announcements page: every notice, newest (pinned) first. Opening it
 // marks them read for this sign-in email, so the red number goes.
 function renderNews() {
   const el = pane('news')
   const list = D?.announcements || []
-  el.innerHTML = `${pageHead('From Joner Football', 'Announcements', '')}<div class="ja-stack ja-news-list">${list.map((a) => `<article class="ja-card ja-news${a.read ? '' : ' is-unread'}" aria-label="${a.read ? '' : 'New: '}${esc(a.title)}"><p class="ja-news-meta">${a.read ? '' : '<span class="ja-tag red">New</span>'}${a.pinned ? '<span class="ja-tag">Pinned</span>' : ''}<span>${esc(a.dateLabel)}${a.forLabel ? ` · ${esc(a.forLabel)}` : ''}</span></p><h3 class="ja-h3">${esc(a.title)}</h3><p class="ja-news-body is-full">${annBody(a.body)}</p></article>`).join('') || '<div class="ja-card"><p class="ja-muted">No announcements right now.</p></div>'}</div>`
+  el.innerHTML = `${pageHead('From Joner Football', 'Announcements', '')}<div class="ja-news-list">${list.map((a) => annCard(a, true)).join('') || '<div class="ja-card"><p class="ja-muted">No announcements right now.</p></div>'}</div>`
   const ids = list.filter((a) => !a.read).map((a) => a.id)
   if (!ids.length) return
   api('/api/jfp-account', { action: 'announceRead', ids }).then((r) => {

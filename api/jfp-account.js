@@ -310,7 +310,7 @@ async function overview(res, parent, body = {}, opts = {}) {
   // Announcements (Lee, 17 Oct 2026): notices for everyone, this family's
   // locations or groups. Read only; a failed read shows none, never an error.
   const myRows = fam.players.flatMap((p) => p.term4)
-  const announcements = await announcementsFor({ groupIds: myRows.map((r) => r.groupId), locationIds: myRows.map((r) => locationFor(config, r.location).id), email: readEmail })
+  const announcements = await announcementsFor({ groupIds: myRows.map((r) => r.groupId), locationIds: myRows.map((r) => locationFor(config, r.location).id), email: readEmail, config })
   // Coach notes for this family's players (Lee, 17 Oct 2026), from "Coach".
   const notes = await familyNotesFor(myRows.map((r) => r.id), readEmail)
   const makeups = await familyMakeups(myRows.map((r) => r.id), config)
@@ -1045,7 +1045,7 @@ async function playerView(login) {
   }))
   return { c: 200, d: {
     success: true, playerLogin: true, email: login.email, parentName: '', self: true, players,
-    announcements: await announcementsFor({ groupIds: rows.map((r) => r.groupId), locationIds: rows.map((r) => locationFor(config, r.location).id), email: login.email }),
+    announcements: await announcementsFor({ groupIds: rows.map((r) => r.groupId), locationIds: rows.map((r) => locationFor(config, r.location).id), email: login.email, config }),
     notes: (d.notes || []).filter((n) => rowIds.has(n.rowId)),
     reports: await reportsSummary(login.email, login),
     push: d.push, term: d.term, termStart: d.termStart, weeks: d.weeks, venues: d.venues, reasons: d.reasons, noteMax: d.noteMax,
