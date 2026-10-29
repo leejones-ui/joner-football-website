@@ -9,7 +9,8 @@ export const KEY = 'jfp:coach-profiles'
 export const GALLERY_MAX = 8
 export const galleryKey = (coachId, v) => `jfp:coach-gallery:${coachId}:${v}`
 export const galleryUrl = (coachId, v) => `/api/jfp-groups?coachGallery=${encodeURIComponent(coachId)}&g=${v}`
-export const ROLES = ['Head coach', 'Senior coach', 'Coach', 'Assistant coach', 'Goalkeeper coach']
+// Head coach / Owner (Lee, 29 Oct 2026) sorts first.
+export const ROLES = ['Head coach / Owner', 'Head coach', 'Senior coach', 'Coach', 'Assistant coach', 'Goalkeeper coach']
 export const AGES = ['Under 8s', '8 to 11', '12 to 14', '15 to 17', 'Adults']
 // Same ids as the Session ideas topics.
 export const SKILLS = [['speed', 'Speed and agility'], ['ball', 'Ball mastery'], ['dribble', 'Dribbling'], ['pass', 'Passing and first touch'], ['shoot', 'Shooting and finishing'], ['1v1', '1v1s and 2v2s'], ['defend', 'Defending'], ['head', 'Heading'], ['aware', 'Awareness and scanning'], ['gk', 'Goalkeeping']]
