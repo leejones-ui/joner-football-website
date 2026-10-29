@@ -3,7 +3,7 @@
 // position, contacts), can't make a session, keep my spot for next term,
 // term info, holidays and camps, training videos, the app and contact.
 // Phones first: a bottom tab bar on phones, a side bar on big screens.
-import { $, esc, api, toast, openSheet, closeSheet, signIn, signOut, waiverBlock, recaptcha, savePdf, dropViewPass } from './jfp-common.js'
+import { $, esc, linkify, api, toast, openSheet, closeSheet, signIn, signOut, waiverBlock, recaptcha, savePdf, dropViewPass } from './jfp-common.js'
 import { termInfo, expectations, links, groupingLine, termExtras } from '../data/jfp-term-info.js'
 import { oneToOneSummary } from '../data/jfp-one-to-one.js'
 import { hqVideos, pitchVideos, reels, socials, contacts, hq, holidays } from '../data/jfp-account-media.js'
@@ -561,7 +561,7 @@ function todoSheet() {
 
 // Announcements (Lee, 17 Oct 2026): one-way notices from Joner Football,
 // newest (or pinned) first. Families read them here; there is no reply.
-const annBody = (t) => esc(t).replace(/\n/g, '<br>')
+const annBody = (t) => linkify(t).replace(/\n/g, '<br>')
 function newsBlock() {
   const list = D?.announcements || []
   if (!list.length) return ''

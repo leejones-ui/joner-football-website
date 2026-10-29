@@ -886,6 +886,7 @@ body:has(.ja[data-theme="light"]) { background: #F5F5F3 !important; }
 .jfp.ja .ja-news-body{font-size:15px;line-height:1.5;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
 .jfp.ja .ja-news-body.is-full{display:block;-webkit-line-clamp:unset}
 .jfp.ja .ja-news .ja-btn{justify-self:start}
+.jfp.ja .ja-news-body a{color:var(--ja-red,#E10600);font-weight:600;text-decoration:underline;text-underline-offset:2px;overflow-wrap:anywhere}
 /* Announcements bell and unread count (17 Oct 2026). */
 .ja .ja-bar-r { display: inline-flex; align-items: center; gap: 8px; }
 .ja .ja-bell { position: relative; width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid var(--ja-line-2); background: var(--ja-panel-2); color: var(--ja-hi); display: inline-grid; place-items: center; cursor: pointer; flex: none; }

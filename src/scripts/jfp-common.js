@@ -7,6 +7,30 @@ export function esc(v) {
   return String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 }
 
+// Plain text with web addresses made clickable (Lee, 29 Oct 2026: a link in an
+// announcement showed as plain text). Everything else stays escaped. Our own
+// site opens in the same tab (so the home screen app stays the app); any other
+// site opens a new tab. Trailing full stops, commas and brackets stay text.
+const URL_RE = /\b(?:https?:\/\/|www\.|jonerfootball\.com\b)[^\s<>"']*/gi
+export function linkify(text) {
+  const raw = String(text ?? '')
+  let out = '', last = 0
+  for (const m of raw.matchAll(URL_RE)) {
+    let url = m[0]
+    const trail = url.match(/[.,!?;:)\]}]+$/)
+    if (trail) url = url.slice(0, -trail[0].length)
+    if (!url) continue
+    out += esc(raw.slice(last, m.index))
+    last = m.index + url.length
+    let href = /^https?:\/\//i.test(url) ? url : `https://${url}`
+    let own = false
+    try { const u = new URL(href); own = /(^|\.)jonerfootball\.com$/i.test(u.hostname); if (own) href = u.pathname + u.search + u.hash } catch { out += esc(url); continue }
+    const label = url.replace(/^https?:\/\//i, '').replace(/^www\./i, '')
+    out += `<a href="${esc(href)}"${own ? '' : ' target="_blank" rel="noopener noreferrer"'}>${esc(label)}</a>`
+  }
+  return out + esc(raw.slice(last))
+}
+
 // See a family's account (staff, 27 Oct 2026): the view pass belongs to the
 // one tab it was opened in (sessionStorage), never the whole browser, so a
 // staff member's own My account in another tab stays their own. It arrives
