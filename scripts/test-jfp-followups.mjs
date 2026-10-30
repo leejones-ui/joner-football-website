@@ -8,6 +8,7 @@
 import assert from 'node:assert/strict'
 import { normaliseConfig } from '../api/_jfp-store.js'
 import { offerReminderWords, followUpWords } from '../api/_jfp-admin-brief.js'
+import { nudgeWords, profileGap } from '../api/_jfp-profile-nudge.js'
 import { surveyWords, surveyRecipients, band, npsOf } from '../api/_jfp-feedback.js'
 
 let passed = 0
@@ -54,6 +55,21 @@ await test('score bands and the net score', async () => {
   assert.deepEqual([10, 9, 8, 7, 6, 0].map(band), ['promoter', 'promoter', 'passive', 'passive', 'detractor', 'detractor'])
   assert.equal(npsOf([]), null)
   assert.equal(npsOf([{ score: 10 }, { score: 9 }, { score: 7 }, { score: 3 }]), 25)
+})
+
+await test('profile reminder words: one player, two players, the player themself', async () => {
+  const one = nudgeWords({ parentName: 'Kim Lane', players: ['Rio Lane'] })
+  assert.equal(one.subject, "Fill in Rio's player profile")
+  assert.match(one.text, /what Rio wants to work on and develop in their game/)
+  const two = nudgeWords({ parentName: 'Kim Lane', players: ['Rio Lane', 'Ava Lane'] })
+  assert.match(two.paras[0], /the player profiles for Rio and Ava/)
+  const me = nudgeWords({ parentName: 'Will Pez', players: ['Will Pez'], self: true })
+  assert.match(me.text, /your player profile.*what you want to work on and develop in your game/)
+  for (const w of [one, two, me]) { noDash(flat(w)); noDash(w.text); assert.ok(w.text.length <= 640) }
+  assert.equal(profileGap(null), 'none')
+  assert.equal(profileGap({ club: 'A', team: 'B', level: 'C', positions: ['Winger'] }), 'photo')
+  assert.equal(profileGap({ club: 'A', photo: 'x' }), 'thin')
+  assert.equal(profileGap({ club: 'A', team: 'B', level: 'C', positions: ['Winger'], photo: 'x' }), '')
 })
 
 // ---------- end to end on the harness ----------
@@ -164,6 +180,20 @@ await test('Send asks for the family count first and sends nothing without it', 
 await test('closing hides the question again', async () => {
   await ok(lee, 'feedbackOpen', { open: false })
   assert.equal((await acct(fam, 'overview')).data.feedback, null)
+})
+
+await test('profile reminders: count first, one email per family, never twice', async () => {
+  const p = await ok(lee, 'profileNudge')
+  assert.ok(p.count >= 1 && p.families.some((f) => f.email === 'fia.fam@example.com'), JSON.stringify(p).slice(0, 300))
+  const before = (await emails()).length
+  assert.equal((await portal(lee, 'profileNudge', { confirm: p.count + 1 })).status, 409)
+  assert.equal((await emails()).length, before)
+  const r = await ok(lee, 'profileNudge', { confirm: p.count })
+  assert.equal(r.sent, p.count)
+  const fia = (await emails()).filter((e) => e.to.includes('fia.fam@example.com') && /player profile/.test(e.subject))
+  assert.equal(fia.length, 1)
+  assert.equal((await ok(lee, 'profileNudge')).count, 0)
+  assert.equal((await portal(sam, 'profileNudge')).status, 403)
 })
 
 console.log(`\n${passed} follow up and feedback checks passed`)

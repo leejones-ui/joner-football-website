@@ -838,7 +838,7 @@ export async function addFamily(req, res, principal, config, body) {
 
 // No email in the link: it would end up in browser history and server logs.
 // ---------- follow ups and the daily brief (Lee, 30 Oct 2026) ----------
-const FOLLOW_ACTIONS = new Set(['followUps', 'followUpsSwitch', 'remindOffer', 'feedbackPage', 'feedbackOpen', 'feedbackSend'])
+const FOLLOW_ACTIONS = new Set(['followUps', 'followUpsSwitch', 'remindOffer', 'feedbackPage', 'feedbackOpen', 'feedbackSend', 'profileNudge'])
 const FOLLOW_SWITCHES = ['dailyBrief', 'offerReminders', 'accountFollowUps']
 const familyNotice = async (m) => { const { sendFamilyNotice } = await import('./_jfp-email.js'); return sendFamilyNotice(m) }
 async function accountRows(config) {
@@ -853,6 +853,17 @@ export async function briefInputs(config) {
   return { accounts, money, absences: abs.count }
 }
 async function followAction({ principal, config, body, action, agent }) {
+  if (action === 'profileNudge') {
+    // Families with a player profile to fill in (Lee, 30 Oct 2026). Without
+    // confirm it only counts them and shows the words; with confirm equal to
+    // the count, one email each (held for Lee when Hermes asks).
+    const N = await import('./_jfp-profile-nudge.js')
+    const [roster, profiles, done] = await Promise.all([loadRoster({ fresh: true }), allProfiles(), N.sentMap()])
+    const families = N.nudgeFamilies(roster.players, profiles, { skip: (r) => isTestName(r.player) || /joners juniors/i.test(r.paymentType || '') })
+    const todo = families.filter((f) => !done[f.email])
+    if (body.confirm !== todo.length) return { status: body.confirm == null ? 200 : 409, ...(body.confirm == null ? {} : { error: `Check the count: it goes to ${todo.length} families.` }), count: todo.length, alreadyEmailed: families.length - todo.length, families: families.map((f) => ({ ...f, emailed: done[f.email] || '', words: N.nudgeWords(f) })) }
+    return { status: 200, ...(await N.sendNudges({ families: todo, by: principal.email, send: familyNotice })) }
+  }
   if (action.startsWith('feedback')) {
     const F = await import('./_jfp-feedback.js')
     if (action === 'feedbackPage') return { status: 200, ...(await F.feedbackPage(config, { term: clean(body.term, 60) })) }
