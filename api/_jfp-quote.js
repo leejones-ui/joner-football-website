@@ -145,14 +145,21 @@ export function quoteOptions({ perCents, tiers, dates, rest = true }) {
     out.push({ key: `commit:${t.n}`, n: t.n, perCents: t.cents, totalCents: t.n * t.cents, saveCents: t.n * (perCents - t.cents), commit: true, ...(t.n === dates.length ? { rest: true } : {}), title: `Commit to the next ${t.n} sessions at ${aud(t.cents)} each, ${aud(t.n * t.cents)}`, dates: dates.slice(0, t.n) })
   }
   if (rest) {
-    const r = restOption({ perCents, dates })
+    const r = restOption({ perCents, dates, tiers })
     if (r && !out.some((o) => o.n === r.n)) out.push(r)
   }
   return out
 }
-// Pay for the rest of the term at the price per session (2 or more dates left).
-export function restOption({ perCents, dates }) {
+// Pay for the rest of the term (2 or more dates left). Lee, 30 Oct 2026:
+// "I always want to offer them to pay rest of term", at the best rate a pack
+// of that many sessions earns: the lowest price of any tier no longer than the
+// dates left (7 left with 3, 5 and 8 packs: the 5-pack price). It follows the
+// dates left, so it updates itself each week. At a pack price it is a
+// commitment like the tiers (covered dates, no refund for a missed one).
+export function restOption({ perCents, dates, tiers = [] }) {
   const n = dates.length
   if (!perCents || n < 2) return null
-  return { key: 'rest', n, perCents, totalCents: n * perCents, saveCents: 0, rest: true, title: `Pay for the rest of the term, ${n} sessions, ${aud(n * perCents)}`, dates: dates.slice() }
+  const best = Math.min(perCents, ...(tiers || []).filter((t) => t.n <= n).map((t) => t.cents))
+  const off = best < perCents
+  return { key: 'rest', n, perCents: best, totalCents: n * best, saveCents: n * (perCents - best), rest: true, ...(off ? { commit: true } : {}), title: `Pay for the rest of the term, ${n} sessions${off ? ` at ${aud(best)} each` : ''}, ${aud(n * best)}`, dates: dates.slice() }
 }

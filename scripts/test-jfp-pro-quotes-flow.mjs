@@ -113,8 +113,8 @@ await test('the player signs in and sees both options: the next session at A$100
   const d = (await pro.call('/api/jfp-account', { action: 'overview' })).data
   const o = d.owed.find((x) => x.rowId === qRow)
   assert.ok(o.dates.length >= 6, `the term's remaining dates (${o.dates.length})`)
-  // Round 2: and the rest of the term at the price per session (every date left).
-  assert.deepEqual(o.quote.options.map((x) => [x.key, x.totalCents]), [['one', 10000], ['commit:6', 57000], ...(o.dates.length > 6 ? [['rest', o.dates.length * 10000]] : [])])
+  // Round 2, and Lee 30 Oct 2026: the rest of the term at the best pack rate it earns (here the 6-pack's A$95).
+  assert.deepEqual(o.quote.options.map((x) => [x.key, x.totalCents]), [['one', 10000], ['commit:6', 57000], ...(o.dates.length > 6 ? [['rest', o.dates.length * 9500]] : [])])
   assert.equal(o.quote.options[1].dates.length, 6); assert.equal(o.quote.options[1].saveCents, 3000)
   commitDates = o.quote.options[1].dates.map((x) => x.iso)
   assert.deepEqual(commitDates, o.dates.slice(0, 6).map((x) => x.iso), 'six in a row, from the next session')
