@@ -31,6 +31,21 @@ async function runAbsenceTick(nowMs) {
   const cfg = await getConfig()
   return absenceDigestTick({ config: cfg, nowMs, send: (m) => sendStaffNotice({ to: cancelStaffTo(cfg), ...m, kind: 'absence digest' }) })
 }
+// Follow ups (30 Oct 2026, _jfp-admin-brief.js): offer reminders and the finish
+// setting up email (each off until Lee switches it on), then the daily brief
+// on Telegram from 7am Sydney.
+async function runFollowUps(nowMs) {
+  const B = await import('./_jfp-admin-brief.js')
+  const { sendFamilyNotice } = await import('./_jfp-email.js')
+  const { telegramAlert } = await import('./_jfp-notify.js')
+  const { briefInputs } = await import('./jfp-portal-data.js')
+  const cfg = await getConfig()
+  try { await B.offerReminderTick({ config: cfg, nowMs, send: sendFamilyNotice }) } catch (e) { console.error('jfp offer reminders failed', e) }
+  let inputs = null
+  const load = async () => (inputs ||= await briefInputs(cfg))
+  if (cfg.accountFollowUps === true) { try { await B.followUpTick({ config: cfg, nowMs, list: (await load()).accounts, send: sendFamilyNotice }) } catch (e) { console.error('jfp account follow ups failed', e) } }
+  return B.briefTick({ config: cfg, nowMs, load, send: telegramAlert })
+}
 import { reconcileStripe } from './jfp-portal-data.js'
 // Auto-charge after each session (claude/card-on-file).
 import { cronAutoCharges } from './_jfp-saved-pay.js'
@@ -175,6 +190,7 @@ export default async function handler(req, res) {
       await invoiceReminders(await getConfig(), { nowMs: now, sendCoach: sendCoachNotice, claimOnce })
     } catch (error) { console.error('jfp coach invoice reminders failed', error) }
     try { await runAbsenceTick(process.env.JFP_TEST_CLOCK === '1' && Number(req.query.now) ? Number(req.query.now) : Date.now()) } catch (error) { console.error('jfp absence digest failed', error) }
+    try { await runFollowUps(process.env.JFP_TEST_CLOCK === '1' && Number(req.query.now) ? Number(req.query.now) : Date.now()) } catch (error) { console.error('jfp follow ups and brief failed', error) }
     try { await sweepExpiredOffers({ email: 'hourly check' }); return res.status(200).json({ success: true, stripe: stripe ? { recorded: stripe.recorded, failed: stripe.failed?.length || 0, busy: Boolean(stripe.busy) } : null }) } catch (error) { console.error('jfp offer sweep failed', error); return res.status(500).json({ success: false }) }
   }
   res.setHeader('Cache-Control', 'no-store')

@@ -1066,3 +1066,10 @@ body:has(.ja[data-theme="light"]) { background: #F5F5F3 !important; }
 .ja-cp-ask p { margin: 0; font-weight: 700; font-size: 16px; }
 .ja-cp-top-link { display: inline-flex; align-items: center; gap: 8px; }
 .ja-cp-top-link svg { width: 14px; height: 14px; }
+
+/* End of term question (30 Oct 2026) */
+.ja .ja-fb-scale { display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 6px; margin-top: 14px; }
+.ja .ja-fb-n { min-height: 44px; border-radius: 12px; border: 1px solid var(--ja-line-2, var(--ja-line)); background: var(--ja-panel-2, transparent); color: var(--ja-ink, var(--ja-hi)); font: inherit; font-weight: 700; cursor: pointer; padding: 0; }
+.ja .ja-fb-n[aria-checked="true"] { background: var(--ja-red); border-color: var(--ja-red); color: #fff; }
+.ja .ja-fb-ends { display: flex; justify-content: space-between; margin-top: 6px; }
+@media (max-width: 420px) { .ja .ja-fb-scale { grid-template-columns: repeat(6, minmax(0, 1fr)); } }

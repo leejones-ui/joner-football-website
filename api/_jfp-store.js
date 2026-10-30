@@ -345,6 +345,14 @@ export function normaliseConfig(input = {}) {
     reportReminders: input.reportReminders === true,
     // Monday email to Ligia of players who missed 2 weeks in a row (_jfp-absence.js): off until Lee switches it on (20 Oct 2026).
     absenceDigest: input.absenceDigest === true,
+    // Daily brief on Telegram to Lee and Ligia (_jfp-admin-brief.js): staff only, on unless switched off (30 Oct 2026).
+    dailyBrief: input.dailyBrief !== false,
+    // Offer reminder two days before an offer runs out, and the finish setting up email 3 days after an empty
+    // new account: off until Lee reads the words on Follow ups and switches each on (30 Oct 2026).
+    offerReminders: input.offerReminders === true,
+    accountFollowUps: input.accountFollowUps === true,
+    // End of term question to families (_jfp-feedback.js): closed until Lee or Ligia send it from Program > Feedback (30 Oct 2026).
+    feedback: { open: input.feedback?.open === true, term: clean(input.feedback?.term, 60), sentAt: /^\d{4}-\d{2}-\d{2}T/.test(input.feedback?.sentAt || '') ? input.feedback.sentAt : '', sentBy: clean(input.feedback?.sentBy, 120), sentCount: Number.isInteger(input.feedback?.sentCount) ? input.feedback.sentCount : 0 },
     // Session ideas for coaches (19 Oct 2026): null until Lee or Ligia edit the list.
     sessionIdeas: Array.isArray(input.sessionIdeas) ? input.sessionIdeas.slice(0, 30).map((x) => ({ label: clean(x?.label, 80), url: clean(x?.url, 600), note: clean(x?.note, 240) })).filter((x) => x.label && /^https:\/\/\S+$/.test(x.url)) : null,
     // Coach pay for invoices (19 Oct 2026): hourly rate in cents per coach id, set by Lee or Ligia.

@@ -59,7 +59,8 @@
     "test:coaching-demo-link": "node scripts/test-coaching-demo-link.mjs",
     "test:invoice-truth": "node scripts/test-invoice-tracking-repair.mjs && node scripts/test-invoice-ledger-reconciliation.mjs && node scripts/test-attribution-report-reliability.mjs && node scripts/test-reporting-integrity.mjs",
     "test:jfp-multi-flow": "node scripts/test-jfp-multi-flow.mjs",
-    "test:jfp-saved-pay-flow": "node scripts/test-jfp-saved-pay-flow.mjs"
+    "test:jfp-saved-pay-flow": "node scripts/test-jfp-saved-pay-flow.mjs",
+    "test:jfp-followups": "node scripts/test-jfp-followups.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.4",

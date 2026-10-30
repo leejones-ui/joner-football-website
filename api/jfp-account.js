@@ -61,6 +61,7 @@ import { roleFor } from './_jfp-people.js'
 import { familyNotesFor, markFamilyNotesRead } from './_jfp-family-notes.js'
 import { reportsForFamily, familyView as reportFamilyView, readSetFor, markReportsRead, getReport, REPORT_ATTRS, REPORT_SCALE } from './_jfp-reports.js'
 import { progressByPlayer } from './_jfp-progress.js'
+import { familyFeedback, saveFamilyFeedback } from './_jfp-feedback.js'
 import { submitExtra, listExtras, familyExtraView, analysisPrice, extraSlots, gaPackages, gaEligible, DAYS as EXTRA_DAYS, TIMES as EXTRA_TIMES, TYPES as EXTRA_TYPES } from './_jfp-extras.js'
 // Saved card or bank account for session payments (claude/card-on-file).
 import { SAVED_PAY_FAMILY, savedPayFamily } from './_jfp-saved-pay.js'
@@ -317,6 +318,8 @@ async function overview(res, parent, body = {}, opts = {}) {
   // Player reports (Lee, 18 Oct 2026): a short list for the menu count; the
   // reports themselves load when the tab opens.
   const reports = opts.player ? [] : await reportsSummary(parent.email, null)
+  // End of term question (Lee, 30 Oct 2026): families training this term, while it is open.
+  const feedback = opts.player ? null : await familyFeedback(parent.email, config, { inTerm: myRows.some((r) => r.holdsPlace) }).catch((e) => { console.error('jfp feedback view failed', e); return null })
   return res.status(200).json({
     viewAs: parent.viewAs || null,
     success: true,
@@ -325,6 +328,7 @@ async function overview(res, parent, body = {}, opts = {}) {
     notes,
     makeups,
     reports,
+    feedback,
     playerMinAge: PLAYER_MIN_AGE,
     push: await pushView(readEmail).then((x) => ({ available: Boolean(x.available), key: x.key || '' })).catch((error) => { console.error('jfp push view failed', error); return { available: false, key: '' } }),
     parentName: fam.parentName || juniors?.parentName || '',
@@ -1124,6 +1128,13 @@ export default async function handler(req, res) {
     if (body.action === 'announceRead') return res.status(200).json({ success: true, read: await markAnnouncementsRead(parent.email, body.ids) })
     if (REPORT_FAMILY.has(body.action)) return await reportsAction(res, parent.email, null, body)
     if (body.action === 'noteRead') { const config = await getConfig(); const rows = familyFor(parent.email, await loadRoster(), config.termStart).players.flatMap((p) => p.term4); return res.status(200).json({ success: true, read: await markFamilyNotesRead(parent.email, body.ids, new Set(rows.map((r) => r.id))) }) }
+    if (body.action === 'feedbackSave') {
+      const config = await getConfig()
+      const fam = familyFor(parent.email, await loadRoster(), config.termStart)
+      const rows = fam.players.flatMap((p) => p.term4).filter((r) => r.holdsPlace)
+      const r = await saveFamilyFeedback({ email: parent.email, config, body, family: { inTerm: rows.length > 0, parentName: fam.parentName || '', players: [...new Set(rows.map((x) => x.player))] }, tell: telegramAlert })
+      return r.error ? fail(res, 400, r.error) : res.status(200).json({ success: true, ...r })
+    }
     if (body.action === 'signWaiver') return await signWaiver(res, parent, body)
     if (body.action === 'confirmKit') return await confirmKit(res, parent, body)
     if (body.action === 'pay') return await pay(req, res, parent, body)

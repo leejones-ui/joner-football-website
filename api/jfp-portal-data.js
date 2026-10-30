@@ -837,6 +837,66 @@ export async function addFamily(req, res, principal, config, body) {
 }
 
 // No email in the link: it would end up in browser history and server logs.
+// ---------- follow ups and the daily brief (Lee, 30 Oct 2026) ----------
+const FOLLOW_ACTIONS = new Set(['followUps', 'followUpsSwitch', 'remindOffer', 'feedbackPage', 'feedbackOpen', 'feedbackSend'])
+const FOLLOW_SWITCHES = ['dailyBrief', 'offerReminders', 'accountFollowUps']
+const familyNotice = async (m) => { const { sendFamilyNotice } = await import('./_jfp-email.js'); return sendFamilyNotice(m) }
+async function accountRows(config) {
+  const { newAccountsData } = await import('./_jfp-new-accounts.js')
+  const [profiles, roster] = await Promise.all([allProfiles().catch(() => []), loadRoster()])
+  return (await newAccountsData({ email: 'daily brief' }, config, { profiles, roster, show: 'new', mark: false })).accounts
+}
+// What the brief needs besides requests and offers (it reads those itself).
+export async function briefInputs(config) {
+  const { absenceAlerts } = await import('./_jfp-absence.js')
+  const [accounts, money, abs] = await Promise.all([accountRows(config), moneyData(config, { quick: true }), absenceAlerts(config)])
+  return { accounts, money, absences: abs.count }
+}
+async function followAction({ principal, config, body, action, agent }) {
+  if (action.startsWith('feedback')) {
+    const F = await import('./_jfp-feedback.js')
+    if (action === 'feedbackPage') return { status: 200, ...(await F.feedbackPage(config, { term: clean(body.term, 60) })) }
+    // Opening, closing and sending: Lee or Ligia in the portal, never Hermes.
+    if (agent) return { status: 403, error: 'Only Lee or Ligia do this, in the portal.' }
+    if (action === 'feedbackOpen') return { status: 200, ...(await F.setFeedbackOpen({ principal, config, open: body.open === true })) }
+    const roster = await loadRoster({ fresh: true })
+    const recipients = F.surveyRecipients(roster.players.filter((r) => !isTestName(r.player) && !/joners juniors/i.test(r.paymentType || '')), rowEmails)
+    if (body.confirm !== recipients.length) return { status: 409, error: `Check the count: it goes to ${recipients.length} families.`, count: recipients.length }
+    const r = await F.sendSurvey({ principal, config, recipients, send: familyNotice })
+    return r.error ? { status: 409, error: r.error } : { status: 200, ...r }
+  }
+  const B = await import('./_jfp-admin-brief.js')
+  if (action === 'followUpsSwitch') {
+    if (!FOLLOW_SWITCHES.includes(body.which) || typeof body.on !== 'boolean') return { status: 400, error: 'Say which switch, on or off.' }
+    // Emails to families start only when Lee or Ligia switch them on in the portal.
+    if (agent) return { status: 403, error: 'Only Lee or Ligia switch this, in the portal.' }
+    await saveConfig({ [body.which]: body.on })
+    await audit({ by: principal.email, action: `followups.${body.which}`, target: 'config', after: { on: body.on } })
+    return { status: 200, which: body.which, on: body.on }
+  }
+  if (action === 'remindOffer') {
+    const r = await B.remindOffer(clean(body.id, 80), { by: principal.email, send: familyNotice })
+    if (r.error) return { status: 409, error: r.error }
+    return { status: 200, ...r }
+  }
+  const now = Date.now()
+  const [offers, rows, inputs] = await Promise.all([B.openOffers(config, now), accountRows(config), briefInputs(config)])
+  const accounts = await B.followUpList(rows, now)
+  const sample = offers[0] || { parentName: 'Sam Smith', players: ['Alex Smith'], group: 'Wednesday 6:30am, North Turramurra', expiresAt: new Date(now + 2 * 86400000).toISOString(), id: 'example' }
+  return {
+    status: 200,
+    switches: Object.fromEntries(FOLLOW_SWITCHES.map((k) => [k, config[k] === true])),
+    offers, accounts,
+    words: {
+      offer: B.offerReminderWords({ ...sample, url: '' }),
+      sydney: B.followUpWords({ away: false }),
+      away: B.followUpWords({ away: true, country: 'the UK', coach: true }),
+    },
+    brief: await B.briefText({ config, nowMs: now, ...inputs }),
+    timing: { remindHours: B.REMIND_HOURS, followAfterDays: B.FOLLOW_AFTER_DAYS, followMaxDays: B.FOLLOW_MAX_DAYS, briefHour: B.BRIEF_FROM_HOUR },
+  }
+}
+
 export function payreqUrl(req, q) { return `${siteUrl(req)}/jfp-account/?pay=${encodeURIComponent(q.id)}` }
 
 // Offers from requests hold the place for 7 days; balance and term links do not expire.
@@ -3967,6 +4027,13 @@ async function handle(req, res) {
       return status === 200 ? res.status(200).json({ success: true, ...rest }) : fail(res, status, error)
     }
 
+    // Follow ups (Lee, 30 Oct 2026; _jfp-admin-brief.js): the daily brief,
+    // offer reminders and the finish setting up email, with their words.
+    if (FOLLOW_ACTIONS.has(action)) {
+      const { status, error, ...rest } = await followAction({ principal, config, body, action, agent: inAgent() })
+      return status === 200 ? res.status(200).json({ success: true, ...rest }) : fail(res, status, error, rest)
+    }
+
     // ---------- Lee and Ligia ----------
     // Money > Credits (Lee, 20 Oct 2026): what is owed to families, and
     // giving one by hand. Lee or Ligia only, never Hermes.
@@ -4270,7 +4337,7 @@ async function handle(req, res) {
       case 'accountAlerts': return res.status(200).json({ success: true, ...(await accountAlerts(principal)) })
       case 'newAccounts': {
         const [profiles, roster] = await Promise.all([allProfiles().catch(() => []), loadRoster()])
-        return res.status(200).json({ success: true, ...(await newAccountsData(principal, config, { profiles, roster, show: ['all', 'away'].includes(body.show) ? body.show : 'new' })) })
+        return res.status(200).json({ success: true, ...(await newAccountsData(principal, config, { profiles, roster, show: ['all', 'away'].includes(body.show) ? body.show : 'new', mark: !inAgent() })) })
       }
       // Session value (Lee, 20 Oct 2026): fill and fees per coach hour for each group. Read only.
       case 'sessionValue': return await sessionValueAction(res, principal, config, body)

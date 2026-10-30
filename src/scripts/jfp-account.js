@@ -14,6 +14,7 @@ import { renderExtra, renderAnalysis, extraClick, setExtraLink } from './jfp-acc
 // Fees: save a card or bank account for session payments (claude/card-on-file).
 import { mountSavedPay, savedReturn, forgetSaved } from './jfp-account-saved.js'
 import { renderReports, reportsHomeBlock, unreadReports } from './jfp-account-reports.js'
+import { feedbackHomeBlock, feedbackClick } from './jfp-account-feedback.js'
 import { newSessions, markSeen, newSessionsPopup } from './jfp-account-new.js'
 import { askWhere } from './jfp-account-where.js'
 import { coachRow, coachSheet, renderCoaches } from './jfp-account-coach.js'
@@ -157,6 +158,11 @@ async function start() {
     const el = document.querySelector(`.j-sheet [data-todo="${CSS.escape(payId)}"]`) || document.querySelector(`[data-todo="${CSS.escape(payId)}"]`)
     if (el) { el.scrollIntoView({ block: 'center' }); el.style.boxShadow = '0 0 0 2px var(--ja-red, #E30613)' }
     else if (D && !D.todo.length && !(D.juniors?.todo || []).length) toast('That payment is already done or no longer open.')
+  } else if (h === 'feedback') {
+    // From the end of term email (30 Oct 2026): straight to the question.
+    const el = $('feedback')
+    if (el) el.scrollIntoView({ block: 'center' })
+    else if (D) toast(D.players.length ? 'The question is closed for now. Thank you.' : 'Sign in with the email we sent it to.')
   } else if (D?.askWhere) askWhere(D)
   else if (h !== 'extra' && h !== 'holidays') newSessionsPopup(D, (k) => show(k))
   loadProfiles()
@@ -659,7 +665,7 @@ function renderHome() {
   el.innerHTML = `${head}${guideCard()}
     <div class="ja-home">
       <div class="ja-stack"><p class="ja-label">Next up</p>${nextBlock}${doneBlock}</div>
-      <div class="ja-stack">${D.playerLogin ? playerWaiverStep() : strip ? `<p class="ja-label">To do</p>${strip}` : `<div class="ja-strip is-done">${ic('check')}<span class="ja-mr-tx"><b>All sorted</b><small>Nothing to sign or pay right now.</small></span></div>`}${reportsHomeBlock(D)}${bookedExtrasBlock(D)}${makeupsHomeBlock(D)}${notesHomeBlock(D)}${newsBlock()}
+      <div class="ja-stack">${D.playerLogin ? playerWaiverStep() : strip ? `<p class="ja-label">To do</p>${strip}` : `<div class="ja-strip is-done">${ic('check')}<span class="ja-mr-tx"><b>All sorted</b><small>Nothing to sign or pay right now.</small></span></div>`}${feedbackHomeBlock(D)}${reportsHomeBlock(D)}${bookedExtrasBlock(D)}${makeupsHomeBlock(D)}${notesHomeBlock(D)}${newsBlock()}
         ${jjHomeCard()}${notBooked.length ? `<div class="ja-card"><p class="ja-small ja-muted">${notBooked.map((p) => p.placeNoSession ? `<b class="ja-ink">${esc(p.name)}</b> has a place. We will confirm the day and time.` : `<b class="ja-ink">${esc(p.name)}</b> is not booked this term. <a class="ja-link" href="${links.booking}">See the timetable</a>`).join('<br>')}</p></div>` : ''}${requestsBlock()}</div>
     </div>
     ${D.playerLogin ? '' : promos}${watch}`
@@ -1654,6 +1660,7 @@ function waiverSheet(keys) {
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('ja-acct-menu') && !$('ja-acct-menu').hidden) { acctMenu(false); $('ja-acct')?.focus() } })
 
 document.addEventListener('click', async (e) => {
+  if (D?.feedback && e.target.closest('.ja-fb') && await feedbackClick(e.target, D, () => { const h = pane('home'); if (h) renderHome() })) return
   const ls = e.target.closest('[data-login-set]')
   if (ls) { const p = D.players.find((x) => x.key === ls.dataset.loginSet); if (p) loginSheet(p, D, () => load()); return }
   const t = e.target

@@ -26,9 +26,10 @@ export async function accountAlerts(principal) {
 
 // The list: every account, newest first, with the players they added, any
 // session they hold now and when they last signed in.
-export async function newAccountsData(principal, config, { profiles, roster, show = 'new' }) {
+// mark: false reads the list without marking it seen (the daily brief, Hermes).
+export async function newAccountsData(principal, config, { profiles, roster, show = 'new', mark = true }) {
   const since = await seenAt(principal.email)
-  await kvCommand(['HSET', ACCOUNTS_SEEN, principal.email, String(Date.now())])
+  if (mark) await kvCommand(['HSET', ACCOUNTS_SEEN, principal.email, String(Date.now())])
   const [accounts, signedFlat] = await Promise.all([allAccounts(), kvCommand(['HGETALL', 'jfp:acct-signedin']).catch(() => [])])
   const signedIn = {}
   for (let i = 0; i + 1 < (signedFlat || []).length; i += 2) signedIn[signedFlat[i]] = signedFlat[i + 1]
