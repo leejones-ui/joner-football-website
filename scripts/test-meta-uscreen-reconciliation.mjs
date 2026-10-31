@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import handler from '../api/meta-uscreen-reconciliation.js'
-import { addPhaseTwoThree, buildDailySeries, buildReconciliation, extractActionCount, fetchUscreenInvoices, previousWindow, resolveWindow } from '../api/_meta-uscreen-reconciliation.js'
+import { addPhaseTwoThree, buildDailySeries, buildReconciliation, extractActionCount, fetchUscreenInvoices, invoicesForWindow, previousWindow, resolveWindow } from '../api/_meta-uscreen-reconciliation.js'
 
 assert.deepEqual(resolveWindow({ from: '2026-08-26', to: '2026-08-27' }), {
   from: '2026-08-26', to: '2026-08-27', timezone: 'UTC',
@@ -195,7 +195,9 @@ console.log('meta-uscreen reconciliation tests passed')
     if (page > 12) return { ok: true, json: async () => [] }
     return { ok: true, json: async () => rows(page, page === 12 ? day('2026-07-20T12:00:00Z') : day('2026-08-30T12:00:00Z')) }
   }
-  const recovered = await fetchUscreenInvoices(win, flaky)
+  const waits = []
+  const fastSleep = async (ms) => { waits.push(ms) }
+  const recovered = await fetchUscreenInvoices(win, flaky, { sleep: fastSleep })
   assert.equal(recovered.truncated, false, 'retried fetch should reach the window start')
   assert.ok(recovered.length >= 360, `expected full history, got ${recovered.length}`)
   assert.ok((attempts.get(2) || 0) >= 3, 'page 2 should have been retried')
@@ -205,7 +207,76 @@ console.log('meta-uscreen reconciliation tests passed')
     const page = Number(new URL(url).searchParams.get('page'))
     if (page >= 3) return { ok: false, status: 429, text: async () => 'rate limited', json: async () => ({}) }
     return { ok: true, json: async () => rows(page, day('2026-08-30T12:00:00Z')) }
-  })
+  }, { sleep: fastSleep })
   assert.equal(broken.truncated, true, 'a permanently failing page must report truncation')
+
+  // 429 backoff is long enough to clear Uscreen's throttle (1s, 2s, 4s, 8s),
+  // not the old 400ms/800ms that gave up while still throttled.
+  assert.deepEqual(waits.slice(0, 2), [1000, 2000], `first 429 waits should be 1s then 2s, got ${waits.slice(0, 4)}`)
+
+  // Retry-After from Uscreen is honoured (capped at 10s).
+  const raWaits = []
+  let raHits = 0
+  const withRetryAfter = await fetchUscreenInvoices(win, async (url) => {
+    const page = Number(new URL(url).searchParams.get('page'))
+    if (page === 1 && raHits++ === 0) return { ok: false, status: 429, headers: { get: (h) => (h === 'retry-after' ? '3' : null) }, json: async () => ({}) }
+    if (page > 4) return { ok: true, json: async () => [] }
+    return { ok: true, json: async () => rows(page, page === 4 ? day('2026-07-20T12:00:00Z') : day('2026-08-30T12:00:00Z')) }
+  }, { sleep: async (ms) => { raWaits.push(ms) } })
+  assert.equal(withRetryAfter.truncated, false)
+  assert.deepEqual(raWaits, [3000])
+
+  // Every page throttled on its first two attempts (the live failure mode):
+  // still complete, with every invoice counted.
+  const seen = new Map()
+  const throttledTwice = await fetchUscreenInvoices(win, async (url) => {
+    const page = Number(new URL(url).searchParams.get('page'))
+    const n = (seen.get(page) || 0) + 1
+    seen.set(page, n)
+    if (n <= 2) return { ok: false, status: 429, json: async () => ({}) }
+    if (page > 6) return { ok: true, json: async () => [] }
+    return { ok: true, json: async () => rows(page, page === 6 ? day('2026-07-20T12:00:00Z') : day('2026-08-30T12:00:00Z')) }
+  }, { sleep: async () => {} })
+  assert.equal(throttledTwice.truncated, false)
+  assert.equal(throttledTwice.length, 180)
+  const throttledReport = buildReconciliation({ window: win, meta: { purchases: 0, purchase_value: 0, spend: 10 }, invoices: throttledTwice, sales: [], sourceHealth: { meta: true, uscreen: true, kv: true } })
+  assert.equal(throttledReport.invoice_history_complete, true)
+  assert.ok(throttledReport.uscreen_paid_signups > 0, 'throttled-then-recovered fetch must not report zero buyers')
+
+  // Never more than two Uscreen reads in flight at once.
+  let inFlight = 0
+  let peak = 0
+  await fetchUscreenInvoices(win, async (url) => {
+    inFlight += 1; peak = Math.max(peak, inFlight)
+    await new Promise((r) => setTimeout(r, 2))
+    inFlight -= 1
+    const page = Number(new URL(url).searchParams.get('page'))
+    if (page > 8) return { ok: true, json: async () => [] }
+    return { ok: true, json: async () => rows(page, page === 8 ? day('2026-07-20T12:00:00Z') : day('2026-08-30T12:00:00Z')) }
+  })
+  assert.ok(peak <= 2, `expected at most 2 parallel Uscreen reads, saw ${peak}`)
+
+  // Deadline: stops and reports a floor rather than running past the function limit.
+  let clock = 0
+  const slow = await fetchUscreenInvoices(win, async (url) => {
+    clock += 10000
+    return { ok: true, json: async () => rows(Number(new URL(url).searchParams.get('page')), day('2026-08-30T12:00:00Z')) }
+  }, { now: () => clock, deadlineMs: 45000, sleep: async () => {} })
+  assert.equal(slow.truncated, true)
+  assert.ok(slow.length < 90 * 30)
+
+  // One fetch serves both windows: the current window is complete once the
+  // fetch reaches its start, even if the earlier window was cut short.
+  const current = { from: '2026-10-01', to: '2026-10-31', timezone: 'UTC' }
+  const prior = previousWindow(current)
+  const shared = Array.from({ length: 3 }, (_, i) => ({ id: `s${i}`, paid_at: day('2026-09-20T12:00:00Z') }))
+  shared.truncated = true
+  shared.exhausted = false
+  shared.oldest_paid_at_ms = Date.parse('2026-09-20T12:00:00Z')
+  assert.equal(invoicesForWindow(shared, current).truncated, false)
+  assert.equal(invoicesForWindow(shared, prior).truncated, true)
+  assert.equal(invoicesForWindow(shared, current).length, 3)
+  const done = Object.assign([], { truncated: false, exhausted: true, oldest_paid_at_ms: 0 })
+  assert.equal(invoicesForWindow(done, prior).truncated, false)
   console.log('invoice rate-limit tests passed')
 }

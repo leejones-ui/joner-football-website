@@ -1,4 +1,4 @@
-import { addPhaseTwoThree, buildDailySeries, buildReconciliation, config as readConfig, fetchMetaDailyReport, fetchMetaReport, fetchReliableSales, fetchUscreenInvoices, previousWindow, resolveWindow, authorised } from './_meta-uscreen-reconciliation.js'
+import { addPhaseTwoThree, buildDailySeries, buildReconciliation, config as readConfig, fetchMetaDailyReport, fetchMetaReport, fetchReliableSales, fetchUscreenInvoices, invoicesForWindow, previousWindow, resolveWindow, authorised } from './_meta-uscreen-reconciliation.js'
 
 function json(res, status, body) {
   return res.status(status).json(body)
@@ -26,14 +26,18 @@ export default async function handler(req, res) {
     }
     const prior = previousWindow(window)
     const wantsDaily = String(req.query?.series || '') === 'daily'
-    const [meta, invoices, sales, previousMeta, previousInvoices, metaDaily] = await Promise.all([
+    // Fetch Uscreen invoices ONCE across both periods. Two concurrent fetches
+    // tripped Uscreen's rate limit and returned zeros on back-to-back calls.
+    const span = { ...window, from: prior.from < window.from ? prior.from : window.from }
+    const [meta, allInvoices, sales, previousMeta, metaDaily] = await Promise.all([
       fetchMetaReport(window),
-      fetchUscreenInvoices(window),
+      fetchUscreenInvoices(span),
       fetchReliableSales(),
       fetchMetaReport(prior),
-      fetchUscreenInvoices(prior),
       wantsDaily ? fetchMetaDailyReport(window) : Promise.resolve(null),
     ])
+    const invoices = invoicesForWindow(allInvoices, window)
+    const previousInvoices = invoicesForWindow(allInvoices, prior)
     sourceHealth.meta = true
     sourceHealth.uscreen = true
     sourceHealth.kv = true

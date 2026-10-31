@@ -7,10 +7,18 @@ const USCREEN_API_BASE = 'https://www.uscreen.io/publisher_api/v1'
 // 90 pages covers roughly 60 days at current volume.
 const USCREEN_PER_PAGE = 30
 const MAX_INVOICE_PAGES = 90
-// Uscreen rate-limits (HTTP 429) well before this many parallel reads, and a
-// throttled page must never be mistaken for the end of the data.
-const INVOICE_PAGE_CONCURRENCY = 3
-const INVOICE_PAGE_RETRIES = 3
+// Uscreen rate-limits (HTTP 429) once a few reads run in parallel. Two at a
+// time measured clean; the old 3-per-fetch, two fetches at once (6 parallel)
+// was throttled on back-to-back calls and returned zeros. A throttled page
+// must never be mistaken for the end of the data.
+const INVOICE_PAGE_CONCURRENCY = 2
+const INVOICE_PAGE_RETRIES = 5
+// 429 backoff when Uscreen sends no Retry-After: 1s, 2s, 4s, 8s.
+const INVOICE_THROTTLE_BACKOFF_MS = [1000, 2000, 4000, 8000]
+const INVOICE_RETRY_AFTER_CAP_MS = 10000
+// Stop paging before the 60s function limit and report a floor instead of
+// timing out with nothing.
+const INVOICE_FETCH_DEADLINE_MS = 45000
 const MAX_SALES = 400
 const META_PURCHASE_ACTIONS = new Set([
   'purchase',
@@ -338,7 +346,13 @@ function config() {
 
 async function getJson(url, options = {}, fetchImpl = fetch) {
   const response = await fetchImpl(url, options)
-  if (!response.ok) throw new Error(`upstream_${response.status}`)
+  if (!response.ok) {
+    const error = new Error(`upstream_${response.status}`)
+    error.status = response.status
+    const retryAfter = Number(response.headers?.get?.('retry-after'))
+    if (Number.isFinite(retryAfter) && retryAfter >= 0) error.retryAfterMs = retryAfter * 1000
+    throw error
+  }
   return response.json()
 }
 
@@ -432,15 +446,17 @@ export async function fetchMetaDailyReport(window, fetchImpl = fetch) {
   return Array.isArray(body?.data) ? body.data : []
 }
 
-export async function fetchUscreenInvoices(window, fetchImpl = fetch) {
+export async function fetchUscreenInvoices(window, fetchImpl = fetch, { sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)), deadlineMs = INVOICE_FETCH_DEADLINE_MS, now = () => Date.now() } = {}) {
   const { uscreenKey } = config()
   if (!uscreenKey) throw new Error('uscreen_not_configured')
   const headers = { Authorization: `Bearer ${uscreenKey}`, accept: 'application/json' }
   const windowStart = Date.parse(`${window.from}T00:00:00Z`)
+  const deadline = now() + deadlineMs
   const invoices = []
   let reachedStart = false
   let exhausted = false
   let failed = false
+  let oldestPaidAt = 0
   let nextPage = 1
 
   const fetchPage = async (page) => {
@@ -451,13 +467,19 @@ export async function fetchUscreenInvoices(window, fetchImpl = fetch) {
         // Back off and retry: a 429 is a throttle, never a signal that the
         // invoice history has ended.
         if (attempt === INVOICE_PAGE_RETRIES - 1) return { error: String(error?.message || error) }
-        await new Promise((resolve) => setTimeout(resolve, 400 * (attempt + 1)))
+        const throttled = error?.status === 429
+        const wait = throttled
+          ? Math.min(error?.retryAfterMs ?? INVOICE_THROTTLE_BACKOFF_MS[Math.min(attempt, INVOICE_THROTTLE_BACKOFF_MS.length - 1)], INVOICE_RETRY_AFTER_CAP_MS)
+          : 400 * (attempt + 1)
+        if (now() + wait > deadline) return { error: 'deadline' }
+        await sleep(wait)
       }
     }
     return { error: 'unreachable' }
   }
 
   while (!reachedStart && !exhausted && !failed && nextPage <= MAX_INVOICE_PAGES) {
+    if (now() > deadline) { failed = true; break }
     const pages = []
     for (let i = 0; i < INVOICE_PAGE_CONCURRENCY && nextPage + i <= MAX_INVOICE_PAGES; i += 1) pages.push(nextPage + i)
     nextPage += pages.length
@@ -469,13 +491,29 @@ export async function fetchUscreenInvoices(window, fetchImpl = fetch) {
       if (!batch.length) { exhausted = true; continue }
       invoices.push(...batch)
       const oldest = Math.min(...batch.map((invoice) => Number(invoice?.paid_at || 0) * 1000).filter(Boolean))
+      if (oldest && (!oldestPaidAt || oldest < oldestPaidAt)) oldestPaidAt = oldest
       if (oldest && oldest < windowStart) reachedStart = true
     }
   }
   // Complete only when the window start was actually reached, or the invoice
   // history genuinely ran out. Anything else is a floor, not a total.
   invoices.truncated = !reachedStart && !exhausted
+  invoices.exhausted = exhausted
+  invoices.oldest_paid_at_ms = oldestPaidAt
   return invoices
+}
+
+// One invoice fetch can serve several windows (the current and previous
+// periods). A window is complete when history ran out, or when the fetched
+// invoices reach back before that window's own start, even if the wider fetch
+// fell short of an earlier window.
+export function invoicesForWindow(invoices, window) {
+  const list = Array.isArray(invoices) ? invoices : []
+  const view = list.slice()
+  const windowStart = Date.parse(`${window.from}T00:00:00Z`)
+  const reached = Boolean(list.oldest_paid_at_ms) && list.oldest_paid_at_ms < windowStart
+  view.truncated = Boolean(list.truncated) && !list.exhausted && !reached
+  return view
 }
 
 async function kv(command, fetchImpl = fetch) {
