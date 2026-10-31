@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import handler from '../api/meta-uscreen-reconciliation.js'
-import { addPhaseTwoThree, buildDailySeries, buildReconciliation, extractActionCount, fetchUscreenInvoices, invoicesForWindow, previousWindow, resolveWindow } from '../api/_meta-uscreen-reconciliation.js'
+import { addPhaseTwoThree, buildDailySeries, buildReconciliation, extractActionCount, fetchUscreenInvoices, fetchUscreenInvoicesCached, invoicesForWindow, resetInvoiceCache, previousWindow, resolveWindow } from '../api/_meta-uscreen-reconciliation.js'
 
 assert.deepEqual(resolveWindow({ from: '2026-08-26', to: '2026-08-27' }), {
   from: '2026-08-26', to: '2026-08-27', timezone: 'UTC',
@@ -210,21 +210,21 @@ console.log('meta-uscreen reconciliation tests passed')
   }, { sleep: fastSleep })
   assert.equal(broken.truncated, true, 'a permanently failing page must report truncation')
 
-  // 429 backoff is long enough to clear Uscreen's throttle (1s, 2s, 4s, 8s),
+  // 429 backoff is long enough to clear Uscreen's throttle (2s, 4s, 8s, 16s),
   // not the old 400ms/800ms that gave up while still throttled.
-  assert.deepEqual(waits.slice(0, 2), [1000, 2000], `first 429 waits should be 1s then 2s, got ${waits.slice(0, 4)}`)
+  assert.deepEqual(waits.slice(0, 2), [2000, 4000], `first 429 waits should be 2s then 4s, got ${waits.slice(0, 4)}`)
 
   // Retry-After from Uscreen is honoured (capped at 10s).
   const raWaits = []
   let raHits = 0
   const withRetryAfter = await fetchUscreenInvoices(win, async (url) => {
     const page = Number(new URL(url).searchParams.get('page'))
-    if (page === 1 && raHits++ === 0) return { ok: false, status: 429, headers: { get: (h) => (h === 'retry-after' ? '3' : null) }, json: async () => ({}) }
+    if (page === 1 && raHits++ === 0) return { ok: false, status: 429, headers: { get: (h) => (h === 'retry-after' ? '22' : null) }, json: async () => ({}) }
     if (page > 4) return { ok: true, json: async () => [] }
     return { ok: true, json: async () => rows(page, page === 4 ? day('2026-07-20T12:00:00Z') : day('2026-08-30T12:00:00Z')) }
   }, { sleep: async (ms) => { raWaits.push(ms) } })
   assert.equal(withRetryAfter.truncated, false)
-  assert.deepEqual(raWaits, [3000])
+  assert.deepEqual(raWaits, [22000], 'Uscreen Retry-After (22s observed live) must be honoured, not capped short')
 
   // Every page throttled on its first two attempts (the live failure mode):
   // still complete, with every invoice counted.
@@ -243,7 +243,7 @@ console.log('meta-uscreen reconciliation tests passed')
   assert.equal(throttledReport.invoice_history_complete, true)
   assert.ok(throttledReport.uscreen_paid_signups > 0, 'throttled-then-recovered fetch must not report zero buyers')
 
-  // Never more than two Uscreen reads in flight at once.
+  // Never more than four Uscreen reads in flight at once.
   let inFlight = 0
   let peak = 0
   await fetchUscreenInvoices(win, async (url) => {
@@ -254,7 +254,7 @@ console.log('meta-uscreen reconciliation tests passed')
     if (page > 8) return { ok: true, json: async () => [] }
     return { ok: true, json: async () => rows(page, page === 8 ? day('2026-07-20T12:00:00Z') : day('2026-08-30T12:00:00Z')) }
   })
-  assert.ok(peak <= 2, `expected at most 2 parallel Uscreen reads, saw ${peak}`)
+  assert.ok(peak <= 4, `expected at most 4 parallel Uscreen reads, saw ${peak}`)
 
   // Deadline: stops and reports a floor rather than running past the function limit.
   let clock = 0
@@ -279,6 +279,24 @@ console.log('meta-uscreen reconciliation tests passed')
   assert.equal(invoicesForWindow(prioritised, { from: '2026-09-01', to: '2026-09-30' }).truncated, false, 'reported window complete')
   assert.equal(prioritised.truncated, true, 'comparison window honestly marked short')
   assert.ok(pcalls < 12, `should stop soon after the soft deadline, made ${pcalls} calls`)
+
+  // Warm cache: a second call for a covered period makes no Uscreen reads.
+  resetInvoiceCache()
+  let cacheReads = 0
+  const cacheFetch = async (url) => {
+    cacheReads += 1
+    const page = Number(new URL(url).searchParams.get('page'))
+    if (page > 5) return { ok: true, json: async () => [] }
+    return { ok: true, json: async () => rows(page, page === 5 ? day('2026-07-20T12:00:00Z') : day('2026-08-30T12:00:00Z')) }
+  }
+  const firstCall = await fetchUscreenInvoicesCached(win, { priorityFrom: win.from, sleep: async () => {} }, () => 1000, cacheFetch)
+  const readsAfterFirst = cacheReads
+  const secondCall = await fetchUscreenInvoicesCached(win, { priorityFrom: win.from, sleep: async () => {} }, () => 2000, cacheFetch)
+  assert.equal(cacheReads, readsAfterFirst, 'second call within TTL must not re-page Uscreen')
+  assert.equal(secondCall.length, firstCall.length)
+  await fetchUscreenInvoicesCached(win, { priorityFrom: win.from, sleep: async () => {} }, () => 1000 + 6 * 60 * 1000, cacheFetch)
+  assert.ok(cacheReads > readsAfterFirst, 'expired cache must refetch')
+  resetInvoiceCache()
 
   // One fetch serves both windows: the current window is complete once the
   // fetch reaches its start, even if the earlier window was cut short.

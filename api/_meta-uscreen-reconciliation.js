@@ -7,18 +7,18 @@ const USCREEN_API_BASE = 'https://www.uscreen.io/publisher_api/v1'
 // 90 pages covers roughly 60 days at current volume.
 const USCREEN_PER_PAGE = 30
 const MAX_INVOICE_PAGES = 90
-// Uscreen rate-limits (HTTP 429) once a few reads run in parallel. Two at a
-// time measured clean; the old 3-per-fetch, two fetches at once (6 parallel)
-// was throttled on back-to-back calls and returned zeros. A throttled page
-// must never be mistaken for the end of the data.
-const INVOICE_PAGE_CONCURRENCY = 2
+// Uscreen allows about 100 requests a minute per key (measured 31 Oct 2026:
+// the 101st read in 35s got 429 with Retry-After: 22), shared by every caller
+// of the key. Parallelism itself is not limited, so read four pages at a
+// time, and treat a throttled page as unknown, never as the end of the data.
+const INVOICE_PAGE_CONCURRENCY = 4
 const INVOICE_PAGE_RETRIES = 5
-// 429 backoff when Uscreen sends no Retry-After: 1s, 2s, 4s, 8s.
-const INVOICE_THROTTLE_BACKOFF_MS = [1000, 2000, 4000, 8000]
-const INVOICE_RETRY_AFTER_CAP_MS = 10000
+// 429 backoff when Uscreen sends no Retry-After: 2s, 4s, 8s, 16s.
+const INVOICE_THROTTLE_BACKOFF_MS = [2000, 4000, 8000, 16000]
+const INVOICE_RETRY_AFTER_CAP_MS = 30000
 // Stop paging before the 60s function limit and report a floor instead of
 // timing out with nothing.
-const INVOICE_FETCH_DEADLINE_MS = 45000
+const INVOICE_FETCH_DEADLINE_MS = 48000
 const MAX_SALES = 400
 const META_PURCHASE_ACTIONS = new Set([
   'purchase',
@@ -514,19 +514,22 @@ export async function fetchUscreenInvoices(window, fetchImpl = fetch, { sleep = 
 // that is complete back to the requested start is reused.
 const INVOICE_CACHE_TTL_MS = 5 * 60 * 1000
 let invoiceCache = null
-export async function fetchUscreenInvoicesCached(window, options = {}, now = () => Date.now()) {
-  const start = Date.parse(`${window.from}T00:00:00Z`)
+export async function fetchUscreenInvoicesCached(window, options = {}, now = () => Date.now(), fetchImpl = fetch) {
+  // A cached fetch is good enough when it covers the period being reported;
+  // invoicesForWindow then marks any shorter comparison period honestly.
+  const start = Date.parse(`${options.priorityFrom || window.from}T00:00:00Z`)
   if (invoiceCache && now() - invoiceCache.fetchedAt < INVOICE_CACHE_TTL_MS) {
     const list = invoiceCache.invoices
     const covers = list.exhausted || (list.oldest_paid_at_ms && list.oldest_paid_at_ms < start)
     if (covers) return list
   }
-  const fresh = await fetchUscreenInvoices(window, fetch, options)
+  const fresh = await fetchUscreenInvoices(window, fetchImpl, options)
   const prev = invoiceCache?.invoices
   const better = !prev || now() - invoiceCache.fetchedAt >= INVOICE_CACHE_TTL_MS || fresh.exhausted || (fresh.oldest_paid_at_ms && (!prev.oldest_paid_at_ms || fresh.oldest_paid_at_ms <= prev.oldest_paid_at_ms))
   if (better && fresh.length) invoiceCache = { fetchedAt: now(), invoices: fresh }
   return fresh
 }
+export function resetInvoiceCache() { invoiceCache = null }
 
 // One invoice fetch can serve several windows (the current and previous
 // periods). A window is complete when history ran out, or when the fetched
