@@ -82,7 +82,7 @@ import { feePdfAttachment, docForPayreq, docForInvoice, pdfDownload } from './_j
 import { invoiceRefOf } from './_jfp-bank-match.js'
 // Saved card or bank account, auto-charge after each session (claude/card-on-file).
 import { accountAlerts, newAccountsData } from './_jfp-new-accounts.js'
-import { viewAccount, allAccountView, linkExistingPlayer, mergeAccounts, mergePreview, changeContactEmail, markReviewed, archiveAccount, restoreAccount, deleteEmptyAccount, joinPlan, joinFamily } from './_jfp-account-admin.js'
+import { viewAccount, allAccountView, linkExistingPlayer, mergeAccounts, mergePreview, changeContactEmail, markReviewed, archiveAccount, restoreAccount, deleteEmptyAccount, joinPlan, joinFamily, duplicateProfiles, foldProfile } from './_jfp-account-admin.js'
 import { followUpsAll, saveFollowUp, cameFrom, trialStage, pipelineCounts, STEPS, OUTCOMES } from './_jfp-trial-track.js'
 import { sessionValueAction } from './_jfp-session-value.js'
 import { ABSENCE_ACTIONS, absenceAction } from './_jfp-absence.js'
@@ -3728,6 +3728,12 @@ async function handle(req, res) {
         if (body.confirm !== true) return fail(res, 400, 'Confirm first.')
         const result = await joinFamily(body.email, body.familyEmail, principal.email, { profiles })
         return result.ok ? res.status(200).json(result) : fail(res, result.status || 409, result.error)
+      }
+      if (op === 'profileDuplicates') return res.status(200).json({ success: true, pairs: duplicateProfiles(profiles) })
+      if (op === 'foldProfile') {
+        if (body.confirm !== true) return fail(res, 400, 'Confirm first.')
+        const result = await foldProfile(clean(body.fromId, 40), clean(body.intoId, 40), principal.email, { profiles })
+        return result.ok ? res.status(200).json({ success: true, ...result }) : fail(res, result.status || 409, result.error)
       }
       if (op === 'linkPlayer') {
         const p = profiles.find((x) => (body.profileId && x.id === body.profileId) || (body.profileKey && x.key === body.profileKey))

@@ -16,7 +16,7 @@
 //
 // Nothing here writes Term 4.
 import { kvCommand, normName, clean, ageOn, sydneyToday, audit } from './_jfp-store.js'
-import { familyProfiles, findProfile, saveProfile, cleanProfile, profileKey } from './_jfp-profiles.js'
+import { familyProfiles, findProfile, saveProfile, cleanProfile, profileKey, sameChild } from './_jfp-profiles.js'
 
 export const ACCOUNTS = 'jfp:accounts'
 // Sign-ups from one connection a day, and from everyone an hour.
@@ -51,13 +51,16 @@ export async function noteAccount({ email, ip = 'unknown', known = false, from =
 }
 
 // The account's own players with no Term 4 row: their profiles, not already
-// one of the family's players (by name). fam: familyFor(); profs: familyProfiles().
+// one of the family's players (by name, or the same child under another
+// spelling, sameChild). fam: familyFor(); profs: familyProfiles().
 export function openPlayers({ fam, profs, account }) {
   const rowIds = new Set(fam.players.flatMap((p) => p.term4.map((r) => r.id)))
-  const known = new Set(fam.players.filter((p) => p.term4.length).map((p) => p.key))
+  const placed = fam.players.filter((p) => p.term4.length)
+  const known = new Set(placed.map((p) => p.key))
+  const kids = placed.map((p) => ({ name: p.name, dob: p.dob || profs.find((x) => x.rowIds.some((id) => p.term4.some((r) => r.id === id)))?.dob || '' }))
   const selfKeys = new Set((account?.players || []).filter((x) => x.self).map((x) => x.key))
   return profs
-    .filter((p) => !p.rowIds.some((id) => rowIds.has(id)) && !known.has(normName(p.name)))
+    .filter((p) => !p.rowIds.some((id) => rowIds.has(id)) && !known.has(normName(p.name)) && !kids.some((k) => sameChild(k, p)))
     .map((p) => ({ key: normName(p.name), name: p.name, profile: p, self: selfKeys.has(p.key) }))
 }
 

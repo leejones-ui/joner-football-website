@@ -90,7 +90,7 @@ export async function familyProfiles(email) {
   if (!e) return []
   const q = new URLSearchParams({ filterByFormula: `FIND("${fq(e)}", {Family Emails})`, pageSize: '100' })
   const d = await airtable(`${PROFILES_TABLE}?${q}`)
-  return (d.records || []).map(fromRecord).filter((p) => p.emails.includes(e))
+  return (d.records || []).map(fromRecord).filter((p) => p.emails.includes(e) && !String(p.updatedFrom || '').startsWith('Joined into '))
 }
 
 // Every profile, for the Players tab (staff only).
@@ -105,6 +105,31 @@ export async function allProfiles() {
     offset = d.offset || ''
   } while (offset)
   return out
+}
+
+// The same child under two spellings (Lee, 1 Nov 2026: three profiles for
+// Lucianna Maslen, two of them old copies from the players master backfill
+// under "Luciana Maslen" and "Lucianna Maslen"). Different dates of birth are
+// different children. The same date of birth and the same first three letters
+// is the same child; with no date of birth both names must be close.
+const lev = (a, b) => {
+  const d = Array.from({ length: b.length + 1 }, (_, j) => j)
+  for (let i = 1; i <= a.length; i++) {
+    let prev = d[0]; d[0] = i
+    for (let j = 1; j <= b.length; j++) { const t = d[j]; d[j] = Math.min(d[j] + 1, d[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1)); prev = t }
+  }
+  return d[b.length]
+}
+const words = (n) => String(n || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z ]/g, '').split(/\s+/).filter(Boolean)
+export function sameChild(a, b) {
+  const wa = words(a?.name), wb = words(b?.name)
+  if (!wa.length || !wb.length) return false
+  const fa = wa[0], fb = wb[0], la = wa.at(-1), lb = wb.at(-1)
+  const da = String(a?.dob || '').slice(0, 10), db = String(b?.dob || '').slice(0, 10)
+  if (da && db && da !== db) return false
+  if (da && db) return fa.slice(0, 3) === fb.slice(0, 3)
+  const firstClose = (fa.length >= 3 && fb.length >= 3 && (fa.startsWith(fb) || fb.startsWith(fa))) || lev(fa, fb) <= 1
+  return firstClose && wa.length > 1 && wb.length > 1 && lev(la, lb) <= 2
 }
 
 // The profile for one player: by key, else by one of their Term 4 rows.

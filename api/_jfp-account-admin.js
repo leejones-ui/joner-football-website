@@ -3,7 +3,7 @@
 // session records are never edited or deleted by this module.
 import { ACCOUNTS, allAccounts, accountOf } from './_jfp-account-open.js'
 import { kvCommand, audit, clean, validEmail, normName } from './_jfp-store.js'
-import { profileKey, saveProfile, PROFILE_KEYS, PROFILES_TABLE } from './_jfp-profiles.js'
+import { profileKey, saveProfile, sameChild, PROFILE_KEYS, PROFILES_TABLE } from './_jfp-profiles.js'
 import { airtable } from './_jfp-airtable.js'
 
 export const ACCOUNT_STATES = new Set(['active', 'reviewed', 'archived'])
@@ -205,6 +205,38 @@ export async function joinFamily(parentEmail, familyEmail, by, { profiles = [] }
     await audit({ by, action: 'account.joinFamily', target: pe, after: { family: fe, players: plan.family.map((p) => p.key), folded: plan.folds.map((x) => `${x.from.key} -> ${x.into.key}`) } })
     return { ok: true, account: next, players: plan.family.map((p) => p.name), folded: plan.folds.map((x) => x.from.name) }
   } finally { await unlock(lk) }
+}
+
+// Duplicate player profiles (Lee, 1 Nov 2026, Cara McNeilly: "there are three
+// profiles for Lucianna. Please could you delete the two empty ones"). Pairs
+// on the same family email that are the same child (sameChild). The one with
+// a Term 4 place is kept; between two without, the most filled in.
+const filled = (p) => PROFILE_KEYS.filter((k) => (Array.isArray(p[k]) ? p[k].length : p[k])).length + (p.photo ? 2 : 0)
+export function duplicateProfiles(profiles = []) {
+  const out = [], seen = new Set()
+  for (const a of profiles) for (const b of profiles) {
+    if (a.id >= b.id || !a.emails.some((e) => b.emails.includes(e)) || !sameChild(a, b)) continue
+    if (a.rowIds.length && b.rowIds.length && !a.rowIds.some((id) => b.rowIds.includes(id))) continue
+    const [into, from] = (b.rowIds.length - a.rowIds.length || filled(b) - filled(a)) > 0 ? [b, a] : [a, b]
+    const k = `${from.id}>${into.id}`
+    if (seen.has(k)) continue
+    seen.add(k)
+    out.push({ from: { id: from.id, name: from.name, place: from.rowIds.length > 0, filled: filled(from), photo: !!from.photo, updatedAt: from.updatedAt, updatedFrom: from.updatedFrom }, into: { id: into.id, name: into.name, place: into.rowIds.length > 0, filled: filled(into), photo: !!into.photo, updatedAt: into.updatedAt, updatedFrom: into.updatedFrom }, fills: Object.keys(foldValues(from, into)), email: a.emails.find((e) => b.emails.includes(e)) })
+  }
+  return out
+}
+// Fold one profile into another: its answers fill only the blanks, then it is
+// unlinked like a second parent's copy. Nothing is deleted.
+export async function foldProfile(fromId, intoId, by, { profiles = [] } = {}) {
+  const from = profiles.find((p) => p.id === fromId), into = profiles.find((p) => p.id === intoId)
+  if (!from || !into || from.id === into.id) return { ok: false, status: 404, error: 'Choose two different player profiles.' }
+  if (!from.emails.some((e) => into.emails.includes(e))) return { ok: false, status: 409, error: 'Those players are on different families.' }
+  if (from.rowIds.length && into.rowIds.length && !from.rowIds.some((id) => into.rowIds.includes(id))) return { ok: false, status: 409, error: 'Both have their own place this term. Check them by hand.' }
+  const values = foldValues(from, into)
+  await saveProfile({ existing: into, name: into.name, key: into.key, emails: from.emails, rowIds: from.rowIds, values, by, from: 'Duplicate folded in' })
+  await airtable(PROFILES_TABLE, { method: 'PATCH', body: { typecast: true, records: [{ id: from.id, fields: { 'Family Emails': '', 'Term 4 Record IDs': '', 'Updated At': new Date().toISOString(), 'Updated By': clean(by, 100), 'Updated From': `${JOINED}${into.key}`.slice(0, 200) } }] } })
+  await audit({ by, action: 'profile.fold', target: into.key, after: { from: from.key, fields: Object.keys(values) } })
+  return { ok: true, kept: into.name, folded: from.name, filled: Object.keys(values), photoLeftBehind: !!from.photo && !into.photo }
 }
 
 export async function allAccountView(deps = {}) { const all = await allAccounts(); return Object.values(all).map((a) => ({ ...a, state: accountState(a), references: Object.fromEntries(Object.entries(accountReferences(a, deps)).map(([k, v]) => [k, v.length])) })) }
