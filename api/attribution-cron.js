@@ -3,6 +3,7 @@ import { listReliableSales, appendReliableSale, listWebhookFailures } from './_r
 import { reconcilePayment, applySignupUtmFallback } from './checkout-bridge.js'
 import { attemptFirstPaidAutoSend, fetchCustomerSignupAttribution } from './_uscreen-webhook.js'
 import { setHealthField, bumpHealthCounter, getHealth, recordAlert } from './_attribution-health.js'
+import { sendRecentSalesToGa4 } from './_ga4-sales.js'
 
 // Hourly reconciliation and retry for the sales attribution system.
 // Vercel cron hits this every hour; the 21:00 UTC run (07:00 Sydney) performs
@@ -276,6 +277,8 @@ export default async function handler(req, res) {
     summary.firstPaid = await retryFirstPaidCandidates(deep ? 100 : 25)
     summary.unknowns = await reconcileUnknownSales(deep ? 150 : 50, { signupReads: deep ? 100 : 25 })
     summary.continuity = await checkInvoiceContinuity({ deep })
+    // Mirror only; a GA4 failure must never fail the attribution cron.
+    summary.ga4 = await sendRecentSalesToGa4({ limit: deep ? 100 : 25 }).catch((error) => ({ error: String(error?.message || error).slice(0, 120) }))
     summary.health = await evaluateHealth()
     await setHealthField('cron_last_run_at', new Date().toISOString())
     await setHealthField('cron_last_summary', summary)

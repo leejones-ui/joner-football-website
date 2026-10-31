@@ -511,6 +511,11 @@ const allSchemas = schema
           var attribution = paramsToObject(appendFirstTouchParams(params));
           attribution.fbp = getCookie('_fbp') || attribution.fbp;
           attribution.fbc = getCookie('_fbc') || attribution.fbc;
+          // GA4 client id from the shared _ga cookie (GA1.1.<id>.<ts>), so a
+          // server-sent purchase can join this visitor's GA session.
+          var gaCookie = getCookie('_ga');
+          var gaMatch = gaCookie && gaCookie.match(/^GA\d\.\d\.(\d+\.\d+)$/);
+          if (gaMatch) attribution.ga_client_id = attribution.ga_client_id || gaMatch[1];
           return fetch('/api/journey', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
