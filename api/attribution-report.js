@@ -4,6 +4,7 @@ import { readReliableRange, reliabilityKv } from './_reliability-ledger.js'
 import { getJourney } from './_attribution-ledger.js'
 import { listWebhookFailures, reliablePaymentIdentity } from './_reliability-ledger.js'
 import { getHealth, listAlerts } from './_attribution-health.js'
+import { readGaFunnel } from './_ga-funnel.js'
 
 // The dashboard renders what this returns. Raw identifiers stay server-side:
 // full email hashes are stripped to the 16-char reference and click ids are
@@ -234,6 +235,13 @@ async function attachBuyerNames(sales) {
 export default async function handler(req, res) {
   if (!authorized(req)) return json(res, 401, { success: false, error: 'Unauthorized' })
   if (req.method !== 'GET') return json(res, 405, { success: false, error: 'Method not allowed' })
+  if (req.query?.view === 'ga_funnel') {
+    try {
+      return json(res, 200, { success: true, ...(await readGaFunnel(req.query)) })
+    } catch (error) {
+      return json(res, 502, { success: false, error: String(error?.message || error).slice(0, 200) })
+    }
+  }
   try {
     const ids = String(req.query?.journey_ids || '').split(',').map((id) => id.trim()).filter(Boolean).slice(0, 100)
     const limit = reportLimit(req.query?.limit)
