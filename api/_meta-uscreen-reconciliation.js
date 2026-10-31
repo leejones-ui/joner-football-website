@@ -446,12 +446,17 @@ export async function fetchMetaDailyReport(window, fetchImpl = fetch) {
   return Array.isArray(body?.data) ? body.data : []
 }
 
-export async function fetchUscreenInvoices(window, fetchImpl = fetch, { sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)), deadlineMs = INVOICE_FETCH_DEADLINE_MS, now = () => Date.now() } = {}) {
+export async function fetchUscreenInvoices(window, fetchImpl = fetch, { sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)), deadlineMs = INVOICE_FETCH_DEADLINE_MS, now = () => Date.now(), priorityFrom = '', softDeadlineMs = 0 } = {}) {
   const { uscreenKey } = config()
   if (!uscreenKey) throw new Error('uscreen_not_configured')
   const headers = { Authorization: `Bearer ${uscreenKey}`, accept: 'application/json' }
   const windowStart = Date.parse(`${window.from}T00:00:00Z`)
-  const deadline = now() + deadlineMs
+  const startedAt = now()
+  const deadline = startedAt + deadlineMs
+  // Optional: once the priority window (the period actually being reported)
+  // is fully fetched, stop at the soft deadline rather than spend the whole
+  // budget on the comparison period.
+  const priorityStart = priorityFrom ? Date.parse(`${priorityFrom}T00:00:00Z`) : 0
   const invoices = []
   let reachedStart = false
   let exhausted = false
@@ -480,6 +485,7 @@ export async function fetchUscreenInvoices(window, fetchImpl = fetch, { sleep = 
 
   while (!reachedStart && !exhausted && !failed && nextPage <= MAX_INVOICE_PAGES) {
     if (now() > deadline) { failed = true; break }
+    if (priorityStart && softDeadlineMs && oldestPaidAt && oldestPaidAt < priorityStart && now() - startedAt > softDeadlineMs) break
     const pages = []
     for (let i = 0; i < INVOICE_PAGE_CONCURRENCY && nextPage + i <= MAX_INVOICE_PAGES; i += 1) pages.push(nextPage + i)
     nextPage += pages.length
@@ -501,6 +507,25 @@ export async function fetchUscreenInvoices(window, fetchImpl = fetch, { sleep = 
   invoices.exhausted = exhausted
   invoices.oldest_paid_at_ms = oldestPaidAt
   return invoices
+}
+
+// Warm serverless instances reuse a recent invoice fetch, so back-to-back
+// report calls do not re-page Uscreen and trip its rate limit. Only a fetch
+// that is complete back to the requested start is reused.
+const INVOICE_CACHE_TTL_MS = 5 * 60 * 1000
+let invoiceCache = null
+export async function fetchUscreenInvoicesCached(window, options = {}, now = () => Date.now()) {
+  const start = Date.parse(`${window.from}T00:00:00Z`)
+  if (invoiceCache && now() - invoiceCache.fetchedAt < INVOICE_CACHE_TTL_MS) {
+    const list = invoiceCache.invoices
+    const covers = list.exhausted || (list.oldest_paid_at_ms && list.oldest_paid_at_ms < start)
+    if (covers) return list
+  }
+  const fresh = await fetchUscreenInvoices(window, fetch, options)
+  const prev = invoiceCache?.invoices
+  const better = !prev || now() - invoiceCache.fetchedAt >= INVOICE_CACHE_TTL_MS || fresh.exhausted || (fresh.oldest_paid_at_ms && (!prev.oldest_paid_at_ms || fresh.oldest_paid_at_ms <= prev.oldest_paid_at_ms))
+  if (better && fresh.length) invoiceCache = { fetchedAt: now(), invoices: fresh }
+  return fresh
 }
 
 // One invoice fetch can serve several windows (the current and previous

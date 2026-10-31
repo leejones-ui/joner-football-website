@@ -265,6 +265,21 @@ console.log('meta-uscreen reconciliation tests passed')
   assert.equal(slow.truncated, true)
   assert.ok(slow.length < 90 * 30)
 
+  // Priority window: once the reported period is fetched, the comparison
+  // period is cut at the soft deadline instead of burning the whole budget.
+  let pclock = 0
+  let pcalls = 0
+  const prioritised = await fetchUscreenInvoices({ from: '2026-08-01', to: '2026-09-30', timezone: 'UTC' }, async (url) => {
+    pclock += 5000
+    pcalls += 1
+    const page = Number(new URL(url).searchParams.get('page'))
+    const stamp = page <= 3 ? day('2026-09-20T12:00:00Z') : day('2026-08-20T12:00:00Z')
+    return { ok: true, json: async () => rows(page, stamp) }
+  }, { now: () => pclock, priorityFrom: '2026-09-01', softDeadlineMs: 30000, sleep: async () => {} })
+  assert.equal(invoicesForWindow(prioritised, { from: '2026-09-01', to: '2026-09-30' }).truncated, false, 'reported window complete')
+  assert.equal(prioritised.truncated, true, 'comparison window honestly marked short')
+  assert.ok(pcalls < 12, `should stop soon after the soft deadline, made ${pcalls} calls`)
+
   // One fetch serves both windows: the current window is complete once the
   // fetch reaches its start, even if the earlier window was cut short.
   const current = { from: '2026-10-01', to: '2026-10-31', timezone: 'UTC' }

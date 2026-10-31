@@ -1,4 +1,4 @@
-import { addPhaseTwoThree, buildDailySeries, buildReconciliation, config as readConfig, fetchMetaDailyReport, fetchMetaReport, fetchReliableSales, fetchUscreenInvoices, invoicesForWindow, previousWindow, resolveWindow, authorised } from './_meta-uscreen-reconciliation.js'
+import { addPhaseTwoThree, buildDailySeries, buildReconciliation, config as readConfig, fetchMetaDailyReport, fetchMetaReport, fetchReliableSales, fetchUscreenInvoicesCached, invoicesForWindow, previousWindow, resolveWindow, authorised } from './_meta-uscreen-reconciliation.js'
 
 function json(res, status, body) {
   return res.status(status).json(body)
@@ -31,7 +31,7 @@ export default async function handler(req, res) {
     const span = { ...window, from: prior.from < window.from ? prior.from : window.from }
     const [meta, allInvoices, sales, previousMeta, metaDaily] = await Promise.all([
       fetchMetaReport(window),
-      fetchUscreenInvoices(span),
+      fetchUscreenInvoicesCached(span, { priorityFrom: window.from, softDeadlineMs: 30000 }),
       fetchReliableSales(),
       fetchMetaReport(prior),
       wantsDaily ? fetchMetaDailyReport(window) : Promise.resolve(null),
