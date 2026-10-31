@@ -115,6 +115,8 @@ export const TRACKING_DESTINATIONS = Object.freeze({
   'app-mini-goal-passing': 'https://app.jonerfootball.com/programs/19th-august-app-video_passing_1touch_mini_goal-7b63e7',
   'app-simple-finishing-combo': 'https://app.jonerfootball.com/programs/19th-august-app-video_finishing-24c1dc',
   'app-saq-warmup-minimal': 'https://app.jonerfootball.com/programs/19th-august-app-video_saq-b78bf7',
+  'app-follow-along-30': 'https://app.jonerfootball.com/programs/collection-4mwbxnt_oym',
+  'app-ball-mastery-solo': 'https://app.jonerfootball.com/programs/collection-ekltsbfchd8',
   'free-bundle': '/free-bundle',
   coaches: '/app/for-coaches',
   reviews: '/reviews',
