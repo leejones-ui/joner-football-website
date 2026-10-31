@@ -1,14 +1,19 @@
 ---
 const gaId = import.meta.env.PUBLIC_GA4_ID;
+// Also report to the app property (app.jonerfootball.com, where sign-ups and
+// checkout happen) so a visitor's original source carries through to the sale.
+// Both sites share the .jonerfootball.com _ga cookie, so it is one visitor.
+const gaAppId = import.meta.env.PUBLIC_GA4_APP_ID || 'G-H73LP37D8D';
 ---
 {gaId && (
   <>
     <script async src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}></script>
-    <script define:vars={{ gaId }}>
+    <script define:vars={{ gaId, gaAppId }}>
       window.dataLayer = window.dataLayer || [];
       window.gtag = window.gtag || function(){window.dataLayer.push(arguments);}
       window.gtag("js", new Date());
       window.gtag("config", gaId);
+      if (gaAppId && gaAppId !== gaId) window.gtag("config", gaAppId);
     </script>
   </>
 )}
