@@ -234,9 +234,12 @@ export async function foldProfile(fromId, intoId, by, { profiles = [] } = {}) {
   if (from.rowIds.length && into.rowIds.length && !from.rowIds.some((id) => into.rowIds.includes(id))) return { ok: false, status: 409, error: 'Both have their own place this term. Check them by hand.' }
   const values = foldValues(from, into)
   await saveProfile({ existing: into, name: into.name, key: into.key, emails: from.emails, rowIds: from.rowIds, values, by, from: 'Duplicate folded in' })
+  // A photo only on the copy moves across (Airtable copies the file from its link).
+  const photo = !!from.photo && !into.photo
+  if (photo) await airtable(PROFILES_TABLE, { method: 'PATCH', body: { records: [{ id: into.id, fields: { Photo: [{ url: from.photo }] } }] } })
   await airtable(PROFILES_TABLE, { method: 'PATCH', body: { typecast: true, records: [{ id: from.id, fields: { 'Family Emails': '', 'Term 4 Record IDs': '', 'Updated At': new Date().toISOString(), 'Updated By': clean(by, 100), 'Updated From': `${JOINED}${into.key}`.slice(0, 200) } }] } })
   await audit({ by, action: 'profile.fold', target: into.key, after: { from: from.key, fields: Object.keys(values) } })
-  return { ok: true, kept: into.name, folded: from.name, filled: Object.keys(values), photoLeftBehind: !!from.photo && !into.photo }
+  return { ok: true, kept: into.name, folded: from.name, filled: Object.keys(values), photoMoved: photo }
 }
 
 export async function allAccountView(deps = {}) { const all = await allAccounts(); return Object.values(all).map((a) => ({ ...a, state: accountState(a), references: Object.fromEntries(Object.entries(accountReferences(a, deps)).map(([k, v]) => [k, v.length])) })) }
