@@ -45,7 +45,7 @@ import { sendAccountInvite, accountInvite, sendFamilyInvite, sendFamilyWelcome, 
 import { nextStatuses, setNextStatus, nextPrices, recordNext, nextInterest } from './_jfp-next.js'
 import { MAKEUP_ADMIN_ACTIONS, emergencyCancel, emergencyUncancel, emergencyEmail, makeupsList, makeupUpdate, sessionOffMap, guestsFor, guestAllowed, markGuestUsed } from './_jfp-makeups.js'
 import { attendanceFor } from './_jfp-attendance-view.js'
-import { allProfiles, findProfile, pickProfile, profileKey, profileView, profileSummary, cleanProfile, saveProfile, waiverPrefill, addTrialFeedback, clubSuggestions, LEVELS, PLAYING_UP, POSITIONS, FEET, YEARS } from './_jfp-profiles.js'
+import { allProfiles, findProfile, renameProfile, pickProfile, profileKey, profileView, profileSummary, cleanProfile, saveProfile, waiverPrefill, addTrialFeedback, clubSuggestions, LEVELS, PLAYING_UP, POSITIONS, FEET, YEARS } from './_jfp-profiles.js'
 import { releaseOffer, sweepExpiredOffers } from './_jfp-offers.js'
 import { emailErrorText, emailsTo } from './_jfp-email-log.js'
 import { contactWords, withOwnContact, isAdult } from './_jfp-contact.js'
@@ -1099,6 +1099,13 @@ async function editPlayer(res, principal, config, body) {
   }
   if (!Object.keys(fields).length) return fail(res, 400, 'Nothing to change.')
   await updateTerm4Rows([{ id: row.id, fields }])
+  // A new name or email: the player's profile follows it, so My account and the
+  // Players tab still find it (Lee, 1 Nov 2026: Lucianna Maslen's spelling).
+  if (fields['Player Name'] || 'Email' in fields) {
+    const prof = await findProfile({ key: profileKey(row.player, row.email), rowIds: [row.id] }).catch(() => null)
+    const name = fields['Player Name'] || row.player, email = 'Email' in fields ? fields['Email'] : row.email
+    if (prof && (prof.name !== name || prof.key !== profileKey(name, email))) await renameProfile(prof.id, name, profileKey(name, email))
+  }
   await audit({ by: principal.email, action: 'player.edit', target: row.id, before, after: fields })
   // A new fee (Lee, 16 Oct 2026): every open link for this place asks for
   // what it owes now, at once (_jfp-fee-sync.js). Switching to session by

@@ -138,7 +138,7 @@ export function pickProfile(profiles, { key, rowIds = [] }) {
 }
 export async function findProfile({ key, rowIds = [] }) {
   const q = new URLSearchParams({ filterByFormula: `FIND("${fq(key)}", {Player Key})`, pageSize: '10' })
-  const byKey = ((await airtable(`${PROFILES_TABLE}?${q}`)).records || []).map(fromRecord).find((p) => p.key === key)
+  const byKey = ((await airtable(`${PROFILES_TABLE}?${q}`)).records || []).map(fromRecord).find((p) => p.key === key && !String(p.updatedFrom || '').startsWith('Joined into '))
   if (byKey) return byKey
   for (const id of rowIds) {
     const r = new URLSearchParams({ filterByFormula: `FIND("${fq(id)}", {Term 4 Record IDs})`, pageSize: '10' })
@@ -146,6 +146,11 @@ export async function findProfile({ key, rowIds = [] }) {
     if (hit) return hit
   }
   return null
+}
+
+// The player was renamed, or their family email changed, on the Term 4 row.
+export async function renameProfile(id, name, key) {
+  await airtable(PROFILES_TABLE, { method: 'PATCH', body: { records: [{ id, fields: { 'Player Name': clean(name, 100), 'Player Key': key } }] } })
 }
 
 // Create or update a player's profile. Returns the saved profile.
