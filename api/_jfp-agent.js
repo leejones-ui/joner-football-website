@@ -63,6 +63,15 @@ export async function agentPrincipal(req) {
   return { role: 'admin', email: ownerEmail(), name: AGENT_NAME, via: 'hermes' }
 }
 
+// Outside the agent wrapper (My account's read only view, Lee 1 Nov 2026:
+// Hermes checks every family's account as they see it). Lee's email or null.
+export async function agentKeyOwner(req) {
+  const key = String(req?.headers?.[AGENT_HEADER] || '')
+  if (key.length < 32) return null
+  const st = await agentState()
+  return st?.enabled && st.hash && tokenMatches(sha(key), st.hash) ? ownerEmail() : null
+}
+
 export const agentConfirmed = () => Boolean(agentNow()?.confirmed)
 export const inAgent = () => Boolean(agentNow()?.valid)
 

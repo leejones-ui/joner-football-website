@@ -43,7 +43,10 @@ export async function viewAsFor(req, config) {
   if (!raw) return null
   let rec
   try { rec = JSON.parse(raw) } catch { return null }
-  const staff = await sessionFor(req, 'staff')
+  // Hermes, acting as Lee, may look too: view mode never writes.
+  const { agentKeyOwner } = await import('./_jfp-agent.js')
+  const agent = await agentKeyOwner(req)
+  const staff = agent ? { email: agent } : await sessionFor(req, 'staff')
   if (!staff || staff.email.toLowerCase() !== String(rec.by).toLowerCase() || !(config.superAdmins || []).includes(staff.email.toLowerCase())) return null
   return { ...rec, token }
 }
