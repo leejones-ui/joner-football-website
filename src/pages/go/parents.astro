@@ -1,0 +1,55 @@
+---
+// Ad-only page for the parent carousels (H02, H03, H05). Not linked anywhere.
+import AdLanding from '../../components/AdLanding.astro'
+
+const hooks = [
+  { code: 'default', head: 'Give them a<br><em>plan for home.</em>', sub: 'Filmed sessions your child can follow in the backyard. I show every rep. They copy it.', photo: 'pr08725', photoAlt: 'Lee Jones demonstrating a drill while young players copy him', pos: 'center 25%' },
+  { code: 'H02', head: 'The kid starting ahead of yours<br><em>trains at home.</em>', sub: "They're probably not more talented. They do extra work with a plan. Here is the plan: filmed sessions your child can follow in the backyard.", photo: 'pr08725', photoAlt: 'Lee Jones demonstrating a drill while young players copy him', pos: 'center 25%' },
+  { code: 'H03', head: 'More screen time<br><em>than ball time?</em>', sub: 'Keep the screen. Change what is on it. Press play on a filmed session and they follow me rep for rep.', photo: 'as23', photoAlt: 'Lee Jones coaching on a training pitch', pos: 'center 25%' },
+  { code: 'H05', head: 'One team session a week.<br><em>Then six days of nothing.</em>', sub: 'Give them a job between sessions. Follow-along sessions from 20 to 60 minutes, minimal kit, every session filmed.', photo: 'pr06157', photoAlt: 'Lee Jones coaching young players', pos: 'center 30%' },
+]
+
+const problemBody = [
+  "Most parents want to help and don't know where to start. You don't have to plan anything or know the drills.",
+  'Pick a program, press play, and your child follows me through every rep. Join in if you like. Plenty of parents do.',
+]
+
+const steps = [
+  { head: 'Pick a session', body: 'By age (6 to 9, 10 to 13, 14+) or by skill: weak foot, finishing, passing and first touch.' },
+  { head: 'Press play', body: 'Backyard, park or garage. Small spaces and minimal kit for most sessions.' },
+  { head: 'They copy every rep', body: 'I show it on screen, they do it. 20 to 60 minutes, then a harder session next time.' },
+]
+
+const programs = [
+  { art: 'min20', title: 'Follow-along sessions', detail: '20, 30 and 60 minute sessions. Press play and they train start to finish.' },
+  { art: 'minimal', title: 'Minimal Equipment', detail: 'Full sessions built for small spaces and limited equipment.' },
+  { art: 'passing6w', title: '6 Week Passing & 1st Touch', detail: '12 sessions, each one harder than the last.' },
+  { art: 'weakfoot', title: 'Weak Foot Program', detail: '10 weeks. One 60 minute session each week.' },
+  { art: 'juggling', title: 'Juggling Program', detail: 'Grab a ball. That is all you need.' },
+]
+
+const quotes = [
+  { quote: "I've enjoyed getting off my backside and heading to a local park and train with my boys, so as a father who really didn't know where to begin coaching my boys to someone who is now spending more time with my boys a very big Thank you!", name: 'Alfred C.', role: 'Parent and app member' },
+  { quote: 'there is not in my opinion another app nor channel on the web like yours with so much quality to offer for football training, skills, mindset, etc.', name: 'Milan B.', role: 'Parent and Plus member' },
+]
+
+const faqs = [
+  { q: 'Do I need to know football to help?', a: "No. I coach every rep on screen. Your job is to press play and give them the space. Join in if you want to." },
+  { q: 'What age is it for?', a: 'There are sessions grouped by age: 6 to 9, 10 to 13 and 14+.' },
+  { q: 'What equipment do we need?', a: 'A ball and some space for most sessions. Some programs use cones, a wall or a goal, and each one says what to bring before you start.' },
+  { q: 'How does the free week work?', a: 'You get 7 days of Plus free. Cancel before day 7 and you pay nothing. Keep going and it rolls into the monthly plan.' },
+  { q: 'What can we watch it on?', a: 'iPhone, Android or any web browser.' },
+]
+---
+<AdLanding
+  title="A Plan For Home | 7 Days Free | Joner Football"
+  audience="parents"
+  hooks={hooks}
+  problemHead="You don't need to be a coach."
+  problemBody={problemBody}
+  steps={steps}
+  programs={programs}
+  quotes={quotes}
+  promiseFirst
+  faqs={faqs}
+/>

@@ -1,0 +1,21 @@
+---
+// Lee's 100 day promise, website wording (see /programmes). Annual members only.
+interface Props { annualUrl: string }
+const { annualUrl } = Astro.props
+---
+<section class="promise" data-cta-section="promise">
+  <img src="/images/go/lee-avatar.webp" alt="Lee Jones" width="88" height="88" loading="lazy" />
+  <p class="promise-label">My 100 day promise</p>
+  <p class="promise-quote">Follow the plan for 100 days. If you do not see real improvement, I will give you an extra 100 days free.</p>
+  <p class="promise-by">Lee Jones, 20+ years coaching. <a href={annualUrl} data-meta-plan-type="annual">Annual members only.</a></p>
+</section>
+
+<style>
+  .promise { max-width: 728px; margin: 40px 16px 0; padding: 26px 20px; border: 2px solid #E8000D; border-radius: 16px; background: #120203; }
+  @media (min-width: 760px) { .promise { margin: 40px auto 0; } }
+  .promise img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; display: block; margin-bottom: 14px; }
+  .promise-label { font: 800 13px/1 var(--font-body); letter-spacing: .14em; text-transform: uppercase; color: #E8000D; margin: 0 0 10px; }
+  .promise-quote { font: 400 clamp(26px, 7vw, 38px)/1.1 var(--font-heading); text-transform: uppercase; margin: 0 0 12px; }
+  .promise-by { color: #b9b9b9; font-size: 14px; margin: 0; }
+  .promise-by a { color: #fff; }
+</style>

@@ -1,0 +1,54 @@
+---
+// Ad-only page for the player carousels (H01, H04, H06). Not linked anywhere.
+import AdLanding from '../../components/AdLanding.astro'
+
+const hooks = [
+  { code: 'default', head: 'Stop watching.<br><em>Start training.</em>', sub: 'Follow-along sessions and full programs. I film every session. You press play and copy every rep.', photo: 'as12', photoAlt: 'Lee Jones filming a training session on a phone', pos: 'center 30%' },
+  { code: 'H01', head: 'Less TikTok.<br><em>More touches.</em>', sub: "You've saved hundreds of drills. Here's a plan you'll actually train. Press play on a filmed session and copy every rep.", photo: 'as12', photoAlt: 'Lee Jones filming a training session on a phone', pos: 'center 30%' },
+  { code: 'H04', head: 'Benched?<br><em>Out-train the starter.</em>', sub: "You can't pick the team. You can pick what you train tonight. Finishing, first touch and weak foot programs, every session filmed.", photo: 'pr00135', photoAlt: 'Lee Jones demonstrating a drill to players', pos: 'center 10%' },
+  { code: 'H06', strike: 'Talent decides who plays.', head: 'Technique<br>is <em>trained.</em>', sub: 'Weak foot, close control, first touch. Programs that take you one session at a time, every session filmed.', photo: 'h_boots2', photoAlt: 'Close-up of a player controlling the ball', pos: 'center 60%' },
+]
+
+const problemBody = [
+  "You need to know what to do today, how many reps, and what good looks like. Scrolling won't tell you that.",
+  "A filmed session does. I'm on the screen doing every rep with you. You copy it, then you do it again tomorrow.",
+]
+
+const steps = [
+  { head: 'Pick a program', body: 'Weak foot, finishing, passing and first touch, or a 20, 30 or 60 minute session.' },
+  { head: 'Press play', body: 'Phone, tablet or laptop. A ball and some space is enough for most sessions.' },
+  { head: 'Copy every rep', body: 'I show it, you do it. Next session, it gets harder.' },
+]
+
+const programs = [
+  { art: 'weakfoot', title: 'Weak Foot Program', detail: '10 weeks. One 60 minute session each week, from tight control to striking.' },
+  { art: 'goals', title: 'Score More Goals', detail: '8 sessions. 4 drills every session, 3 sets of each. A lot of shooting.' },
+  { art: 'passing6w', title: '6 Week Passing & 1st Touch', detail: '12 sessions, each one harder than the last.' },
+  { art: 'min30', title: 'Follow-along sessions', detail: '20, 30 and 60 minute sessions. Press play and train start to finish.' },
+  { art: 'juggling', title: 'Juggling Program', detail: 'Grab a ball. That is all you need.' },
+]
+
+const quotes = [
+  { quote: 'Thanks this helped!!!', name: 'Josh P.', role: 'Player, comment on the Dribbling Program' },
+  { quote: 'there is not in my opinion another app nor channel on the web like yours with so much quality to offer for football training, skills, mindset, etc.', name: 'Milan B.', role: 'Plus member' },
+]
+
+const faqs = [
+  { q: 'What do I need?', a: 'A ball and some space for most sessions. Some programs use cones, a wall or a goal, and each one tells you what to bring before you start.' },
+  { q: 'What age is it for?', a: 'There are sessions grouped by age: 6 to 9, 10 to 13 and 14+. The programs work for any player who wants to get better.' },
+  { q: 'How does the free week work?', a: 'You get 7 days of Plus free. Cancel before day 7 and you pay nothing. Keep going and it rolls into the monthly plan.' },
+  { q: 'What can I watch it on?', a: 'iPhone, Android or any web browser.' },
+  { q: 'Can I ask you questions?', a: 'Yes. Plus members can message me directly in the app.' },
+]
+---
+<AdLanding
+  title="Train With Lee | 7 Days Free | Joner Football"
+  audience="players"
+  hooks={hooks}
+  problemHead="You don't need more drills."
+  problemBody={problemBody}
+  steps={steps}
+  programs={programs}
+  quotes={quotes}
+  faqs={faqs}
+/>

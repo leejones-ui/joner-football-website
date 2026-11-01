@@ -50,6 +50,8 @@ export default defineConfig({
         '/training/joners-juniors/',
         '/email-assets/',
         '/free-bundle/watch/',
+        '/go/players/',
+        '/go/parents/',
       ];
       return !pathname.startsWith('/drafts/') && !excludedPaths.includes(pathname);
     },

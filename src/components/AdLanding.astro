@@ -1,0 +1,340 @@
+---
+// Ad-only landing page (players or parents). Not linked from the site, noindex,
+// left out of the sitemap. The hero follows the ad's hook: the ad's utm_content
+// carries its code (H01 to H06), or ?hook=H04 for previews.
+import BaseLayout from '../layouts/BaseLayout.astro'
+import AdPromise from './AdPromise.astro'
+
+interface Hook { code: string; head: string; strike?: string; sub: string; photo: string; photoAlt: string; pos?: string }
+interface Program { art: string; title: string; detail: string }
+interface Quote { quote: string; name: string; role: string }
+interface Faq { q: string; a: string }
+
+interface Props {
+  title: string
+  audience: 'players' | 'parents'
+  hooks: Hook[]
+  problemHead: string
+  problemBody: string[]
+  steps: { head: string; body: string }[]
+  programs: Program[]
+  quotes: Quote[]
+  promiseFirst?: boolean
+  faqs: Faq[]
+}
+
+const { title, audience, hooks, problemHead, problemBody, steps, programs, quotes, promiseFirst = false, faqs } = Astro.props
+const defaultHook = hooks.find((h) => h.code === 'default') || hooks[0]
+const monthlyUrl = 'https://app.jonerfootball.com/checkout/new?o=230699'
+const annualUrl = 'https://app.jonerfootball.com/checkout/new?o=183092'
+const hookPhotos = Object.fromEntries(hooks.map((h) => [h.code, { photo: h.photo, pos: h.pos || 'center 30%' }]))
+---
+
+<BaseLayout title={title} description="Filmed follow-along football training. 7 days free on the Plus plan." noindex hideChrome hideMobileAppCta>
+  <script is:inline define:vars={{ codes: hooks.map((h) => h.code) }}>
+    (function () {
+      var hook = '';
+      try {
+        var params = new URLSearchParams(window.location.search || '');
+        var raw = params.get('hook') || params.get('utm_content') || '';
+        var match = raw.match(/\bH0[1-9]\b/i);
+        if (match) hook = match[0].toUpperCase();
+        if (!hook) hook = window.sessionStorage.getItem('jf_ad_hook') || '';
+        if (codes.indexOf(hook) === -1) hook = '';
+        if (hook) window.sessionStorage.setItem('jf_ad_hook', hook);
+      } catch (e) {}
+      if (hook) document.documentElement.setAttribute('data-hook', hook);
+    })();
+  </script>
+
+  <div class="lp" data-audience={audience}>
+    <header class="lp-top">
+      <img src="/images/joner-logo-white-nav.png" alt="Joner Football" width="40" height="40" class="lp-logo" />
+      <a href={monthlyUrl} class="lp-top-cta" data-meta-plan-type="monthly">7 days free</a>
+    </header>
+
+    <section class="lp-hero" data-cta-section="hero">
+      <div class="lp-hero-media">
+        <img
+          id="lp-hero-img"
+          src={`/images/go/${defaultHook.photo}-800.webp`}
+          srcset={`/images/go/${defaultHook.photo}-800.webp 800w, /images/go/${defaultHook.photo}-1400.webp 1400w`}
+          sizes="(min-width: 900px) 50vw, 100vw"
+          alt={defaultHook.photoAlt}
+          width="1400" height="935"
+          fetchpriority="high"
+          style={`object-position:${defaultHook.pos || 'center 30%'}`}
+        />
+        <script is:inline define:vars={{ hookPhotos }}>
+          (function () {
+            var hook = document.documentElement.getAttribute('data-hook');
+            var pick = hook && hookPhotos[hook];
+            var img = document.getElementById('lp-hero-img');
+            if (!pick || !img) return;
+            img.srcset = '/images/go/' + pick.photo + '-800.webp 800w, /images/go/' + pick.photo + '-1400.webp 1400w';
+            img.src = '/images/go/' + pick.photo + '-800.webp';
+            img.style.objectPosition = pick.pos;
+          })();
+        </script>
+      </div>
+      <div class="lp-hero-copy">
+        {hooks.map((h) => (
+          <div class="lp-hook" data-v={h.code}>
+            {h.strike && <p class="lp-strike">{h.strike}</p>}
+            <h1 set:html={h.head} />
+            <p class="lp-sub">{h.sub}</p>
+          </div>
+        ))}
+        <a href={monthlyUrl} class="lp-cta" data-meta-plan-type="monthly" id="lp-hero-cta">Start 7 days free</a>
+        <p class="lp-fine">Plus plan. Then <span data-price="plus-monthly">$19.99</span> a month. Cancel before day 7 and you pay nothing.</p>
+        <ul class="lp-facts" aria-label="Quick facts">
+          <li>Every session filmed</li>
+          <li>550+ videos on Plus</li>
+          <li>iPhone, Android, web</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="lp-band lp-problem" data-cta-section="problem">
+      <h2>{problemHead}</h2>
+      {problemBody.map((p) => <p>{p}</p>)}
+    </section>
+
+    <section class="lp-band" data-cta-section="how-it-works">
+      <p class="lp-eyebrow">How it works</p>
+      <ol class="lp-steps">
+        {steps.map((s, i) => (
+          <li>
+            <span class="lp-step-num">{i + 1}</span>
+            <div><h3>{s.head}</h3><p>{s.body}</p></div>
+          </li>
+        ))}
+      </ol>
+    </section>
+
+    {promiseFirst && <AdPromise annualUrl={annualUrl} />}
+
+    <section class="lp-band" data-cta-section="programs">
+      <p class="lp-eyebrow">Inside Plus</p>
+      <h2>Programs that tell you exactly what to do.</h2>
+      <div class="lp-programs" tabindex="0" aria-label="Programs on the Plus plan">
+        {programs.map((p) => (
+          <article class="lp-program">
+            <img src={`/images/go/prog-${p.art}.webp`} alt={`${p.title} artwork from the app`} width="720" height="405" loading="lazy" />
+            <h3>{p.title}</h3>
+            <p>{p.detail}</p>
+          </article>
+        ))}
+      </div>
+      <p class="lp-swipe" aria-hidden="true">Swipe for more</p>
+    </section>
+
+    <section class="lp-band" data-cta-section="proof">
+      <p class="lp-eyebrow">From members</p>
+      <div class="lp-quotes">
+        {quotes.map((q) => (
+          <figure class="lp-quote">
+            <blockquote>"{q.quote}"</blockquote>
+            <figcaption><strong>{q.name}</strong> {q.role}</figcaption>
+          </figure>
+        ))}
+      </div>
+    </section>
+
+    {!promiseFirst && <AdPromise annualUrl={annualUrl} />}
+
+    <section class="lp-band lp-offer" id="offer" data-cta-section="offer">
+      <h2>Plus. <span>7 days free.</span></h2>
+      <ul class="lp-offer-list">
+        <li>Weak Foot, Score More Goals, 6 Week Passing and Juggling programs</li>
+        <li>Follow-along sessions: 20, 30 and 60 minutes</li>
+        <li>Sessions by age: 6 to 9, 10 to 13, 14+</li>
+        <li>Message me directly in the app</li>
+        <li>Livestream training sessions</li>
+      </ul>
+      <a href={monthlyUrl} class="lp-cta" data-meta-plan-type="monthly" id="lp-offer-cta">Start 7 days free</a>
+      <p class="lp-fine">Then <span data-price="plus-monthly">$19.99</span> a month. Cancel before day 7 and you pay nothing.</p>
+      <a href={annualUrl} class="lp-annual" data-meta-plan-type="annual">Or go annual: <span data-price="plus-annual">$179.99</span> a year, 7 days free, with my 100 day promise</a>
+    </section>
+
+    <section class="lp-band" data-cta-section="faq">
+      <p class="lp-eyebrow">Questions</p>
+      {faqs.map((f) => (
+        <details class="lp-faq">
+          <summary>{f.q}</summary>
+          <p>{f.a}</p>
+        </details>
+      ))}
+    </section>
+
+    <footer class="lp-foot">
+      <p>Joner Football. Coached by Lee Jones.</p>
+      <p><a href="/privacy">Privacy</a> <a href="/terms">Terms</a></p>
+    </footer>
+
+    <div class="lp-sticky" id="lp-sticky" aria-hidden="true">
+      <div><strong>7 days free</strong><span>Then <span data-price="plus-monthly">$19.99</span>/month</span></div>
+      <a href={monthlyUrl} class="lp-cta" data-meta-plan-type="monthly" tabindex="-1">Start free</a>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .lp { --red: #E8000D; --ink: #0A0A0A; --panel: #151515; --line: #2a2a2a; --muted: #b9b9b9; background: var(--ink); color: #fff; min-height: 100dvh; padding-bottom: 96px; }
+  .lp-top { position: absolute; inset: 0 0 auto 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; padding: max(12px, env(safe-area-inset-top)) 16px 12px; }
+  .lp-logo { height: 40px; width: auto; }
+  .lp-top-cta { font: 700 14px/1 var(--font-body); color: #fff; background: rgba(10,10,10,.55); border: 1.5px solid rgba(255,255,255,.7); border-radius: 999px; padding: 9px 14px; text-decoration: none; }
+
+  .lp-hero-media { position: relative; height: 52svh; min-height: 320px; max-height: 560px; overflow: hidden; }
+  .lp-hero-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .lp-hero-media::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(10,10,10,.55) 0%, rgba(10,10,10,0) 22%, rgba(10,10,10,0) 60%, var(--ink) 100%); }
+  .lp-hero-copy { position: relative; z-index: 2; margin-top: -48px; padding: 0 16px 8px; }
+  .lp-hook { display: none; }
+  .lp-hook[data-v="default"] { display: block; }
+  :global(html[data-hook]) .lp-hook[data-v="default"] { display: none; }
+  :global(html[data-hook="H01"]) .lp-hook[data-v="H01"],
+  :global(html[data-hook="H02"]) .lp-hook[data-v="H02"],
+  :global(html[data-hook="H03"]) .lp-hook[data-v="H03"],
+  :global(html[data-hook="H04"]) .lp-hook[data-v="H04"],
+  :global(html[data-hook="H05"]) .lp-hook[data-v="H05"],
+  :global(html[data-hook="H06"]) .lp-hook[data-v="H06"] { display: block; }
+  .lp h1 { font-size: clamp(40px, 11.5vw, 76px); line-height: .95; letter-spacing: .01em; margin: 0 0 14px; text-wrap: balance; }
+  .lp h1 :global(em) { font-style: normal; color: var(--red); }
+  .lp-strike { font: 400 clamp(22px, 6vw, 34px)/1.05 var(--font-heading); text-transform: uppercase; color: var(--muted); text-decoration: line-through; text-decoration-color: var(--red); text-decoration-thickness: 4px; margin: 0 0 8px; }
+  .lp-sub { font-size: 18px; line-height: 1.5; color: #e6e6e6; margin: 0 0 22px; max-width: 34ch; }
+
+  .lp-cta { display: flex; align-items: center; justify-content: center; min-height: 58px; width: 100%; max-width: 420px; background: var(--red); color: #fff; font: 800 18px/1 var(--font-body); border-radius: 12px; text-decoration: none; letter-spacing: .01em; -webkit-tap-highlight-color: transparent; }
+  .lp-cta:active { transform: translateY(1px); }
+  .lp-fine { font-size: 14px; color: var(--muted); margin: 10px 0 0; line-height: 1.45; }
+  .lp-facts { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; margin: 20px 0 0; }
+  .lp-facts li { font-size: 13px; font-weight: 600; color: #ddd; border: 1px solid var(--line); border-radius: 999px; padding: 6px 11px; }
+
+  .lp-band { padding: 44px 16px 8px; max-width: 760px; margin: 0 auto; }
+  .lp h2 { font-size: clamp(32px, 8.5vw, 52px); line-height: 1; margin: 0 0 16px; text-wrap: balance; }
+  .lp-problem p { font-size: 18px; line-height: 1.6; color: #e2e2e2; margin: 0 0 14px; }
+  .lp-eyebrow { font: 800 13px/1 var(--font-body); letter-spacing: .14em; text-transform: uppercase; color: var(--red); margin: 0 0 14px; }
+
+  .lp-steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+  .lp-steps li { display: grid; grid-template-columns: 44px 1fr; gap: 14px; align-items: start; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+  .lp-step-num { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--red); font: 400 22px/1 var(--font-heading); }
+  .lp-steps h3 { font-size: 22px; margin: 2px 0 4px; letter-spacing: .03em; }
+  .lp-steps p { margin: 0; color: var(--muted); font-size: 16px; line-height: 1.5; }
+
+  .lp-programs { display: grid; grid-auto-flow: column; grid-auto-columns: 78%; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: 16px; margin: 0 -16px; padding: 4px 16px 6px; scrollbar-width: none; overscroll-behavior-x: contain; }
+  .lp-programs::-webkit-scrollbar { display: none; }
+  .lp-program { scroll-snap-align: start; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+  .lp-program img { width: 100%; height: auto; display: block; aspect-ratio: 16 / 9; object-fit: cover; }
+  .lp-program h3 { font-size: 20px; margin: 14px 14px 4px; letter-spacing: .03em; }
+  .lp-program p { margin: 0 14px 16px; color: var(--muted); font-size: 15px; line-height: 1.45; }
+  .lp-swipe { font-size: 13px; color: #8a8a8a; margin: 10px 0 0; }
+
+  .lp-quotes { display: grid; gap: 12px; }
+  .lp-quote { margin: 0; background: #fff; color: var(--ink); border-radius: 14px; padding: 20px 18px; border-left: 6px solid var(--red); }
+  .lp-quote blockquote { margin: 0 0 12px; font-size: 19px; line-height: 1.45; font-weight: 600; }
+  .lp-quote figcaption { font-size: 14px; color: #555; }
+  .lp-quote figcaption strong { color: var(--ink); margin-right: 4px; }
+
+  .lp-offer { margin-top: 28px; }
+  .lp-offer h2 span { color: var(--red); }
+  .lp-offer-list { list-style: none; padding: 0; margin: 0 0 22px; display: grid; gap: 10px; }
+  .lp-offer-list li { position: relative; padding-left: 30px; font-size: 17px; line-height: 1.45; color: #e8e8e8; }
+  .lp-offer-list li::before { content: ''; position: absolute; left: 2px; top: 5px; width: 16px; height: 9px; border-left: 3px solid var(--red); border-bottom: 3px solid var(--red); transform: rotate(-45deg); }
+  .lp-annual { display: block; margin-top: 18px; font-size: 15px; font-weight: 600; color: #fff; text-decoration: underline; text-decoration-color: var(--red); text-underline-offset: 4px; line-height: 1.5; max-width: 420px; }
+
+  .lp-faq { border-bottom: 1px solid var(--line); }
+  .lp-faq summary { cursor: pointer; list-style: none; padding: 18px 32px 18px 0; position: relative; font-size: 17px; font-weight: 700; }
+  .lp-faq summary::-webkit-details-marker { display: none; }
+  .lp-faq summary::after { content: '+'; position: absolute; right: 4px; top: 14px; font-size: 26px; color: var(--red); }
+  .lp-faq[open] summary::after { content: '\2212'; }
+  .lp-faq p { margin: 0 0 18px; color: var(--muted); font-size: 16px; line-height: 1.55; }
+
+  .lp-foot { padding: 40px 16px 24px; text-align: center; color: #8a8a8a; font-size: 13px; }
+  .lp-foot p { margin: 0 0 6px; }
+  .lp-foot a { color: #b0b0b0; margin: 0 8px; }
+
+  .lp-sticky { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: flex; align-items: center; gap: 12px; padding: 10px 16px max(10px, env(safe-area-inset-bottom)); background: rgba(10,10,10,.96); border-top: 1px solid var(--line); transform: translateY(110%); transition: transform .25s ease; }
+  .lp-sticky.is-on { transform: none; }
+  .lp-sticky > div { flex: 1; display: grid; line-height: 1.25; }
+  .lp-sticky strong { font-size: 16px; }
+  .lp-sticky > div > span { font-size: 13px; color: var(--muted); }
+  .lp-sticky .lp-cta { width: auto; min-height: 50px; padding: 0 22px; font-size: 16px; }
+  @media (prefers-reduced-motion: reduce) { .lp-sticky { transition: none; } }
+
+  @media (min-width: 900px) {
+    .lp { padding-bottom: 40px; }
+    .lp-hero { display: grid; grid-template-columns: 1fr 1fr; min-height: 640px; }
+    .lp-hero-media { height: auto; max-height: none; order: 2; }
+    .lp-hero-media::after { background: linear-gradient(to right, var(--ink) 0%, rgba(10,10,10,0) 30%); }
+    .lp-hero-copy { margin: 0; padding: 120px 48px 48px; align-self: center; }
+    .lp-programs { grid-auto-flow: row; grid-template-columns: repeat(2, 1fr); overflow: visible; margin: 0; padding: 0; }
+    .lp-swipe { display: none; }
+    .lp-quotes { grid-template-columns: 1fr 1fr; }
+    .lp-sticky { display: none; }
+  }
+</style>
+
+<script>
+  // Prices in the visitor's currency, same table as /join. Timezone gives a fast
+  // first guess so most visitors never see the wrong currency.
+  const plusPrices: Record<string, { symbol: string; monthly: number; annual: number }> = {
+    US: { symbol: '$', monthly: 19.99, annual: 179.99 },
+    AU: { symbol: '$', monthly: 28.49, annual: 254.99 },
+    CA: { symbol: '$', monthly: 28.99, annual: 254.99 },
+    EUR: { symbol: '€', monthly: 18.55, annual: 155.55 },
+    GB: { symbol: '£', monthly: 15.45, annual: 134.45 },
+  }
+  const eurozone = ['AT','BE','CY','EE','FI','FR','DE','GR','IE','IT','LV','LT','LU','MT','NL','PT','SK','SI','ES']
+
+  function regionFromCountryCode(c: string) {
+    if (c === 'AU' || c === 'US' || c === 'CA' || c === 'GB') return c
+    if (eurozone.indexOf(c) > -1) return 'EUR'
+    return 'US'
+  }
+
+  function regionFromTimezone() {
+    let tz = ''
+    try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '' } catch (e) {}
+    if (tz.indexOf('Australia/') === 0) return 'AU'
+    if (tz === 'Europe/London') return 'GB'
+    if (/^America\/(Toronto|Vancouver|Edmonton|Winnipeg|Halifax|Regina|St_Johns|Moncton|Whitehorse)$/.test(tz)) return 'CA'
+    if (/^Europe\/(Vienna|Brussels|Nicosia|Tallinn|Helsinki|Paris|Berlin|Athens|Dublin|Rome|Riga|Vilnius|Luxembourg|Malta|Amsterdam|Lisbon|Bratislava|Ljubljana|Madrid)$/.test(tz)) return 'EUR'
+    return 'US'
+  }
+
+  function showPrices(region: string) {
+    const p = plusPrices[region] || plusPrices.US
+    document.querySelectorAll<HTMLElement>('[data-price="plus-monthly"]').forEach((el) => { el.textContent = p.symbol + p.monthly.toFixed(2) })
+    document.querySelectorAll<HTMLElement>('[data-price="plus-annual"]').forEach((el) => { el.textContent = p.symbol + p.annual.toFixed(2) })
+  }
+
+  showPrices(regionFromTimezone())
+  fetch('https://ipapi.co/json/')
+    .then((r) => { if (!r.ok) throw new Error('ipapi blocked'); return r.json() })
+    .then((d) => showPrices(regionFromCountryCode(d.country_code)))
+    .catch(() => {})
+
+  // Sticky bar shows once the hero button is off screen, and steps aside at the offer.
+  const sticky = document.getElementById('lp-sticky')
+  const heroCta = document.getElementById('lp-hero-cta')
+  const offerCta = document.getElementById('lp-offer-cta')
+  if (sticky && heroCta && offerCta && 'IntersectionObserver' in window) {
+    let heroVisible = true
+    let offerVisible = false
+    const update = () => {
+      const on = !heroVisible && !offerVisible
+      sticky.classList.toggle('is-on', on)
+      sticky.setAttribute('aria-hidden', on ? 'false' : 'true')
+      const link = sticky.querySelector('a')
+      if (link) link.tabIndex = on ? 0 : -1
+    }
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (e.target === heroCta) heroVisible = e.isIntersecting
+        if (e.target === offerCta) offerVisible = e.isIntersecting
+      })
+      update()
+    })
+    observer.observe(heroCta)
+    observer.observe(offerCta)
+  }
+</script>
