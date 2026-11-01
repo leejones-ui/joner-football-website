@@ -111,7 +111,6 @@ export function checkEntry(body, { today, others = [] }) {
   if (!HM.test(start) || !HM.test(end)) return { error: 'Add the start and finish times.' }
   const minutes = mins(end) - mins(start)
   if (minutes <= 0) return { error: 'The finish time must be after the start.' }
-  if (minutes > 12 * 60) return { error: 'That is more than 12 hours. Split it into two entries.' }
   const kind = HOUR_KINDS[body.kind] ? body.kind : ''
   if (!kind) return { error: 'Choose what the hours were for.' }
   const clash = others.find((o) => o.date === date && mins(o.start) < mins(end) && mins(start) < mins(o.end))

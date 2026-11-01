@@ -194,11 +194,11 @@ await test('coach hours: Sam logs his own, sees his sessions to add, cannot see 
   assert.notEqual((await f.call('/api/jfp-portal-data', { action: 'hoursList' })).status, 200)
 })
 
-await test('hours rules: dates, times, 12 hour cap', () => {
+await test('hours rules: dates, times, long days allowed', () => {
   const today = '2026-10-18'
   assert.match(checkEntry({ date: '2026-10-19', start: '07:00', end: '08:00', kind: 'admin' }, { today }).error, /on or after/)
   assert.match(checkEntry({ date: '2026-07-01', start: '07:00', end: '08:00', kind: 'admin' }, { today }).error, /too far back/)
-  assert.match(checkEntry({ date: today, start: '06:00', end: '19:00', kind: 'admin' }, { today }).error, /12 hours/)
+  assert.equal(checkEntry({ date: today, start: '06:00', end: '19:00', kind: 'admin' }, { today }).minutes, 780)
   assert.match(checkEntry({ date: today, start: '06:00', end: '07:00', kind: 'pay' }, { today }).error, /what the hours/)
   assert.equal(checkEntry({ date: today, start: '16:20', end: '17:20', kind: 'session' }, { today }).minutes, 60)
 })

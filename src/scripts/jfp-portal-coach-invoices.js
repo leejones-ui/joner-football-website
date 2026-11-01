@@ -17,6 +17,22 @@ const iso = (d) => d.toISOString().slice(0, 10)
 const addDays = (s, n) => iso(new Date(Date.parse(`${s}T00:00:00Z`) + n * 86400000))
 const mondayOf = (s) => { const d = new Date(`${s}T00:00:00Z`); return addDays(s, -((d.getUTCDay() + 6) % 7)) }
 const hrs = (m) => { const h = Math.floor(m / 60), r = m % 60; return r ? `${h}h ${r}m` : `${h}h` }
+// What a coach types in Hours, as minutes: 1.5, 1h 30, 0:45, 45 min or 45m.
+// A plain number over 12 is minutes (Sam, 1 Nov 2026: typed 45 for a 45-minute session and was told no more than 12 hours).
+export function toMinutes(v) {
+  const s = String(v ?? '').trim().toLowerCase().replace(/,/g, '.')
+  if (!s) return ''
+  let m = s.match(/^(\d+):(\d{1,2})$/)
+  if (m) return Number(m[1]) * 60 + Number(m[2])
+  m = s.match(/^(\d+(?:\.\d+)?)\s*h(?:ours?|rs?)?\s*(?:(\d+)\s*(?:m(?:ins?|inutes?)?)?)?$/)
+  if (m) return Math.round(Number(m[1]) * 60) + Number(m[2] || 0)
+  m = s.match(/^(\d+(?:\.\d+)?)\s*m(?:ins?|inutes?)?$/)
+  if (m) return Math.round(Number(m[1]))
+  const n = Number(s.replace(/[^0-9.]/g, ''))
+  if (!Number.isFinite(n) || !/\d/.test(s)) return NaN
+  return n > 12 ? Math.round(n) : Math.round(n * 60)
+}
+const HRS_HINT = 'placeholder="1.5 or 45 min"'
 const t12 = (hm) => { let [h, m] = hm.split(':').map(Number); const ap = h >= 12 ? 'pm' : 'am'; h = h % 12 || 12; return `${h}${m ? `:${String(m).padStart(2, '0')}` : ''}${ap}` }
 const money = (c) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format((c || 0) / 100)
 const PILL = { submitted: 'amber', approved: 'green', paid: 'green', queried: 'red', withdrawn: 'grey' }
@@ -41,12 +57,12 @@ const linesTable = (lines, { admin = false } = {}) => `<div class="ps-table-wrap
 const lineForm = (l = {}, { add = false } = {}) => `${add ? `<label class="j-field"><span>Date</span><input class="j-input" type="date" id="lf-date" value="${esc(l.date || '')}"></label>` : ''}
   <label class="j-field"><span>What and who</span><textarea class="j-textarea" id="lf-desc" rows="2" maxlength="300">${esc(l.description || '')}</textarea></label>
   <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px"><label class="j-field"><span>Location</span><input class="j-input" id="lf-loc" maxlength="80" value="${esc(l.location || '')}"></label>
-  <label class="j-field"><span>Hours</span><input class="j-input" id="lf-hrs" inputmode="decimal" value="${l.minutes != null ? +(l.minutes / 60).toFixed(2) : ''}"></label>
+  <label class="j-field"><span>Hours</span><input class="j-input" id="lf-hrs" ${HRS_HINT} value="${l.minutes != null ? +(l.minutes / 60).toFixed(2) : ''}"></label>
   <label class="j-field"><span>Amount (A$)</span><input class="j-input" id="lf-amt" inputmode="decimal" value="${l.cents != null ? (l.cents / 100).toFixed(2) : ''}" placeholder="TBC"></label></div>`
 const readForm = (box) => {
   const num = (v) => String(v).replace(/[^0-9.]/g, '')
-  const amt = num(box.querySelector('#lf-amt').value), h = num(box.querySelector('#lf-hrs').value)
-  return { date: box.querySelector('#lf-date')?.value, description: box.querySelector('#lf-desc').value, location: box.querySelector('#lf-loc').value, minutes: h === '' ? '' : Math.round(Number(h) * 60), cents: amt === '' ? '' : Math.round(Number(amt) * 100) }
+  const amt = num(box.querySelector('#lf-amt').value), mins = toMinutes(box.querySelector('#lf-hrs').value)
+  return { date: box.querySelector('#lf-date')?.value, description: box.querySelector('#lf-desc').value, location: box.querySelector('#lf-loc').value, minutes: mins, cents: amt === '' ? '' : Math.round(Number(amt) * 100) }
 }
 // Lee and Ligia: the families on this invoice whose fees are not paid, to chase now.
 function chaseList(inv) {
@@ -186,7 +202,7 @@ export async function renderCoachInvoices(ui) {
           <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div><b>${esc(l.dateLabel)}</b> <span class="muted small">${esc(timeOf(l))}${base.basis ? ` · ${esc(base.basis)}` : ''}</span><div>${flagHtml(base)}</div></div>
           <button type="button" class="j-btn j-btn-ghost j-btn-sm" data-dl-off>${off ? 'Put back' : 'Take off'}</button></div>
           ${off ? '' : `<textarea class="j-textarea" data-f="description" rows="2" maxlength="300" style="margin-top:6px">${esc(l.description || '')}</textarea>
-          <div style="display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr);gap:8px;margin-top:6px"><label class="j-field" style="margin:0"><span>Location</span><input class="j-input" data-f="location" value="${esc(l.location || '')}"></label><label class="j-field" style="margin:0"><span>Hours</span><input class="j-input" data-f="hours" inputmode="decimal" value="${+(l.minutes / 60).toFixed(2)}"></label><label class="j-field" style="margin:0"><span>A$</span><input class="j-input" data-f="amount" inputmode="decimal" value="${l.cents != null ? (l.cents / 100).toFixed(2) : ''}" placeholder="TBC"></label></div>
+          <div style="display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr);gap:8px;margin-top:6px"><label class="j-field" style="margin:0"><span>Location</span><input class="j-input" data-f="location" value="${esc(l.location || '')}"></label><label class="j-field" style="margin:0"><span>Hours</span><input class="j-input" data-f="hours" ${HRS_HINT} value="${+(l.minutes / 60).toFixed(2)}"></label><label class="j-field" style="margin:0"><span>A$</span><input class="j-input" data-f="amount" inputmode="decimal" value="${l.cents != null ? (l.cents / 100).toFixed(2) : ''}" placeholder="TBC"></label></div>
           ${base.cents !== l.cents ? `<p class="small" style="margin-top:4px;color:var(--j-amber)">Changed. Worked out: ${base.cents == null ? 'TBC' : esc(money(base.cents))}</p>` : ''}`}</div>`),
         ...S.added.map((a, i) => `<div class="j-card" style="padding:10px 12px;margin-bottom:8px" data-al="${i}"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(a.date ? fmtD(a.date) : '')}</b> <span class="j-pill j-pill-amber">Added</span><button type="button" class="j-btn j-btn-ghost j-btn-sm" data-al-off>Remove</button></div><p style="margin:4px 0">${esc(a.description)}</p><p class="muted small">${esc(a.location || '')} · ${+(a.minutes / 60).toFixed(2)}h · ${a.cents === '' || a.cents == null ? 'TBC' : esc(money(a.cents))}</p></div>`)].join('')
       drawTotal()
@@ -204,7 +220,7 @@ export async function renderCoachInvoices(ui) {
         el.querySelectorAll('[data-f]').forEach((i) => i.addEventListener('change', () => {
           const e = (S.edits[id] ||= {})
           const v = i.value, n = String(v).replace(/[^0-9.]/g, '')
-          if (i.dataset.f === 'hours') e.minutes = Math.round(Number(n) * 60)
+          if (i.dataset.f === 'hours') { const mm = toMinutes(v); if (mm === '' || Number.isNaN(mm)) { i.value = ''; delete e.minutes } else { e.minutes = mm; i.value = +(mm / 60).toFixed(2) } }
           else if (i.dataset.f === 'amount') e.cents = n === '' ? null : Math.round(Number(n) * 100)
           else e[i.dataset.f] = v
           drawTotal()
@@ -215,7 +231,7 @@ export async function renderCoachInvoices(ui) {
       const box = modal(`<h2 style="margin-bottom:10px">Add a line</h2>${lineForm({ date: to }, { add: true })}<p class="j-err" id="lf-err" hidden></p><div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="lf-go">Add</button></div>`)
       box.querySelector('#lf-go').addEventListener('click', () => {
         const x = readForm(box)
-        const bad = !x.date || x.date < from || x.date > to ? `Choose a date from ${fmtD(from)} to ${fmtD(to)}.` : !x.description.trim() ? 'Say what the line is for.' : ''
+        const bad = !x.date || x.date < from || x.date > to ? `Choose a date from ${fmtD(from)} to ${fmtD(to)}.` : !x.description.trim() ? 'Say what the line is for.' : Number.isNaN(x.minutes) ? 'Hours: type 1.5, 1h 30 or 45 min.' : ''
         if (bad) { const e = box.querySelector('#lf-err'); e.textContent = bad; e.hidden = false; return }
         S.added.push({ ...x, minutes: x.minutes === '' ? 0 : x.minutes }); closeModal()
         if (!view().querySelector('#inv-draft')) reload(); else drawDraft()

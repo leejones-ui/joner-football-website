@@ -69,7 +69,7 @@ export function editLine(line, edit, { by, role }) {
   const changed = []
   const text = (k, n) => { if (edit[k] == null) return; const v = clean(edit[k], n); if (v !== (line[k] || '')) { next[k] = v; changed.push(k) } }
   text('description', 300); text('location', 80)
-  if (edit.minutes != null && edit.minutes !== '') { const m = Math.round(Number(edit.minutes)); if (!(m > 0 && m <= 720)) return { error: 'Hours must be more than 0 and no more than 12.' }; if (m !== line.minutes) { next.minutes = m; changed.push('minutes') } }
+  if (edit.minutes != null && edit.minutes !== '') { const m = Math.round(Number(edit.minutes)); if (!(m > 0 && m <= 1440)) return { error: 'Hours must be more than 0. For a short session type 45 min or 0.75.' }; if (m !== line.minutes) { next.minutes = m; changed.push('minutes') } }
   if (edit.date != null && edit.date !== '') { if (!ISO.test(edit.date)) return { error: 'That date is not right.' }; if (edit.date !== line.date) { next.date = edit.date; next.dateLabel = dateLabel(edit.date); changed.push('date') } }
   if (Object.hasOwn(edit, 'cents')) {
     const c = edit.cents === '' || edit.cents == null ? null : Math.round(Number(edit.cents))
@@ -96,7 +96,7 @@ export function newLine(body, { by, role, from, to }) {
   const description = clean(body.description, 300)
   if (!description) return { error: 'Say what the line is for.' }
   const minutes = Math.round(Number(body.minutes || 0))
-  if (!(minutes >= 0 && minutes <= 720)) return { error: 'Hours must be no more than 12.' }
+  if (!(minutes >= 0 && minutes <= 1440)) return { error: 'Hours must be under 24 on one line. For a short session type 45 min or 0.75.' }
   const cents = body.cents === '' || body.cents == null ? null : Math.round(Number(body.cents))
   if (cents != null && !(cents >= 0 && cents <= 500000)) return { error: 'That amount is not right.' }
   return { hoursId: '', date, dateLabel: dateLabel(date), start: '', end: '', minutes, kind: 'other', kindLabel: 'Added', groupId: '', note: '', what: '', location: clean(body.location, 80), status: 'approved', description, players: null, cents, calcCents: null, basis: `Added by ${role === 'coach' ? 'the coach' : 'Lee or Ligia'}`, flags: [{ code: 'added', text: `Line added by ${role === 'coach' ? 'the coach' : 'Lee or Ligia'}` }], edits: [{ by, role, at: new Date().toISOString(), fields: ['added'] }] }
