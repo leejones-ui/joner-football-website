@@ -3,6 +3,7 @@ import '../styles/global.css'
 import Nav from '../components/Nav.astro'
 import Footer from '../components/Footer.astro'
 import Analytics from '../components/Analytics.astro'
+import Clarity from '../components/Clarity.astro'
 
 export interface Props {
   title?: string
@@ -189,6 +190,7 @@ const allSchemas = schema
       <Fragment>
     <!-- LEE: Paste your GA4 Measurement ID into Vercel env var PUBLIC_GA4_ID (starts with G-) -->
     <Analytics />
+    <Clarity />
 
     <!-- Meta Pixel -->
     <script is:inline>
@@ -481,6 +483,7 @@ const allSchemas = schema
           };
           if (offerId) data.offer_id = offerId;
           if (planType) data.plan_type = planType;
+          data.cta_section = getCtaSection(anchor);
           return data;
         }
 
@@ -810,19 +813,52 @@ const allSchemas = schema
           }
           if (path === '/teams' && text.indexOf('club pricing') !== -1) return 'club_pricing_click';
           if (href.indexOf('app.jonerfootball.com/checkout/new') !== -1) return 'app_checkout_click';
+          // /app is the player and parent ad landing page; its buttons lead to /join.
+          if (path === '/app' && host === window.location.hostname) {
+            var targetPath = '';
+            try { targetPath = new URL(href, window.location.href).pathname.replace(/\/+$/, ''); } catch (e) {}
+            if (targetPath === '/join') return 'AppPageJoinClick';
+          }
           return '';
+        }
+
+        // Which button on the page was clicked: the section it sits in and its
+        // order among the page's money buttons (1 = first on the page).
+        function getCtaSection(anchor) {
+          var section = anchor.closest('[data-cta-section], section, header, footer, nav, aside');
+          if (!section) return 'page';
+          if (section.dataset && section.dataset.ctaSection) return section.dataset.ctaSection;
+          if (section.id) return section.id;
+          var heading = section.querySelector('h1, h2, h3');
+          var label = heading ? (heading.textContent || '').replace(/\s+/g, ' ').trim() : '';
+          return (label || section.tagName.toLowerCase()).slice(0, 60);
+        }
+
+        function getCtaPlacement(anchor) {
+          var buttons = Array.prototype.filter.call(document.querySelectorAll('a[href]'), function (link) {
+            return !!getMoneyClickEventName(link);
+          });
+          var index = buttons.indexOf(anchor);
+          return {
+            cta_section: getCtaSection(anchor),
+            cta_position: index === -1 ? undefined : index + 1,
+            cta_total: buttons.length
+          };
         }
 
         function trackMoneyClick(anchor) {
           var eventName = getMoneyClickEventName(anchor);
           if (!eventName) return;
+          if (typeof window.clarity === 'function') {
+            try { window.clarity('event', eventName); } catch (e) {}
+          }
           trackEvent(eventName, {
-            custom_data: {
+            custom_data: Object.assign({
               link_url: anchor.href,
               link_text: (anchor.textContent || '').trim().slice(0, 120),
               page_path: getPathname(),
               target_plan: anchor.getAttribute('data-plan-target') || undefined
-            }
+            }, getCtaPlacement(anchor))
           });
         }
 
