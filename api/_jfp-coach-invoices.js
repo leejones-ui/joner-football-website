@@ -28,7 +28,7 @@
 import { isSessionType, kvCommand, clean, newId, audit, dateLabel, coachById, coachLabel, formatAud, listGroups, locationFor, sydneyToday } from './_jfp-store.js'
 import { allHours, HOUR_KINDS, shortNames } from './_jfp-hours.js'
 import { loadRoster } from './_jfp-airtable.js'
-import { getCard, allCards, checkCard, saveCard, getDetails, saveDetails, registerFor, priceLine, isPathwayGroup, dueMonday, BAND_LABELS } from './_jfp-coach-pay.js'
+import { getCard, allCards, checkCard, saveCard, getDetails, saveDetails, registerFor, pricePayable, isPathwayGroup, dueMonday, BAND_LABELS } from './_jfp-coach-pay.js'
 const fmtMoney = (c) => `A$${(c / 100).toFixed(2)}`
 import { coachInvoicePdf } from './_jfp-coach-invoice-pdf.js'
 import { sendCoachInvoiceToStaff } from './_jfp-email.js'
@@ -148,18 +148,20 @@ async function linesFor(config, coachId, from, to, { listCovers }) {
   const short = shortNames(roster.players)
   const rows = new Map(roster.players.map((r) => [r.id, { name: short.get(r.id), full: String(r.player || '').trim(), paymentType: r.paymentType, paymentStatus: r.paymentStatus, balanceAud: r.balanceAud }]))
   const name = (id) => coachLabel(coachById(config, id))
+  const byFull = new Map(roster.players.map((r) => [String(r.player || '').trim().toLowerCase(), r.id]))
+  const findByName = (n) => byFull.get(String(n || '').trim().toLowerCase()) || ''
   const mine = hours.filter((h) => h.coachId === coachId && h.date >= from && h.date <= to && !h.invoiceId).sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start))
   const out = []
   for (const h of mine) {
     const g = byId[h.groupId]
     const register = g ? await registerFor(g.id, h.date, (id) => rows.get(id) || null) : null
     const picked = Array.isArray(h.players) && h.players.length ? h.players : null
-    const base = { players: picked, hoursId: h.id, date: h.date, dateLabel: dateLabel(h.date), start: h.start, end: h.end, minutes: h.minutes, kind: h.kind, kindLabel: HOUR_KINDS[h.kind] || h.kind, groupId: h.groupId || '', note: h.note || '', what: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : h.note || '', location: g ? locationFor(config, g.location).name : '', status: h.status }
-    const price = priceLine(base, { card, group: g, register })
-    const who = (picked || register?.counted || []).filter((p) => p.rowId)
+    const base = { players: picked, hoursId: h.id, date: h.date, dateLabel: dateLabel(h.date), start: h.start, end: h.end, minutes: g && isPathwayGroup(g) ? Math.min(h.minutes, Number(g.durationMin) || 45) : h.minutes, kind: h.kind, kindLabel: HOUR_KINDS[h.kind] || h.kind, groupId: h.groupId || '', note: h.note || '', what: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : h.note || '', location: g ? locationFor(config, g.location).name : '', status: h.status }
+    const price = pricePayable(base, { card, group: g, register, rowOf: (id) => rows.get(id) || null, findByName })
+    const who = (price.payable || picked || register?.counted || []).filter((p) => p.rowId)
     const unpaid = who.map((p) => ({ p, r: rows.get(p.rowId) })).filter(({ r }) => r && feesOwed(r)).map(({ p, r }) => ({ rowId: p.rowId, name: r.full || p.name, status: r.paymentStatus || 'Not set', owedCents: Math.max(0, Math.round(Number(r.balanceAud || 0) * 100)) }))
     if (unpaid.length) price.flags = [...price.flags, { code: 'unpaid', text: `Fees not paid: ${unpaid.map((u) => u.name.split(' ')[0]).join(', ')}. Chase the family` }]
-    out.push({ ...base, unpaid, description: describe(base, g, picked || register?.counted || []), playerNames: (picked || register?.counted || []).map((p) => p.name), players: price.players, calcCents: price.cents, cents: price.cents, basis: price.basis, flags: [...flagsFor(base, coachId, { covers, hours, name }), ...price.flags] })
+    out.push({ ...base, unpaid, description: describe(base, g, price.payable || picked || register?.counted || []), playerNames: (price.payable || picked || register?.counted || []).map((p) => p.name), notCounted: price.skipped, players: price.players, calcCents: price.cents, cents: price.cents, basis: price.basis, flags: [...flagsFor(base, coachId, { covers, hours, name }), ...price.flags] })
   }
   return out
 }

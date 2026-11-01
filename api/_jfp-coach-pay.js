@@ -93,6 +93,49 @@ export async function saveDetails(principal, coachId, body) {
 // session by session, drop-in, Pro sessions or a trial).
 export const paidUpfront = (row) => Boolean(row) && !isSessionType(row.paymentType) && !/trial/i.test(row.paymentType || '') && /^(paid|partially paid)$/i.test(row.paymentStatus || '')
 
+// Nothing paid yet: a term fee not Paid or Partially paid, or a pay-as-you-go
+// player with a billed amount still owing (billed after the session, so
+// "Unpaid" with nothing billed is normal).
+export const notPaidYet = (row) => isSessionType(row.paymentType) ? Number(row.balanceAud || 0) > 0 : !/^(paid|partially paid)$/i.test(String(row.paymentStatus || ''))
+
+// Who a coach is paid for (Lee, 1 Nov 2026: "If a player hasn't paid yet,
+// coaches can't get paid for it either"). From the players the coach ticked,
+// or else the register. A player counts only when they are on the JFP list,
+// have paid, and were there (or paid upfront and away). A ticked name with no
+// row is looked up by full name. skipped: [{ rowId, name, why }].
+export function payablePlayers({ picked, register, rowOf, findByName }) {
+  const marks = register?.marks || {}
+  const list = picked ? picked.map((p) => (p.rowId ? p : { ...p, rowId: findByName?.(p.name) || '' })) : register?.counted || []
+  const payable = [], skipped = []
+  for (const p of list) {
+    const r = p.rowId ? rowOf(p.rowId) : null
+    const m = marks[p.rowId]
+    const why = !r ? 'not on the JFP player list' : notPaidYet(r) ? 'fees not paid yet' : register?.marked && m && m !== 'Present' && !paidUpfront(r) ? (m === 'Notified' ? 'told us they were away' : 'absent on the register') : ''
+    if (why) skipped.push({ rowId: p.rowId, name: r?.name || p.name, why }); else payable.push({ ...p, name: r?.name || p.name })
+  }
+  return { payable, skipped }
+}
+
+// Prices a session line on the paying players only. Juniors (their own list)
+// and anything that is not a timetabled session are priced as before.
+export function pricePayable(line, { card, group, register, rowOf, findByName }) {
+  if (!['session', 'cover'].includes(line.kind) || !group || group.label === 'Joners Juniors') {
+    const price = priceLine(line, { card, group, register })
+    // Players ticked on hours outside a timetabled group: Lee sets the amount, told who has not paid.
+    const isJJ = line.kind === 'juniors' || group?.label === 'Joners Juniors'
+    const { payable, skipped } = !isJJ && Array.isArray(line.players) && line.players.length ? payablePlayers({ picked: line.players, register: null, rowOf, findByName }) : { payable: null, skipped: [] }
+    return { ...price, flags: skipped.length ? [...price.flags, { code: 'not-counted', text: `Not paid for: ${skipped.map((s) => `${s.name.split(' ')[0]} (${s.why})`).join(', ')}` }] : price.flags, payable, skipped }
+  }
+  const picked = Array.isArray(line.players) && line.players.length ? line.players : null
+  const { payable, skipped } = payablePlayers({ picked, register, rowOf, findByName })
+  const out = skipped.map((s) => s.rowId)
+  const reg = register ? { ...register, counted: register.counted.filter((p) => !out.includes(p.rowId)) } : register
+  const price = priceLine({ ...line, players: picked && payable.length ? payable : null }, { card, group, register: reg })
+  const flags = skipped.length ? [...price.flags, { code: 'not-counted', text: `Not paid for: ${skipped.map((s) => `${s.name.split(' ')[0]} (${s.why})`).join(', ')}` }] : price.flags
+  if (!payable.length && skipped.length && !isPathwayGroup(group)) return { cents: 0, basis: 'No paid players at this session', players: 0, flags, payable, skipped }
+  return { ...price, flags, payable, skipped }
+}
+
 // A group's register on a date. rowOf(rowId) -> { name, paymentType, paymentStatus } | null.
 // { marked, present: [{ rowId, name }], paidAway: [{ rowId, name, mark }], counted: [...present, ...paidAway] }
 export async function registerFor(groupId, date, rowOf) {

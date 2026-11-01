@@ -2,7 +2,7 @@
 // a rate card, the group and the register. Amounts here are invented.
 //   node scripts/test-jfp-coach-pay-unit.mjs
 import assert from 'node:assert/strict'
-import { priceLine, checkCard, dueMonday, paidUpfront } from '../api/_jfp-coach-pay.js'
+import { priceLine, pricePayable, checkCard, dueMonday, paidUpfront } from '../api/_jfp-coach-pay.js'
 import { editLine, newLine, feesOwed } from '../api/_jfp-coach-invoices.js'
 import { checkPlayers, shortNames } from '../api/_jfp-hours.js'
 
@@ -96,6 +96,28 @@ t('fees not paid: unpaid, partly paid, not set or a balance', () => {
   assert.equal(feesOwed({ paymentStatus: 'Paid', balanceAud: 50 }), true)
   assert.equal(feesOwed({ paymentType: 'JFP Session by session', paymentStatus: 'Unpaid', balanceAud: 0 }), false, 'session by session: nothing billed yet is not owing')
   assert.equal(feesOwed({ paymentType: 'JFP Pro sessions', paymentStatus: 'Unpaid', balanceAud: 160 }), true, 'a billed amount not paid is')
+})
+t('unpaid, absent and unknown players are not paid for (Lee, 1 Nov 2026)', () => {
+  // Sam, Fri 30 Oct 5pm: Kaleb and Zach present and paid, Kobi absent and unpaid.
+  const rows = { k: { name: 'Kaleb', paymentType: 'JFP 10 weeks', paymentStatus: 'Paid' }, z: { name: 'Zachary', paymentType: 'JFP 10 weeks', paymentStatus: 'Paid' }, b: { name: 'Kobi', paymentType: 'JFP 10 weeks', paymentStatus: 'Unpaid', balanceAud: 850 } }
+  const rowOf = (id) => rows[id] || null
+  const register = { marked: true, present: [{ rowId: 'k' }, { rowId: 'z' }], paidAway: [], counted: [{ rowId: 'k' }, { rowId: 'z' }], marks: { k: 'Present', z: 'Present', b: 'Absent' } }
+  const ticked = [{ rowId: 'k', name: 'Kaleb' }, { rowId: 'z', name: 'Zachary' }, { rowId: 'b', name: 'Kobi' }]
+  let p = pricePayable(line({ players: ticked }), { card, group, register, rowOf })
+  assert.equal(p.cents, 4500); assert.equal(p.players, 2); assert.equal(p.skipped[0].why, 'fees not paid yet')
+  // Present but not paid: still not counted.
+  p = pricePayable(line({ players: ticked }), { card, group, register: { ...register, marks: { ...register.marks, b: 'Present' }, counted: [...register.counted, { rowId: 'b' }] }, rowOf })
+  assert.equal(p.players, 2)
+  // Paid but ticked while marked absent (Leo): not counted. A name nobody has on the list: not counted.
+  rows.l = { name: 'Leo', paymentType: 'JFP Session by session', paymentStatus: 'Unpaid', balanceAud: 0 }
+  p = pricePayable(line({ players: [{ rowId: 'k', name: 'Kaleb' }, { rowId: 'l', name: 'Leo' }, { rowId: '', name: 'Charlie Cameron' }] }), { card, group, register: { ...register, marks: { ...register.marks, l: 'Absent' } }, rowOf })
+  assert.equal(p.players, 1); assert.deepEqual(p.skipped.map((s) => s.why), ['absent on the register', 'not on the JFP player list'])
+  // A ticked name with no row is found by full name.
+  p = pricePayable(line({ players: [{ rowId: '', name: 'Zachary Galvin' }] }), { card, group, register: { marked: false, counted: [], marks: {} }, rowOf, findByName: (n) => (n === 'Zachary Galvin' ? 'z' : '') })
+  assert.equal(p.players, 1); assert.equal(p.skipped.length, 0)
+  // A 1 to 1 whose only player has not paid: nothing to pay.
+  p = pricePayable(line({ players: [{ rowId: 'b', name: 'Kobi' }] }), { card, group: { ...group, label: '1 to 1' }, register: { marked: true, counted: [], marks: { b: 'Present' } }, rowOf })
+  assert.equal(p.cents, 0); assert.match(p.flags.at(-1).text, /Kobi \(fees not paid yet\)/)
 })
 t('due Monday: the coming Monday, or today on a Monday', () => {
   assert.equal(dueMonday('2026-10-21'), '2026-10-26'); assert.equal(dueMonday('2026-10-26'), '2026-10-26'); assert.equal(dueMonday('2026-10-25'), '2026-10-26')

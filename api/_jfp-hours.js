@@ -17,7 +17,7 @@
 // come ticked. The ticked names go on the invoice line.
 import { kvCommand, newId, clean, audit, listGroups, coachById, coachLabel, locationFor, sessionDates, to24h, dateLabel, sydneyToday } from './_jfp-store.js'
 import { loadRoster } from './_jfp-airtable.js'
-import { registerFor, paidUpfront, priceLine, getCard } from './_jfp-coach-pay.js'
+import { registerFor, paidUpfront, pricePayable, getCard } from './_jfp-coach-pay.js'
 
 const KEY = 'jfp:hours'
 export const HOURS_ACTIONS = new Set(['hoursList', 'hoursSave', 'hoursDelete', 'hoursDecide', 'hoursPlayers', 'hoursOptions'])
@@ -157,10 +157,11 @@ export async function matchesTimetable(config, e, coachId, { listCovers }) {
   if (e.kind === 'cover' && !active.some((c) => c.coverCoachId === coachId)) return false
   const [card, roster] = await Promise.all([getCard(coachId), loadRoster().catch(() => ({ players: [] }))])
   const names = shortNames(roster.players)
-  const rows = new Map(roster.players.map((r) => [r.id, { name: names.get(r.id), paymentType: r.paymentType, paymentStatus: r.paymentStatus }]))
+  const rows = new Map(roster.players.map((r) => [r.id, { name: names.get(r.id), paymentType: r.paymentType, paymentStatus: r.paymentStatus, balanceAud: r.balanceAud }]))
   const register = await registerFor(g.id, e.date, (id) => rows.get(id) || null)
-  const price = priceLine({ kind: e.kind, minutes: e.minutes, date: e.date, groupId: g.id, note: e.note, players: e.players?.length ? e.players : null }, { card, group: g, register })
-  return price.cents != null && !price.flags.some((f) => f.code === 'register-diff')
+  const byFull = new Map(roster.players.map((r) => [String(r.player || '').trim().toLowerCase(), r.id]))
+  const price = pricePayable({ kind: e.kind, minutes: e.minutes, date: e.date, groupId: g.id, note: e.note, players: e.players?.length ? e.players : null }, { card, group: g, register, rowOf: (id) => rows.get(id) || null, findByName: (n) => byFull.get(String(n || '').trim().toLowerCase()) || '' })
+  return price.cents != null && !price.flags.some((f) => ['register-diff', 'not-counted'].includes(f.code))
 }
 // A coach may still change hours the portal approved as logged, until they are on an invoice.
 const coachMayEdit = (h) => h.status !== 'approved' || (h.autoApproved && !h.invoiceId)
