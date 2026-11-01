@@ -12,7 +12,9 @@
 // A coach only ever sees their own. Server: api/_jfp-coach-invoices.js.
 import { esc, toast } from './jfp-common.js'
 
-const S = { coachId: '', status: '', range: 'lastweek', from: '', to: '', mine: false, edits: {}, added: [], key: '' }
+// Fri to Sun a coach is invoicing the week just worked; Mon to Thu, last week (Dean, 1 Nov 2026: picked This week on a Sunday and got last week's dates).
+const sydDay = new Date(new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney' }).format(new Date()) + 'T00:00:00Z').getUTCDay()
+const S = { coachId: '', status: '', range: [0, 5, 6].includes(sydDay) ? 'thisweek' : 'lastweek', from: '', to: '', mine: false, edits: {}, added: [], key: '' }
 const iso = (d) => d.toISOString().slice(0, 10)
 const addDays = (s, n) => iso(new Date(Date.parse(`${s}T00:00:00Z`) + n * 86400000))
 const mondayOf = (s) => { const d = new Date(`${s}T00:00:00Z`); return addDays(s, -((d.getUTCDay() + 6) % 7)) }
@@ -43,6 +45,7 @@ function rangeOf(key, today) {
   if (key === 'custom') return [S.from || addDays(mon, -7), S.to || addDays(today, -1)]
   return [addDays(mon, -7), addDays(mon, -1)]
 }
+const rangeLabel = (k, today) => { const [a, b] = rangeOf(k, today); return `${fmtD(a)} to ${fmtD(b)}` }
 const RANGES = [['lastweek', 'Last week (Mon to Sun)'], ['thisweek', 'This week so far'], ['lastfortnight', 'Last fortnight'], ['custom', 'Choose dates']]
 
 const flagHtml = (l) => (l.flags || []).map((f) => `<span class="j-pill j-pill-${f.code === 'waiting' || f.code === 'edited' || f.code === 'added' ? 'amber' : 'red'}" style="margin:2px 4px 0 0">${esc(f.text)}</span>`).join('')
@@ -164,6 +167,11 @@ export async function renderCoachInvoices(ui) {
     })
   } else {
     const draft = d.draft || []
+    // Timetabled sessions and covers in these dates not in My hours yet: one tap adds them here (Dean, 1 Nov 2026: typed 20 lines by hand).
+    const hl = await post('hoursList', { from, to })
+    const toLog = (hl.ok ? hl.data.suggest || [] : []).filter((x) => x.date <= today)
+    const mu = d.myUnbilled
+    const other = mu && (mu.from < from || mu.to > to) ? mu : null
     const det = d.details || {}
     const missing = ['fullName', 'accountName', 'bsb', 'accountNumber'].some((k) => !det[k])
     view().innerHTML = `${S.mine ? '<p style="margin-bottom:10px"><button type="button" class="ps-link" id="inv-back">Back to Coach invoices</button></p>' : ''}<div class="jp-head"><div><h1>${S.mine ? 'My own invoice' : 'My invoices'}</h1><p class="muted small" style="margin-top:4px">Made from your hours in My hours. Each session is priced from the players you ticked in My hours (or the register) and your rate. You can change any line before you send it. Send it by <b>Monday 9am</b> (next due ${esc(d.dueLabel)}). Only you, Lee and Ligia see your invoices.</p></div></div>
@@ -171,8 +179,10 @@ export async function renderCoachInvoices(ui) {
         <p class="muted small" style="margin:8px 0">These print on your invoice, like the one you used to send. Only you, Lee and Ligia see them.</p>${detailsForm(det)}
         <button type="button" class="j-btn j-btn-dark j-btn-sm" id="det-save">Save my details</button></details>
       <section class="j-card" style="padding:14px 16px;margin-bottom:16px"><h3 style="margin-bottom:8px">New invoice</h3>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end"><label class="j-field" style="margin:0"><span>Dates</span><select class="j-select" id="inv-range">${RANGES.map(([k, l]) => `<option value="${k}" ${S.range === k ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end"><label class="j-field" style="margin:0"><span>Dates</span><select class="j-select" id="inv-range">${RANGES.map(([k, l]) => `<option value="${k}" ${S.range === k ? 'selected' : ''}>${esc(k === 'custom' ? l : `${l.replace(/ \(Mon to Sun\)| so far/, '')}: ${rangeLabel(k, today)}`)}</option>`).join('')}</select></label>
           ${S.range === 'custom' ? `<label class="j-field" style="margin:0"><span>From</span><input class="j-input" type="date" id="inv-from" value="${esc(from)}" max="${esc(today)}"></label><label class="j-field" style="margin:0"><span>To</span><input class="j-input" type="date" id="inv-to" value="${esc(to)}" max="${esc(today)}"></label>` : ''}</div>
+        ${toLog.length ? `<div class="j-card" style="padding:10px 12px;margin-top:10px;border-color:var(--j-red)"><b>${toLog.length} of your timetabled session${toLog.length === 1 ? '' : 's'} in these dates ${toLog.length === 1 ? 'is' : 'are'} not logged yet</b><p class="muted small" style="margin:4px 0 8px">${esc(toLog.slice(0, 4).map((x) => `${x.dateLabel} ${x.label.split(',')[0].replace(/^\w+ /, '')}`).join(', '))}${toLog.length > 4 ? ` and ${toLog.length - 4} more` : ''}. Add them with the players as on the register, then check each line.</p><button type="button" class="j-btn j-btn-dark j-btn-sm" id="inv-log-all">Add ${toLog.length === 1 ? 'it' : `all ${toLog.length}`} to this invoice</button></div>` : ''}
+        ${other ? `<p class="small" style="margin-top:10px">You also have <b>${hrs(other.minutes)}</b> logged from ${esc(other.fromLabel)} to ${esc(other.toLabel)} that is not on an invoice. <button type="button" class="ps-link" id="inv-other">Show those dates</button></p>` : ''}
         ${!d.hasCard ? '<p class="small" style="margin-top:10px">Lee has not set your rates in the portal yet, so amounts show as TBC. You can still send it.</p>' : ''}
         ${draft.length || S.added.length ? `<p class="muted small" style="margin:10px 0 6px">Check each line. You can change anything, take a line off (it stays in My hours for later) or add one. Lee and Ligia see what you changed.</p>
           <div id="inv-draft"></div>
@@ -180,7 +190,7 @@ export async function renderCoachInvoices(ui) {
           <p style="margin:10px 0;text-align:right" id="inv-total"></p>
           <label class="j-field"><span>Note <span class="muted">(optional)</span></span><input class="j-input" id="inv-note" maxlength="400"></label>
           <button type="button" class="j-btn j-btn-dark" id="inv-send">Send to Lee and Ligia</button>`
-        : '<p class="muted small" style="margin-top:10px">No hours logged in these dates that are not on an invoice already. Log them in My hours first, or add a line here.</p><button type="button" class="j-btn j-btn-line j-btn-sm" id="inv-add-line">+ Add a line</button>'}
+        : `<p class="muted small" style="margin-top:10px">${toLog.length ? 'Nothing on this invoice yet. Add the sessions above, or add a line here.' : 'No hours logged in these dates that are not on an invoice already. Log them in My hours first, or add a line here.'}</p><button type="button" class="j-btn j-btn-line j-btn-sm" id="inv-add-line">+ Add a line</button>`}
       </section>
       <h2 style="font-size:16px;margin:0 0 10px">Sent</h2>${list.map(card).join('') || '<p class="muted">None yet.</p>'}`
     view().querySelector('#det-save').addEventListener('click', async () => {
@@ -191,6 +201,13 @@ export async function renderCoachInvoices(ui) {
     view().querySelector('#inv-range').addEventListener('change', (e) => { S.range = e.target.value; reload() })
     view().querySelector('#inv-from')?.addEventListener('change', (e) => { S.from = e.target.value; reload() })
     view().querySelector('#inv-to')?.addEventListener('change', (e) => { S.to = e.target.value; reload() })
+    view().querySelector('#inv-log-all')?.addEventListener('click', async (e) => {
+      const b = e.currentTarget; b.disabled = true; b.textContent = 'Adding…'
+      let n = 0
+      for (const x of toLog) { const r = await post('hoursSave', { date: x.date, start: x.start, end: x.end, kind: x.kind, groupId: x.groupId, coachId: hl.data.suggestFor }); if (r.ok) n++; else toast(r.data.error || 'Could not add one.') }
+      toast(`${n} added. Check the lines below.`); reload()
+    })
+    view().querySelector('#inv-other')?.addEventListener('click', () => { S.range = 'custom'; S.from = other.from < from ? other.from : from; S.to = other.to > to ? other.to : to; reload() })
     view().querySelector('#inv-back')?.addEventListener('click', () => { S.mine = false; reload() })
     // The editable lines: what the portal worked out, with the coach's changes on top.
     const cur = (l) => ({ ...l, ...(S.edits[l.hoursId] || {}) })

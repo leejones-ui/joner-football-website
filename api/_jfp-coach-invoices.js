@@ -238,7 +238,9 @@ export async function invoiceAction(res, principal, config, body, action, { isAd
     const draft = asCoach && from ? (await linesFor(config, coachId, from, to, { listCovers })).map((l) => (isAdmin ? l : forCoach(l))) : null
     // Lee and Ligia (Lee, 26 Oct 2026: "nothing there?"): who has hours logged that are not on an invoice yet. Hours and names only.
     const unbilled = isAdmin && !asCoach ? unbilledHours(config, await allHours(), today) : undefined
-    return ok({ unbilled,
+    // The coach's own hours not on an invoice, any dates (Dean, 1 Nov 2026: last week's hours sat logged but never invoiced).
+    const myUnbilled = asCoach && coachId ? unbilledHours(config, (await allHours()).filter((h) => h.coachId === coachId), today)[0] || null : undefined
+    return ok({ unbilled, myUnbilled,
       invoices: list.map((x) => ({ ...view(x, config, isAdmin), canWithdraw: asCoach && ['submitted', 'queried'].includes(x.status) })), draft, dueLabel: dateLabel(dueMonday(today)),
       hasCard: asCoach && coachId ? Boolean(await getCard(coachId)) : undefined,
       details: asCoach && coachId ? await getDetails(coachId) : undefined,
