@@ -257,6 +257,10 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
           <p class="text-gray-200 font-body text-lg md:text-xl max-w-xl mb-7">
             Lee’s session plans, voice-over drills, coaching PDFs, and full training videos inside the Joner Football App.
           </p>
+          <p class="coupon-note mb-5" data-meta-coupon-only hidden>
+            <span class="coupon-note__tag">10% off</span>
+            <span>Coaches Max is 10% off from this ad. The code <strong>FB10</strong> is added for you at checkout.</span>
+          </p>
           <div class="mb-4">
             <a href="/join" class="btn-red text-base px-8 py-4 inline-flex text-center" data-ga-event="CoachesPageJoinClick">JOIN COACHES ONLY</a>
           </div>
@@ -528,6 +532,10 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
           <p class="font-body text-lg md:text-xl text-gray-700 max-w-3xl mx-auto">Coaches Only is the premium <span class="font-semibold">Max Plan</span> tier. It is the only way inside the full coaching library, the voice-over breakdowns, the full training sessions, and the direct line to Lee.</p>
         </div>
 
+        <p class="coupon-note coupon-note--light max-w-4xl mx-auto mb-8" data-meta-coupon-only hidden>
+          <span class="coupon-note__tag">10% off</span>
+          <span>Your ad discount: 10% off either plan. The code <strong>FB10</strong> is already in the checkout. Prices below are before the discount.</span>
+        </p>
         {/* Two pricing cards, monthly + annual, with annual marked as best value */}
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto mb-12">
 
@@ -747,6 +755,11 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
       .coaches-video h2 { font-size: clamp(2rem, 10vw, 3.25rem); }
     }
 
+    .coupon-note { display: flex; align-items: center; gap: 12px; max-width: 560px; padding: 12px 14px; border: 1.5px solid #E8000D; border-radius: 12px; background: rgba(232, 0, 13, 0.1); color: #fff; font-family: 'Inter', system-ui, sans-serif; font-size: 15px; line-height: 1.4; }
+    .coupon-note--light { background: #fff5f5; color: #0A0A0A; }
+    .coupon-note[hidden] { display: none; }
+    .coupon-note strong { font-weight: 800; }
+    .coupon-note__tag { flex: none; background: #E8000D; color: #fff; font-family: 'Anton', Impact, sans-serif; text-transform: uppercase; letter-spacing: .04em; font-size: 15px; padding: 6px 10px; border-radius: 8px; }
     .coaches-mobile-cta {
       position: fixed; left: 0.75rem; right: 0.75rem; bottom: 0.75rem; z-index: 40;
       display: none;

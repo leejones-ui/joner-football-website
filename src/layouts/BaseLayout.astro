@@ -896,6 +896,14 @@ const allSchemas = schema
 
           trackLandingPageViewContent();
 
+          // Pages that promise the Meta ad discount show it only to visitors who
+          // actually came from a paid Meta placement (the same test that applies
+          // the coupon at checkout), so nobody else sees a code they cannot use.
+          if (META_AD_COUPON && isPaidMetaClick(appendFirstTouchParams(collectTrackingParams()))) {
+            document.querySelectorAll('[data-meta-coupon-only]').forEach(function (el) { el.hidden = false; });
+          }
+
+
           // Share _fbc/_fbp to .jonerfootball.com now, and again once Meta's async pixel has set _fbp.
           ensureSharedMetaCookies();
           window.setTimeout(ensureSharedMetaCookies, 2000);
