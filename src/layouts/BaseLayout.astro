@@ -903,6 +903,12 @@ const allSchemas = schema
             document.querySelectorAll('[data-meta-coupon-only]').forEach(function (el) { el.hidden = false; });
           }
 
+          // Paid Meta visitors came to buy: take free-offer exits (like the coaches
+          // free bundle) off the page for them. Everyone else still sees them.
+          if (isPaidMetaClick(appendFirstTouchParams(collectTrackingParams()))) {
+            document.querySelectorAll('[data-hide-for-paid-meta]').forEach(function (el) { el.remove(); });
+          }
+
 
           // Share _fbc/_fbp to .jonerfootball.com now, and again once Meta's async pixel has set _fbp.
           ensureSharedMetaCookies();

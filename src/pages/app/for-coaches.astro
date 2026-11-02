@@ -300,10 +300,10 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
           <p class="text-lg text-gray-700 font-body mb-6 max-w-xl">
             Tuesday, 5pm, still no session plan. Every coach knows that feeling. Coaches Only gives you detailed session plans ready to run, built around team training, small group training and 1on1's. Voice over videos and PDF session plans included.
           </p>
-          <p class="font-heading uppercase text-2xl text-joner-red mb-6">Free bundle session below!</p>
+          <p data-hide-for-paid-meta class="font-heading uppercase text-2xl text-joner-red mb-6">Free bundle session below!</p>
 
           <div class="flex flex-col sm:flex-row gap-4">
-            <a href={freeBundleUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center" data-meta-checkout-event="CoachesPageFreeBundleClick">DOWNLOAD FREE BUNDLE!</a>
+            <a data-hide-for-paid-meta href={freeBundleUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center" data-meta-checkout-event="CoachesPageFreeBundleClick">DOWNLOAD FREE BUNDLE!</a>
             <a href={sampleSessionUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center" data-ga-event="CoachesPageFreeSessionClick">WATCH A FREE SESSION</a>
           </div>
         </div>
