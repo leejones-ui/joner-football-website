@@ -62,6 +62,14 @@ export const TRACKING_DESTINATIONS = Object.freeze({
   'free-video-vini-explosive-dribble': 'https://app.jonerfootball.com/programs/how-to-do-vini-jr-explosive-dribble',
   'free-video-finishing-voiceover': 'https://app.jonerfootball.com/programs/joner_voiceover_1v1_finishing_v3-c65c05',
   'loyalmax-checkout': 'https://app.jonerfootball.com/checkout/new?o=202578&d=LOYALMAX',
+  // Black Friday 2026: BLACKFRIDAY50 (50% off the first payment, all subscription plans, expires 1 Dec 2026).
+  // Offer ids and the discount verified at checkout, logged out, on 2026-11-02.
+  'bf-starter-monthly': 'https://app.jonerfootball.com/checkout/new?o=183083&d=BLACKFRIDAY50',
+  'bf-starter-annual': 'https://app.jonerfootball.com/checkout/new?o=230697&d=BLACKFRIDAY50',
+  'bf-plus-monthly': 'https://app.jonerfootball.com/checkout/new?o=230699&d=BLACKFRIDAY50',
+  'bf-plus-annual': 'https://app.jonerfootball.com/checkout/new?o=183092&d=BLACKFRIDAY50',
+  'bf-max-monthly': 'https://app.jonerfootball.com/checkout/new?o=230698&d=BLACKFRIDAY50',
+  'bf-max-annual': 'https://app.jonerfootball.com/checkout/new?o=202578&d=BLACKFRIDAY50',
   // App collection deep links for Brevo campaign tiles. A campaign thumbnail should
   // land on the content itself so the reader sees the preview, not a generic page.
   // Permalinks verified live against the Uscreen publisher API on 2026-09-19.
