@@ -181,6 +181,12 @@ async function overview(res, parent, body = {}, opts = {}) {
   // Saved photos, and whether the account holder is the player (Pros, adults).
   const profs = await familyProfiles(parent.email).catch(() => [])
   const profOf = (p) => (p.term4.length ? pickProfile(profs, { key: profileKey(p.name, p.term4[0].email || parent.email), rowIds: p.term4.map((r) => r.id) }) : null)
+  // A profile saved under the other parent's email still belongs to this place:
+  // show it, so the form is never blank over answers already saved (Lee, 2 Nov 2026).
+  for (const p of jfpPlayers.filter((x) => x.term4.length && !profOf(x))) {
+    const hit = await findProfile({ key: profileKey(p.name, p.term4[0].email || parent.email), rowIds: p.term4.map((r) => r.id) }).catch(() => null)
+    if (hit) profs.push(hit)
+  }
   // Players added from the account with no session yet (round 2 item 8).
   const account = await accountOf(parent.email)
   const open = openPlayers({ fam, profs, account }).filter((o) => !jfpPlayers.some((p) => p.key === o.key))

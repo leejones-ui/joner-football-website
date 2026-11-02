@@ -175,11 +175,15 @@ export function joinPlan(parentEmail, familyEmail, profiles = []) {
   if (clashes.length) return { ok: false, error: `${clashes.join(', ')} has a place on both accounts. Ask Claude to check these by hand.` }
   return { ok: true, family, folds, add: family.filter((f) => !f.emails.includes(pe)) }
 }
+// The copy fills the blanks. When the family typed into the copy after the kept
+// profile was last saved, the copy's answers win too (Lee, 2 Nov 2026: parents
+// filled the hidden copy and the fold kept their older answers).
 export function foldValues(from, into) {
   const v = {}
+  const newer = /^Family account/.test(from.updatedFrom || '') && Date.parse(from.updatedAt || 0) > Date.parse(into.updatedAt || 0)
   for (const k of PROFILE_KEYS) {
     const empty = (x) => x == null || x === '' || (Array.isArray(x) && !x.length)
-    if (empty(into[k]) && !empty(from[k])) v[k] = from[k]
+    if (!empty(from[k]) && (empty(into[k]) || (newer && JSON.stringify(from[k]) !== JSON.stringify(into[k])))) v[k] = from[k]
   }
   return v
 }
