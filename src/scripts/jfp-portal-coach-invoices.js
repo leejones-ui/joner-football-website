@@ -93,18 +93,19 @@ const DETAIL = [['fullName', 'Full name', 'text'], ['abn', 'ABN', 'numeric'], ['
 const detailsForm = (d = {}) => `<div class="j-two">${DETAIL.map(([k, l, m]) => `<label class="j-field"><span>${l}</span><input class="j-input" data-det="${k}" value="${esc(d[k] || '')}" ${m === 'numeric' ? 'inputmode="numeric"' : m === 'email' ? 'type="email"' : m === 'tel' ? 'type="tel"' : ''}></label>`).join('')}</div>`
 
 // Rate card editor (Lee and Ligia): dollars an hour unless it says flat.
-const CARD_FIELDS = [['weekendExtra', 'Weekend extra (Sat or Sun JFP, an hour)'], ['pathwayFlat', 'Pathway 45-minute class (flat)'], ['jjHead', 'Joners Juniors, head or shadow (an hour)'], ['office', 'Office hours (an hour)'], ['devSesh', 'Dev Sesh (flat, each one)']]
+const CARD_FIELDS = [['weekendExtra', 'Weekend extra, Sat or Sun (an hour)'], ['pathwayFlat', 'Pathway 45 min (flat)'], ['jjHead', 'Juniors head or shadow (an hour)'], ['office', 'Office hours (an hour)'], ['devSesh', 'Dev Sesh (flat, each)']]
+// Every box the same size; boxes sit on the bottom of each row so the inputs line up.
+const rateBox = (label, attrs) => `<label class="j-field" style="margin:0;min-width:0"><span style="line-height:1.3">${label}</span><input class="j-input" style="width:100%" inputmode="decimal" ${attrs}></label>`
 const dollars = (c) => (c ? (c / 100).toFixed(2).replace(/\.00$/, '') : '')
 function cardForm(c, card, bands, groups = []) {
   const custom = Object.entries(card?.custom || {})
   const label = (id) => groups.find((g) => g.id === id)?.label || id
   const mine = groups.filter((g) => g.coachId === c.id)
   return `<div class="j-card" style="padding:12px 14px;margin-bottom:10px" data-card="${esc(c.id)}"><b>${esc(c.name)}</b>${card ? ` <span class="muted small">saved ${esc(new Date(card.savedAt).toLocaleDateString('en-AU'))}</span>` : ' <span class="j-pill j-pill-grey">No rates</span>'}
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-top:8px">${bands.map((b, i) => `<label class="j-field" style="margin:0"><span>${esc(b)}</span><input class="j-input" inputmode="decimal" data-band="${i}" value="${dollars(card?.bands?.[i])}"></label>`).join('')}</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-top:8px">${CARD_FIELDS.map(([k, l]) => `<label class="j-field" style="margin:0"><span>${esc(l)}</span><input class="j-input" inputmode="decimal" data-cf="${k}" value="${dollars(card?.[k])}" placeholder="Not agreed"></label>`).join('')}</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px 8px;align-items:end;margin-top:8px">${bands.map((b, i) => rateBox(esc(b), `data-band="${i}" value="${dollars(card?.bands?.[i])}"`)).join('')}${CARD_FIELDS.map(([k, l]) => rateBox(esc(l), `data-cf="${k}" value="${dollars(card?.[k])}" placeholder="Not agreed"`)).join('')}</div>
     <div style="margin-top:10px"><b class="small">Custom rate for one session (an hour)</b>
-      ${custom.map(([gid, cents]) => `<div style="display:flex;gap:8px;align-items:center;margin-top:6px" data-cu="${esc(gid)}"><span class="small" style="flex:1">${esc(label(gid))}</span><input class="j-input" inputmode="decimal" data-cu-v value="${dollars(cents)}" style="width:110px" placeholder="Remove"></div>`).join('')}
-      <div style="display:flex;gap:8px;align-items:center;margin-top:6px"><select class="j-select" data-cu-new style="flex:1"><option value="">Add a custom rate for a session…</option>${mine.filter((g) => !card?.custom?.[g.id]).map((g) => `<option value="${esc(g.id)}">${esc(g.label)}</option>`).join('')}</select><input class="j-input" inputmode="decimal" data-cu-new-v style="width:110px" placeholder="A$"></div></div>
+      ${custom.map(([gid, cents]) => `<div style="display:flex;gap:8px;align-items:center;margin-top:6px" data-cu="${esc(gid)}"><span class="small" style="flex:1">${esc(label(gid))}</span><input class="j-input" inputmode="decimal" data-cu-v value="${dollars(cents)}" style="width:150px" placeholder="Remove"></div>`).join('')}
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px"><select class="j-select" data-cu-new style="flex:1"><option value="">Add a custom rate for a session…</option>${mine.filter((g) => !card?.custom?.[g.id]).map((g) => `<option value="${esc(g.id)}">${esc(g.label)}</option>`).join('')}</select><input class="j-input" inputmode="decimal" data-cu-new-v style="width:150px" placeholder="A$"></div></div>
     <p class="muted small" style="margin:6px 0">Camps: agreed with Lee before each camp (TBC). Leave a box empty when there is no agreed rate: those lines wait for you.</p>
     <button type="button" class="j-btn j-btn-dark j-btn-sm" data-card-save>Save ${esc(c.name)}'s rates</button></div>`
 }
