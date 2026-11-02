@@ -3,7 +3,7 @@
 // position, contacts), can't make a session, keep my spot for next term,
 // term info, holidays and camps, training videos, the app and contact.
 // Phones first: a bottom tab bar on phones, a side bar on big screens.
-import { $, esc, linkify, api, toast, openSheet, closeSheet, signIn, signOut, waiverBlock, recaptcha, savePdf, dropViewPass } from './jfp-common.js'
+import { $, esc, linkify, api, toast, openSheet, closeSheet, signIn, signOut, waiverBlock, recaptcha, savePdf, dropViewPass, viewPass } from './jfp-common.js'
 import { termInfo, expectations, links, groupingLine, termExtras } from '../data/jfp-term-info.js'
 import { oneToOneSummary } from '../data/jfp-one-to-one.js'
 import { hqVideos, pitchVideos, reels, socials, contacts, hq, holidays } from '../data/jfp-account-media.js'
@@ -123,6 +123,9 @@ function registerWorker() {
 
 async function boot() {
   registerWorker()
+  // Staff seeing a family's account (2 Nov 2026): the view pass is the sign in.
+  // Lee is not signed in as a family, so the family check below sent him to sign in.
+  if (viewPass()) return start()
   const last = readLast()
   if (last) paintLast(last)
   const r = await api('/api/jfp-auth?audience=parent', null, { method: 'GET' })
@@ -189,6 +192,11 @@ async function confirmPaid(sid) {
 
 async function load() {
   const r = await api('/api/jfp-account', { action: 'overview', pay: q.get('pay') || '' })
+  if (r.status === 401 && viewPass()) {
+    dropViewPass()
+    document.querySelector('[data-pane="home"]').innerHTML = '<div class="ja-card">This view has ended (it lasts 30 minutes), or this browser is not signed in to the staff portal. Open the portal in this browser and press See their account again.</div>'
+    return
+  }
   if (r.status === 401) { clearLast(); return showSignIn() }
   if (r.status === 0 && D) return offlineBanner()
   if (!r.ok) { document.querySelector('[data-pane="home"]').innerHTML = `<div class="ja-card">${esc(r.data.error || 'Could not load your account.')}</div>`; return }

@@ -924,11 +924,12 @@ async function openPlayerDetails(rowId, fallback) {
 // See a family's account (Lee, 27 Oct 2026): My account as they see it, view
 // only, in a new tab for 30 minutes. The tab is opened on the click so a
 // phone does not block it, then sent to the account once the pass is made.
+// Opens in this tab: a new tab from the phone's home-screen app opens in another
+// browser that is not signed in to the portal (Lee, 2 Nov 2026). Exit comes back here.
 async function viewAsFamily(rowId, email) {
-  const tab = window.open('', '_blank')
   const r = await post('viewAsStart', { rowId, email })
-  if (!r.ok) { tab?.close(); return toast(r.data.error || 'Could not open their account.') }
-  if (tab) tab.location.href = r.data.url; else location.href = r.data.url
+  if (!r.ok) return toast(r.data.error || 'Could not open their account.')
+  location.href = r.data.url
 }
 
 // Which waiver was signed online: the adult one or the parent or guardian one.
