@@ -52,7 +52,7 @@ import { contactWords, withOwnContact, isAdult } from './_jfp-contact.js'
 import { telegramAlert } from './_jfp-notify.js'
 import { EXTRA_ACTIONS, extraAction } from './_jfp-extra-actions.js'
 import { ANNOUNCE_ACTIONS, ANNOUNCE_COACH_ACTIONS, announceAction } from './_jfp-announce.js'
-import { HOURS_ACTIONS, hoursAction } from './_jfp-hours.js'
+import { HOURS_ACTIONS, hoursAction, liveGroupIds, isRunning } from './_jfp-hours.js'
 import { INVOICE_ACTIONS, invoiceAction } from './_jfp-coach-invoices.js'
 import { FAMILY_NOTE_ACTIONS, familyNoteAction, coachPNotesByRow } from './_jfp-family-notes.js'
 import { REPORT_ACTIONS, reportAction } from './_jfp-report-actions.js'
@@ -3125,17 +3125,18 @@ async function staffAction(req, res, principal, config, body, isAdmin, action) {
   const groups = await listGroups()
   const byId = Object.fromEntries(groups.map((g) => [g.id, g]))
   if (action === 'staffOverview') {
-    const [covers, timeOff, plans] = await Promise.all([listCovers(), listTimeOff(), getPlans()])
+    const [covers, timeOff, plans, roster] = await Promise.all([listCovers(), listTimeOff(), getPlans(), loadRoster().catch(() => ({ players: [] }))])
+    const live = liveGroupIds(roster)
     const mine = (x) => isAdmin || x.coachId === me || x.coverCoachId === me
     return res.status(200).json({
       success: true,
       covers: covers.filter(mine).map((c) => coverView(c, config, byId)),
       timeOff: timeOff.filter(mine).map((t) => ({ ...t, coach: coachLabel(coachById(config, t.coachId)) })),
       coaches: config.coaches.map((c) => ({ id: c.id, name: coachLabel(c) })),
-      mySessions: groups.filter((g) => g.mode !== 'closed' && (isAdmin || g.coachId === me || (g.extraCoachIds || []).includes(me))).map((g) => ({ id: g.id, coachId: g.coachId, label: `${g.day} ${g.time}, ${locationFor(config, g.location).name}`, dates: sessionDates(config, g.day).filter((d) => d >= sydneyToday()).map((d) => ({ iso: d, label: dateLabel(d) })) })),
+      mySessions: groups.filter((g) => isRunning(g, live) && (isAdmin || g.coachId === me || (g.extraCoachIds || []).includes(me))).map((g) => ({ id: g.id, coachId: g.coachId, label: `${g.day} ${g.time}, ${locationFor(config, g.location).name}`, dates: sessionDates(config, g.day).filter((d) => d >= sydneyToday()).map((d) => ({ iso: d, label: dateLabel(d) })) })),
       swaps: (await listSwaps()).filter((x) => isAdmin || x.aCoachId === me || x.bCoachId === me).map((x) => ({ ...x, a: coachLabel(coachById(config, x.aCoachId)), b: coachLabel(coachById(config, x.bCoachId)), aLabel: byId[x.aGroupId] ? groupLine(config, byId[x.aGroupId]) : x.aGroupId, bLabel: byId[x.bGroupId] ? groupLine(config, byId[x.bGroupId]) : x.bGroupId, aDateLabel: dateLabel(x.aDate), bDateLabel: dateLabel(x.bDate) })).sort((p, q) => String(q.createdAt).localeCompare(String(p.createdAt))).slice(0, 40),
       // Every coach's upcoming sessions, so a swap can name the other side.
-      sessionsByCoach: Object.fromEntries(config.coaches.map((c) => [c.id, groups.filter((g) => g.mode !== 'closed' && g.label !== 'Joners Juniors' && (g.coachId === c.id || (g.extraCoachIds || []).includes(c.id))).map((g) => ({ id: g.id, label: groupLine(config, g), dates: sessionDates(config, g.day).filter((d) => d >= sydneyToday()).map((d) => ({ iso: d, label: dateLabel(d) })) }))])),
+      sessionsByCoach: Object.fromEntries(config.coaches.map((c) => [c.id, groups.filter((g) => isRunning(g, live) && g.label !== 'Joners Juniors' && (g.coachId === c.id || (g.extraCoachIds || []).includes(c.id))).map((g) => ({ id: g.id, label: groupLine(config, g), dates: sessionDates(config, g.day).filter((d) => d >= sydneyToday()).map((d) => ({ iso: d, label: dateLabel(d) })) }))])),
       plans,
     })
   }

@@ -19,6 +19,12 @@ import { kvCommand, newId, clean, audit, listGroups, coachById, coachLabel, loca
 import { loadRoster } from './_jfp-airtable.js'
 import { registerFor, paidUpfront, pricePayable, getCard } from './_jfp-coach-pay.js'
 
+// A closed group is only closed to booking: a private 1 to 1 still runs when a
+// player holds a place in it (Sam, 2 Nov 2026: his Wed 7:30am and 3:30pm 1 to 1s
+// were missing from My hours). An empty closed group stays out.
+export const liveGroupIds = (roster) => new Set((roster?.players || []).filter((r) => r.groupId && r.holdsPlace).map((r) => r.groupId))
+export const isRunning = (g, live) => g.mode !== 'closed' || g.label === 'Joners Juniors' || live.has(g.id)
+
 const KEY = 'jfp:hours'
 export const HOURS_ACTIONS = new Set(['hoursList', 'hoursSave', 'hoursDelete', 'hoursDecide', 'hoursPlayers', 'hoursOptions'])
 export const HOUR_KINDS = { session: 'JFP session', cover: 'Cover', devsesh: 'Dev Sesh', holiday: 'Holiday training', camp: 'Camp', juniors: 'Joners Juniors', event: 'Event or trial day', admin: 'Admin or planning', other: 'Other' }
@@ -66,7 +72,8 @@ export function checkPlayers(list, allowed) {
 // the players in them (for a Dev Sesh or anything not on a register).
 async function coachOptions(config, coachId) {
   const [groups, roster] = await Promise.all([listGroups(), loadRoster().catch(() => ({ players: [] }))])
-  const mine = groups.filter((g) => (g.mode !== 'closed' || g.label === 'Joners Juniors') && (g.coachId === coachId || (g.extraCoachIds || []).includes(coachId)))
+  const live = liveGroupIds(roster)
+  const mine = groups.filter((g) => isRunning(g, live) && (g.coachId === coachId || (g.extraCoachIds || []).includes(coachId)))
   const ids = new Set(mine.map((g) => g.id))
   const rows = roster.players.filter((r) => ids.has(r.groupId) && r.holdsPlace)
   const names = shortNames(roster.players)
@@ -119,7 +126,7 @@ export function checkEntry(body, { today, others = [] }) {
 }
 
 // The coach's own term sessions and covers in [from, to] not logged yet.
-function suggestions({ config, groups, covers, coachId, from, to, logged }) {
+function suggestions({ config, groups, covers, coachId, from, to, logged, live }) {
   const out = []
   const groupLabel = (g) => `${g.day} ${g.time}, ${locationFor(config, g.location).name}`
   const coveredAway = new Set(covers.filter((c) => c.status === 'active' && c.coachId === coachId).map((c) => `${c.groupId}|${c.date}`))
@@ -131,7 +138,7 @@ function suggestions({ config, groups, covers, coachId, from, to, logged }) {
     out.push({ key, date, dateLabel: dateLabel(date), start: s, end: hm(mins(s) + Number(g.durationMin || 60)), kind, groupId: g.id, label: groupLabel(g) })
   }
   for (const g of groups) {
-    if (g.mode === 'closed' && g.label !== 'Joners Juniors') continue
+    if (!isRunning(g, live)) continue
     if (g.coachId !== coachId && !(g.extraCoachIds || []).includes(coachId)) continue
     for (const d of sessionDates(config, g.day)) if (d >= from && d <= to && !coveredAway.has(`${g.id}|${d}`)) add(g, d, g.label === 'Joners Juniors' ? 'juniors' : 'session')
   }
@@ -182,9 +189,9 @@ export async function hoursAction(res, principal, config, body, action, { isAdmi
     let suggest = []
     const suggestFor = coachId || myCoachId
     if (suggestFor) {
-      const [groups, covers] = await Promise.all([listGroups(), listCovers()])
+      const [groups, covers, roster] = await Promise.all([listGroups(), listCovers(), loadRoster().catch(() => ({ players: [] }))])
       const logged = new Set(all.filter((h) => h.coachId === suggestFor && h.groupId).map((h) => `${h.groupId}|${h.date}`))
-      suggest = suggestions({ config, groups, covers, coachId: suggestFor, from, to: to > today ? today : to, logged })
+      suggest = suggestions({ config, groups, covers, coachId: suggestFor, from, to: to > today ? today : to, logged, live: liveGroupIds(roster) })
     }
     const totals = {}
     for (const h of entries) { const t = (totals[h.coachId] ||= { coachId: h.coachId, coach: coachLabel(coachById(config, h.coachId)), minutes: 0, approved: 0, waiting: 0, queried: 0 }); t.minutes += h.minutes; t[h.status === 'approved' ? 'approved' : h.status === 'queried' ? 'queried' : 'waiting'] += h.minutes }
