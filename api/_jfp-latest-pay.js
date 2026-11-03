@@ -11,6 +11,7 @@
 import { listPayreqs, listBookings, sydneyToday, dateLabel } from './_jfp-store.js'
 import { listLedger } from './_jfp-airtable.js'
 import { payreqWhat } from './_jfp-account-fees.js'
+import { listCharges } from './_jfp-charges.js'
 
 export const KINDS = { jfp: 'Term fees', extra: 'Extra sessions', invoice: 'Invoices', other: 'Other' }
 const OFFLINE = { bank: 'Bank transfer', cash: 'Cash', other: 'Other' }
@@ -25,8 +26,10 @@ export function kindOf(q) {
 const dayOf = (iso) => (iso ? sydneyToday(Date.parse(iso)) : '')
 
 // Pure: the list from what was read (unit tested on its own).
-export function latestView({ config, payreqs = [], bookings = [], ledger = [], limit = 300 }) {
+export function latestView({ config, payreqs = [], bookings = [], ledger = [], charges = [], limit = 300 }) {
   const items = []
+  // Extra sessions: the coach and the session day come from the charge.
+  const chargeOf = new Map(charges.map((c) => [c.id, c]))
   const seen = new Set()
   for (const q of payreqs) {
     if (q.status !== 'paid') continue
@@ -40,6 +43,7 @@ export function latestView({ config, payreqs = [], bookings = [], ledger = [], l
       who: (q.playerNames || []).join(', ') || q.payerName || q.parentName || '', parent: q.parentName || '',
       method: q.paidOffline ? OFFLINE[q.paidMethod] || 'Other' : 'Card', cents: (q.paidCents ?? q.amountCents ?? 0) - (q.refundedCents || 0),
       rowIds: q.term4Ids || (q.rowId ? [q.rowId] : []),
+      ...(q.charge?.id && chargeOf.has(q.charge.id) ? { coach: chargeOf.get(q.charge.id).coachName || '', sessionDate: chargeOf.get(q.charge.id).sessionDate || '' } : {}),
     })
   }
   for (const b of bookings) {
@@ -82,12 +86,12 @@ export function latestView({ config, payreqs = [], bookings = [], ledger = [], l
     for (const r of x.rowIds) if (!lastByRow[r] || x.at > lastByRow[r]) lastByRow[r] = x.at
   }
   return {
-    items: items.slice(0, limit).map(({ rowIds, ...x }) => ({ ...x, rowIds, date: dayOf(x.at) || String(x.at).slice(0, 10), dateLabel: dateLabel(dayOf(x.at) || String(x.at).slice(0, 10)), timed: /T\d\d:\d\d/.test(x.at) && !/T00:00:00/.test(x.at) })),
+    items: items.filter((x, i) => i < limit || x.kind === 'extra').map(({ rowIds, ...x }) => ({ ...x, rowIds, date: dayOf(x.at) || String(x.at).slice(0, 10), dateLabel: dateLabel(dayOf(x.at) || String(x.at).slice(0, 10)), timed: /T\d\d:\d\d/.test(x.at) && !/T00:00:00/.test(x.at) })),
     totals, allTime, termLabel: from ? `since ${dateLabel(from)}` : 'this term', lastByRow, kinds: KINDS,
   }
 }
 
 export async function latestPayments(config) {
-  const [payreqs, bookings, ledger] = await Promise.all([listPayreqs(), listBookings(), listLedger('', { quick: true }).catch(() => [])])
-  return latestView({ config, payreqs, bookings, ledger })
+  const [payreqs, bookings, ledger, charges] = await Promise.all([listPayreqs(), listBookings(), listLedger('', { quick: true }).catch(() => []), listCharges().catch(() => [])])
+  return latestView({ config, payreqs, bookings, ledger, charges })
 }

@@ -1381,6 +1381,13 @@ a.sr-only[href="#main-content"]:focus { position: fixed !important; top: 16px; l
 .cp-gadd:hover { border-color: #E8000D; }
 /* Money > Latest payments (3 Nov 2026) */
 .jm-latest { margin: 0 0 14px; }
+.jm-extrapay { margin: 0 0 14px; }
+.jm-extrapay h2 { font-size: 17px; margin: 0; }
+.jm-xp-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 12px 0; }
+.jm-xp-kpis > div { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 1px solid var(--j-line, rgba(127,127,127,.25)); border-radius: 10px; min-width: 0; }
+.jm-xp-kpis b { font-size: 22px; }
+.jm-xp-coaches { flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+@media (max-width: 640px) { .jm-xp-table th:nth-child(4), .jm-xp-table td[data-col="coach"] { display: none; } }
 .jm-latest h2 { font-size: 17px; margin: 0; }
 .jm-latest-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
 .jm-latest-sum { margin: 0 0 6px; color: var(--j-ink-2); }

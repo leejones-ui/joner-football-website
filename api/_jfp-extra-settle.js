@@ -22,7 +22,8 @@ export function paidWords({ config, s, payreq }) {
   const lead = (s.bookings || []).find((b) => b.payreqId === payreq.id)
   const group = lead ? (s.bookings || []).filter((b) => b.status !== 'removed' && (b.id === lead.id || (lead.groupId ? b.groupId === lead.groupId : b.groupId === lead.id))) : []
   const names = [...new Set((group.length ? group : [lead]).filter(Boolean).map((b) => `${b.name}${b.guest ? ' (friend)' : ''}`))]
-  const coach = coachLabel(coachById(config, s.coachId)) || 'no coach set'
+  const c = coachById(config, s.coachId)
+  const coach = coachLabel(c) || 'no coach set'
   const where = locationFor(config, s.location).name
   const kind = /1 on 1/.test(payreq.productLabel || '') ? '1 on 1' : names.length > 1 ? `group of ${names.length}` : ''
   const when = `${dateLabel(s.date)} ${s.time}`
@@ -31,6 +32,14 @@ export function paidWords({ config, s, payreq }) {
   return {
     text: `Extra session booked and paid\n${who}\n${when}, ${where}${kind ? `, ${kind}` : ''}\nCoach ${coach} · ${amount}${payreq.paidOffline ? ' (recorded by staff)' : ' (card)'}\nPortal: Extra sessions`,
     email: { subject: `Extra session booked: ${who}, ${when}`, heading: 'An extra session is booked and paid', paras: [`${who} booked the extra session on ${when} at ${where}${kind ? ` (${kind})` : ''} and paid ${amount}.`], list: [['Session', `${when}, ${where}`], ['Coach', coach], ['Paid', amount]] },
+    // The coach of the session hears it too (Lee, 3 Nov 2026: "yes 100%").
+    // No price in it: what a family pays is for Lee and Ligia.
+    coach: c?.email ? {
+      to: [{ email: c.email, name: `Coach ${c.name}` }],
+      subject: `Your extra session is booked: ${who}, ${when}`, heading: 'Your extra session is booked',
+      paras: [`Hi ${c.name}. ${who} ${names.length > 1 ? 'have' : 'has'} booked and paid for your extra session on ${when} at ${where}${kind ? ` (${kind})` : ''}.`, 'It is on your Timetable in the portal.'],
+      list: [['Session', `${when}, ${where}`], ['Player', who]],
+    } : null,
   }
 }
 async function tellPaid(payreqId, s, barry) {
@@ -41,6 +50,8 @@ async function tellPaid(payreqId, s, barry) {
   await Promise.allSettled([
     barry(w.text),
     sendStaffNotice({ to: [{ email: OWNER(), name: 'Lee' }], ...w.email, cta: { label: 'Open Extra sessions', url: 'https://jonerfootball.com/jfp-portal/#extra' }, kind: 'extra paid' }),
+    // Lee coaching it himself: the email above already told him.
+    w.coach && w.coach.to[0].email.toLowerCase() !== OWNER() ? sendStaffNotice({ ...w.coach, cta: { label: 'Open the portal', url: 'https://jonerfootball.com/jfp-portal/' }, kind: 'extra paid to coach' }) : null,
   ])
 }
 

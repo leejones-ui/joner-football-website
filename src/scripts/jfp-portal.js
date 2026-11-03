@@ -40,7 +40,7 @@ import { findExisting, removedView, wireRemoved, removedCount } from './jfp-port
 import { savedPayTag, savedPayDetail, mountAutoChargeEdit, mountSavedPaySettings } from './jfp-portal-autocharge.js'
 import { mountHermesSettings } from './jfp-portal-hermes.js'
 import { mountCredits } from './jfp-portal-credits.js'
-import { mountLatest, loadLatest, forgetLatest } from './jfp-portal-latest.js'
+import { mountLatest, loadLatest, forgetLatest, drawExtraPay } from './jfp-portal-latest.js'
 import { renderSessionValue } from './jfp-portal-session-value.js'
 import { renderAbsence } from './jfp-portal-absence.js'
 import { renderFollowUps, renderFeedback } from './jfp-portal-followups.js'
@@ -2882,8 +2882,9 @@ async function renderMoney(pre) {
       <button type="button" class="ps-link" id="m-clear" hidden>Clear</button>
     </div>
     <div class="ps-chips" id="m-chips" aria-label="Quick filters"></div>
-    <div id="m-fams" ${f.view === 'family' ? '' : 'hidden'}></div>
-    <div class="ps-table-wrap" id="m-table" ${f.view === 'family' ? 'hidden' : ''}><table class="ps-table jm-ps ps-flat"><thead><tr><th>Player</th><th>Group</th><th>Payment</th><th class="num" data-col="nums">Fee</th><th class="num" data-col="nums">Paid</th><th class="num">Owing</th><th class="ps-end"><span class="sr-only">Actions</span></th></tr></thead><tbody id="m-rows"></tbody></table></div>
+    <div id="m-extrapay" ${f.status === 'extra' ? '' : 'hidden'}></div>
+    <div id="m-fams" ${f.view === 'family' && f.status !== 'extra' ? '' : 'hidden'}></div>
+    <div class="ps-table-wrap" id="m-table" ${f.view === 'family' || f.status === 'extra' ? 'hidden' : ''}><table class="ps-table jm-ps ps-flat"><thead><tr><th>Player</th><th>Group</th><th>Payment</th><th class="num" data-col="nums">Fee</th><th class="num" data-col="nums">Paid</th><th class="num">Owing</th><th class="ps-end"><span class="sr-only">Actions</span></th></tr></thead><tbody id="m-rows"></tbody></table></div>
     <p class="jm-count" id="m-count"></p>
     <div id="m-scope"></div>
     <div id="m-bank"></div>
@@ -2933,7 +2934,7 @@ async function renderMoney(pre) {
   // Coach, More filters, Clear, then quick chips with counts.
   const M_MORE = ['ptype', 'owing']
   const mQ = () => f.q.trim().toLowerCase()
-  const mMatch = (p) => (!f.status || p.status === f.status) && (!f.group || (f.group === 'none' ? !p.groupId : p.groupId === f.group))
+  const mMatch = (p) => (!f.status || f.status === 'extra' || p.status === f.status) && (!f.group || (f.group === 'none' ? !p.groupId : p.groupId === f.group))
     && (!f.coach || p.coach === f.coach) && (!f.ptype || (p.type || 'none') === f.ptype)
     && (!f.owing || (f.owing === 'yes' ? p.owingCents > 0 : !p.owingCents))
     && (!mQ() || `${p.player} ${p.parent} ${p.email} ${p.phone}`.toLowerCase().includes(mQ()))
@@ -2968,9 +2969,19 @@ async function renderMoney(pre) {
     $('m-clear').hidden = !mActive()
     const counts = { '': s.players.length }
     for (const p of s.players) counts[p.status] = (counts[p.status] || 0) + 1
-    $('m-chips').innerHTML = [['', 'All'], ['paid', 'Paid'], ['part', 'Part paid'], ['unpaid', 'Unpaid'], ['session', 'Session by session'], ['unpriced', 'No price set'], ['stripe', 'Paid in Stripe']].filter(([v]) => v !== 'stripe' || counts.stripe || f.status === v).map(([v, l]) => `<button type="button" class="ps-chip" data-set-status="${v}" aria-pressed="${f.status === v}">${v ? `<i style="background:${cssVar(STATUS[v][1])}"></i>` : ''}${l} <b class="n">${counts[v] || 0}</b></button>`).join('')
+    // Extra sessions (Lee, 3 Nov 2026): every extra session payment, its total and who paid.
+    const ex = P.latestData?.totals?.extra
+    counts.extra = ex ? ex.count : ''
+    $('m-chips').innerHTML = [['', 'All'], ['paid', 'Paid'], ['part', 'Part paid'], ['unpaid', 'Unpaid'], ['session', 'Session by session'], ['unpriced', 'No price set'], ['stripe', 'Paid in Stripe'], ['extra', 'Extra sessions']].filter(([v]) => v !== 'stripe' || counts.stripe || f.status === v).map(([v, l]) => `<button type="button" class="ps-chip" data-set-status="${v}" aria-pressed="${f.status === v}">${v === 'extra' ? '<i style="background:var(--j-red, #E8000D)"></i>' : v ? `<i style="background:${cssVar(STATUS[v][1])}"></i>` : ''}${l} <b class="n">${counts[v] ?? 0}</b></button>`).join('')
   }
   const draw = () => {
+    const extra = f.status === 'extra'
+    $('m-extrapay').hidden = !extra; $('m-table').hidden = extra || f.view === 'family'; $('m-fams').hidden = extra || f.view !== 'family'
+    if (extra) {
+      $('m-count').textContent = ''
+      $('m-extrapay').innerHTML = '<section class="jd-card"><h2>Extra sessions</h2><p class="muted small">Loading…</p></section>'
+      return loadLatest(post).then((d) => { if (f.status === 'extra' && $('m-extrapay')) drawExtraPay($('m-extrapay'), d, { q: f.q, openExtra: () => { P.jf.programme = 'extra'; history.replaceState(null, '', '#money?programme=extra'); go('money', { instant: true }) }, openRow: (rowId) => historyDrawer(rowId) }) }).catch((e) => { $('m-extrapay').innerHTML = `<section class="jd-card"><p class="muted small">${esc(e.message)}</p></section>` })
+    }
     if (f.view === 'family') { $('m-count').textContent = ''; return drawFamilies($('m-fams'), { m, f, match: mMatch, post, toast, modal, confirmBox, statusPill, remove: (p) => removeModal({ rowId: p.rowId, name: p.player, paymentStatus: p.airtableStatus }, null, () => renderMoney()), done: () => { P.board = null; PL.at = 0; renderMoney() } }) }
     const s = scope()
     // Newest payment first by default (Lee, 3 Nov 2026: A to Z "doesn't really help").
@@ -2994,7 +3005,7 @@ async function renderMoney(pre) {
     post, filter: f,
     openExtra: () => { P.jf.programme = 'extra'; history.replaceState(null, '', '#money?programme=extra'); go('money', { instant: true }) },
     openRow: (rowId) => historyDrawer(rowId),
-  }).then(() => loadLatest(post)).then((d) => { const had = P.lastPaid; P.lastPaid = d.lastByRow; if (!had && (f.sort || 'latest') === 'latest' && P.tab === 'money' && $('m-rows')) draw() }).catch(() => {})
+  }).then(() => loadLatest(post)).then((d) => { const had = P.lastPaid; P.lastPaid = d.lastByRow; P.latestData = d; if (P.tab === 'money' && $('m-chips')) drawTools(); if (!had && (f.sort || 'latest') === 'latest' && P.tab === 'money' && $('m-rows')) draw() }).catch(() => {})
   loadBank(bankUi, bankUi.redraw)
   bindSwitch(juniorsUi())
   bindShowing({ view, filter: f, render: () => renderMoney() })
@@ -3024,7 +3035,8 @@ async function renderMoney(pre) {
   view().querySelectorAll('[data-money-view]').forEach((b) => b.addEventListener('click', () => {
     f.view = b.dataset.moneyView
     view().querySelectorAll('[data-money-view]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.moneyView === f.view)))
-    $('m-fams').hidden = f.view !== 'family'; $('m-table').hidden = f.view === 'family'
+    if (f.status === 'extra') f.status = ''
+    drawTools()
     draw()
   }))
   $('m-chips').addEventListener('click', (e) => { const b = e.target.closest('[data-set-status]'); if (b) setStatus(b.dataset.setStatus) })
