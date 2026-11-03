@@ -86,6 +86,7 @@ export default async function handler(req, res) {
       // pair), so a strict check locked every new family out. Until then a new
       // email is treated like every other form: the emailed 6 digit code, the
       // throwaway block and the rate limits still stand.
+      // New key pair made 3 Nov 2026, a live token scored 0.9, strict is on.
       const strictNew = isNew && process.env.JFP_SIGNUP_STRICT === 'true'
       const rc = await verifyRecaptcha(req, body.recaptchaToken, strictNew ? { strict: true, openOnError: true } : {})
       if (!rc.ok) {
