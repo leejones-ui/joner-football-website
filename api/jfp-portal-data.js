@@ -3802,7 +3802,7 @@ async function handle(req, res) {
       const st = await rd.dueStatus(config)
       const myCoachId = principal.coachId || config.coaches.find((c) => c.email && c.email === principal.email)?.id || ''
       const coaches = isAdmin ? st.coaches : st.coaches.filter((c) => c.coachId === myCoachId)
-      return res.status(200).json({ success: true, phase: st.phase, week: st.week, dueWeek: rd.DUE_WEEK, start: st.start, end: st.end, endLabel: st.endLabel, admin: isAdmin, reminders: config.reportReminders === true, coaches: coaches.map((c) => ({ coachId: c.coachId, name: c.name, total: c.total, sent: c.sent, left: c.left, missing: isAdmin ? [] : c.missing })) })
+      return res.status(200).json({ success: true, phase: st.phase, week: st.week, dueWeek: rd.DUE_WEEK, remindWeek: rd.REMIND_WEEK, start: st.start, end: st.end, endLabel: st.endLabel, admin: isAdmin, reminders: config.reportReminders === true, coaches: coaches.map((c) => ({ coachId: c.coachId, name: c.name, total: c.total, sent: c.sent, left: c.left, missing: isAdmin ? [] : c.missing })) })
     }
     // Coach profiles (Lee, 20 Oct 2026): a coach edits their own, Lee and
     // Ligia any; every coach reads them all on Our coaches.

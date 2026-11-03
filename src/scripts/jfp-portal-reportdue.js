@@ -1,4 +1,4 @@
-// Player reports due in week 9 (Lee, 20 Oct 2026). From week 9 each coach
+// Player reports due in week 9 (Lee, 20 Oct 2026). From week 7 (Lee, 3 Nov) each coach
 // sees how many of theirs are sent; Lee and Ligia see every coach and the
 // switch for the reminder emails and texts.
 import { esc } from './jfp-common.js'
@@ -23,9 +23,9 @@ export async function mountReportDue(box, { post, toast }, { always = false } = 
   } else {
     const behind = d.coaches.filter((c) => c.left)
     html = `<div class="j-card" style="padding:12px 14px;margin:8px 0 14px">
-      <p style="margin:0 0 6px"><b>Player reports are due in week ${d.dueWeek}</b> <span class="muted small">(${esc(d.start)} to ${esc(d.endLabel)})</span></p>
+      <p style="margin:0 0 6px"><b>Player reports are due by ${esc(d.endLabel)}, end of week ${d.dueWeek}</b> <span class="muted small">(coaches reminded from week ${d.remindWeek}. Families only get a report when the coach presses Send.)</span></p>
       ${live ? `<p class="small" style="margin:0 0 8px">${behind.length ? d.coaches.map((c) => `${esc(c.name)}: <b>${c.sent} of ${c.total}</b>`).join(' · ') : 'Every coach has sent all their reports.'}</p>` : ''}
-      <label class="j-check small"><input type="checkbox" id="rd-rem" ${d.reminders ? 'checked' : ''}> <span>Reminders on: the first day of week ${d.dueWeek}, coaches with reports to do get an email and a text. The last day, anyone still behind gets another, and you (Telegram) and Ligia (email) get who is missing what.</span></label></div>`
+      <label class="j-check small"><input type="checkbox" id="rd-rem" ${d.reminders ? 'checked' : ''}> <span>Reminders on: the first day of week ${d.remindWeek}, coaches with reports to do get an email and a text. The last day of week ${d.dueWeek}, anyone still behind gets another, and you (Telegram) and Ligia (email) get who is missing what.</span></label></div>`
   }
   box.innerHTML = html
   box.querySelector('#rd-rem')?.addEventListener('change', async (e) => {

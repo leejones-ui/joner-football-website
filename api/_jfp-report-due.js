@@ -1,10 +1,12 @@
-// Player reports are due in week 9 (Lee, 20 Oct 2026).
+// Player reports are due in week 9 (Lee, 20 Oct 2026). Coaches are reminded
+// from week 7 (Lee, 3 Nov 2026). Nothing reaches a family until the coach
+// presses Send on the report.
 //
-// - From the start of week 9 the coach portal shows each coach how many of
+// - From the start of week 7 the coach portal shows each coach how many of
 //   their players' reports are sent (always on, nothing is sent).
 // - Messages, only while config.reportReminders is true (off until Lee says
 //   yes to the wording):
-//     start  the first day of week 9: each coach with reports to do, email
+//     start  the first day of week 7: each coach with reports to do, email
 //            and text
 //     end    the last day of week 9 (Sunday), evening: each coach still
 //            missing some, email and text; Lee on Telegram and Ligia by
@@ -17,16 +19,18 @@ import { loadRoster } from './_jfp-airtable.js'
 import { listReports, termParts } from './_jfp-reports.js'
 
 export const DUE_WEEK = 9
+export const REMIND_WEEK = 7
 const DONE = 'jfp:report-remind'
 const isJuniors = (g) => g?.label === 'Joners Juniors'
 const isTest = (n) => /test/i.test(n || '')
 const addDays = (iso, n) => new Date(Date.parse(`${iso}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10)
 const mondayOf = (iso) => { const d = new Date(`${iso}T00:00:00Z`); return addDays(iso, -((d.getUTCDay() + 6) % 7)) }
 
-// Week 9 of the term: its Monday to Sunday, and where today sits.
+// Reminders open on the Monday of week 7; reports are due by the Sunday of
+// week 9. start = the reminder Monday, end = the due Sunday.
 export function dueWindow(config, today = sydneyToday()) {
-  const start = addDays(mondayOf(config.termStart), (DUE_WEEK - 1) * 7)
-  const end = addDays(start, 6)
+  const start = addDays(mondayOf(config.termStart), (REMIND_WEEK - 1) * 7)
+  const end = addDays(mondayOf(config.termStart), DUE_WEEK * 7 - 1)
   const termEnd = addDays(mondayOf(config.termStart), (Number(config.weeks) || 10) * 7 + 13)
   const week = Math.floor((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${mondayOf(config.termStart)}T00:00:00Z`)) / (7 * 86400000)) + 1
   const phase = today < start || today > termEnd ? 'none' : today <= end ? 'due' : 'overdue'
@@ -62,9 +66,9 @@ export function words(stage, { coach, c, win }) {
   const first = coach.name
   const missingList = c.missing.slice(0, 30).map((m) => [m.name, m.session])
   if (stage === 'start') return {
-    subject: 'Player reports due this week',
-    heading: 'Player reports are due this week',
-    paras: [`Hi ${first}, it is week ${DUE_WEEK}, so player reports are due by ${win.endLabel}.`, `You have sent ${c.sent} of ${c.total}. Still to do:`],
+    subject: `Player reports due by ${win.endLabel}`,
+    heading: 'Time to write your player reports',
+    paras: [`Hi ${first}, it is week ${REMIND_WEEK}. Player reports are due by ${win.endLabel}, the end of week ${DUE_WEEK}.`, 'Families only see a report once you press Send on it.', `You have sent ${c.sent} of ${c.total}. Still to do:`],
     list: missingList,
     text: `Joner Football: player reports are due by ${win.endLabel}. You have ${c.left} still to do. jonerfootball.com/jfp-portal`,
   }

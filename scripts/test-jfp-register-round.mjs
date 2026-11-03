@@ -103,16 +103,17 @@ await test('a covering coach sees the coach notes on the register and can open t
 await test('player reports due in week 9: the window, who is behind, the words, and the switch', async () => {
   const rd = await import('../api/_jfp-report-due.js')
   const cfg = { termStart: '2026-10-12', weeks: 10, term: 'Term 4 2026', coaches: [{ id: 'sam', name: 'Sam', fullName: 'Sam York' }], locations: [] }
-  assert.equal(rd.dueWindow(cfg, '2026-12-06').phase, 'none')
+  assert.equal(rd.dueWindow(cfg, '2026-11-22').phase, 'none', 'nothing before week 7')
+  assert.equal(rd.dueWindow(cfg, '2026-11-23').phase, 'due', 'coaches reminded from week 7 (Lee, 3 Nov)')
   const w = rd.dueWindow(cfg, '2026-12-07')
-  assert.equal(w.start, '2026-12-07'); assert.equal(w.end, '2026-12-13'); assert.equal(w.phase, 'due'); assert.equal(w.week, 9)
+  assert.equal(w.start, '2026-11-23'); assert.equal(w.end, '2026-12-13'); assert.equal(w.phase, 'due'); assert.equal(w.week, 9)
   assert.equal(rd.dueWindow(cfg, '2026-12-14').phase, 'overdue')
   const groups = [{ id: 'g1', day: 'Thursday', time: '4pm', location: 'x', coachId: 'sam' }]
   const roster = { players: [{ id: 'r1', player: 'Ava', groupId: 'g1', holdsPlace: true }, { id: 'r2', player: 'Ben', groupId: 'g1', holdsPlace: true }, { id: 'r3', player: 'Cal', groupId: 'g1', holdsPlace: true, paymentType: 'Trial' }] }
   const [p] = rd.progress({ config: cfg, groups, roster, reports: [{ rowId: 'r1', termNo: '4', year: '2026', status: 'sent' }] })
   assert.equal(p.total, 2); assert.equal(p.sent, 1); assert.equal(p.left, 1); assert.equal(p.missing[0].name, 'Ben')
   const start = rd.words('start', { coach: { name: 'Sam' }, c: p, win: w })
-  assert.match(start.paras[0], /due by/); assert.doesNotMatch(JSON.stringify(start), /\u2014/)
+  assert.match(start.paras[0], /due by/); assert.match(start.paras.join(' '), /press Send/); assert.doesNotMatch(JSON.stringify(start), /\u2014/)
   const due = await ok(lee, 'reportDue')
   assert.equal(due.reminders, false)
   assert.equal((await portal(sam, 'reportDue', { reminders: true })).status, 403)
