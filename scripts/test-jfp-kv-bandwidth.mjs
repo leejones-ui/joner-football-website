@@ -32,7 +32,7 @@ const kv = async (cmd) => { const t = await (await fetch(`${B}/__kv?cmd=${encode
 const post = (p, body) => fetch(`${B}${p}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.json())
 const calls = (reset) => fetch(`${B}/__calls${reset ? '?reset=1' : ''}`).then((r) => r.json())
 async function signIn(call, email, audience) {
-  const s = await call('/api/jfp-auth', { action: 'start', email, audience })
+  const s = await call('/api/jfp-auth', { action: 'start', email, audience, mobile: '0412 345 678' })
   const mail = (await (await fetch(`${B}/__emails`)).json()).filter((e) => e.to.includes(email) && /sign-in code/.test(e.subject)).at(-1)
   const v = await call('/api/jfp-auth', { action: 'verify', challenge: s.data.challenge, code: mail.subject.match(/(\d{6})/)[1] })
   assert.equal(v.status, 200, `sign in ${email}`)

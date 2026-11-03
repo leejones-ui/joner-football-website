@@ -27,7 +27,7 @@ const getJson = async (p) => (await fetch(`${B}${p}`)).json()
 const emails = () => getJson('/__emails')
 const kv = async (cmd) => (await fetch(`${B}/__kv?cmd=${encodeURIComponent(JSON.stringify(cmd))}`)).text()
 async function signIn(c, email, audience = 'parent') {
-  const s = await c.call('/api/jfp-auth', { action: 'start', email, audience })
+  const s = await c.call('/api/jfp-auth', { action: 'start', email, audience, mobile: '0412 345 678' })
   assert.equal(s.status, 200, JSON.stringify(s.data))
   const code = (await emails()).filter((e) => e.to.includes(email) && /sign-in code/.test(e.subject)).at(-1).subject.match(/(\d{6})/)[1]
   assert.equal((await c.call('/api/jfp-auth', { action: 'verify', challenge: s.data.challenge, code })).status, 200)

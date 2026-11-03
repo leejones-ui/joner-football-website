@@ -169,6 +169,7 @@ export function signIn({ mount, foot, audience = 'parent', intro = '', email: pr
       mount.innerHTML = `
         ${intro ? `<p class="muted" style="margin-bottom:14px">${intro}</p>` : ''}
         <label class="j-field"><span>Email address</span><input class="j-input" id="si-email" type="email" autocomplete="email" inputmode="email" value="${esc(email)}" required></label>
+        <label class="j-field" id="si-mob-f" hidden><span>Mobile number</span><input class="j-input" id="si-mobile" type="tel" autocomplete="tel" inputmode="tel" placeholder="04xx xxx xxx"><small class="muted small" style="font-weight:400;display:block;margin-top:4px">Outside Australia? Start with + and your country code.</small></label>
         <p class="muted small">We will email you a 6 digit code. No password needed.</p>
         <p class="j-err" id="si-err" hidden></p>`
       foot.innerHTML = `<button type="button" class="j-btn j-btn-dark j-btn-block j-btn-lg" id="si-send">Email me a code</button>`
@@ -181,15 +182,22 @@ export function signIn({ mount, foot, audience = 'parent', intro = '', email: pr
         const guard = window.JonerEmailGuard?.validateEmail?.(email)
         if (guard && guard.ok === false && guard.error) { err.textContent = guard.error; err.hidden = false; return }
         const btn = foot.querySelector('#si-send')
+        // A new account needs a mobile (Lee, 3 Nov 2026): the server says so, the box appears.
+        const mob = mount.querySelector('#si-mobile')
+        const mobile = mount.querySelector('#si-mob-f').hidden ? '' : mob.value.trim()
+        if (!mount.querySelector('#si-mob-f').hidden && mobile.replace(/\D/g, '').length < 8) { err.textContent = 'Enter your mobile number.'; err.hidden = false; mob.focus(); return }
         btn.disabled = true; btn.textContent = 'Sending'
-        const r = await api('/api/jfp-auth', { action: 'start', email, audience, recaptchaToken: await recaptcha('jfp_signin') })
+        const r = await api('/api/jfp-auth', { action: 'start', email, audience, ...(mobile ? { mobile } : {}), recaptchaToken: await recaptcha('jfp_signin') })
         btn.disabled = false; btn.textContent = 'Email me a code'
+        if (!r.ok && r.data.code === 'mobile') { mount.querySelector('#si-mob-f').hidden = false; err.textContent = r.data.error; err.hidden = false; mob.focus(); return }
         if (!r.ok) { err.textContent = r.data.error || 'Could not send the code. Try again.'; err.hidden = false; return }
         challenge = r.data.challenge
         stepCode(r.data.hint)
       }
       foot.querySelector('#si-send').addEventListener('click', send)
       input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); send() } })
+      mount.querySelector('#si-mobile').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); send() } })
+      input.addEventListener('input', () => { mount.querySelector('#si-mob-f').hidden = true })
     }
     const stepCode = (hint) => {
       mount.innerHTML = `

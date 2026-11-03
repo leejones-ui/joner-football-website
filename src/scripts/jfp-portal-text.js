@@ -23,7 +23,8 @@ const STATE = {
 }
 
 // self: the player is their own contact, so the text goes to them (to: their name).
-export function textComposer({ modal, toast, rowIds = [], requestId = '', parent = '', mobile = '', text = '', title = '', self = false, to = '', note = '' }) {
+// accountEmail: a new account with nobody on file yet (New accounts, 3 Nov 2026).
+export function textComposer({ modal, toast, rowIds = [], requestId = '', accountEmail = '', onSent = null, parent = '', mobile = '', text = '', title = '', self = false, to = '', note = '' }) {
   const who = to || (self ? 'the player' : parent || 'the family')
   const box = modal(`${note ? `<div class="j-box j-box-green small" style="margin-bottom:12px">${note}</div>` : ''}<h2 style="margin-bottom:4px">${esc(title || (self ? `Text ${who}` : 'Text the family'))}</h2>
     <p class="muted small" style="margin-bottom:12px">To ${esc(who)}${mobile ? `, ${esc(mobile)}` : ''}. From the work number 0404 780 351, between 8am and 8pm. Check the words: this is exactly what they get.</p>
@@ -40,7 +41,7 @@ export function textComposer({ modal, toast, rowIds = [], requestId = '', parent
   const count = () => { const n = area.value.length; box.querySelector('#tx-count').textContent = `${n} characters${n > 160 ? `, ${Math.ceil(n / 153)} texts` : ''}`; const a = box.querySelector('#tx-phone'); if (a) a.href = smsHref(mobile, area.value); if (wa) wa.href = waHref(mobile, area.value) }
   area.addEventListener('input', count)
   count()
-  const ids = requestId ? { requestId } : { rowIds }
+  const ids = accountEmail ? { accountEmail } : requestId ? { requestId } : { rowIds }
   // No iMessage on this number: WhatsApp becomes the main button.
   const preferWa = () => { if (!wa) return; wa.classList.replace('j-btn-line', 'j-btn-dark'); const send = box.querySelector('#tx-send'); send.classList.replace('j-btn-dark', 'j-btn-line') }
   wa?.addEventListener('click', () => { api('/api/jfp-messages', { action: 'whatsappOpened', ...ids, text: area.value }).catch(() => {}) })
@@ -56,7 +57,7 @@ export function textComposer({ modal, toast, rowIds = [], requestId = '', parent
     const btn = e.currentTarget
     btn.disabled = true
     btn.textContent = 'Sending'
-    const r = await api('/api/jfp-messages', { action: 'quickText', ...(requestId ? { requestId } : { rowIds }), text: area.value })
+    const r = await api('/api/jfp-messages', { action: 'quickText', ...ids, text: area.value })
     if (!r.ok) {
       btn.disabled = false
       btn.textContent = 'Send from 0404 780 351'
@@ -66,6 +67,7 @@ export function textComposer({ modal, toast, rowIds = [], requestId = '', parent
     }
     btn.textContent = 'Sent to the office Mac'
     area.readOnly = true
+    if (onSent) onSent()
     toast('Text on its way from 0404 780 351')
     status('grey', '<b>Waiting for the office Mac.</b> It goes in the next minute.')
     // Follow it until the office Mac reports back (about two minutes).

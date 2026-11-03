@@ -30,11 +30,15 @@ process.on('exit', () => harness.kill())
 await up
 
 let n = 1
-const start = (email, recaptchaToken) => fetch(`${B}/api/jfp-auth`, { method: 'POST', headers: { 'content-type': 'application/json', origin: B, 'x-forwarded-for': `10.9.0.${n++}` }, body: JSON.stringify({ action: 'start', audience: 'parent', email, recaptchaToken }) }).then(async (r) => ({ status: r.status, data: await r.json().catch(() => ({})) }))
+const start = (email, recaptchaToken, mobile = '0412 345 678') => fetch(`${B}/api/jfp-auth`, { method: 'POST', headers: { 'content-type': 'application/json', origin: B, 'x-forwarded-for': `10.9.0.${n++}` }, body: JSON.stringify({ action: 'start', audience: 'parent', email, recaptchaToken, ...(mobile ? { mobile } : {}) }) }).then(async (r) => ({ status: r.status, data: await r.json().catch(() => ({})) }))
 
 let passed = 0
 const test = async (name, fn) => { await fn(); passed += 1; console.log(`ok - ${name}`) }
 
+await test('asking for the mobile first does not use up the token (3 Nov 2026)', async () => {
+  const r = await start('new.family.one@example.org', 'good-token-1', '')
+  assert.equal(r.status, 400); assert.equal(r.data.code, 'mobile')
+})
 await test('a brand-new email with a good token gets a code', async () => {
   const r = await start('new.family.one@example.org', 'good-token-1')
   assert.equal(r.status, 200, JSON.stringify(r.data)); assert.equal(r.data.sent, true)
@@ -52,7 +56,7 @@ const port2 = await new Promise((resolve) => { const s = net.createServer(); s.l
 const h2 = spawn(process.execPath, [link], { env: { PATH: process.env.PATH, HOME: process.env.HOME, HOLIDAY_LOCAL_PORT: String(port2), JFP_FAKE_RECAPTCHA: '1' }, stdio: ['ignore', 'pipe', 'inherit'] })
 process.on('exit', () => h2.kill())
 await new Promise((resolve, reject) => { h2.on('exit', (c) => reject(new Error(`harness exited ${c}`))); h2.stdout.on('data', (d) => { if (String(d).includes('holiday local harness on')) resolve() }) })
-const start2 = (email, recaptchaToken) => fetch(`http://localhost:${port2}/api/jfp-auth`, { method: 'POST', headers: { 'content-type': 'application/json', origin: `http://localhost:${port2}`, 'x-forwarded-for': `10.9.1.${n++}` }, body: JSON.stringify({ action: 'start', audience: 'parent', email, recaptchaToken }) }).then(async (r) => ({ status: r.status, data: await r.json().catch(() => ({})) }))
+const start2 = (email, recaptchaToken) => fetch(`http://localhost:${port2}/api/jfp-auth`, { method: 'POST', headers: { 'content-type': 'application/json', origin: `http://localhost:${port2}`, 'x-forwarded-for': `10.9.1.${n++}` }, body: JSON.stringify({ action: 'start', audience: 'parent', email, recaptchaToken, mobile: '0412 345 678' }) }).then(async (r) => ({ status: r.status, data: await r.json().catch(() => ({})) }))
 await test('strict off (default): a new family gets a code even when Google rejects the token', async () => {
   const r = await start2('new.family.four@example.org', 'bad-token-4')
   assert.equal(r.status, 200, JSON.stringify(r.data)); assert.equal(r.data.sent, true)

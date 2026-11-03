@@ -135,10 +135,15 @@ export async function followUpList(list, nowMs = Date.now()) {
   const asked = new Set(apps.map((r) => String(r.email || '').toLowerCase()))
   const sent = {}
   for (let i = 0; i + 1 < (done || []).length; i += 2) sent[done[i]] = done[i + 1]
-  return list.filter((a) => a.kind === 'new' && a.accountState === 'active' && a.status === 'empty' && !staffEmail(a.email) && !asked.has(a.email) && nowMs - ms(a.createdAt) <= FOLLOW_MAX_DAYS * DAY).map((a) => {
+  // Outside Sydney by their own answer (Lee, 3 Nov 2026: "an automatic email
+  // saying download the app"): the app email on the next hourly check, even
+  // if they added a player, as long as nobody booked. Everyone else: only an
+  // empty account, 3 days after it was made.
+  const told = (a) => Boolean(accounts[a.email]?.where) && awayOf(accounts[a.email])
+  return list.filter((a) => a.kind === 'new' && a.accountState === 'active' && (a.status === 'empty' || (told(a) && !a.booked)) && !staffEmail(a.email) && !asked.has(a.email) && nowMs - ms(a.createdAt) <= FOLLOW_MAX_DAYS * DAY).map((a) => {
     const rec = accounts[a.email] || {}
     const away = awayOf(rec)
-    return { email: a.email, createdAt: a.createdAt, away, country: away ? countryOf(rec) : '', coach: rec.where?.forWho === 'I coach', sentAt: sent[a.email] || '', due: !sent[a.email] && nowMs - ms(a.createdAt) >= FOLLOW_AFTER_DAYS * DAY }
+    return { email: a.email, createdAt: a.createdAt, away, country: away ? countryOf(rec) : '', coach: rec.where?.forWho === 'I coach', sentAt: sent[a.email] || '', due: !sent[a.email] && (told(a) || nowMs - ms(a.createdAt) >= FOLLOW_AFTER_DAYS * DAY) }
   })
 }
 

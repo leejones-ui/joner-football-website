@@ -16,13 +16,35 @@ export function askWhere(D, { book } = {}) {
   const st = { place: '', forWho: '' }
   const guess = q.country && q.country !== 'AU' ? countryName(q.country) : ''
   const chips = (key, map) => `<div class="ja-seg" data-wh="${key}">${Object.entries(map).map(([k, l]) => `<button type="button" class="j-chip" data-val="${esc(k)}" aria-pressed="false">${esc(l)}</button>`).join('')}</div>`
-  const sheet = openSheet({ title: 'Welcome to Joner Football', subtitle: 'Three quick questions so we can point you to the right training.' })
+  // Answered before 3 Nov 2026 but no mobile: only the mobile is asked.
+  const only = q.answered && q.needMobile
+  const mobileField = q.needMobile ? `<label class="j-field full"><span>Your mobile number</span><input class="j-input" data-wh-in="mobile" type="tel" autocomplete="tel" inputmode="tel" maxlength="20" placeholder="04xx xxx xxx"><small class="muted small" style="font-weight:400;display:block;margin-top:4px">So our coaches can reach you. Outside Australia? Start with + and your country code.</small></label>` : ''
+  const sheet = openSheet({ title: only ? 'One quick thing' : 'Welcome to Joner Football', subtitle: only ? 'Add your mobile number so our coaches can reach you.' : 'A few quick questions so we can point you to the right training.' })
+  if (only) {
+    sheet.body.innerHTML = `${mobileField}<p class="ja-small ja-muted" data-wh-err role="alert" hidden></p>`
+    sheet.foot.innerHTML = '<button type="button" class="ja-btn ja-btn-red" data-wh-go>Save</button>'
+    const go = sheet.foot.querySelector('[data-wh-go]')
+    go.addEventListener('click', async () => {
+      const err = sheet.body.querySelector('[data-wh-err]')
+      const mobile = sheet.body.querySelector('[data-wh-in="mobile"]').value.trim()
+      if (mobile.replace(/\D/g, '').length < 8) { err.textContent = 'Enter your mobile number.'; err.hidden = false; return }
+      go.disabled = true
+      const r = await api('/api/jfp-account', { action: 'saveWhere', mobile })
+      go.disabled = false
+      if (!r.ok) { err.textContent = r.data?.error || 'Could not save that. Try again.'; err.hidden = false; return }
+      D.askWhere = null
+      closeSheet()
+      toast('Thanks. Saved.')
+    })
+    return
+  }
   sheet.body.innerHTML = `
     <div class="j-field full"><span>Where are you based?</span>${chips('place', q.places)}</div>
     <label class="j-field full" data-wh-show="sydney nsw" hidden><span>Suburb <span class="muted">(optional)</span></span><input class="j-input" data-wh-in="area" maxlength="60" autocomplete="address-level2" placeholder="For example Belrose"></label>
     <label class="j-field full" data-wh-show="australia" hidden><span>Which state?</span><select class="j-select" data-wh-in="state"><option value="">Choose</option>${q.states.map((s) => `<option>${esc(s)}</option>`).join('')}</select></label>
     <label class="j-field full" data-wh-show="overseas" hidden><span>Which country?</span><input class="j-input" data-wh-in="country" maxlength="60" autocomplete="country-name" value="${esc(guess)}"></label>
     <div class="j-field full"><span>Who is the account for?</span>${chips('forWho', q.forWho)}</div>
+    ${mobileField}
     <label class="j-field full"><span>How did you hear about Joner Football? <span class="muted">(optional)</span></span><select class="j-select" data-wh-in="heard"><option value="">Choose</option>${Object.entries(q.heard).map(([k, l]) => `<option value="${esc(k)}">${esc(l)}</option>`).join('')}</select></label>
     <p class="ja-small ja-muted" data-wh-err role="alert" hidden></p>`
   sheet.foot.innerHTML = '<button type="button" class="ja-btn ja-btn-red" data-wh-go>Continue</button>'
@@ -38,10 +60,11 @@ export function askWhere(D, { book } = {}) {
   go.addEventListener('click', async () => {
     const err = $('[data-wh-err]')
     const val = (k) => $(`[data-wh-in="${k}"]`).value.trim()
-    const miss = !st.place ? 'Pick where you are based.' : st.place === 'overseas' && !val('country') ? 'Which country are you in?' : !st.forWho ? 'Pick who the account is for.' : ''
+    const mobile = q.needMobile ? val('mobile') : ''
+    const miss = !st.place ? 'Pick where you are based.' : st.place === 'overseas' && !val('country') ? 'Which country are you in?' : !st.forWho ? 'Pick who the account is for.' : q.needMobile && mobile.replace(/\D/g, '').length < 8 ? 'Enter your mobile number.' : ''
     if (miss) { err.textContent = miss; err.hidden = false; return }
     go.disabled = true
-    const r = await api('/api/jfp-account', { action: 'saveWhere', place: st.place, forWho: st.forWho, area: val('area'), state: val('state'), country: val('country'), heard: val('heard') })
+    const r = await api('/api/jfp-account', { action: 'saveWhere', place: st.place, forWho: st.forWho, area: val('area'), state: val('state'), country: val('country'), heard: val('heard'), ...(mobile ? { mobile } : {}) })
     go.disabled = false
     if (!r.ok) { err.textContent = r.data?.error || 'Could not save that. Try again.'; err.hidden = false; return }
     D.askWhere = null

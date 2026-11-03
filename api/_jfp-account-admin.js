@@ -66,10 +66,21 @@ export async function viewAccount(email, deps = {}) {
   return { ...account, state: accountState(account), references: Object.fromEntries(Object.entries(refs).map(([k, v]) => [k, v.length])) }
 }
 
-export async function markReviewed(email, by) {
+// Followed up (Lee, 3 Nov 2026): Lee or Ligia texted, emailed or called them,
+// so the account leaves To follow up for the Followed up tab. how: text,
+// email, call or other; note: a line for the other person.
+export const FOLLOW_HOW = { text: 'Texted', email: 'Emailed', call: 'Called', other: 'Followed up' }
+export async function markReviewed(email, by, { how = '', note = '' } = {}) {
   const account = await accountOf(email); if (!account) return { ok: false, status: 404, error: 'Account not found.' }
-  const next = { ...account, reviewedAt: new Date().toISOString(), reviewedBy: clean(by, 120) }
-  await saveAccount(next); await audit({ by, action: 'account.review', target: email, after: { reviewedAt: next.reviewedAt } }); return { ok: true, account: next }
+  const next = { ...account, reviewedAt: new Date().toISOString(), reviewedBy: clean(by, 120), followHow: FOLLOW_HOW[how] ? how : 'other', followNote: clean(note, 300) }
+  await saveAccount(next); await audit({ by, action: 'account.review', target: email, after: { reviewedAt: next.reviewedAt, how: next.followHow } }); return { ok: true, account: next }
+}
+// Back to To follow up.
+export async function unmarkReviewed(email, by) {
+  const account = await accountOf(email); if (!account) return { ok: false, status: 404, error: 'Account not found.' }
+  const next = { ...account }
+  for (const k of ['reviewedAt', 'reviewedBy', 'followHow', 'followNote']) delete next[k]
+  await saveAccount(next); await audit({ by, action: 'account.unreview', target: email }); return { ok: true, account: next }
 }
 export async function archiveAccount(email, by) { return setArchived(email, by, true) }
 export async function restoreAccount(email, by) { return setArchived(email, by, false) }

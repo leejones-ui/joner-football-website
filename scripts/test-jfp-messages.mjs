@@ -240,7 +240,7 @@ await test('text one family from the portal: exact words, from the verified rout
   // they have any Term 4 row, straight after Accept, Trial or Decline.
   const fam = client()
   assert.equal((await fam.call('/api/jfp-access', { password: 'term4' })).status, 200)
-  const st = await fam.call('/api/jfp-auth', { action: 'start', email: 'asker@example.com', audience: 'parent' })
+  const st = await fam.call('/api/jfp-auth', { action: 'start', email: 'asker@example.com', audience: 'parent', mobile: '0412 345 678' })
   const pcode = (await emails()).filter((e) => e.to.includes('asker@example.com') && /code/i.test(e.subject)).at(-1).subject.match(/(\d{6})/)[1]
   assert.equal((await fam.call('/api/jfp-auth', { action: 'verify', challenge: st.data.challenge, code: pcode })).status, 200)
   const ag = (await lee.call('/api/jfp-portal-data', { action: 'saveGroup', group: { day: 'Friday', time: '5:00pm', location: 'Belrose HQ', coachId: 'sam', capacity: 8, mode: 'application' } })).data.group.id

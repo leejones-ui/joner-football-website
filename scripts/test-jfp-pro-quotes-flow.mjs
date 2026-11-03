@@ -31,7 +31,7 @@ const at = async () => (await fetch(`${B}/__airtable`)).json()
 const kv = async (cmd) => (await fetch(`${B}/__kv?cmd=${encodeURIComponent(JSON.stringify(cmd))}`)).text()
 const patch = async (id, fields) => { const r = await fetch(`${B}/__patch?table=term4&id=${id}&fields=${encodeURIComponent(JSON.stringify(fields))}`); assert.equal(r.status, 200) }
 async function signIn(c, email, audience = 'parent') {
-  const s = await c.call('/api/jfp-auth', { action: 'start', email, audience })
+  const s = await c.call('/api/jfp-auth', { action: 'start', email, audience, mobile: '0412 345 678' })
   assert.equal(s.status, 200, JSON.stringify(s.data))
   const code = (await emails()).filter((e) => e.to.includes(email) && /sign-in code/.test(e.subject)).at(-1).subject.match(/(\d{6})/)[1]
   assert.equal((await c.call('/api/jfp-auth', { action: 'verify', challenge: s.data.challenge, code })).status, 200)

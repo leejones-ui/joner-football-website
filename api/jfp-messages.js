@@ -422,6 +422,17 @@ async function unverifyRoute(res, principal) {
 // offering a trial or declining): the parent's own mobile and email from the
 // request, whether or not they have a Term 4 row yet. null: request not found.
 async function quickRows(body, fresh = true) {
+  // A new account with no player on file (New accounts, Lee, 3 Nov 2026):
+  // the mobile they gave when they signed up, else the one on a profile.
+  if (body.accountEmail) {
+    const email = clean(body.accountEmail, 120).toLowerCase()
+    const { accountOf } = await import('./_jfp-account-open.js')
+    const a = await accountOf(email)
+    if (!a) return null
+    const { allProfiles } = await import('./_jfp-profiles.js')
+    const prof = (await allProfiles().catch(() => [])).find((p) => p.emails.includes(email) && p.parentMobile)
+    return [{ id: '', player: '', parent: prof?.parentName || '', email, phone: a.mobile || prof?.parentMobile || '', ownContact: false }]
+  }
   if (body.requestId) {
     const a = await getApplication(body.requestId)
     if (!a) return null
@@ -486,6 +497,7 @@ async function quickText(res, principal, body) {
   event(m, principal.email, 'written and sent from the portal')
   await saveMsg(m)
   await audit({ by: principal.email, action: 'message.quicktext', target: m.id, after: { players: m.players, to: m.target.ref } })
+  if (body.accountEmail) { const { markReviewed } = await import('./_jfp-account-admin.js'); await markReviewed(email, principal.email, { how: 'text', note: 'Texted from New accounts' }).catch(() => {}) }
   return res.status(200).json({ success: true, message: view(m), routeVerified: Boolean(route.verified), hoursOpen: textHoursOpen(), to: maskPhone(ph.phone) })
 }
 

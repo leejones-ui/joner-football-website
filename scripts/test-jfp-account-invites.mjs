@@ -14,7 +14,7 @@ function client() {
 }
 const emails = async () => (await fetch(B + '/__emails')).json()
 async function signIn(call, email, audience) {
-  const st = await call('/api/jfp-auth', { action: 'start', audience, email })
+  const st = await call('/api/jfp-auth', { action: 'start', audience, email, mobile: '0412 345 678' })
   const code = (await emails()).filter((e) => e.to.includes(email) && /sign-in code/.test(e.subject)).at(-1)?.subject.match(/(\d{6})/)?.[1]
   return call('/api/jfp-auth', { action: 'verify', challenge: st.data.challenge, code })
 }

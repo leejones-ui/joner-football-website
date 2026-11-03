@@ -11,7 +11,7 @@ import { getConfig, kvCommand } from './_jfp-store.js'
 import { startChallenge, verifyChallenge, openSession, cookieHeader, sessionFor, closeSession, roleFor, sameOrigin, clientIp, staffPrincipal } from './_jfp-people.js'
 import { sendSignInCode } from './_jfp-email.js'
 import { noteAccount, accountOf } from './_jfp-account-open.js'
-import { connectionPlace } from './_jfp-account-where.js'
+import { connectionPlace, cleanMobile, MOBILE_ERROR } from './_jfp-account-where.js'
 import { addAccountToBrevo } from './_jfp-brevo-account.js'
 import { loadRoster, familyFor } from './_jfp-airtable.js'
 import { playerLoginOf } from './_jfp-player-logins.js'
@@ -74,6 +74,12 @@ export default async function handler(req, res) {
       // made every new account fail with 'timeout-or-duplicate', 27 Oct 2026.)
       const isNew = audience === 'parent' && email.includes('@') && !(await accountOf(email)) && !(await knownFamily(email, config))
       if (isNew && throwawayEmail(email)) return fail(res, 400, 'Please use your everyday email address. Throwaway inboxes cannot open an account.', { code: 'throwaway' })
+      // A new account needs a valid mobile too (Lee, 3 Nov 2026). Asked here,
+      // before the human check, so the form can ask and send again. Kept for
+      // an hour until the code is used; the account record takes it.
+      const mobile = isNew ? cleanMobile(body.mobile) : ''
+      if (isNew && !mobile) return fail(res, 400, body.mobile ? MOBILE_ERROR : 'New here? Add your mobile number too, so our coaches can reach you.', { code: 'mobile' })
+      if (mobile) await kvCommand(['SET', `jfp:signup-mobile:${email}`, mobile, 'EX', '3600'])
       // Strict only once the reCAPTCHA keys are proven to work (JFP_SIGNUP_STRICT=true).
       // On 27 Oct 2026 Google rejected nearly every token from the site
       // ('invalid-input-response': the page key and the server secret do not
@@ -106,7 +112,8 @@ export default async function handler(req, res) {
       if (v.audience === 'staff' && !roleFor(v.email, config)) return fail(res, 401, 'That code is not right or has expired. Ask for a new one.')
       if (v.audience === 'parent' && !(await accountOf(v.email))) {
         const known = await knownFamily(v.email, config)
-        const a = await noteAccount({ email: v.email, ip: clientIp(req), known, from: connectionPlace(req) })
+        const mobile = known ? '' : String((await kvCommand(['GET', `jfp:signup-mobile:${v.email}`]).catch(() => '')) || '')
+        const a = await noteAccount({ email: v.email, ip: clientIp(req), known, from: connectionPlace(req), mobile })
         if (a.limited) return fail(res, 429, 'Too many new accounts from this connection today. Try again tomorrow, or contact us.', { code: 'signup' })
         if (a.created) await addAccountToBrevo({ email: v.email, known })
       }

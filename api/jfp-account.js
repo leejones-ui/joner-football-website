@@ -346,7 +346,7 @@ async function overview(res, parent, body = {}, opts = {}) {
     bookUrl: '/jfp-booking/',
     // Where are you based (Lee, 20 Oct 2026): asked once of someone new to us.
     where: account?.where ? { place: account.where.place, away: isAway(account.where) } : null,
-    askWhere: !opts.player && !parent.viewAs && shouldAsk(account) ? { places: PLACES, states: STATES, forWho: FOR, heard: HEARD, country: account.from?.country || '' } : null,
+    askWhere: !opts.player && !parent.viewAs && shouldAsk(account) ? { places: PLACES, states: STATES, forWho: FOR, heard: HEARD, country: account.from?.country || '', answered: Boolean(account.where), needMobile: !account.mobile } : null,
     nextTerm: nextTerm.length ? { name: nt.name, players: nextTerm } : null,
     keep,
     termStart: config.termStart,

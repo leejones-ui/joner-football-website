@@ -37,7 +37,7 @@ async function codeFor(email) {
   return list.at(-1).subject.match(/(\d{6})/)[1]
 }
 async function signIn(c, email, audience = 'parent') {
-  const s = await c.call('/api/jfp-auth', { action: 'start', email, audience })
+  const s = await c.call('/api/jfp-auth', { action: 'start', email, audience, mobile: '0412 345 678' })
   assert.equal(s.status, 200, JSON.stringify(s.data))
   const v = await c.call('/api/jfp-auth', { action: 'verify', challenge: s.data.challenge, code: await codeFor(email) })
   assert.equal(v.status, 200, JSON.stringify(v.data))

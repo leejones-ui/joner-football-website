@@ -368,7 +368,7 @@ function setAbsCount(n) { const before = P.absNew || 0; P.absNew = Number(n) || 
 // booked. Opening it clears the count. Add to a group is the normal add,
 // filled in from their account.
 async function renderNewAccounts(keep = false) {
-  const show = P.naShow || 'new'
+  const show = P.naShow || 'todo'
   const d = keep && P.naData?.show === show ? P.naData : (P.naData = await need(await post('newAccounts', { show })))
   if (P.acctNew?.count) { P.acctNew = { count: 0, latest: [] }; renderNav() }
   const ago = (iso) => { const m = Math.round((Date.now() - Date.parse(iso)) / 60000); return m < 60 ? `${Math.max(1, m)} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) }
@@ -388,12 +388,13 @@ async function renderNewAccounts(keep = false) {
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px">
       <span class="ps-tag">${T.thisWeek} new this week</span><span class="ps-tag">${T.newToUs} new to us in all</span><span class="ps-tag">${T.notBooked} not booked</span><span class="ps-tag">${T.away || 0} outside Sydney</span>
     </div>
-    <div class="j-chips" style="margin:0 0 12px">${[['new', 'New to us'], ['away', 'Outside Sydney'], ['all', 'All accounts']].map(([k, l]) => `<button type="button" class="j-chip" data-na-show="${k}" aria-pressed="${show === k}">${l}</button>`).join('')}</div>
+    <div class="j-chips" style="margin:0 0 6px">${[['todo', 'To follow up', T.todo], ['followed', 'Followed up', T.followed], ['away', 'Outside Sydney', T.away], ['all', 'All accounts']].map(([k, l, n]) => `<button type="button" class="j-chip" data-na-show="${k}" aria-pressed="${show === k}">${l}${n != null ? ` (${n})` : ''}</button>`).join('')}</div>
+    <p class="muted small" style="margin:0 0 12px">${{ todo: 'New people in Sydney with no session yet. Text or email them from here, or press Done once you have been in touch: they move to Followed up. Anyone who books moves there by themselves.', followed: 'Contacted by you or Ligia, or booked. Nothing is lost: Move back puts them on To follow up again.', away: 'Outside Sydney. They get the Joner Football app email by themselves within the hour of saying where they are (Program > Follow ups).', all: 'Every account, known families included.' }[show] || ''}</p>
     <div class="ps-table-wrap"><table class="ps-table"><thead><tr><th>Account</th><th>Players</th><th data-col="pay">Signed up</th><th class="ps-end"><span class="sr-only">Actions</span></th></tr></thead><tbody>
-    ${d.accounts.map((a, i) => `<tr><td data-col="who"><b>${esc(a.parent || a.email)}</b>${a.isNew ? ' <span class="ps-badge red"><i></i>New</span>' : ''}${a.kind === 'family' ? ' <span class="ps-tag">Known family</span>' : ''}<span class="ps-sub">${esc(a.email)}${a.mobile ? ` · ${esc(a.mobile)}` : ''}</span>${whereCell(a)}</td>
+    ${d.accounts.map((a, i) => `<tr><td data-col="who"><b>${esc(a.parent || a.email)}</b>${a.isNew ? ' <span class="ps-badge red"><i></i>New</span>' : ''}${a.kind === 'family' ? ' <span class="ps-tag">Known family</span>' : ''}<span class="ps-sub">${esc(a.email)} · ${a.mobile ? esc(a.mobile) : '<span style="color:#a15c00">no mobile</span>'}</span>${whereCell(a)}${naStatus(a)}</td>
       <td data-col="group">${a.players.map((p) => `<div>${esc(p.name)}${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}${p.session ? ` <span class="muted small">· ${esc(p.session)}</span>` : ''}${p.club || p.level ? `<span class="ps-sub">${esc([p.club, p.level].filter(Boolean).join(' · '))}</span>` : ''}</div>`).join('') || '<span class="muted">None added yet</span>'}<div style="margin-top:4px">${tag(a)}</div></td>
       <td data-col="pay" class="small" style="white-space:nowrap">${esc(ago(a.createdAt))}${a.lastSignIn ? `<span class="ps-sub">Last in ${esc(ago(a.lastSignIn))}</span>` : ''}</td>
-      <td class="ps-end ps-keep"><button type="button" class="j-btn j-btn-line j-btn-sm" data-na-actions="${i}" aria-label="Account actions for ${esc(a.email)}">Actions ▾</button>${a.players.filter((p) => !p.session).map((p, j) => `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-na-add="${i}:${j}" style="margin:2px 0">Add ${esc(p.name.split(' ')[0])} to a group</button>`).join('<br>')}</td></tr>`).join('') || `<tr><td colspan="4"><div class="ps-empty">${show === 'new' ? 'No new accounts yet. They show here as soon as someone signs up.' : show === 'away' ? 'Nobody from outside Sydney yet.' : 'No accounts yet.'}</div></td></tr>`}
+      <td class="ps-end ps-keep">${a.tab === 'todo' ? `<div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;margin-bottom:4px">${a.mobile ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-na-text="${i}">Text</button>` : ''}<button type="button" class="j-btn j-btn-dark j-btn-sm" data-na-email="${i}">Email</button><button type="button" class="j-btn j-btn-line j-btn-sm" data-na-done="${i}" title="Move to Followed up">Done</button></div>` : a.tab === 'followed' && a.reviewedAt ? `<div style="margin-bottom:4px"><button type="button" class="j-btn j-btn-line j-btn-sm" data-na-back="${i}">Move back</button></div>` : ''}<button type="button" class="j-btn j-btn-line j-btn-sm" data-na-actions="${i}" aria-label="Account actions for ${esc(a.email)}">Actions ▾</button>${a.players.filter((p) => !p.session).map((p, j) => `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-na-add="${i}:${j}" style="margin:2px 0">Add ${esc(p.name.split(' ')[0])} to a group</button>`).join('<br>')}</td></tr>`).join('') || `<tr><td colspan="4"><div class="ps-empty">${show === 'todo' ? 'Nobody to follow up. New accounts show here as soon as someone signs up.' : show === 'followed' ? 'Nobody followed up yet.' : show === 'away' ? 'Nobody from outside Sydney yet.' : 'No accounts yet.'}</div></td></tr>`}
     </tbody></table></div>`
   view().querySelectorAll('[data-na-show]').forEach((b) => b.addEventListener('click', () => { P.naShow = b.dataset.naShow; renderNewAccounts() }))
   view().querySelectorAll('[data-na-add]').forEach((b) => b.addEventListener('click', () => {
@@ -405,6 +406,65 @@ async function renderNewAccounts(keep = false) {
     const a = d.accounts[Number(b.dataset.naActions)]
     accountActionsMenu(b, a)
   }))
+  const at = (sel, fn) => view().querySelectorAll(`[${sel}]`).forEach((b) => b.addEventListener('click', () => fn(d.accounts[Number(b.getAttribute(sel))])))
+  at('data-na-text', textAccount)
+  at('data-na-email', emailAccount)
+  at('data-na-done', followedUpBox)
+  at('data-na-back', async (a) => { try { await accountAdmin('unreview', { email: a.email }); toast('Moved back to To follow up'); renderNewAccounts() } catch (e) { toast(e.message) } })
+}
+
+// What happened with them so far: who followed up, and the automatic emails.
+const naDay = (iso) => new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
+const staffFirst = (email) => ({ 'leejones@jonerfootball.com': 'Lee', 'ligia@jonerfootball.com': 'Ligia' })[String(email).toLowerCase()] || String(email).split('@')[0]
+function naStatus(a) {
+  const bits = []
+  if (a.reviewedAt) bits.push(`<span class="ps-badge green"><i></i>${esc({ text: 'Texted', email: 'Emailed', call: 'Called' }[a.followHow] || 'Followed up')} ${esc(naDay(a.reviewedAt))}${a.reviewedBy ? ` by ${esc(staffFirst(a.reviewedBy))}` : ''}</span>${a.followNote && !/^(Texted|Emailed)/.test(a.followNote) ? `<span class="ps-sub">${esc(a.followNote)}</span>` : ''}`)
+  if (a.autoEmailAt) bits.push(`<span class="ps-tag">${a.tab === 'away' ? 'App email' : 'Finish setting up email'} sent ${esc(naDay(a.autoEmailAt))}</span>`)
+  return bits.length ? `<div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap;align-items:center">${bits.join('')}</div>` : ''
+}
+
+// Suggested words, in Lee's voice (plain, no dashes). Lee or Ligia change them before sending.
+function naWords(a) {
+  const first = (a.parent || '').trim().split(/\s+/)[0] || 'there'
+  const me = a.where?.forWho === 'Me, I play'
+  const ask = me ? 'How old are you and what level do you play? I can point you to the right group, and you can book a trial session first if you want to try it.' : 'How old is your player and what level do they play? I can point you to the right group, and you can book a trial session first if you want to try it.'
+  return {
+    text: `Hi ${first},\n\nIt's Lee from Joner Football. Thanks for making an account with us.\n\n${ask}\n\nJust reply here.\nJoner ⚽️`,
+    subject: 'Your Joner Football account',
+    email: `Hi ${first}. It's Lee from Joner Football, thanks for making an account with us.\n\n${ask}\n\nYou can see every session, coach and place left in your account. Any questions, just reply to this email and Ligia will help.`,
+  }
+}
+function textAccount(a) {
+  textComposer({ modal, toast, accountEmail: a.email, parent: a.parent, mobile: a.mobile, text: naWords(a).text, title: `Text ${a.parent || a.email}`, to: a.parent || a.email, onSent: () => renderNewAccounts() })
+}
+function emailAccount(a) {
+  const w = naWords(a)
+  const box = modal(`<h2 style="margin-bottom:4px">Email ${esc(a.parent || a.email)}</h2>
+    <p class="muted small" style="margin-bottom:12px">To ${esc(a.email)}, from Joner Football. Replies go to Ligia. Check the words: this is exactly what they get, with a Finish setting up button under it.</p>
+    <label class="j-field"><span>Subject</span><input class="j-input" id="ne-subj" maxlength="120" value="${esc(w.subject)}"></label>
+    <label class="j-field"><span>The email</span><textarea class="j-textarea" id="ne-text" rows="10" maxlength="3000">${esc(w.email)}</textarea></label>
+    <p class="j-err" id="ne-err" hidden></p>
+    <div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="ne-go">Send email</button></div>`, { wide: true })
+  box.querySelector('#ne-go').addEventListener('click', async (e) => {
+    const btn = e.currentTarget; btn.disabled = true; btn.textContent = 'Sending'
+    try {
+      await accountAdmin('emailAccount', { email: a.email, subject: box.querySelector('#ne-subj').value, text: box.querySelector('#ne-text').value, cta: 'account' })
+      closeModal(); toast('Email sent. Moved to Followed up.'); renderNewAccounts()
+    } catch (x) { btn.disabled = false; btn.textContent = 'Send email'; const er = box.querySelector('#ne-err'); er.textContent = x.message; er.hidden = false }
+  })
+}
+// Done: how they were contacted and a line for the other person.
+function followedUpBox(a) {
+  const st = { how: 'call' }
+  const box = modal(`<h2 style="margin-bottom:4px">Followed up: ${esc(a.parent || a.email)}</h2>
+    <p class="muted small" style="margin-bottom:12px">They move to Followed up. Nobody is messaged.</p>
+    <div class="j-field"><span>How</span><div class="j-chips" id="fu-how">${[['call', 'Called'], ['text', 'Texted from my phone'], ['email', 'Emailed'], ['other', 'Other']].map(([k, l]) => `<button type="button" class="j-chip" data-v="${k}" aria-pressed="${k === st.how}">${l}</button>`).join('')}</div></div>
+    <label class="j-field"><span>Note <span class="muted">(optional)</span></span><input class="j-input" id="fu-note" maxlength="300" placeholder="e.g. Booking a trial for Tuesday"></label>
+    <div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="fu-go">Done</button></div>`)
+  box.querySelector('#fu-how').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (!b) return; st.how = b.dataset.v; box.querySelectorAll('#fu-how [data-v]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))) })
+  box.querySelector('#fu-go').addEventListener('click', async () => {
+    try { await accountAdmin('review', { email: a.email, how: st.how, note: box.querySelector('#fu-note').value }); closeModal(); toast('Moved to Followed up'); renderNewAccounts() } catch (x) { toast(x.message) }
+  })
 }
 
 async function accountAdmin(op, body = {}) {
@@ -416,7 +476,12 @@ function accountActionsMenu(anchor, a) {
   const archived = a.accountState === 'archived'
   menu(anchor, [
     { key: 'view', label: 'View account', run: async () => { try { const d = await accountAdmin('view', { email: a.email }); const refs = Object.entries(d.account.references || {}).filter(([, n]) => n).map(([k, n]) => `${k}: ${n}`).join(' · ') || 'No linked history found'; modal(`<h2>Account</h2><p><b>${esc(d.account.email)}</b></p><p class="muted small">State: ${esc(d.account.state)} · ${esc(refs)}</p><p class="muted small">Players: ${(d.account.players || []).map((p) => esc(p.name || p.key)).join(', ') || 'none'}</p><div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Close</button></div>`) } catch (e) { toast(e.message) } } },
-    { key: 'review', label: 'Mark reviewed', run: async () => { try { await accountAdmin('review', { email: a.email }); toast('Account marked reviewed'); renderNewAccounts() } catch (e) { toast(e.message) } } },
+    ...(a.mobile ? [{ key: 'text', label: 'Text them', run: () => textAccount(a) }] : []),
+    { key: 'emailthem', label: 'Email them', run: () => emailAccount(a) },
+    a.reviewedAt
+      ? { key: 'unreview', label: 'Move back to To follow up', run: async () => { try { await accountAdmin('unreview', { email: a.email }); toast('Moved back to To follow up'); renderNewAccounts() } catch (e) { toast(e.message) } } }
+      : { key: 'review', label: 'Mark followed up', run: () => followedUpBox(a) },
+    '-',
     { key: 'email', label: 'Change contact email', run: () => changeAccountEmail(a) },
     { key: 'family', label: 'Add this parent to a family', run: () => joinAccountFamily(a) },
     { key: 'link', label: 'Link existing player', run: () => linkAccountPlayer(a) },
@@ -430,21 +495,51 @@ function changeAccountEmail(a) {
   const box = modal(`<h2>Change contact email</h2><p class="muted small">The old address is retained as an archived redirect. Existing history is not changed.</p><label class="j-field"><span>New email</span><input class="j-input" id="ae-email" type="email"></label><p class="j-err" id="ae-err" hidden></p><div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="ae-go">Change email</button></div>`)
   box.querySelector('#ae-go').addEventListener('click', async () => { try { await accountAdmin('changeEmail', { email: a.email, newEmail: box.querySelector('#ae-email').value }); closeModal(); toast('Contact email changed'); renderNewAccounts() } catch (e) { box.querySelector('#ae-err').textContent = e.message; box.querySelector('#ae-err').hidden = false } })
 }
+// Search, not a Player Key (Lee, 3 Nov 2026: "we're trying to search players
+// and nothing is happening"). For a second parent, Add this parent to a family
+// is usually the better choice: it brings all the family's children.
 function linkAccountPlayer(a) {
-  const box = modal(`<h2>Link existing player</h2><p class="muted small">Enter the exact Player Key from the Players tab. A player already linked to another account cannot be linked here; merge accounts instead.</p><label class="j-field"><span>Player key</span><input class="j-input" id="al-key"></label><p class="j-err" id="al-err" hidden></p><div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="al-go">Link player</button></div>`)
-  box.querySelector('#al-go').addEventListener('click', async () => { try { await accountAdmin('linkPlayer', { email: a.email, profileKey: box.querySelector('#al-key').value.trim() }); closeModal(); toast('Player linked'); renderNewAccounts() } catch (e) { box.querySelector('#al-err').textContent = e.message; box.querySelector('#al-err').hidden = false } })
+  const box = modal(`<h2>Link an existing player to ${esc(a.parent || a.email)}</h2><p class="muted small">Find the player by name, or by a parent's name or email. For a second parent, Add this parent to a family links every child at once.</p><label class="j-field"><span>Player or parent</span><input class="j-input" id="al-q" autocomplete="off" placeholder="e.g. Victoria"></label><div id="al-list" class="af-list"></div><p class="j-err" id="al-err" hidden></p><div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button></div>`)
+  const err = (m) => { box.querySelector('#al-err').textContent = m; box.querySelector('#al-err').hidden = false }
+  familyFinder(box.querySelector('#al-q'), box.querySelector('#al-list'), a, (d, list) => {
+    const players = d.families.flatMap((f) => f.players.map((p) => ({ ...p, f })))
+    list.innerHTML = players.map((p, i) => p.linked
+      ? `<div class="af-fam" style="cursor:default"><b>${esc(p.name)}</b><span class="muted small">Already linked to this account${p.session ? ` · ${esc(p.session)}` : ''}</span></div>`
+      : `<button type="button" class="af-fam" data-al="${i}"><b>${esc(p.name)}</b><span class="muted small">${p.session ? `${esc(p.session)} · ` : p.place ? 'has a place this term · ' : ''}${p.f.emails.map(esc).join(' · ')}</span></button>`).join('')
+    list.querySelectorAll('[data-al]').forEach((b) => b.addEventListener('click', async () => {
+      const p = players[Number(b.dataset.al)]
+      if (!await confirmBox(`Link <b>${esc(p.name)}</b> to <b>${esc(a.email)}</b>? Nobody is emailed.`, { ok: 'Link player', over: true })) return
+      try { await accountAdmin('linkPlayer', { email: a.email, profileKey: p.key }); closeModal(); toast('Player linked'); renderNewAccounts() } catch (x) { err(x.message) }
+    }))
+  })
+}
+// One search box for both: every keystroke asks the server, and only the
+// newest answer is shown (an older, slower one never replaces it).
+function familyFinder(input, list, a, draw) {
+  let t = 0, n = 0
+  const run = async () => {
+    const q = input.value.trim(), mine = ++n
+    if (q.length < 2) { list.innerHTML = ''; return }
+    list.innerHTML = '<p class="muted small">Searching…</p>'
+    try {
+      const d = await accountAdmin('familySearch', { q, email: a.email })
+      if (mine !== n) return
+      if (!d.families.length) { list.innerHTML = '<p class="muted small">Nobody found. Try part of the first name or surname.</p>'; return }
+      draw(d, list)
+    } catch (x) { if (mine === n) list.innerHTML = `<p class="j-err">${esc(x.message)}</p>` }
+  }
+  input.addEventListener('input', () => { clearTimeout(t); t = setTimeout(run, 250) })
+  input.focus()
 }
 // Second parent (Lee, 29 Oct 2026): both parents keep their own sign-in and see the same children.
 function joinAccountFamily(a) {
   const box = modal(`<h2>Add ${esc(a.parent || a.email)} to a family</h2><p class="muted small">Both parents keep their own sign-in and see the same children. If this parent already added the same child, the copy is folded into the family's player and their answers only fill blanks.</p><label class="j-field"><span>Find the family: player name or parent email</span><input class="j-input" id="af-q" autocomplete="off" placeholder="e.g. Casella"></label><div id="af-list" class="af-list"></div><p class="j-err" id="af-err" hidden></p><div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button></div>`)
   const err = (m) => { box.querySelector('#af-err').textContent = m; box.querySelector('#af-err').hidden = false }
-  let t = 0
-  box.querySelector('#af-q').addEventListener('input', (e) => {
-    clearTimeout(t); t = setTimeout(async () => {
-      try {
-        const d = await accountAdmin('familySearch', { q: e.target.value.trim(), email: a.email })
-        const list = box.querySelector('#af-list')
-        list.innerHTML = d.families.map((f, i) => `<button type="button" class="af-fam" data-af="${i}"><b>${f.players.map((p) => esc(p.name)).join(', ')}</b><span class="muted small">${f.emails.map(esc).join(' · ')}${f.players.some((p) => p.place) ? ' · has a place this term' : ''}</span></button>`).join('') || (e.target.value.trim().length > 1 ? '<p class="muted small">No family found.</p>' : '')
+  familyFinder(box.querySelector('#af-q'), box.querySelector('#af-list'), a, (d, list) => {
+        const sess = (f) => f.players.map((p) => p.session).filter(Boolean)[0] || ''
+        list.innerHTML = d.families.map((f, i) => f.mine
+          ? `<div class="af-fam" style="cursor:default;border-color:#1f6b3a"><b>${f.players.map((p) => esc(p.name)).join(', ')}</b><span class="muted small">Already in this family${sess(f) ? ` · ${esc(sess(f))}` : ''}. Nothing to do.</span></div>`
+          : `<button type="button" class="af-fam" data-af="${i}"><b>${f.players.map((p) => esc(p.name)).join(', ')}</b><span class="muted small">${f.emails.map(esc).join(' · ')}${sess(f) ? ` · ${esc(sess(f))}` : f.players.some((p) => p.place) ? ' · has a place this term' : ''}</span></button>`).join('')
         list.querySelectorAll('[data-af]').forEach((b) => b.addEventListener('click', async () => {
           const f = d.families[Number(b.dataset.af)]
           try {
@@ -454,10 +549,7 @@ function joinAccountFamily(a) {
             await accountAdmin('joinFamily', { email: a.email, familyEmail: f.email, confirm: true }); closeModal(); toast('Parent added to the family'); renderNewAccounts()
           } catch (x) { err(x.message) }
         }))
-      } catch (x) { err(x.message) }
-    }, 250)
   })
-  box.querySelector('#af-q').focus()
 }
 function mergeAccountInto(target) {
   const box = modal(`<h2>Merge a duplicate account</h2><p class="muted small">Use this only when one person made two accounts. For a second parent, use Add this parent to a family. The source account is archived after the merge. Term 4 rows, payments, waivers, sessions and audit history are preserved.</p><label class="j-field"><span>Source account email</span><input class="j-input" id="am-email" type="email"></label><p class="j-err" id="am-err" hidden></p><div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="am-preview">Preview merge</button></div>`)

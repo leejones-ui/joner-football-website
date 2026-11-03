@@ -42,7 +42,7 @@ function client() {
 }
 const emails = async () => (await fetch(`${B}/__emails`)).json()
 async function signIn(c, email, audience) {
-  const s = await c.call('/api/jfp-auth', { action: 'start', email, audience })
+  const s = await c.call('/api/jfp-auth', { action: 'start', email, audience, mobile: '0412 345 678' })
   assert.equal(s.status, 200, JSON.stringify(s.data))
   const mail = (await emails()).filter((e) => e.to.includes(email) && /sign-in code/.test(e.subject)).at(-1)
   assert.ok(mail, `a code email went to ${email}`)

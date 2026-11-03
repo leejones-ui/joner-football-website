@@ -82,7 +82,7 @@ import { feePdfAttachment, docForPayreq, docForInvoice, pdfDownload } from './_j
 import { invoiceRefOf } from './_jfp-bank-match.js'
 // Saved card or bank account, auto-charge after each session (claude/card-on-file).
 import { accountAlerts, newAccountsData } from './_jfp-new-accounts.js'
-import { viewAccount, allAccountView, linkExistingPlayer, mergeAccounts, mergePreview, changeContactEmail, markReviewed, archiveAccount, restoreAccount, deleteEmptyAccount, joinPlan, joinFamily, duplicateProfiles, foldProfile } from './_jfp-account-admin.js'
+import { viewAccount, allAccountView, linkExistingPlayer, mergeAccounts, mergePreview, changeContactEmail, markReviewed, unmarkReviewed, archiveAccount, restoreAccount, deleteEmptyAccount, joinPlan, joinFamily, duplicateProfiles, foldProfile } from './_jfp-account-admin.js'
 import { followUpsAll, saveFollowUp, cameFrom, trialStage, pipelineCounts, STEPS, OUTCOMES } from './_jfp-trial-track.js'
 import { sessionValueAction } from './_jfp-session-value.js'
 import { ABSENCE_ACTIONS, absenceAction } from './_jfp-absence.js'
@@ -3702,8 +3702,31 @@ async function handle(req, res) {
         return result.ok ? res.status(200).json(result) : fail(res, result.status || 400, result.error)
       }
       if (op === 'review') {
-        const result = await markReviewed(body.email, principal.email)
+        const result = await markReviewed(body.email, principal.email, { how: clean(body.how, 10), note: clean(body.note, 300) })
         return result.ok ? res.status(200).json(result) : fail(res, result.status || 404, result.error)
+      }
+      if (op === 'unreview') {
+        const result = await unmarkReviewed(body.email, principal.email)
+        return result.ok ? res.status(200).json(result) : fail(res, result.status || 404, result.error)
+      }
+      if (op === 'emailAccount') {
+        // Email one new account from New accounts (Lee, 3 Nov 2026). Lee or
+        // Ligia see and change the words; pressing Send is the yes. Then the
+        // account moves to Followed up.
+        if (inAgent()) return fail(res, 403, 'Only Lee or Ligia send this, in the portal.')
+        const email = clean(body.email, 120).toLowerCase()
+        const acct = await accountOf(email)
+        if (!acct) return fail(res, 404, 'Account not found.')
+        const subject = clean(body.subject, 120), text = String(body.text || '').replace(/\r/g, '').trim()
+        if (subject.length < 3) return fail(res, 400, 'Add a subject.')
+        if (text.length < 10 || text.length > 3000) return fail(res, 400, 'Keep the email between 10 and 3,000 characters.')
+        const { sendFamilyNotice } = await import('./_jfp-email.js')
+        const cta = body.cta === 'account' ? { label: 'Finish setting up', url: 'https://jonerfootball.com/jfp-account/' } : body.cta === 'app' ? { label: 'See the Joner Football app', url: 'https://jonerfootball.com/app/' } : null
+        const sent = await sendFamilyNotice({ to: email, subject, heading: clean(body.heading, 80) || subject, paras: text.split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean), cta, kind: 'new account email', replyTo: 'ligia@jonerfootball.com' })
+        if (sent?.held) return fail(res, 409, 'Held, not sent.')
+        await audit({ by: principal.email, action: 'account.email', target: email, after: { subject } })
+        const result = await markReviewed(email, principal.email, { how: 'email', note: `Emailed: ${subject}` })
+        return res.status(200).json({ success: true, account: result.account })
       }
       if (op === 'archive' || op === 'restore') {
         const result = op === 'archive' ? await archiveAccount(body.email, principal.email) : await restoreAccount(body.email, principal.email)
@@ -3718,15 +3741,20 @@ async function handle(req, res) {
         // Families by player name or parent email, for Add this parent to a family.
         const q = clean(body.q, 80).toLowerCase(); const me = clean(body.email, 120).toLowerCase()
         if (q.length < 2) return res.status(200).json({ success: true, families: [] })
+        // The family this account is already in shows too, marked (Lee, 3 Nov
+        // 2026: Susan searched for Victoria and got nothing, because she was
+        // already on Victoria's family). Parent names match as well.
         const fams = {}
+        const sessionOf = (p) => { const r = roster.players.find((x) => p.rowIds.includes(x.id) && x.holdsPlace); return r ? [r.day, r.time, locationFor(config, r.location).name].filter(Boolean).join(' ') : '' }
         for (const p of profiles) {
-          if (!p.emails.length || p.emails.includes(me)) continue
-          if (!(p.name.toLowerCase().includes(q) || p.emails.some((e) => e.includes(q)))) continue
+          if (!p.emails.length || /^Joined into/.test(p.updatedFrom || '')) continue
+          if (!(p.name.toLowerCase().includes(q) || p.emails.some((e) => e.includes(q)) || String(p.parentName || '').toLowerCase().includes(q))) continue
           const fe = p.emails[0]
-          fams[fe] ||= { email: fe, emails: p.emails, players: [] }
-          fams[fe].players.push({ name: p.name, club: p.club || '', place: p.rowIds.length > 0 })
+          fams[fe] ||= { email: fe, emails: p.emails, mine: p.emails.includes(me), players: [] }
+          fams[fe].players.push({ key: p.key, name: p.name, club: p.club || '', place: p.rowIds.length > 0, session: sessionOf(p), linked: p.emails.includes(me) })
         }
-        return res.status(200).json({ success: true, families: Object.values(fams).slice(0, 8) })
+        const list = Object.values(fams).sort((a, b) => Number(b.mine) - Number(a.mine) || Number(b.players.some((x) => x.place)) - Number(a.players.some((x) => x.place)))
+        return res.status(200).json({ success: true, families: list.slice(0, 10) })
       }
       if (op === 'joinPreview') {
         const plan = joinPlan(body.email, body.familyEmail, profiles)
@@ -4362,7 +4390,7 @@ async function handle(req, res) {
       case 'accountAlerts': return res.status(200).json({ success: true, ...(await accountAlerts(principal)) })
       case 'newAccounts': {
         const [profiles, roster] = await Promise.all([allProfiles().catch(() => []), loadRoster()])
-        return res.status(200).json({ success: true, ...(await newAccountsData(principal, config, { profiles, roster, show: ['all', 'away'].includes(body.show) ? body.show : 'new', mark: !inAgent() })) })
+        return res.status(200).json({ success: true, ...(await newAccountsData(principal, config, { profiles, roster, show: ['all', 'away', 'todo', 'followed'].includes(body.show) ? body.show : 'new', mark: !inAgent() })) })
       }
       // Session value (Lee, 20 Oct 2026): fill and fees per coach hour for each group. Read only.
       case 'sessionValue': return await sessionValueAction(res, principal, config, body)

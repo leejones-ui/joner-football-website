@@ -27,19 +27,32 @@ export async function accountAlerts(principal) {
 // The list: every account, newest first, with the players they added, any
 // session they hold now and when they last signed in.
 // mark: false reads the list without marking it seen (the daily brief, Hermes).
+// Tabs (Lee, 3 Nov 2026: "we don't want loads and loads of accounts where we
+// have to scroll"): todo is To follow up, new people in Sydney (or not
+// answered yet) with no session and nobody has followed up; followed is
+// Followed up, where they go once Lee or Ligia mark it, or once they book;
+// away is Outside Sydney (they get the app email by themselves); all is
+// every account. 'new' (every account new to us) is for the daily brief and
+// the follow up emails.
+const hashOf = (flat) => { const o = {}; for (let i = 0; i + 1 < (flat || []).length; i += 2) o[flat[i]] = flat[i + 1]; return o }
+const staffEmail = (e) => /@jonerfootball\.com$/i.test(String(e || ''))
 export async function newAccountsData(principal, config, { profiles, roster, show = 'new', mark = true }) {
   const since = await seenAt(principal.email)
   if (mark) await kvCommand(['HSET', ACCOUNTS_SEEN, principal.email, String(Date.now())])
-  const [accounts, signedFlat] = await Promise.all([allAccounts(), kvCommand(['HGETALL', 'jfp:acct-signedin']).catch(() => [])])
-  const signedIn = {}
-  for (let i = 0; i + 1 < (signedFlat || []).length; i += 2) signedIn[signedFlat[i]] = signedFlat[i + 1]
+  const [accounts, signedFlat, emailedFlat] = await Promise.all([allAccounts(), kvCommand(['HGETALL', 'jfp:acct-signedin']).catch(() => []), kvCommand(['HGETALL', 'jfp:acct-followup']).catch(() => [])])
+  const signedIn = hashOf(signedFlat), emailed = hashOf(emailedFlat)
   const all = Object.values(accounts)
   // Outside Sydney (Lee, 20 Oct 2026): by their answer, or by the connection's country while they have not answered.
   const away = (a) => (a.where ? a.where.place !== 'sydney' : Boolean(a.from?.country && a.from.country !== 'AU'))
-  const list = all.filter((a) => show === 'all' || (show === 'away' ? a.kind === 'new' && away(a) : a.kind === 'new')).map((a) => {
+  const rowsFor = (email) => roster.players.filter((r) => r.holdsPlace && rowEmails(r).includes(email))
+  const live = (a) => a.kind === 'new' && !a.archivedAt
+  const tabOf = (a) => (!live(a) ? '' : away(a) ? 'away' : a.reviewedAt || rowsFor(a.email).length ? 'followed' : staffEmail(a.email) ? '' : 'todo')
+  const counts = { todo: 0, followed: 0, away: 0 }
+  for (const a of all) { const t = tabOf(a); if (t) counts[t] += 1 }
+  const list = all.filter((a) => show === 'all' || (show === 'new' ? a.kind === 'new' : tabOf(a) === show)).map((a) => {
     const email = a.email
     const profs = profiles.filter((p) => (p.emails || []).includes(email))
-    const rows = roster.players.filter((r) => r.holdsPlace && rowEmails(r).includes(email))
+    const rows = rowsFor(email)
     const selfKeys = new Set((a.players || []).filter((x) => x.self).map((x) => x.key))
     const players = profs.map((p) => {
       const row = rows.find((r) => p.rowIds.includes(r.id))
@@ -47,11 +60,11 @@ export async function newAccountsData(principal, config, { profiles, roster, sho
     })
     for (const r of rows) if (!players.some((p) => p.session && p.name.toLowerCase() === String(r.player).toLowerCase())) players.push({ key: r.id, name: r.player, age: null, club: '', level: '', self: false, session: [r.day, r.time, locationFor(config, r.location).name].filter(Boolean).join(' ') })
     const parent = profs.find((p) => p.parentName)?.parentName || rows[0]?.parent || ''
-    const mobile = profs.find((p) => p.parentMobile)?.parentMobile || rows[0]?.phone || ''
+    const mobile = a.mobile || profs.find((p) => p.parentMobile)?.parentMobile || rows[0]?.phone || ''
     const booked = players.some((p) => p.session)
-    return { email, kind: a.kind, createdAt: a.createdAt, isNew: a.kind === 'new' && ms(a.createdAt) > since, parent, mobile, players, booked, status: booked ? 'booked' : players.length ? 'players' : 'empty', accountState: a.archivedAt ? 'archived' : a.reviewedAt ? 'reviewed' : 'active', reviewedAt: a.reviewedAt || '', lastSignIn: signedIn[email] || '', ...whereView(a) }
+    return { email, kind: a.kind, createdAt: a.createdAt, isNew: a.kind === 'new' && ms(a.createdAt) > since, parent, mobile, players, booked, status: booked ? 'booked' : players.length ? 'players' : 'empty', accountState: a.archivedAt ? 'archived' : a.reviewedAt ? 'reviewed' : 'active', reviewedAt: a.reviewedAt || '', reviewedBy: a.reviewedBy || '', followHow: a.followHow || '', followNote: a.followNote || '', autoEmailAt: emailed[email] || '', tab: tabOf(a), lastSignIn: signedIn[email] || '', ...whereView(a) }
   }).sort((a, b) => ms(b.createdAt) - ms(a.createdAt)).slice(0, 300)
   const newOnes = all.filter((a) => a.kind === 'new')
   const week = Date.now() - 7 * 86400000
-  return { show, accounts: list, totals: { all: all.length, newToUs: newOnes.length, thisWeek: newOnes.filter((a) => ms(a.createdAt) > week).length, notBooked: list.filter((a) => !a.booked).length, away: newOnes.filter(away).length } }
+  return { show, accounts: list, totals: { all: all.length, newToUs: newOnes.length, thisWeek: newOnes.filter((a) => ms(a.createdAt) > week).length, notBooked: list.filter((a) => !a.booked).length, away: newOnes.filter(away).length, ...counts } }
 }

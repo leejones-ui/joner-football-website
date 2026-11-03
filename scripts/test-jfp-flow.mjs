@@ -40,7 +40,7 @@ async function codeFor(email) {
   return list.at(-1).subject.match(/(\d{6})/)[1]
 }
 async function signIn(c, email, audience = 'parent') {
-  const s = await c.call('/api/jfp-auth', { action: 'start', email, audience })
+  const s = await c.call('/api/jfp-auth', { action: 'start', email, audience, mobile: '0412 345 678' })
   assert.equal(s.status, 200, JSON.stringify(s.data))
   const v = await c.call('/api/jfp-auth', { action: 'verify', challenge: s.data.challenge, code: await codeFor(email) })
   assert.equal(v.status, 200, JSON.stringify(v.data))
@@ -380,7 +380,7 @@ await test('7. roles: coaches see only their sessions and no money; parents only
 
 await test('sign-in codes are single use, and a wrong code is refused', async () => {
   const c = client()
-  const s = await c.call('/api/jfp-auth', { action: 'start', email: 'once@example.com', audience: 'parent' })
+  const s = await c.call('/api/jfp-auth', { action: 'start', email: 'once@example.com', audience: 'parent', mobile: '0412 345 678' })
   const code = await codeFor('once@example.com')
   const wrong = String((Number(code) + 1) % 1000000).padStart(6, '0')
   assert.equal((await c.call('/api/jfp-auth', { action: 'verify', challenge: s.data.challenge, code: wrong })).status, 401)
@@ -713,7 +713,7 @@ await test('marked paid by hand (A$800 cash, never in the ledger): record how it
 
 await test('a flood of parallel code guesses still gets only five tries', async () => {
   const c = client()
-  const s = await c.call('/api/jfp-auth', { action: 'start', email: 'flood@example.com', audience: 'parent' })
+  const s = await c.call('/api/jfp-auth', { action: 'start', email: 'flood@example.com', audience: 'parent', mobile: '0412 345 678' })
   const code = await codeFor('flood@example.com')
   const wrong = Array.from({ length: 12 }, (_, i) => String((Number(code) + i + 1) % 1000000).padStart(6, '0'))
   await Promise.all(wrong.map((w) => c.call('/api/jfp-auth', { action: 'verify', challenge: s.data.challenge, code: w })))

@@ -33,7 +33,7 @@ function client() {
 }
 const kv = async (cmd) => (await fetch(`${B}/__kv?cmd=${encodeURIComponent(JSON.stringify(cmd))}`)).text()
 async function signIn(call, email, audience) {
-  const s = await call('/api/jfp-auth', { action: 'start', email, audience })
+  const s = await call('/api/jfp-auth', { action: 'start', email, audience, mobile: '0412 345 678' })
   const mail = (await (await fetch(`${B}/__emails`)).json()).filter((e) => e.to.includes(email) && /sign-in code/.test(e.subject)).at(-1)
   const v = await call('/api/jfp-auth', { action: 'verify', challenge: s.data.challenge, code: mail.subject.match(/(\d{6})/)[1] })
   if (v.status !== 200) throw new Error(`sign in ${email}: ${JSON.stringify(v.data)}`)
