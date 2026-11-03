@@ -55,9 +55,10 @@ export async function saveAgent(principal, { name, email, mobile, company }) {
 // pack at a cheaper price". Per player, used up by the sessions Lee bills,
 // gone at the end of the term (the count lives on the term's Term 4 row).
 // Every agency gets them; Lee sets the prices per agency in Edit agency.
-// Until he does, a 5-pack at A$90 a session (his price on 20 Oct 2026).
+// Until he does, a 5-pack at A$90 a session (his price on 20 Oct 2026) and a
+// 10-pack at A$80 a session, A$800 (Lee, 3 Nov 2026).
 export const PACK_SIZES = [5, 10]
-export const DEFAULT_PACKS = [{ n: 5, cents: 9000 }]
+export const DEFAULT_PACKS = [{ n: 5, cents: 9000 }, { n: 10, cents: 8000 }]
 export function packsOf(a) {
   if (!a) return []
   const list = Array.isArray(a.packs) ? a.packs : DEFAULT_PACKS
