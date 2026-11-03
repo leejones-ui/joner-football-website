@@ -40,6 +40,7 @@ import { findExisting, removedView, wireRemoved, removedCount } from './jfp-port
 import { savedPayTag, savedPayDetail, mountAutoChargeEdit, mountSavedPaySettings } from './jfp-portal-autocharge.js'
 import { mountHermesSettings } from './jfp-portal-hermes.js'
 import { mountCredits } from './jfp-portal-credits.js'
+import { mountLatest, loadLatest, forgetLatest } from './jfp-portal-latest.js'
 import { renderSessionValue } from './jfp-portal-session-value.js'
 import { renderAbsence } from './jfp-portal-absence.js'
 import { renderFollowUps, renderFeedback } from './jfp-portal-followups.js'
@@ -790,9 +791,9 @@ function boardExtrasShown(B, week) {
 const XKIND = { oneoff: ['blue', 'One-off'], weekly: ['green', 'Weekly slot'], private: ['violet', 'Private link'] }
 function ttExtra(x) {
   const [c, l] = XKIND[x.kind] || XKIND.oneoff
-  return `<section class="jp-blk jp-blk-extra" style="--lc:${locColor(x.locationId)}" data-tab="extra" title="Open Extra sessions"><div class="jp-blk-head"><b>${esc(x.time)}</b> <span class="j-pill j-pill-${c}" style="font-size:10px;padding:0 6px">${esc(l)}</span><span class="n">${x.players.length}/${x.capacity}</span></div>
+  return `<section class="jp-blk jp-blk-extra" style="--lc:${locColor(x.locationId)}" data-tab="extra" title="Open Extra sessions"><div class="jp-blk-head"><b>${esc(x.time)}</b> <span class="j-pill j-pill-${c}" style="font-size:10px;padding:0 6px">${esc(l)}</span><span class="n">${x.whole ? (x.players.length ? 'Booked' : 'Open') : `${x.players.length}/${x.capacity}`}</span></div>
     <div class="sub">${esc(x.coachName)} · ${esc(x.title)} · ${esc(x.durationMin)} min · ${esc(x.dateLabel.replace(/\s\d{4}$/, ''))}</div>
-    ${P.ttView === 'staff' ? x.players.map((n) => `<div class="jp-nm"><span class="nmx">${esc(n)}</span></div>`).join('') : ''}${x.players.length < x.capacity ? `<div class="jp-open">${x.capacity - x.players.length} open</div>` : ''}</section>`
+    ${P.ttView === 'staff' ? x.players.map((n) => `<div class="jp-nm"><span class="nmx">${esc(n)}</span></div>`).join('') : ''}${(x.placesLeft ?? x.capacity - x.players.length) > 0 ? `<div class="jp-open">${x.whole ? 'Free to book' : `${x.placesLeft ?? x.capacity - x.players.length} open`}</div>` : x.whole && x.players.length ? '<div class="jp-open">Booked</div>' : ''}</section>`
 }
 function boardExtrasList(B) {
   const all = boardExtrasShown(B, null)
@@ -2871,9 +2872,11 @@ async function renderMoney(pre) {
       <div class="jm-locs" id="m-locs" role="group" aria-label="Venue">${[{ id: '', name: 'All', netCents: m.kpis.netIncomeCents ?? m.kpis.incomeCents }, ...moneyVenues(m)].map((l) => `<button type="button" data-mloc="${esc(l.id)}" aria-pressed="${f.loc === l.id}"><span class="nm">${esc(l.name)}</span> <span class="amt">${esc(money(l.netCents ?? l.receivedCents ?? 0))} kept</span></button>`).join('')}</div>
     </div>
     <div id="m-top"></div>
+    <div id="m-latest"></div>
     <div class="ps-tools jm-tools" role="search">
       <div class="ps-seg" role="group" aria-label="Show"><button type="button" data-money-view="players" aria-pressed="${f.view !== 'family'}">Players</button><button type="button" data-money-view="family" aria-pressed="${f.view === 'family'}">By family</button></div>
       ${psSearch('m-q', 'Search player, parent or email…', f.q, 'Search Money by player, parent or email')}
+      <label class="jm-show"><span class="muted small">Sort</span><select class="j-select" id="m-sort" aria-label="Sort players">${[['latest', 'Latest payment'], ['owing', 'Most owing'], ['az', 'Name A to Z']].map(([v, l]) => `<option value="${v}"${(f.sort || 'latest') === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
       <span id="m-selects"></span>
       <button type="button" class="ps-link" id="m-morefilters" aria-controls="m-morebox"></button>
       <button type="button" class="ps-link" id="m-clear" hidden>Clear</button>
@@ -2970,7 +2973,10 @@ async function renderMoney(pre) {
   const draw = () => {
     if (f.view === 'family') { $('m-count').textContent = ''; return drawFamilies($('m-fams'), { m, f, match: mMatch, post, toast, modal, confirmBox, statusPill, remove: (p) => removeModal({ rowId: p.rowId, name: p.player, paymentStatus: p.airtableStatus }, null, () => renderMoney()), done: () => { P.board = null; PL.at = 0; renderMoney() } }) }
     const s = scope()
-    const list = s.players.filter(mMatch)
+    // Newest payment first by default (Lee, 3 Nov 2026: A to Z "doesn't really help").
+    const last = P.lastPaid || {}
+    const by = { az: (a, b) => a.player.localeCompare(b.player), owing: (a, b) => b.owingCents - a.owingCents || a.player.localeCompare(b.player), latest: (a, b) => String(last[b.rowId] || '').localeCompare(String(last[a.rowId] || '')) || a.player.localeCompare(b.player) }[f.sort || 'latest'] || ((a, b) => 0)
+    const list = s.players.filter(mMatch).sort(by)
     $('m-rows').innerHTML = list.map(mRow).join('') || `<tr><td colspan="7"><div class="ps-empty">No players match.${mActive() ? ' <button type="button" class="ps-link" data-m-clear>Clear filters</button>' : ''}</div></td></tr>`
     $('m-count').textContent = `${list.length} of ${s.players.length} players${s.id ? ` at ${s.name}` : ''} · owing ${money(list.reduce((t, p) => t + p.owingCents, 0))}`
   }
@@ -2982,6 +2988,13 @@ async function renderMoney(pre) {
   setHash()
   drawScope(!pre)
   draw()
+  $('m-sort').addEventListener('change', (e) => { f.sort = e.target.value; draw() })
+  if (!pre) forgetLatest()
+  mountLatest($('m-latest'), {
+    post, filter: f,
+    openExtra: () => { P.jf.programme = 'extra'; history.replaceState(null, '', '#money?programme=extra'); go('money', { instant: true }) },
+    openRow: (rowId) => historyDrawer(rowId),
+  }).then(() => loadLatest(post)).then((d) => { const had = P.lastPaid; P.lastPaid = d.lastByRow; if (!had && (f.sort || 'latest') === 'latest' && P.tab === 'money' && $('m-rows')) draw() }).catch(() => {})
   loadBank(bankUi, bankUi.redraw)
   bindSwitch(juniorsUi())
   bindShowing({ view, filter: f, render: () => renderMoney() })

@@ -416,14 +416,18 @@ export async function boardExtras(config, today = sydneyToday()) {
   const d = new Date(`${today}T12:00:00Z`)
   const mon = addDays(today, -((d.getUTCDay() + 6) % 7))
   const end = addDays(mon, 27)
-  return (await allSlots()).filter((s) => s.status === 'open' && s.date >= mon && s.date <= end).map((s) => {
+  const open = (await allSlots()).filter((s) => s.status === 'open' && s.date >= mon && s.date <= end)
+  // Only a paid family booking holds a place, and one family takes a whole
+  // session (Lee, 3 Nov 2026: Niki's 1 on 1 showed as 3 open).
+  const paid = await paidPayreqs(open)
+  return open.map((s) => {
     const loc = locationFor(config, s.location)
     return {
       id: s.id, date: s.date, dateLabel: dateLabel(s.date), day: new Date(`${s.date}T12:00:00Z`).toLocaleDateString('en-AU', { weekday: 'long', timeZone: 'UTC' }),
       time: s.time, sortTime: to24h(s.time), period: (to24h(s.time) || '12:00') < '12:00' ? 'am' : 'pm', durationMin: s.durationMin,
       locationId: loc.id, locationName: loc.name, coachId: s.coachId, coachName: coachLabel(coachById(config, s.coachId)),
       kind: kindOf(s), kindLabel: KIND_LABEL[kindOf(s)], title: s.title || s.priceLabel || 'Extra session', capacity: s.capacity,
-      players: liveBookings(s).map((b) => b.name), week: Math.floor((Date.parse(`${s.date}T00:00:00Z`) - Date.parse(`${mon}T00:00:00Z`)) / (7 * 86400000)),
+      players: liveBookings(s).map((b) => b.name), placesLeft: placesLeft(s, paid), whole: isWhole(s), week: Math.floor((Date.parse(`${s.date}T00:00:00Z`) - Date.parse(`${mon}T00:00:00Z`)) / (7 * 86400000)),
     }
   })
 }

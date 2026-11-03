@@ -19,6 +19,27 @@ export async function telegramAlert(text) {
   }
 }
 
+// Lee's main Barry chat (Lee, 3 Nov 2026: "pinged in my main Barry Telegram
+// chat if someone books my extra spots"): Barry's own bot, Lee's private chat.
+// JFP_LEE_TELEGRAM_BOT_TOKEN and JFP_LEE_TELEGRAM_CHAT_ID; without them it goes
+// to the admin topic instead. Never throws.
+export async function barryAlert(text) {
+  const token = process.env.JFP_LEE_TELEGRAM_BOT_TOKEN
+  const chat = process.env.JFP_LEE_TELEGRAM_CHAT_ID
+  if (!token || !chat) return telegramAlert(text)
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ chat_id: chat, text: text.slice(0, 3500), disable_web_page_preview: true }),
+    })
+    return res.ok ? 'sent' : `failed ${res.status}`
+  } catch (error) {
+    console.error('jfp barry alert failed', error)
+    return 'failed'
+  }
+}
+
 const KIND = { application: 'New application', waitlist: 'New waitlist request', enquiry: 'New 1 to 1 enquiry' }
 
 // No phone numbers or emails in chat: names, group and the answers only.

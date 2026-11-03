@@ -112,6 +112,10 @@ export function followUpWords({ away, country = '', coach = false, name = '' }) 
         'Any questions, just reply to this email.',
       ],
       cta: { label: 'See the Joner Football app', url: `${SITE}/app/` },
+      images: [
+        { url: `${SITE}/images/app/closer-look-drills.opt.jpg`, alt: 'The Joner Football app on three phones: session plans, free drills and age-specific training', after: 2 },
+        { url: `${SITE}/images/app/closer-look-100-day-program.opt.jpg`, alt: 'The 100 Day Pathway: six programs from juggling to scoring goals', after: 3 },
+      ],
     }
   }
   return {

@@ -4275,6 +4275,11 @@ async function handle(req, res) {
         return res.status(200).json({ success: true, request: out.record })
       }
 
+      // Money > Latest payments (Lee, 3 Nov 2026): newest first, by kind.
+      case 'latestPayments': {
+        const { latestPayments } = await import('./_jfp-latest-pay.js')
+        return res.status(200).json({ success: true, ...(await latestPayments(config)) })
+      }
       case 'payments': {
         const [bookings, stored, viewsRaw, viewedRaw, emailedRaw, checkedRaw, roster] = await Promise.all([listBookings(), listPayreqs(), kvCommand(['HGETALL', 'jfp:payreq-views']), kvCommand(['HGETALL', 'jfp:payreq-viewed-at']), kvCommand(['HGETALL', QUICK_EMAILED]), kvCommand(['HGETALL', QUICK_CHECKED]), loadRoster()])
         // Open links at what they ask for now (a fee changed since: _jfp-fee-sync.js).

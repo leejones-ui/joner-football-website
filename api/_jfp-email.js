@@ -703,8 +703,12 @@ ${url ? button('View the invoice', url) : ''}`
 // ---------- saved card or bank account, auto-charge (claude/card-on-file, 14 Oct 2026) ----------
 // A plain email to a family from api/_jfp-saved-pay.js: saved, removed, a
 // session charged, a debit started, or a payment that did not go through.
-export async function sendFamilyNotice({ to, name = '', subject, heading, paras = [], list = [], cta = null, kind = 'family notice', preheader = '', replyTo }) {
-  const body = `${paras.map((x) => p(esc(x))).join('\n')}
+// A picture in a family email: full width, rounded, with alt text (Lee, 3 Nov
+// 2026: the app email "needs visuals"). after: shown after that paragraph (0 = before the first).
+function picture({ url, alt = '' }) { return `<p style="margin:0 0 16px;"><img src="${esc(url)}" alt="${esc(alt)}" width="520" style="display:block;width:100%;max-width:520px;height:auto;border:0;border-radius:12px;"></p>` }
+export async function sendFamilyNotice({ to, name = '', subject, heading, paras = [], list = [], cta = null, kind = 'family notice', preheader = '', replyTo, images = [] }) {
+  const pics = (i) => images.filter((x) => (x.after || 0) === i).map(picture).join('\n')
+  const body = `${pics(0)}${paras.map((x, i) => p(esc(x)) + pics(i + 1)).join('\n')}
 ${list.length ? rows(list.filter(([, v]) => v).map(([k, v]) => [k, esc(v)])) : ''}
 ${cta ? button(cta.label, cta.url) : ''}`
   return send({ to: [{ email: to, name }], subject, html: shell({ preheader: preheader || subject, heading, body }), kind, replyTo })
