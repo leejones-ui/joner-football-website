@@ -256,6 +256,7 @@ body:has(.jfp) { background: var(--j-bg) !important; color: var(--j-ink) !import
 .jp-table td { padding: 10px 12px; border-bottom: 1px solid var(--j-line-2); vertical-align: top; }
 .jp-scroll { overflow-x: auto; border: 1px solid var(--j-line); border-radius: 14px; background: var(--j-surface); }
 .jp-modal { position: fixed; z-index: 70; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(560px, calc(100vw - 24px)); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow-y: auto; overscroll-behavior: contain; background: var(--j-surface); border-radius: 18px; box-shadow: var(--j-shadow-lg); padding: 20px; }
+.jp-modal h2 { overflow-wrap: anywhere; }
 .jp-menu { position: fixed; z-index: 72; background: var(--j-surface); border: 1px solid var(--j-line); border-radius: 12px; box-shadow: var(--j-shadow-lg); padding: 6px; min-width: 220px; }
 .jp-menu button { display: block; width: 100%; text-align: left; border: 0; background: transparent; padding: 9px 10px; border-radius: 8px; font-size: 14px; }
 .jp-menu button:hover { background: var(--j-grey-bg); }
