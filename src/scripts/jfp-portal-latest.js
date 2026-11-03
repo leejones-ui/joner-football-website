@@ -66,7 +66,6 @@ export function drawExtraPay(box, d, ui) {
   const list = all.filter((x) => !q || `${x.who} ${x.parent} ${x.coach || ''} ${x.what}`.toLowerCase().includes(q))
   const t = d.totals.extra, ever = d.allTime.extra
   const coaches = [...list.reduce((m, x) => { const k = x.coach || 'No coach set'; const c = m.get(k) || { cents: 0, count: 0 }; c.cents += x.cents; c.count += 1; return m.set(k, c) }, new Map())].sort((a, b) => b[1].cents - a[1].cents)
-  const day = (iso) => (iso ? new Date(`${iso}T00:00:00`).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' }) : '')
   box.innerHTML = `<section class="jd-card jm-extrapay">
     <div class="jm-latest-head"><h2>Extra sessions</h2><button type="button" class="jm-link" data-xp-extra>By coach, month and player</button></div>
     <div class="jm-xp-kpis">
@@ -74,10 +73,10 @@ export function drawExtraPay(box, d, ui) {
       <div><span class="muted small">All time</span><b>${esc(money(ever.cents))}</b><span class="muted small">${ever.count} payment${ever.count === 1 ? '' : 's'}</span></div>
     </div>
     ${coaches.length ? `<div class="j-chips jm-xp-coaches">${coaches.map(([k, c]) => `<span class="ps-tag">${esc(k)} · <b>${esc(money(c.cents))}</b> (${c.count})</span>`).join('')}</div>` : ''}
-    ${list.length ? `<div class="ps-table-wrap"><table class="ps-table ps-flat jm-xp-table"><thead><tr><th>Paid</th><th>Player</th><th>Session</th><th>Coach</th><th class="num">Amount</th></tr></thead><tbody>${list.map((x) => `<tr${x.rowIds.length ? ` data-xp-row="${esc(x.rowIds[0])}" tabindex="0" style="cursor:pointer"` : ''}>
+    ${list.length ? `<div class="ps-table-wrap"><table class="ps-table ps-flat jm-xp-table"><thead><tr><th>Paid</th><th>Player</th><th>Extra session</th><th>Coach</th><th class="num">Amount</th></tr></thead><tbody>${list.map((x) => `<tr${x.rowIds.length ? ` data-xp-row="${esc(x.rowIds[0])}" tabindex="0" style="cursor:pointer"` : ''}>
       <td data-col="when">${esc(when(x))}<span class="ps-sub">${esc(x.method)}</span></td>
       <td data-col="who"><b>${esc(x.who || 'No name')}</b>${x.parent && x.parent !== x.who ? `<span class="ps-sub">${esc(x.parent)}</span>` : ''}</td>
-      <td data-col="what">${esc(x.what)}${x.sessionDate ? `<span class="ps-sub">${esc(day(x.sessionDate))}</span>` : ''}</td>
+      <td data-col="what">${esc(x.what.replace(/^Extra session,\s*/, ''))}</td>
       <td data-col="coach">${esc(x.coach || '')}</td>
       <td class="num"><b>${esc(money(x.cents))}</b></td></tr>`).join('')}</tbody></table></div>` : `<p class="muted small">${q ? 'No extra session payments match the search.' : 'No extra session payments yet.'}</p>`}
     ${q && list.length !== all.length ? `<p class="muted small">${list.length} of ${all.length} payments match the search · ${esc(money(list.reduce((a, x) => a + x.cents, 0)))}</p>` : ''}
