@@ -14,6 +14,7 @@ import crypto from 'node:crypto'
 import { kvCommand, clean, sessionDates, dateLabel, to24h, coachById, coachByAirtableName, coachLabel, locationFor, audit, limitDates, isHalfTermType } from './_jfp-store.js'
 import { sendCancelStaffAlert, sendCancelCoachAlert, staffTo } from './_jfp-email.js'
 import { telegramAlert, cancelText } from './_jfp-notify.js'
+import { playerAge } from './_jfp-airtable.js'
 
 export const REASONS = {
   sick: 'Sick or injured',
@@ -217,8 +218,8 @@ export async function submitCancel({ config, parentEmail, parentName, row, group
     const rec = {
       id, rev: (now?.rev || 0) + 1, status: 'active', event: 'cancelled',
       email: parentEmail, parentName: clean(parentName, 100),
-      // The player is their own contact: the emails say the player told us.
-      ...(row.ownContact ? { self: true } : {}),
+      // The player is their own contact, or an adult: the emails say the player told us.
+      ...(row.ownContact || playerAge(row, config.termStart) >= 18 ? { self: true } : {}),
       rowId: row.id, player: clean(row.player, 100), groupId: row.groupId || group?.id || '',
       day: group?.day || row.day, time: v.time, location: loc.name,
       coachIds: coaches.map((c) => c.id), coachNames: coaches.map((c) => `Coach ${coachLabel(c)}`),

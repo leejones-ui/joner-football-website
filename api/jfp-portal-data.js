@@ -3883,6 +3883,8 @@ async function handle(req, res) {
         const r = rowById.get(p.rowId); if (!r) continue
         const wv = waiverFor(r.player, { emails: rowEmails(r), phones: [r.phone], dob: r.dob }, roster.waivers)
         if (wv && wv.media === false) p.noFilm = true
+        // Adults and players who are their own contact cancel for themselves (Lee, 3 Nov 2026).
+        if (r.ownContact || wv?.kind === 'adult' || p.age >= 18) p.self = true
       }
       // The register for every date of the term (Lee, 19 Oct 2026): a past date
       // picked in the list shows what was marked, and the Whole term grid.
@@ -3899,7 +3901,7 @@ async function handle(req, res) {
       const away = (await listCancels()).filter((r) => r.status === 'active')
       for (const s of sessions) {
         s.cancelledBy = {}
-        for (const r of away) if (r.groupId === s.id) (s.cancelledBy[r.date] ||= {})[r.rowId] = { reason: r.reason, notice: r.noticeLabel }
+        for (const r of away) if (r.groupId === s.id) (s.cancelledBy[r.date] ||= {})[r.rowId] = { reason: r.reason, notice: r.noticeLabel, ...(r.self ? { self: true } : {}) }
       }
       // I'm coming (Lee, 20 Oct 2026): session by session and Pro players say
       // which dates they will be at. Its own key, never the register.
