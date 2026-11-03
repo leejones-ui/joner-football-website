@@ -70,7 +70,9 @@ export async function verifyRecaptcha(req, token, opts = {}) {
   try {
     const params = new URLSearchParams({
       secret,
-      response: cleanString(token, 2000),
+      // Google's v3 tokens run to about 2,500 characters; cutting them at 2,000
+      // made every one 'invalid-input-response' (found 3 Nov 2026).
+      response: cleanString(token, 6000),
       remoteip: ipFromRequest(req),
     })
 
