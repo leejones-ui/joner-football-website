@@ -1,7 +1,7 @@
 import { cleanEmail, cleanString, rateLimit } from './_security.js'
 
-// ManyChat DM leads -> Brevo. ManyChat External Request posts only the
-// subscriber id; the email is read back from the ManyChat API, so a forged
+// ManyChat DM leads -> Brevo. The ManyChat rule "Email changed" posts its
+// Full Contact Data (or just subscriber_id); only the id is trusted: the email is read back from the ManyChat API, so a forged
 // call can only sync a real subscriber who already gave us their email.
 // Lists per Lee (4 Nov 2026): 2 Hot APP Leads + 66 Newsletter. Never 18.
 const LEAD_LISTS = [2, 66]
@@ -46,12 +46,12 @@ export default async function handler(req, res) {
 
   try {
     const body = parse(req)
-    const subscriberId = cleanString(body.subscriber_id || req.query?.subscriber_id || '', 30)
+    const subscriberId = cleanString(body.subscriber_id || body.id || req.query?.subscriber_id || '', 30)
     if (!/^\d{3,30}$/.test(subscriberId)) return json(res, 400, { success: false, error: 'subscriber_id required' })
-    const channel = cleanString(body.channel || 'instagram', 20).toLowerCase().replace(/[^a-z]/g, '') || 'instagram'
-    const source = `manychat-${channel}-dm`
 
     const subscriber = await manychat(`/fb/subscriber/getInfo?subscriber_id=${subscriberId}`)
+    const channel = body.channel ? cleanString(body.channel, 20).toLowerCase().replace(/[^a-z]/g, '') : (subscriber.ig_id ? 'instagram' : 'facebook')
+    const source = `manychat-${channel || 'instagram'}-dm`
     const email = cleanEmail(subscriber.email || '')
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return json(res, 200, { success: true, synced: false, reason: 'no_email' })
     const firstName = cleanString(subscriber.first_name || '', 80)
