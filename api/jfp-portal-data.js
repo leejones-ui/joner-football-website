@@ -2045,6 +2045,21 @@ async function saveVenueCostsLocked(res, principal, body, term) {
 
 // One player's payment story: the row, Stripe payments from the family's
 // email, ledger rows, payment links and what staff changed.
+// How many of this term's weekly sessions on `day` are before today (Sydney).
+function sessionsHad(config, day) {
+  const weeks = Number(config.weeks) || 10
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(config.termStart || '')) return 0
+  const idx = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].indexOf(day)
+  const today = sydneyToday()
+  let had = 0
+  for (let k = 0; k < weeks; k++) {
+    const d = new Date(`${config.termStart}T12:00:00Z`)
+    d.setUTCDate(d.getUTCDate() + 7 * k + Math.max(0, idx))
+    if (d.toISOString().slice(0, 10) < today) had += 1
+  }
+  return had
+}
+
 async function playerPayments(config, rowId) {
   const r = await getTerm4Row(rowId)
   if (!r) return null
@@ -2058,8 +2073,10 @@ async function playerPayments(config, rowId) {
   return {
     rowId: r.id, player: r.player, parent: r.parent, email: r.email, phone: r.phone,
     feeCents: cents(r.feeAud), paidCents: cents(r.paidAud), status: r.paymentStatus || 'Not set', type: r.paymentType || '', freePlace: r.freePlace === true,
+    // For the term fee refund (Lee, 5 Nov 2026): the term's weeks and the sessions had so far.
+    termRefund: { weeks: Number(config.weeks) || 10, half: /half term/i.test(r.paymentType || ''), had: sessionsHad(config, r.day) },
     notes: r.notes || '', linkNotes: r.linkNotes || '',
-    stripe: stripe.map((p) => ({ id: p.id, at: p.at, cents: p.amountCents, refundedCents: p.refundedCents, product: p.product, recorded: recordedIds.has(p.id) || (p.intentId && recordedIds.has(p.intentId)) || Boolean(p.jfpRef), feeCents: p.feeKnown ? p.feeCents : null, payMethod: p.payMethod || '', nextTerm: Boolean(p.isNext) })),
+    stripe: stripe.map((p) => ({ id: p.id, intentId: p.intentId || '', at: p.at, cents: p.amountCents, refundedCents: p.refundedCents, product: p.product, recorded: recordedIds.has(p.id) || (p.intentId && recordedIds.has(p.intentId)) || Boolean(p.jfpRef), feeCents: p.feeKnown ? p.feeCents : null, payMethod: p.payMethod || '', nextTerm: Boolean(p.isNext) })),
     ledger: ledger.filter((l) => String(l['Source Record ID'] || '').includes(r.id) || (l['Player Name'] || '').split(',').map((x) => x.trim()).includes(r.player)).map((l) => ({ date: l['Payment Date'] || '', method: l['Payment Method'] || '', cents: Math.round(Number(l['Amount Paid'] || 0) * 100), status: l['Payment Status'] || '', notes: l['Notes'] || '' })),
     links: payreqs.filter((q) => (q.term4Ids || []).includes(r.id)).map((q) => ({ id: q.id, status: q.status, cents: q.amountCents, createdAt: q.createdAt, paidAt: q.paidAt || '' })),
     history: auditLog.filter((e) => String(e.target || '').includes(r.id)).slice(0, 30).map((e) => ({ at: e.at, by: e.by, action: e.action })),

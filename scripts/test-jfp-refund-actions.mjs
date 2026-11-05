@@ -5,7 +5,8 @@ import assert from 'node:assert/strict'
 process.env.KV_REST_API_URL = 'https://kv.invalid'
 process.env.KV_REST_API_TOKEN = 'test-only'
 process.env.STRIPE_SECRET_KEY_SYDNEY = 'sk_test_only'
-const { refundPayreq, refundRoom } = await import('../api/_jfp-refund-actions.js')
+const { refundPayreq, refundRoom, refundStripePayment, paymentRefundRoom } = await import('../api/_jfp-refund-actions.js')
+const { termRefundQuote } = await import('../src/scripts/jfp-term-refund.js')
 
 let kv, refunds, posts, applied
 const PAY = 'PAY-1790000000000-AAAAAA'
@@ -15,7 +16,7 @@ function reset({ status = 'paid', refunded = 0 } = {}) {
   posts = []
   applied = 0
 }
-const charge = () => ({ id: 'ch_test', amount: 12000, amount_refunded: refunds.reduce((t, r) => t + r.amount, 0), payment_intent: 'pi_test', refunds: { data: refunds } })
+const charge = () => ({ id: 'ch_test', status: 'succeeded', paid: true, amount: 12000, amount_refunded: refunds.reduce((t, r) => t + r.amount, 0), payment_intent: 'pi_test', refunds: { data: refunds } })
 globalThis.fetch = async (url, init = {}) => {
   const u = String(url)
   if (u.startsWith('https://kv.invalid')) {
@@ -80,6 +81,29 @@ await test('a second tap while one is going through does nothing', async () => {
   assert.equal(r.ok, false)
   assert.match(r.error, /already going through/)
   assert.equal(posts.length, 0)
+})
+
+await test('a term fee by its Stripe payment: refunded once, keyed on the payment intent, applied to its JFP record', async () => {
+  const room = await paymentRefundRoom('pi_test')
+  assert.deepEqual([room.paidCents, room.roomCents, room.jfpId], [12000, 12000, PAY])
+  const r = await refundStripePayment({ stripeId: 'pi_test', amountCents: 7000, by: 'ligia@example.com', reason: 'Before the term started' })
+  assert.equal(r.ok, true, JSON.stringify(r))
+  assert.equal(posts[0].key, 'jfp-refund:pi_test:0:7000')
+  assert.equal(posts[0].body['metadata[jfpPayreqId]'], PAY)
+  assert.equal(applied, 1)
+  const more = await refundStripePayment({ stripeId: 'pi_test', amountCents: 6000, by: 'ligia@example.com' })
+  assert.match(more.error, /Only A\$50/)
+  assert.equal((await refundStripePayment({ stripeId: 'ch_nope', amountCents: 100, by: 'x' })).ok, false)
+})
+await test('the term refund sum: A$50 full, A$30 half, unused sessions only, nothing from halfway', async () => {
+  assert.equal(termRefundQuote({ paidCents: 85000, had: 0 }).cents, 80000)
+  assert.equal(termRefundQuote({ paidCents: 42500, half: true, had: 0 }).cents, 39500)
+  assert.equal(termRefundQuote({ paidCents: 85000, had: 3 }).cents, 54500, '7 of 10 = A$595, less A$50')
+  assert.equal(termRefundQuote({ paidCents: 42500, half: true, had: 2 }).cents, 22500, '3 of 5 = A$255, less A$30')
+  assert.equal(termRefundQuote({ paidCents: 85000, had: 5 }).cents, 0)
+  assert.equal(termRefundQuote({ paidCents: 42500, half: true, had: 3 }).cents, 0)
+  assert.equal(termRefundQuote({ paidCents: 85000, roomCents: 10000, had: 0 }).cents, 10000, 'never more than is left')
+  assert.equal(termRefundQuote({ paidCents: 4000, had: 0 }).cents, 0, 'never below nothing')
 })
 
 console.error = quiet

@@ -28,6 +28,7 @@ import { psHead, psSearch, psSelect, psBadge, psChips, psToolsMore, psHelp, PS_P
 import { bankPanel, bindBank, loadBank, bankDone, bankStale, bankLink, bankSummary, openBankList, watchBank } from './jfp-portal-bank.js'
 import { renderHolidayMoney, holidayStale, holidayData } from './jfp-portal-holiday.js'
 import { stripeMore, stripeMarkedFold, onStripeClass } from './jfp-portal-stripe-class.js'
+import { termRefundModal } from './jfp-term-refund.js'
 import { showingPicker, bindShowing, renderPastTerm, renderMoneyYear, redrawYearChart } from './jfp-portal-years.js'
 import { renderPricesPage, quickModal, progPill, WHERE as QUICK_WHERE } from './jfp-portal-quick.js'
 import { playerFormHtml, wirePlayerForm, filledValues, customOptions, customPrices, noGroupPaymentHtml, wireNoGroupPayment, PROFILE_LISTS } from './jfp-portal-player-form.js'
@@ -3247,7 +3248,7 @@ async function historyDrawer(rowId) {
       <div class="jm-figs"><div><span>Fee</span><b>${p.feeCents ? esc(money(p.feeCents)) : 'Not set'}</b></div><div><span>Paid</span><b>${esc(money(p.paidCents))}</b></div><div><span>Status</span><b style="font-size:14px">${statusPill(row.status)}</b></div></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button type="button" class="j-btn j-btn-dark j-btn-sm" id="dr-rec">Record a payment</button><button type="button" class="j-btn j-btn-line j-btn-sm" id="dr-link">Send payment link</button>${p.notes || p.linkNotes ? '<button type="button" class="j-btn j-btn-line j-btn-sm" id="dr-notes">Notes</button>' : ''}</div>
       <h3>Stripe (live)</h3>
-      ${p.stripe.length ? `<ul class="jm-hist">${p.stripe.map((s) => `<li><span>${esc(when(s.at))}<small>${esc(s.product)}${s.refundedCents ? ` · refunded ${esc(money(s.refundedCents))}` : ''}${s.payMethod ? ` · ${esc(methodName(s.payMethod))}` : ''} · ${s.feeCents == null ? 'Stripe fee still loading' : `Stripe fee ${esc(money(s.feeCents))}`}</small></span><span style="display:flex;gap:8px;align-items:center"><span class="amt">${esc(money(s.cents))}</span>${s.nextTerm ? '<span class="j-pill j-pill-blue" title="Paid for next term, not counted in this term">Next term</span>' : s.recorded ? '<span class="j-pill j-pill-green">In Airtable</span>' : `<button type="button" class="j-btn j-btn-line j-btn-sm" data-rec-stripe="${esc(s.id)}">Record</button>`}</span></li>`).join('')}</ul>` : '<p class="muted small">No Stripe payments from this email this term.</p>'}
+      ${p.stripe.length ? `<ul class="jm-hist">${p.stripe.map((s) => `<li><span>${esc(when(s.at))}<small>${esc(s.product)}${s.refundedCents ? ` · refunded ${esc(money(s.refundedCents))}` : ''}${s.payMethod ? ` · ${esc(methodName(s.payMethod))}` : ''} · ${s.feeCents == null ? 'Stripe fee still loading' : `Stripe fee ${esc(money(s.feeCents))}`}</small></span><span style="display:flex;gap:8px;align-items:center"><span class="amt">${esc(money(s.cents))}</span>${s.nextTerm ? '<span class="j-pill j-pill-blue" title="Paid for next term, not counted in this term">Next term</span>' : s.recorded ? '<span class="j-pill j-pill-green">In Airtable</span>' : `<button type="button" class="j-btn j-btn-line j-btn-sm" data-rec-stripe="${esc(s.id)}">Record</button>`}${s.cents > (s.refundedCents || 0) ? `<button type="button" class="j-btn j-btn-ghost j-btn-sm" data-term-refund="${esc(s.id)}">Refund</button>` : ''}</span></li>`).join('')}</ul>` : '<p class="muted small">No Stripe payments from this email this term.</p>'}
       <h3>Ledger</h3>
       ${p.ledger.length ? `<ul class="jm-hist">${p.ledger.map((l) => `<li><span>${esc(l.date)}<small>${esc(l.method)}${l.status && l.status !== 'Paid' ? ` · ${esc(l.status)}` : ''}</small></span><span class="amt">${esc(money(l.cents))}</span></li>`).join('')}</ul>` : '<p class="muted small">Nothing in the payment ledger yet.</p>'}
       <h3>Payment links</h3>
@@ -3265,6 +3266,8 @@ async function historyDrawer(rowId) {
     if (f) { closeDrawer(); linkModal(f.p, f.g) } else toast('Open the Timetable to send this one.')
   })
   d.querySelectorAll('[data-rec-stripe]').forEach((b) => b.addEventListener('click', () => recordModal(row, { stripe: p.stripe.find((s) => s.id === b.dataset.recStripe) })))
+  // Refund a term fee (Lee, 5 Nov 2026): A$50 / A$30 and unused sessions, worked out in the window.
+  d.querySelectorAll('[data-term-refund]').forEach((b) => b.addEventListener('click', () => termRefundModal({ post, modal, closeModal, toast }, p.stripe.find((s) => s.id === b.dataset.termRefund), p.termRefund || { weeks: 10, half: false, had: 0 }, p.player, () => { closeDrawer(); renderMoney() })))
 }
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && document.querySelector('.jm-drawer') && !document.querySelector('.jp-modal')) closeDrawer() })
 document.addEventListener('click', (e) => { const b = e.target.closest('[data-notes-row]'); if (b) { e.preventDefault(); notesModal(b.dataset.notesRow) } })

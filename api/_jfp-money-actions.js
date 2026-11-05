@@ -16,7 +16,7 @@ import { invoiceInput, newInvoice, getInvoice, saveInvoice, listInvoices, viewed
 import { listMatches, listRules, matchInput, rememberKey, saveMatch, saveRule, dropRule, silenceFlag } from './_jfp-stripe-match.js'
 import { invoiceEmail, sendInvoiceEmail } from './_jfp-email.js'
 import { invoicePdfAttachment } from './_jfp-fee-pdf.js'
-import { refundRoom, refundPayreq } from './_jfp-refund-actions.js'
+import { refundRoom, refundPayreq, paymentRefundRoom, refundStripePayment } from './_jfp-refund-actions.js'
 
 export const MONEY_ACTIONS = new Set(['refundRoom', 'refundPayment', 'stripeClassOptions', 'stripeHoliday', 'stripeHolidayUndo', 'stripePro', 'stripeProUndo', 'stripeNotJfp', 'stripeNotJfpUndo', 'stripeMatch', 'stripeMatchRules', 'stripeMatchForget', 'extraMoney', 'createCharge', 'chargeRecord', 'chargeCancel', 'invoiceList', 'invoiceGet', 'invoiceSave', 'invoiceEmailPreview', 'invoiceSend', 'invoiceVoid', 'invoicePay', 'bankInvoice'])
 const ISO = /^\d{4}-\d{2}-\d{2}$/
@@ -387,13 +387,15 @@ async function bankInvoice(req, res, principal, config, body, deps) {
 export async function moneyAction(req, res, principal, config, body, action, deps) {
   switch (action) {
     // Refund a card payment in Stripe (Lee, 5 Nov 2026). Lee or Ligia in the portal, never Hermes.
+    // A payment link by payreqId; a JFP term fee by its Stripe payment (stripeId).
     case 'refundRoom': {
-      const r = await refundRoom(body.payreqId)
+      const r = body.stripeId ? await paymentRefundRoom(body.stripeId) : await refundRoom(body.payreqId)
       return r.error ? fail(res, 400, r.error) : res.status(200).json({ success: true, paidCents: r.paidCents, refundedCents: r.refundedCents, roomCents: r.roomCents, suggestCents: r.suggestCents })
     }
     case 'refundPayment': {
       if (principal?.via === 'hermes') return fail(res, 403, 'Only Lee or Ligia can refund, in the portal.')
-      const r = await refundPayreq({ payreqId: body.payreqId, amountCents: body.amountCents, by: principal.email, reason: body.reason })
+      const args = { amountCents: body.amountCents, by: principal.email, reason: body.reason }
+      const r = body.stripeId ? await refundStripePayment({ stripeId: body.stripeId, ...args }) : await refundPayreq({ payreqId: body.payreqId, ...args })
       return r.ok ? res.status(200).json({ success: true, ...r }) : fail(res, 400, r.error)
     }
     case 'stripeClassOptions': return stripeClassOptions(res, config, body)
