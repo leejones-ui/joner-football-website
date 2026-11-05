@@ -62,7 +62,7 @@ export function cancelExtraSheet(x, onDone) {
     <div class="j-box ${c.paid && c.late ? 'j-box-amber' : 'j-box-green'}">${what}</div>
     <p class="ja-small">Your place is given up and the coach is told straight away. This cannot be undone, but you can book again if there is still a place.</p>
     <p class="j-err" data-xc-err hidden></p></div>`
-  sheet.foot.innerHTML = `<button type="button" class="ja-btn ja-btn-red ja-btn-block" data-xc-go>Cancel the session${c.paid && !c.late ? ` and refund ${esc(c.refundLabel)}` : ''}</button><button type="button" class="ja-btn ja-btn-light ja-btn-block" data-xc-keep>Keep it</button>`
+  sheet.foot.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px;width:100%"><button type="button" class="ja-btn ja-btn-red ja-btn-block" data-xc-go>Cancel the session${c.paid && !c.late ? ` and refund ${esc(c.refundLabel)}` : ''}</button><button type="button" class="ja-btn ja-btn-light ja-btn-block" data-xc-keep>Keep it</button></div>`
   sheet.foot.querySelector('[data-xc-keep]').addEventListener('click', () => closeSheet())
   const go = sheet.foot.querySelector('[data-xc-go]')
   go.addEventListener('click', async () => {
