@@ -1,7 +1,7 @@
 ---
 // Ad-only landing page (players or parents). Not linked from the site, noindex,
 // left out of the sitemap. The hero follows the ad's hook: the ad's utm_content
-// carries its code (H01 to H06), or ?hook=H04 for previews.
+// carries its code (H01 to H06, S01 to S04), or ?hook=H04 for previews.
 import BaseLayout from '../layouts/BaseLayout.astro'
 import AdPromise from './AdPromise.astro'
 
@@ -37,7 +37,7 @@ const hookPhotos = Object.fromEntries(hooks.map((h) => [h.code, { photo: h.photo
       try {
         var params = new URLSearchParams(window.location.search || '');
         var raw = params.get('hook') || params.get('utm_content') || '';
-        var match = raw.match(/\bH0[1-9]\b/i);
+        var match = raw.match(/\b[HS]0[1-9]\b/i);
         if (match) hook = match[0].toUpperCase();
         if (!hook) hook = window.sessionStorage.getItem('jf_ad_hook') || '';
         if (codes.indexOf(hook) === -1) hook = '';
@@ -197,7 +197,11 @@ const hookPhotos = Object.fromEntries(hooks.map((h) => [h.code, { photo: h.photo
   :global(html[data-hook="H03"]) .lp-hook[data-v="H03"],
   :global(html[data-hook="H04"]) .lp-hook[data-v="H04"],
   :global(html[data-hook="H05"]) .lp-hook[data-v="H05"],
-  :global(html[data-hook="H06"]) .lp-hook[data-v="H06"] { display: block; }
+  :global(html[data-hook="H06"]) .lp-hook[data-v="H06"],
+  :global(html[data-hook="S01"]) .lp-hook[data-v="S01"],
+  :global(html[data-hook="S02"]) .lp-hook[data-v="S02"],
+  :global(html[data-hook="S03"]) .lp-hook[data-v="S03"],
+  :global(html[data-hook="S04"]) .lp-hook[data-v="S04"] { display: block; }
   .lp h1 { font-size: clamp(40px, 11.5vw, 76px); line-height: .95; letter-spacing: .01em; margin: 0 0 14px; text-wrap: balance; }
   .lp h1 :global(em) { font-style: normal; color: var(--red); }
   .lp-strike { font: 400 clamp(22px, 6vw, 34px)/1.05 var(--font-heading); text-transform: uppercase; color: var(--muted); text-decoration: line-through; text-decoration-color: var(--red); text-decoration-thickness: 4px; margin: 0 0 8px; }

@@ -1,5 +1,5 @@
 ---
-// Ad-only page for the player carousels (H01, H04, H06). Not linked anywhere.
+// Ad-only page for the player carousels (H01, H04, H06) and the socials reel ads (S01 to S04). Not linked anywhere.
 import AdLanding from '../../components/AdLanding.astro'
 
 const hooks = [
@@ -7,6 +7,10 @@ const hooks = [
   { code: 'H01', head: 'Less TikTok.<br><em>More touches.</em>', sub: "You've saved hundreds of drills. Here's a plan you'll actually train. Press play on a filmed session and copy every rep.", photo: 'as12', photoAlt: 'Lee Jones filming a training session on a phone', pos: 'center 30%' },
   { code: 'H04', head: 'Benched?<br><em>Out-train the starter.</em>', sub: "You can't pick the team. You can pick what you train tonight. Finishing, first touch and weak foot programs, every session filmed.", photo: 'pr00135', photoAlt: 'Lee Jones demonstrating a drill to players', pos: 'center 10%' },
   { code: 'H06', strike: 'Talent decides who plays.', head: 'Technique<br>is <em>trained.</em>', sub: 'Weak foot, close control, first touch. Programs that take you one session at a time, every session filmed.', photo: 'h_boots2', photoAlt: 'Close-up of a player controlling the ball', pos: 'center 60%' },
+  { code: 'S01', strike: 'Leaning back on every shot.', head: 'Strike <em>through</em><br>the ball.', sub: "That was one fix. The full shooting sessions are in the app. Score More Goals is 8 sessions, 4 drills each, and I film every rep.", photo: 'h_boots2', photoAlt: 'Close-up of a player striking the ball', pos: 'center 60%' },
+  { code: 'S02', strike: 'Over the bar again.', head: 'Keep it down.<br><em>Score more.</em>', sub: "That was one fix. The full shooting sessions are in the app. Score More Goals is 8 sessions, 4 drills each, and I film every rep.", photo: 'h_boots2', photoAlt: 'Close-up of a player striking the ball', pos: 'center 60%' },
+  { code: 'S03', head: 'Run at him.<br><em>Beat him.</em>', sub: "That was one drill. The full dribbling and 1v1 sessions are in the app. I film every rep, you copy it.", photo: 'pr00135', photoAlt: 'Lee Jones playing a 1v1 against a young player', pos: 'center 10%' },
+  { code: 'S04', strike: 'Weak shots.', head: 'More power.<br><em>Every shot.</em>', sub: "That was one fix. The full shooting sessions are in the app. Score More Goals is 8 sessions, 4 drills each, and I film every rep.", photo: 'h_boots2', photoAlt: 'Close-up of a player striking the ball', pos: 'center 60%' },
 ]
 
 const problemBody = [
