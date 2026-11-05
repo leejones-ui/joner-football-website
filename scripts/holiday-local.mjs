@@ -476,7 +476,7 @@ function mockBalance(s) {
 }
 function mockCharge(s, { expandBalance = false, late = false } = {}) {
   const id = `ch_${String(s.payment_intent).slice(3)}`
-  return { id, receipt_url: `http://localhost:${PORT}/mock-stripe/receipt/${id}`, amount_refunded: (s.refunds || []).reduce((t, r) => t + r.amount, 0), payment_method_details: { type: s.payMethod || 'card' }, balance_transaction: late ? null : expandBalance ? mockBalance(s) : `txn_${String(s.payment_intent).slice(3)}` }
+  return { id, amount: s.amount_total || 0, receipt_url: `http://localhost:${PORT}/mock-stripe/receipt/${id}`, amount_refunded: (s.refunds || []).reduce((t, r) => t + r.amount, 0), payment_method_details: { type: s.payMethod || 'card' }, balance_transaction: late ? null : expandBalance ? mockBalance(s) : `txn_${String(s.payment_intent).slice(3)}` }
 }
 const paidSession = (pi) => [...sessions.values(), ...stripeSeeded, ...juniorsSessions].find((x) => x.payment_intent === pi)
 // Juniors payments: the invented ones, and website sign-ups paid on the mock checkout.
@@ -619,6 +619,21 @@ const innerFetch = async (url, init = {}) => {
     if (!s) return json({ error: { message: 'No such payment_intent' } }, 404)
     log('stripe', `retrieve ${pi}`)
     return json({ id: pi, metadata: { ...(s.metadata || {}), ...(s.piMetadata || {}) }, latest_charge: mockCharge(s, { expandBalance: new URL(u).searchParams.getAll('expand[]').includes('latest_charge.balance_transaction') }) })
+  }
+  // A refund made from the portal (refundPayreq): kept on the paid session, once per idempotency key.
+  if (u === 'https://api.stripe.com/v1/refunds' && init.method === 'POST') {
+    const q = new URLSearchParams(String(init.body))
+    const key = init.headers?.['idempotency-key']
+    if (key && idemKeys.has(key)) return json(idemKeys.get(key))
+    const s = [...sessions.values(), ...stripeSeeded].find((x) => x.payment_intent && `ch_${x.payment_intent.slice(3)}` === q.get('charge'))
+    if (!s) return json({ error: { message: 'No such charge' } }, 404)
+    const left = (s.amount_total || 0) - (s.refunds || []).reduce((t, r) => t + r.amount, 0)
+    if (Number(q.get('amount')) > left) return json({ error: { message: 'Refund is greater than unrefunded amount on charge' } }, 400)
+    const r = { id: `re_test_${crypto.randomBytes(6).toString('hex')}`, object: 'refund', amount: Number(q.get('amount')), charge: q.get('charge'), status: 'succeeded', reason: q.get('reason'), created: Math.floor(Date.now() / 1000) }
+    s.refunds = [...(s.refunds || []), r]
+    if (key) idemKeys.set(key, r)
+    log('stripe', `refund ${r.id} ${r.amount} on ${r.charge}`)
+    return json(r)
   }
   if (u.startsWith('https://api.stripe.com/v1/charges/')) {
     const ch = decodeURIComponent(u.split('/charges/')[1].split('?')[0])
