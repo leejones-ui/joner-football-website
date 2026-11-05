@@ -97,6 +97,10 @@ export async function applyJfpRefunds(id, charge, piId) {
     done.push(entry)
     } finally { await kvCommand(['DEL', lock]) }
   }
+  // A refunded extra session frees its place on the public page (Lee, 5 Nov 2026).
+  if (isPay && (record.programme === 'extra' || record.charge?.kind === 'extra')) {
+    try { const { releaseExtraForPayreq } = await import('./_jfp-extra.js'); await releaseExtraForPayreq(await getPayreq(id)) } catch (error) { console.error('jfp refund: extra place not freed', error) }
+  }
   // Every copy of the roster cache, and no slow read put back over it.
   await bustRosterCache()
   return { ok: true, applied: done.length }

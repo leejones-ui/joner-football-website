@@ -480,6 +480,31 @@ async function withSlotLock(slotId, fn) {
   if (!held) console.error('jfp extra settle: went on without the lock', slotId)
   try { return await fn() } finally { if (held) await kvCommand(['DEL', lock]) }
 }
+// A refunded extra session frees its place (Lee, 5 Nov 2026: Kayaan's refunded
+// 10am stayed "booked", so the public page hid it). Once all but A$10 or less
+// of the payment is back with the family, the booking (and its whole-session
+// group) comes off and the place shows again. Safe to run twice: Stripe
+// resends events, and a booking already off is left alone.
+export const RELEASE_KEEP_CENTS = 1000
+export async function releaseExtraForPayreq(q) {
+  if (!q?.id) return { released: [] }
+  const paid = Number(q.paidCents ?? q.amountCents ?? 0)
+  if (!(paid > 0) || paid - Number(q.refundedCents || 0) > RELEASE_KEEP_CENTS) return { released: [] }
+  const mine = (x) => liveBookings(x).some((b) => b.payreqId === q.id)
+  const found = (await allSlots()).find(mine)
+  if (!found) return { released: [] }
+  return withSlotLock(found.id, async () => {
+    const s = await getSlot(found.id)
+    const b = s && liveBookings(s).find((x) => x.payreqId === q.id)
+    if (!b) return { released: [] }
+    const group = b.groupId ? liveBookings(s).filter((x) => x.groupId === b.groupId) : [b]
+    const at = new Date().toISOString()
+    for (const x of group) { x.status = 'removed'; x.removedBy = 'system: refunded'; x.removedAt = at }
+    await putSlot(s)
+    await audit({ by: 'system', action: 'extra.unbook', target: s.id, after: { booking: b.id, player: group.map((x) => x.name).join(', '), why: 'refunded', payreq: q.id } })
+    return { released: group.map((x) => x.id), slot: s }
+  })
+}
 // A family taken off by extraSettle had paid after all (their charge could
 // not be cancelled): put them back on, so two paid families show and Lee
 // chooses (Revenue agent review, 28 Oct 2026).
