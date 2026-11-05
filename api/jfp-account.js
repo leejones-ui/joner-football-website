@@ -41,6 +41,7 @@ import { listCancels, submitCancel, withdrawCancel, rowSessionDates, rowTime, no
 import { loadRoster, familyFor, createWaiverRows, waiverFields, bustRosterCache, updateTerm4Rows } from './_jfp-airtable.js'
 import { sessionFor, sameOrigin } from './_jfp-people.js'
 import { viewAsFor, endViewAs, viewCookie, VIEW_READ, VIEW_QUIET } from './_jfp-view-as.js'
+import { needsTerms, acceptTerms, cancelExtraBooking, cancelView, refundReady, TERMS_VERSION } from './_jfp-extra-cancel.js'
 import { nextStatuses, setNextStatus, nextPrices, recordNext, createNextPayreq, nextInterest, interestKey } from './_jfp-next.js'
 import { jjAccountView, jjPay, jjRequestPay, jjNextChoice, familyJJ, jjWaiverRows, markJJWaivers } from './_jj-account.js'
 import { owedItems, payOwed as makeOwedPayreq, cancelOwed as cancelOwedPayreq } from './_jfp-account-pay.js'
@@ -346,6 +347,8 @@ async function overview(res, parent, body = {}, opts = {}) {
     bookUrl: '/jfp-booking/',
     // Where are you based (Lee, 20 Oct 2026): asked once of someone new to us.
     where: account?.where ? { place: account.where.place, away: isAway(account.where) } : null,
+    // The updated terms (Lee, 5 Nov 2026): every family ticks them once.
+    termsAsk: !opts.player && !parent.viewAs && (await needsTerms(parent.email)) ? { version: TERMS_VERSION } : null,
     askWhere: !opts.player && !parent.viewAs && shouldAsk(account) ? { places: PLACES, states: STATES, forWho: FOR, heard: HEARD, country: account.from?.country || '', answered: Boolean(account.where), needMobile: !account.mobile } : null,
     nextTerm: nextTerm.length ? { name: nt.name, players: nextTerm } : null,
     keep,
@@ -395,7 +398,7 @@ async function bookedExtras(email) {
     const fam = ours.find((b) => b.from === 'family')
     const pay = fam ? leadPayreq(s, fam) : ''
     const state = !fam ? 'none' : !pay ? 'link' : paid.has(pay) ? 'paid' : 'unpaid'
-    return { id: s.id, date: s.date, dateLabel: dateLabel(s.date), time: s.time, location: s.location, durationMin: s.durationMin || 60, players: all.map((b) => b.name), state, paid: state === 'paid', payreqId: pay }
+    return { id: s.id, date: s.date, dateLabel: dateLabel(s.date), time: s.time, location: s.location, durationMin: s.durationMin || 60, players: all.map((b) => b.name), state, paid: state === 'paid', payreqId: pay, slot: s }
   })
 }
 async function extrasView(config, email, jfp = false) {
@@ -408,6 +411,9 @@ async function extrasView(config, email, jfp = false) {
   // Extra sessions coaches opened to book now (money engineer, _jfp-family-extra.js).
   const bookable = await bookableSlots(config)
   const booked = await bookedExtras(email).catch((e) => { console.error('jfp account booked extras failed', e); return [] })
+  // Cancel in My account (Lee, 5 Nov 2026): what cancelling now would mean.
+  const ready = await refundReady()
+  for (const x of booked) { x.cancel = await cancelView(x.slot, email, ready).catch(() => null); delete x.slot }
   return { booked, analysisPriceLabel: price?.label || '', analysisPackages: gaPackages(config), analysisJfp: jfp, holidaySlots: holiday.sessions.filter((s) => !s.full).length, holiday, seen, slots: extraSlots(), bookable, days: EXTRA_DAYS, times: EXTRA_TIMES, types: EXTRA_TYPES, mine }
 }
 
@@ -1175,7 +1181,16 @@ export default async function handler(req, res) {
     if (body.action === 'sessionsSeen') return await markSessionsSeen(res, parent, body)
     // Book an extra session: hold the place, make the charge, then pay (money engineer).
     if (body.action === 'extraSlot') { const s = await privateSlot(await getConfig(), { slotId: body.slotId, token: body.k }); return s ? res.status(200).json({ success: true, slot: s }) : fail(res, 404, 'That session is not open to book, or the link is not right.') }
+    if (body.action === 'acceptTerms') { await acceptTerms(parent.email, { ua: req.headers?.['user-agent'] }); return res.status(200).json({ success: true }) }
+    if (body.action === 'cancelExtra') {
+      const r = await cancelExtraBooking({ config: await getConfig(), parent, body })
+      if (!r.ok) return fail(res, r.status || 400, r.error)
+      return res.status(200).json({ success: true, ...r })
+    }
     if (body.action === 'bookExtra') {
+      // The extra session terms, ticked each time before paying (Lee, 5 Nov 2026).
+      if (body.acceptTerms !== true) return fail(res, 400, 'Tick that you accept the extra session terms, then book.', { code: 'terms' })
+      await acceptTerms(parent.email, { extra: true })
       const config = await getConfig()
       const fam = familyFor(parent.email, await loadRoster({ fresh: true }), config.termStart)
       const r = await bookExtraPlace({ config, parent, fam, body, siteUrl: siteUrl(req) })

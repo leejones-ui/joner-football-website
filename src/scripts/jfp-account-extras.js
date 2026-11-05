@@ -6,6 +6,7 @@
 import { esc, api, toast, openSheet } from './jfp-common.js'
 import { ic } from './jfp-account-icons.js'
 import { hero, secHead, pageHead } from './jfp-account-ui.js'
+import { extraTermsTick } from './jfp-account-terms.js'
 
 const IMG = '/images/jfp-account/photos'
 const todayIso = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
@@ -205,6 +206,7 @@ function wholePicker(card, D, s) {
     <div class="j-field" style="margin:0"><span>Your players</span>${ps.map((p, i) => `<label class="ja-small" style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-xw-me="${esc(p.key)}" ${i === 0 ? 'checked' : ''}> ${esc(p.name)}${p.waiver?.onFile ? '' : ' (waiver needed)'}</label>`).join('')}</div>
     <div class="j-field" style="margin:0" data-xw-guests-wrap><span>Friends coming too <span class="muted">(full names)</span></span><div data-xw-guests></div></div>
     <p class="ja-small" data-xw-total></p>
+    ${extraTermsTick()}
     <button type="button" class="ja-btn ja-btn-red ja-btn-lg ja-btn-block" data-xbook-go="${esc(s.id)}">Book and pay</button>`
   const opt = () => s.options.find((o) => o.id === acts.querySelector('[data-xw-opt][aria-pressed="true"]')?.dataset.xwOpt) || s.options[0]
   const draw = () => {
@@ -234,7 +236,7 @@ function bookPicker(card, D, slotId) {
   const ps = D.players || []
   const acts = card.querySelector('[data-xslot-acts]')
   acts.innerHTML = ps.length
-    ? `<label class="j-field" style="margin:0;flex:1"><span>Which player?</span><select class="j-select" data-xbook-player>${ps.map((p) => `<option value="${esc(p.key)}">${esc(p.name)}${p.waiver?.onFile ? '' : ' (waiver needed)'}</option>`).join('')}</select></label><button type="button" class="ja-btn ja-btn-red ja-btn-lg ja-btn-block" data-xbook-go="${esc(slotId)}">Book and pay</button>`
+    ? `<label class="j-field" style="margin:0;flex:1"><span>Which player?</span><select class="j-select" data-xbook-player>${ps.map((p) => `<option value="${esc(p.key)}">${esc(p.name)}${p.waiver?.onFile ? '' : ' (waiver needed)'}</option>`).join('')}</select></label>${extraTermsTick()}<button type="button" class="ja-btn ja-btn-red ja-btn-lg ja-btn-block" data-xbook-go="${esc(slotId)}">Book and pay</button>`
     : '<p class="ja-small">Add your player first (My profile), then book.</p>'
 }
 async function bookGo(btn, D) {
@@ -254,9 +256,10 @@ async function bookGo(btn, D) {
   }
   const p = (D.players || []).find((x) => keys.includes(x.key) && !x.waiver?.onFile)
   if (p) { err.innerHTML = `Sign ${esc(p.name)}'s waiver first, then book. <button type="button" class="ja-link" data-go="waivers">Sign the waiver</button>`; err.hidden = false; return }
+  if (!card.querySelector('[data-xterms]')?.checked) { err.textContent = 'Tick that you accept the extra session terms, then book.'; err.hidden = false; return }
   btn.disabled = true
   btn.textContent = 'Opening'
-  const r = await api('/api/jfp-account', { action: 'bookExtra', slotId: btn.dataset.xbookGo, k: LINK?.slot === btn.dataset.xbookGo ? LINK.k : '', playerKey: key, ...(whole ? { playerKeys: keys, guests, optionId } : {}) })
+  const r = await api('/api/jfp-account', { action: 'bookExtra', slotId: btn.dataset.xbookGo, k: LINK?.slot === btn.dataset.xbookGo ? LINK.k : '', playerKey: key, acceptTerms: true, ...(whole ? { playerKeys: keys, guests, optionId } : {}) })
   if (r.ok && r.data.url) { location.href = r.data.url; return }
   btn.disabled = false
   btn.textContent = 'Book and pay'

@@ -17,6 +17,7 @@ import { renderReports, reportsHomeBlock, unreadReports } from './jfp-account-re
 import { feedbackHomeBlock, feedbackClick } from './jfp-account-feedback.js'
 import { newSessions, markSeen, newSessionsPopup } from './jfp-account-new.js'
 import { askWhere } from './jfp-account-where.js'
+import { askTerms, cancelExtraSheet, makeupLine } from './jfp-account-terms.js'
 import { coachRow, coachSheet, renderCoaches } from './jfp-account-coach.js'
 import { attendanceLine, pastMark, unreadNotes, notesHomeBlock, makeupsHomeBlock, askMakeup, renderNotes, renderAlerts, pushOffered, loginRow, loginSheet } from './jfp-account-more.js'
 
@@ -167,6 +168,7 @@ async function start() {
     if (el) el.scrollIntoView({ block: 'center' })
     else if (D) toast(D.players.length ? 'The question is closed for now. Thank you.' : 'Sign in with the email we sent it to.')
   } else if (D?.askWhere) askWhere(D)
+  else if (D?.termsAsk) askTerms(D)
   else if (h !== 'extra' && h !== 'holidays') newSessionsPopup(D, (k) => show(k))
   loadProfiles()
 }
@@ -699,7 +701,7 @@ function requestsBlock() {
 function bookedExtrasBlock(D, { label = true } = {}) {
   const list = D.extras?.booked || []
   if (!list.length) return ''
-  return `${label ? '<p class="ja-label">Extra sessions booked</p>' : ''}${list.map((x) => `<article class="ja-card ja-xbooked"><p class="ja-kicker"><i></i>Extra session</p><h3 class="ja-h3" style="margin-top:6px">${esc(x.dateLabel)} · ${esc(x.time)}</h3><p class="ja-small">${esc(x.location)} · ${esc(String(x.durationMin))} min</p><p class="ja-small">${esc(x.players.join(', '))}</p>${x.state === 'paid' ? '<p style="margin-top:8px"><span class="ja-tag green">Paid</span></p>' : x.state === 'unpaid' ? '<p style="margin-top:8px"><span class="ja-tag amber">Not paid yet</span> <button type="button" class="ja-btn ja-btn-sm ja-btn-red" data-go="fees">Pay now</button></p><p class="ja-small ja-muted" style="margin-top:6px">The place is yours once it is paid. Until then another family can still take it.</p>' : x.state === 'link' ? '<p class="ja-small ja-muted" style="margin-top:8px">Payment link on its way.</p>' : ''}</article>`).join('')}`
+  return `${label ? '<p class="ja-label">Extra sessions booked</p>' : ''}${list.map((x) => `<article class="ja-card ja-xbooked"><p class="ja-kicker"><i></i>Extra session</p><h3 class="ja-h3" style="margin-top:6px">${esc(x.dateLabel)} · ${esc(x.time)}</h3><p class="ja-small">${esc(x.location)} · ${esc(String(x.durationMin))} min</p><p class="ja-small">${esc(x.players.join(', '))}</p>${x.state === 'paid' ? '<p style="margin-top:8px"><span class="ja-tag green">Paid</span></p>' : x.state === 'unpaid' ? '<p style="margin-top:8px"><span class="ja-tag amber">Not paid yet</span> <button type="button" class="ja-btn ja-btn-sm ja-btn-red" data-go="fees">Pay now</button></p><p class="ja-small ja-muted" style="margin-top:6px">The place is yours once it is paid. Until then another family can still take it.</p>' : x.state === 'link' ? '<p class="ja-small ja-muted" style="margin-top:8px">Payment link on its way.</p>' : ''}${x.cancel ? `<p style="margin-top:10px"><button type="button" class="ja-btn ja-btn-ghost ja-btn-sm" data-xcancel="${esc(x.id)}">Cancel this session</button></p>` : ''}</article>`).join('')}`
 }
 function renderSessions() {
   const el = document.querySelector('[data-pane="sessions"]')
@@ -1530,6 +1532,7 @@ function cancelSheet(e, p, preset = '') {
     <label class="j-field"><span>Note for the coach <span class="muted" id="cx-hint">(optional)</span></span><textarea class="j-textarea" id="cx-note" maxlength="${esc(D.noteMax)}" rows="3"></textarea></label>
     <div id="cx-late"></div>
     <p class="j-err" id="cx-err" hidden></p>
+    ${makeupLine()}
     <div class="ja-reach-box"><p class="ja-small"><b>We email the coach taking the session and Ligia.</b> Rather call or text?</p><div id="cx-reach"></div></div>`
   sheet.foot.innerHTML = '<button type="button" class="ja-btn ja-btn-red ja-btn-block" id="cx-go">Tell the coach and Ligia</button>'
   const late = () => {
@@ -1815,6 +1818,8 @@ document.addEventListener('click', async (e) => {
   if (cm) return comingSave(cm, cm.dataset.coming, [cm.dataset.comingDate], cm.getAttribute('aria-pressed') !== 'true')
   const ca = t.closest('[data-coming-all]')
   if (ca) { const en = D.players.flatMap((p) => p.enrolments).find((x) => x.rowId === ca.dataset.comingAll); if (en) { const said = new Set(en.coming || []); return comingSave(ca, en.rowId, comingOpen(en).filter((d) => !said.has(d)), true) } return }
+  const xc = t.closest('[data-xcancel]')
+  if (xc) { const x = (D.extras?.booked || []).find((b) => b.id === xc.dataset.xcancel); if (x) cancelExtraSheet(x, () => load()); return }
   const cx = t.closest('[data-cancel-open]')
   if (cx) {
     const p = D.players.find((x) => x.key === cx.dataset.cancelPlayer)

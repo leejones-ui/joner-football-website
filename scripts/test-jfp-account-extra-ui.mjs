@@ -77,8 +77,13 @@ await test('the sessions to book now: a short card (day, time, kind, Book now); 
   assert.equal(p.posts.filter((b) => b.action === 'bookExtra').length, 0, 'nothing is held without the waiver')
   sel.value = 'arifamily'
   await p.click('[data-xbook-go="XS-1-AAAAAA"]')
+  assert.match(p.text('[data-xslot="XS-1-AAAAAA"] [data-xslot-err]'), /accept the extra session terms/)
+  assert.equal(p.posts.filter((b) => b.action === 'bookExtra').length, 0, 'nothing is held without the terms ticked')
+  assert.match(p.text('.j-sheet'), /less a A\$5 fee/)
+  p.$('[data-xslot="XS-1-AAAAAA"] [data-xterms]').checked = true
+  await p.click('[data-xbook-go="XS-1-AAAAAA"]')
   assert.equal(p.text('[data-xslot="XS-1-AAAAAA"] [data-xslot-err]'), 'That session is full.')
-  assert.deepEqual(p.posts.filter((b) => b.action === 'bookExtra').at(-1), { action: 'bookExtra', slotId: 'XS-1-AAAAAA', k: '', playerKey: 'arifamily' })
+  assert.deepEqual(p.posts.filter((b) => b.action === 'bookExtra').at(-1), { action: 'bookExtra', slotId: 'XS-1-AAAAAA', k: '', playerKey: 'arifamily', acceptTerms: true })
   assert.deepEqual(p.errors, [])
   p.close()
 })
@@ -89,8 +94,9 @@ await test('a private session link (#extra?slot=&k=) shows that session first, a
   assert.match(p.text('[data-xslot="XS-9-CCCCCC"]'), /Your session.*9:00am/)
   await p.click('[data-xbook="XS-9-CCCCCC"]')
   assert.match(p.text('.j-sheet'), /A\$65/)
+  p.$('[data-xslot="XS-9-CCCCCC"] [data-xterms]').checked = true
   await p.click('[data-xbook-go="XS-9-CCCCCC"]')
-  assert.deepEqual(p.posts.filter((b) => b.action === 'bookExtra').at(-1), { action: 'bookExtra', slotId: 'XS-9-CCCCCC', k: 'secretkey', playerKey: 'arifamily' })
+  assert.deepEqual(p.posts.filter((b) => b.action === 'bookExtra').at(-1), { action: 'bookExtra', slotId: 'XS-9-CCCCCC', k: 'secretkey', playerKey: 'arifamily', acceptTerms: true })
   assert.match(p.text('[data-xslot="XS-9-CCCCCC"] [data-xslot-err]'), /Already booked and paid/)
   const gone = await openAccount(BASE, { hash: '#extra?slot=XS-8-DDDDDD&k=bad', onPost: (b) => (b.action === 'extraSlot' ? { status: 404, success: false } : null) })
   await gone.settle()
@@ -120,8 +126,9 @@ await test('a whole session: the options with prices per player, 1 on 1 or a gro
   await type(guest()[1], 'Friend Two')
   assert.match(card(), /3 players: A\$180/)
   assert.equal(guest().length, 3, 'a group of up to 4: Ari and 2 friends leaves one more box')
+  p.$('[data-xslot="XS-5-EEEEEE"] [data-xterms]').checked = true
   await p.click('[data-xbook-go="XS-5-EEEEEE"]')
-  assert.deepEqual(p.posts.filter((b) => b.action === 'bookExtra').at(-1), { action: 'bookExtra', slotId: 'XS-5-EEEEEE', k: '', playerKey: 'arifamily', playerKeys: ['arifamily'], guests: ['Friend One', 'Friend Two'], optionId: 'group' })
+  assert.deepEqual(p.posts.filter((b) => b.action === 'bookExtra').at(-1), { action: 'bookExtra', slotId: 'XS-5-EEEEEE', k: '', playerKey: 'arifamily', acceptTerms: true, playerKeys: ['arifamily'], guests: ['Friend One', 'Friend Two'], optionId: 'group' })
   assert.deepEqual(p.errors, [])
   p.close()
 })
