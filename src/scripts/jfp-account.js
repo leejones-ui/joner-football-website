@@ -458,7 +458,7 @@ function show(panel, { keepScroll = false } = {}) {
 const pane = (k) => document.querySelector(`[data-pane="${k}"]`)
 // Read notes or a report: the badges and Home's New cards update (28 Oct 2026).
 function afterRead() { renderShell(); const h = pane('home'); if (h) { delete h.dataset.drawn; if (current === 'home') drawPane('home') } }
-const DRAW = { home: () => renderHome(), sessions: () => renderSessions(), fees: () => renderFees(), family: () => renderFamily(), news: () => renderNews(), info: () => renderInfo(), waivers: () => renderWaivers(), cancel: () => renderCancel(), keep: () => renderKeep(), term: () => renderTerm(), coaches: () => renderCoaches(pane('coaches'), D), holidays: () => renderHolidays(), extra: () => renderExtra(pane('extra'), D), analysis: () => renderAnalysis(pane('analysis'), D), videos: () => renderVideos(), app: () => renderApp(), contact: () => renderContact(), notes: () => renderNotes(pane('notes'), D, afterRead), reports: () => renderReports(pane('reports'), D, afterRead), alerts: () => renderAlerts(pane('alerts'), D) }
+const DRAW = { home: () => renderHome(), sessions: () => renderSessions(), fees: () => renderFees(), family: () => renderFamily(), news: () => renderNews(), info: () => renderInfo(), waivers: () => renderWaivers(), cancel: () => renderCancel(), keep: () => renderKeep(), term: () => renderTerm(), coaches: () => renderCoaches(pane('coaches'), D), holidays: () => renderHolidays(), extra: () => renderExtraPage(), analysis: () => renderAnalysis(pane('analysis'), D), videos: () => renderVideos(), app: () => renderApp(), contact: () => renderContact(), notes: () => renderNotes(pane('notes'), D, afterRead), reports: () => renderReports(pane('reports'), D, afterRead), alerts: () => renderAlerts(pane('alerts'), D) }
 function drawPane(panel) { DRAW[panel]?.(); const el = document.querySelector(`[data-pane="${panel}"]`); if (el) el.dataset.drawn = '1' }
 
 function render() {
@@ -697,7 +697,15 @@ function requestsBlock() {
 
 // ---------- my sessions ----------
 
-// Extra sessions this family is booked on (28 Oct 2026), on Home and Sessions.
+// Book extra sessions, with what they have booked (and Cancel) at the top
+// (Lee, 5 Nov 2026: the terms say "cancel in your account, under Extra sessions").
+function renderExtraPage() {
+  const el = pane('extra')
+  renderExtra(el, D)
+  const b = bookedExtrasBlock(D)
+  if (b) el.querySelector('#x-bookable')?.insertAdjacentHTML('beforebegin', `<section class="ja-sec"><div class="ja-stack">${b}</div></section>`)
+}
+// Extra sessions this family is booked on (28 Oct 2026), on Home, Sessions and Extra sessions.
 function bookedExtrasBlock(D, { label = true } = {}) {
   const list = D.extras?.booked || []
   if (!list.length) return ''
