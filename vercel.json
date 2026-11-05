@@ -23,6 +23,13 @@
       "dest": "/api/subscribe?uscreen_webhook=1"
     },
     {
+      "src": "/go/(?<page>players|parents)",
+      "status": 308,
+      "headers": {
+        "Location": "/go/$page/"
+      }
+    },
+    {
       "src": "/go/(?<token>[a-z0-9-]+)",
       "dest": "/api/go?token=$token"
     },
