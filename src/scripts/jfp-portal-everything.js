@@ -5,9 +5,10 @@
 import { esc, money } from './jfp-common.js'
 import { moneyHead, bindTip, programmeSwitch, bindSwitch, PROGRAMME_LABEL } from './jfp-portal-programmes.js'
 
-export const EVERYTHING_DEFINITION = 'Each program for the calendar year picked. JFP: the year\'s terms (this term live; earlier terms from the payment ledger or your Money Register). Joners Juniors: its terms that year. Holiday training: by session date. Pro sessions are part of JFP. Camps: from the camp sheets, before camp costs (the Camps view has net after costs). Taken is after refunds; kept is after Stripe\'s fees where they are known (older JFP terms from the register have none).'
+export const EVERYTHING_DEFINITION = 'Each program for the calendar year picked. JFP: the year\'s terms (this term live; earlier terms from the payment ledger or your Money Register). Joners Juniors: its terms that year. Holiday training: by session date. Pro sessions are part of JFP. Extra sessions: by the day paid. Camps: from the camp sheets, before camp costs (the Camps view has net after costs). Taken is after refunds; kept is after Stripe\'s fees where they are known (older JFP terms from the register have none).'
 // Pro sessions are counted in JFP (Lee, 19 Oct 2026), so not added again here.
-const ORDER = ['jfp', 'juniors', 'holiday', 'camps']
+// Extra sessions are never in the JFP figures, so they get their own card (5 Nov 2026).
+const ORDER = ['jfp', 'juniors', 'holiday', 'extra', 'camps']
 const inYear = (rows, year) => rows.filter((r) => String(r.month || '').startsWith(`${year}-`))
 const sum = (list, k) => list.reduce((t, x) => t + (x[k] || 0), 0)
 
@@ -30,6 +31,10 @@ export const FIGURES = {
   },
   pro: (v, year) => {
     const rows = inYear(v?.byMonth || [], year)
+    return rows.length ? { takenCents: sum(rows, 'takenCents') - sum(rows, 'refundedCents'), keptCents: sum(rows, 'keptCents'), note: `${sum(rows, 'count')} payment${sum(rows, 'count') === 1 ? '' : 's'}` } : null
+  },
+  extra: (v, year) => {
+    const rows = inYear((v?.byMonth || []).map((r) => ({ ...r, month: r.id })), year)
     return rows.length ? { takenCents: sum(rows, 'takenCents') - sum(rows, 'refundedCents'), keptCents: sum(rows, 'keptCents'), note: `${sum(rows, 'count')} payment${sum(rows, 'count') === 1 ? '' : 's'}` } : null
   },
   camps: (v, year) => {
@@ -58,7 +63,7 @@ function totalCard(states) {
     ${waiting.length ? `<p class="muted small">Still loading: ${esc(waiting.join(', '))}</p>` : ''}${failed.length ? `<p class="muted small">Not counted (could not be read): ${esc(failed.join(', '))}</p>` : ''}${got.some((p) => states[p].keptCents == null) ? '<p class="muted small">Kept is blank while a program\'s fees are not known.</p>' : ''}</div></section>`
 }
 
-// ui: { view, filter, go, readers: { jfp(year), juniors(), holiday(), pro(), camps(year) }, stale() }
+// ui: { view, filter, go, readers: { jfp(year), juniors(), holiday(), pro(), extra(), camps(year) }, stale() }
 export async function renderEverything(ui) {
   const now = Number(new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' }).slice(0, 4))
   const year = Number(ui.filter.year) >= 2020 && Number(ui.filter.year) <= now ? Number(ui.filter.year) : now

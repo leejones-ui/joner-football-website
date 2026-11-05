@@ -42,9 +42,10 @@ export async function applyJfpRefunds(id, charge, piId) {
     Object.assign(record, fresh)
     if ((record.refunds || []).some((x) => x.id === refund.id)) continue
     const amount = refund.amount
-    // A quick link for Juniors, holiday training or anything else is not JFP
-    // term money: noted on the link, never in the JFP ledger (Lee, 13 Oct 2026).
-    const jfpMoney = !(record.quick && record.programme && record.programme !== 'jfp')
+    // A quick link or player charge for Juniors, holiday training, extra
+    // sessions or anything else is not JFP term money: noted on the link, never
+    // in the JFP ledger (Lee, 13 Oct 2026; extra sessions 5 Nov 2026).
+    const jfpMoney = !((record.quick || record.charge) && record.programme && record.programme !== 'jfp')
     const rows = []
     for (const rid of record.term4Ids || []) { const r = await getTerm4Row(rid); if (r) rows.push(r) }
     // Split by what THIS payment put on each row (saved when it was paid),

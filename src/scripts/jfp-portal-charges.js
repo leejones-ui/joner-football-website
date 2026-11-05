@@ -109,7 +109,8 @@ function payModal(ui, c, onDone) {
 function table(id, head, rows) {
   return `<div class="jp-scroll"><table class="jp-table jy-table jy-stack" id="${id}"><thead><tr>${head.map((h, i) => `<th${i ? ' class="num"' : ''}>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c, i) => (i ? `<td class="num" data-label="${esc(head[i])}">${c}</td>` : `<th scope="row">${c}</th>`)).join('')}</tr>`).join('')}</tbody></table></div>`
 }
-const groupRows = (list) => list.map((g) => [esc(g.label), esc(String(g.count)), esc(money(g.takenCents)), esc(money(g.feeCents)), `<b>${esc(money(g.keptCents))}</b>`])
+const groupRows = (list) => list.map((g) => [esc(g.label), esc(String(g.count)), esc(money(g.takenCents)), esc(money(g.refundedCents)), esc(money(g.feeCents)), `<b>${esc(money(g.keptCents))}</b>`])
+const GROUP_HEAD = ['Payments', 'Taken', 'Refunded', 'Fees', 'Kept']
 
 export function extraCsv(v, { csvCell, aud }) {
   const out = []
@@ -127,7 +128,8 @@ function draw(ui, v) {
   ui.filter.month = v.month
   history.replaceState(null, '', `#money?programme=extra${v.month ? `&month=${encodeURIComponent(v.month)}` : ''}`)
   const picker = `<label class="jm-show"><span class="muted small">Showing</span><select class="j-select" id="x-month"><option value="">Every month</option>${v.months.map((m) => `<option value="${esc(m.id)}"${m.id === v.month ? ' selected' : ''}>${esc(m.label)}</option>`).join('')}</select></label>`
-  const tiles = [['Taken', t.takenCents, `${plural(t.count, 'payment')}`], ['Stripe fees', t.feeCents, t.feesPending ? `${plural(t.feesPending, 'fee')} still loading` : 'From Stripe'], ['Kept', t.keptCents, `Stripe ${money(t.stripe.keptCents)} · bank ${money(t.bank.keptCents)} · cash ${money(t.cash.keptCents)}`], ['Still to pay', t.owingCents, `${plural(t.openCount, 'charge')} open`]]
+  // Kept leads: after refunds and Stripe's fees (Lee, 5 Nov 2026: a refund must drop the headline).
+  const tiles = [['Kept', t.keptCents, `Taken ${money(t.takenCents)} from ${plural(t.count, 'payment')}, less refunds and fees`], ['Refunded', t.refundedCents, t.refundedCents ? 'Back to families, taken off Kept' : 'No refunds'], ['Stripe fees', t.feeCents, t.feesPending ? `${plural(t.feesPending, 'fee')} still loading` : 'From Stripe'], ['Still to pay', t.owingCents, `${plural(t.openCount, 'charge')} open`]]
   ui.view().innerHTML = `
     ${moneyHead({ controls: `${programmeSwitch('extra')}${picker}<button type="button" class="j-btn j-btn-dark j-btn-sm" id="x-new">+ New charge</button><button type="button" class="j-btn j-btn-line j-btn-sm" id="x-csv">Download CSV</button>`, at: v.at, tip: EXTRA_DEFINITION, refresh: 'x-refresh' })}
     <div class="jd-grid" id="x-tiles">${tiles.map(([l, c, s], i) => `<section class="jd-card" style="--i:${i}"><p class="muted small">${esc(l)}</p><p style="font-size:24px;font-weight:800;margin:4px 0">${esc(money(c))}</p><p class="muted small">${esc(s)}</p></section>`).join('')}</div>
@@ -136,11 +138,11 @@ function draw(ui, v) {
     </section>
     ${v.toCheck.length ? `<section class="jd-card" style="margin-top:16px"><h2 style="font-size:17px">Quick links to check</h2><p class="muted small">Paid on an Extra sessions quick link with no player named.</p><ul class="jm-hist">${v.toCheck.map((x) => `<li><span><b>${esc(x.who || 'No name')}</b><small>${esc(day(x.paidDate))} · ${esc(x.note)}</small></span><span class="amt">${esc(money(x.takenCents))}</span></li>`).join('')}</ul></section>` : ''}
     <div class="jd-grid" style="margin-top:16px">
-      <section class="jd-card"><h2 style="font-size:17px">By coach</h2>${v.byCoach.length ? table('x-coach', ['Coach', 'Payments', 'Taken', 'Fees', 'Kept'], groupRows(v.byCoach)) : '<p class="muted small">No payments yet.</p>'}</section>
-      <section class="jd-card"><h2 style="font-size:17px">By month</h2>${v.byMonth.length ? table('x-bymonth', ['Month', 'Payments', 'Taken', 'Fees', 'Kept'], groupRows(v.byMonth)) : '<p class="muted small">No payments yet.</p>'}</section>
+      <section class="jd-card"><h2 style="font-size:17px">By coach</h2>${v.byCoach.length ? table('x-coach', ['Coach', ...GROUP_HEAD], groupRows(v.byCoach)) : '<p class="muted small">No payments yet.</p>'}</section>
+      <section class="jd-card"><h2 style="font-size:17px">By month</h2>${v.byMonth.length ? table('x-bymonth', ['Month', ...GROUP_HEAD], groupRows(v.byMonth)) : '<p class="muted small">No payments yet.</p>'}</section>
     </div>
-    <section class="jd-card" style="margin-top:16px"><h2 style="font-size:17px">By player</h2>${v.byPlayer.length ? table('x-player', ['Player', 'Payments', 'Taken', 'Fees', 'Kept'], groupRows(v.byPlayer)) : '<p class="muted small">No payments yet.</p>'}</section>
-    <section class="jd-card" style="margin-top:16px"><h2 style="font-size:17px">Payments</h2>${v.lines.length ? `<ul class="jm-hist" id="x-lines">${v.lines.map((x) => { const k = KIND[x.kind] || KIND.other; return `<li><span><b>${esc(x.who || 'Not matched to a player')}</b><small>${esc(day(x.paidDate))} · ${esc(x.note)}${x.coach ? ` · ${esc(x.coach)}` : ''}${x.kind === 'stripe' ? ` · ${x.feeCents == null ? 'fee still loading' : `fee ${esc(money(x.feeCents))}`}` : ''}</small></span><span style="display:flex;gap:8px;align-items:center"><span class="amt">${esc(money(x.keptCents))}</span><span class="j-pill j-pill-${k[1]}">${esc(k[0])}</span></span></li>` }).join('')}</ul>` : '<p class="muted small">No payments yet.</p>'}</section>`
+    <section class="jd-card" style="margin-top:16px"><h2 style="font-size:17px">By player</h2>${v.byPlayer.length ? table('x-player', ['Player', ...GROUP_HEAD], groupRows(v.byPlayer)) : '<p class="muted small">No payments yet.</p>'}</section>
+    <section class="jd-card" style="margin-top:16px"><h2 style="font-size:17px">Payments</h2>${v.lines.length ? `<ul class="jm-hist" id="x-lines">${v.lines.map((x) => { const k = KIND[x.kind] || KIND.other; return `<li><span><b>${esc(x.who || 'Not matched to a player')}</b><small>${esc(day(x.paidDate))} · ${esc(x.note)}${x.coach ? ` · ${esc(x.coach)}` : ''}${x.kind === 'stripe' ? ` · ${x.feeCents == null ? 'fee still loading' : `fee ${esc(money(x.feeCents))}`}` : ''}${x.refundedCents ? ` · paid ${esc(money(x.takenCents))}, refunded ${esc(money(x.refundedCents))}` : ''}</small></span><span style="display:flex;gap:8px;align-items:center"><span class="amt">${esc(money(x.keptCents))}</span><span class="j-pill j-pill-${k[1]}">${esc(k[0])}</span></span></li>` }).join('')}</ul>` : '<p class="muted small">No payments yet.</p>'}</section>`
   bindTip(ui.view())
   bindSwitch(ui)
   const root = ui.view()

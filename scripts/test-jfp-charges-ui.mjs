@@ -22,7 +22,7 @@ const PRICING = { success: true, priceList: [{ id: 'PR-1-AAAAAA', name: 'Extra s
 await test('Extra sessions: taken, fees and kept, still to pay, by coach; New charge posts the player, amount and a ref', async () => {
   const p = await openPortal({ hash: '#money?programme=extra', onPost: (b) => (b.action === 'extraMoney' ? { success: true, extra: EXTRA } : b.action === 'board' ? { success: true, ...BOARD } : b.action === 'pricing' ? PRICING : b.action === 'me' ? { success: true, coaches: [{ id: 'dean', name: 'Coach D' }] } : b.action === 'createCharge' ? { success: true, charge: { player: 'Ivy Test', amountCents: 9000 }, payreqId: 'PAY-1' } : null) })
   assert.equal(p.$('#m-prog').value, 'extra')
-  assert.match(p.text('#x-tiles'), /TakenA\$90.*Stripe feesA\$2.*KeptA\$88.*Still to payA\$50/)
+  assert.match(p.text('#x-tiles'), /^KeptA\$88Taken A\$90.*RefundedA\$0.*Stripe feesA\$2.*Still to payA\$50/)
   assert.match(p.text('#x-open'), /Max Sample.*Video analysis/)
   assert.match(p.text('#x-coach'), /Coach D.*1.*A\$90.*A\$2.*A\$88/)
   await p.click('#x-new')
@@ -81,6 +81,20 @@ await test('Match to player: pick the player, an extra session, remember the pay
   assert.deepEqual([post.paymentId, post.rowIds, post.as, post.remember], ['cs_x', ['p1'], 'extra', 'link'])
   assert.deepEqual(p.errors, [])
   p.close()
+})
+
+await test('Extra sessions: a refund drops Kept, shows Refunded, and Everything counts Extra sessions after refunds (5 Nov 2026)', async () => {
+  const charges = [{ ...CHARGES[0], payments: [{ ...CHARGES[0].payments[0], payreqId: 'PAY-1' }] }]
+  const v = { ...extraMoneyView({ charges, payreqs: [{ id: 'PAY-1', refundedCents: 8500 }] }), at: '2026-10-14T02:00:00.000Z' }
+  assert.deepEqual([v.totals.takenCents, v.totals.refundedCents, v.totals.keptCents], [9000, 8500, 300])
+  const p = await openPortal({ hash: '#money?programme=extra', onPost: (b) => (b.action === 'extraMoney' ? { success: true, extra: v } : { success: true }) })
+  assert.match(p.text('#x-tiles'), /^KeptA\$3Taken A\$90.*RefundedA\$85Back to families/)
+  assert.match(p.text('#x-coach'), /Coach D.*A\$90.*A\$85.*A\$2.*A\$3/)
+  assert.match(p.text('#x-lines'), /paid A\$90, refunded A\$85/)
+  p.close()
+  const { FIGURES } = await import('../src/scripts/jfp-portal-everything.js')
+  assert.deepEqual(FIGURES.extra(v, 2026), { takenCents: 500, keptCents: 300, note: '1 payment' })
+  assert.equal(FIGURES.extra(v, 2025), null)
 })
 
 console.log(`\n${passed} charges and invoices page checks passed`)

@@ -13,7 +13,7 @@ import { renderHours } from './jfp-portal-hours.js'
 import { juniorsCardShell, fillJuniorsCard, juniorsData } from './jfp-portal-juniors.js'
 import { programmeSwitch, bindSwitch, moneyHead, bindTip, prefetchOthers, forget, markUpdated } from './jfp-portal-programmes.js'
 import { renderProMoney, proData } from './jfp-portal-pro.js'
-import { renderExtraMoney } from './jfp-portal-charges.js'
+import { renderExtraMoney, extraData } from './jfp-portal-charges.js'
 import { renderInvoices } from './jfp-portal-invoices.js'
 import { renderCoachInvoices } from './jfp-portal-coach-invoices.js'
 import { renderIdeas } from './jfp-portal-ideas.js'
@@ -2465,6 +2465,7 @@ const everythingUi = () => ({
     juniors: () => juniorsData(post, { quick: true }),
     holiday: () => holidayData(post, { period: 'all', quick: true }),
     pro: () => proData(post, { quick: true }),
+    extra: () => extraData(post),
     camps: (year) => campsData(post, { year }),
   },
 })
