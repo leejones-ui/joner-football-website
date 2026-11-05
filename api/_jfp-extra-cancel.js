@@ -18,7 +18,8 @@ import { noticeFor } from './_jfp-cancel.js'
 import { sendStaffNotice } from './_jfp-email.js'
 import { telegramAlert } from './_jfp-notify.js'
 
-export const TERMS_VERSION = '2026-11-05'
+// 2026-11-05b: JFP term fee refunds added, so everyone ticks again.
+export const TERMS_VERSION = '2026-11-05b'
 export const CANCEL_FEE_CENTS = 500
 export const CANCEL_NOTICE_MINUTES = 24 * 60
 const ACCEPTED = 'jfp:terms-accepted'

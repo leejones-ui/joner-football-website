@@ -470,7 +470,7 @@ function stepSummary() {
     </ul>
     ${picks.some((x) => x.kind !== 'application') && !F.answersAsked ? `<label class="j-field" style="margin-top:14px"><span>Anything the coach should know? <span class="muted">(optional)</span></span><textarea class="j-textarea" id="s-msg">${esc(F.message || '')}</textarea></label>` : ''}
     ${books.some((x) => x.g.girlsOnly) ? '<label class="j-check"><input type="checkbox" id="r-girls"> <span>Some of these are girls groups. Each player I am booking into them is a girl.</span></label>' : ''}
-    ${books.length ? `${kitStep()}<label class="j-check"><input type="checkbox" id="r-terms"> <span>I agree each place I book is for the rest of the term and is locked in once paid. No make-up sessions.</span></label>` : ''}
+    ${books.length ? `${kitStep()}<label class="j-check"><input type="checkbox" id="r-terms"> <span>I agree each place I book is for the rest of the term and is locked in once paid. No make-up sessions. <a href="/terms/#jfp-term-refunds" target="_blank" rel="noopener" style="text-decoration:underline">Refund terms</a></span></label>` : ''}
     <p class="j-err" id="s-err" hidden></p>`
   const label = !books.length ? `Send ${picks.length} request${picks.length === 1 ? '' : 's'}` : books.length === picks.length ? 'Continue to payment' : `Send and pay for ${books.length === 1 ? 'the booking' : 'the first booking'}`
   F.sheet.foot.innerHTML = `<div style="display:flex;gap:8px"><button type="button" class="j-btn j-btn-line" id="s-back">Back</button><button type="button" class="j-btn j-btn-dark j-btn-lg" style="flex:1" id="s-send" ${blocked.length ? 'disabled' : ''}>${esc(label)}</button></div>`
@@ -1028,7 +1028,7 @@ function stepReview() {
     <label class="j-field" style="margin-top:14px"><span>Anything the coach should know? <span class="muted">(optional)</span></span><textarea class="j-textarea" id="r-notes"></textarea></label>
     ${g.girlsOnly ? '<label class="j-check"><input type="checkbox" id="r-girls"> <span>This is a girls group. Each player I am booking is a girl.</span></label>' : ''}
     ${kitStep()}
-    <label class="j-check"><input type="checkbox" id="r-terms"> <span>I agree the place is for the rest of the term and is locked in once paid. No make-up sessions.</span></label>
+    <label class="j-check"><input type="checkbox" id="r-terms"> <span>I agree the place is for the rest of the term and is locked in once paid. No make-up sessions. <a href="/terms/#jfp-term-refunds" target="_blank" rel="noopener" style="text-decoration:underline">Refund terms</a></span></label>
     <p class="muted small" style="margin-top:8px">Card, Apple Pay, Google Pay or Afterpay. You pay on Stripe's secure page.</p>
     <p class="j-err" id="r-err" hidden></p>`
   F.sheet.foot.innerHTML = `<div style="display:flex;gap:8px"><button type="button" class="j-btn j-btn-line" id="r-back">Back</button><button type="button" class="j-btn j-btn-dark j-btn-lg" style="flex:1" id="r-pay">Pay ${esc(total)}</button></div>`

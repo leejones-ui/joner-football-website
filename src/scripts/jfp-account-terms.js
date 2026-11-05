@@ -3,6 +3,8 @@
 // ticks the extra session terms each time they book one, and can cancel a
 // booked extra session here: 24 hours or more before, back what they paid
 // less A$5; under 24 hours, no refund (api/_jfp-extra-cancel.js).
+// JFP term fee refunds (Lee, 5 Nov 2026): A$50 off a full term, A$30 off a
+// half term, unused sessions only once it starts, none after halfway.
 import { esc, api, openSheet, closeSheet, toast } from './jfp-common.js'
 
 export const TERMS_URL = '/terms/#jfp-extra-sessions'
@@ -10,6 +12,11 @@ const EXTRA_LINES = [
   'Cancel at least 24 hours before the session starts and we refund what you paid, less a A$5 fee to cover card processing.',
   'Cancel less than 24 hours before, or miss the session, and it is not refunded.',
   'You can cancel in your account, under Extra sessions.',
+]
+const TERM_LINES = [
+  'Cancel before your first session of the term and we refund the term fee, less A$50 for a full term or A$30 for a half term.',
+  'Cancel after the term has started and we refund only the sessions you have not had yet, less the same A$50 or A$30.',
+  'Once half the sessions in the term have happened, there is no refund. Injured or ill with a medical note? You get a credit for next term instead.',
 ]
 const MAKEUP_LINE = 'There are no make-up sessions for sessions you miss, arrive late to or do not attend. If we cancel a session, you get a free make-up or a credit.'
 const list = (lines) => `<ul class="ja-small" style="margin:6px 0 0 18px;display:flex;flex-direction:column;gap:6px">${lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>`
@@ -26,6 +33,7 @@ export function askTerms(D) {
   const sheet = openSheet({ title: 'Our updated terms', subtitle: 'Please read and tick to carry on' })
   sheet.body.innerHTML = `<div style="display:flex;flex-direction:column;gap:14px">
     <div><p class="ja-small"><b>JFP sessions: make-ups</b></p>${list([MAKEUP_LINE])}</div>
+    <div><p class="ja-small"><b>JFP term fees: cancelling and refunds</b></p>${list(TERM_LINES)}</div>
     <div><p class="ja-small"><b>Extra sessions: cancelling and refunds</b></p>${list(EXTRA_LINES)}</div>
     <p class="ja-small"><a class="ja-link" href="${TERMS_URL}" target="_blank" rel="noopener">Read the full terms</a></p>
     <label class="j-check"><input type="checkbox" data-terms-ok> <span>I have read and accept the Joner Football terms.</span></label>
