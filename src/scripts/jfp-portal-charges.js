@@ -90,6 +90,34 @@ export async function chargeModal(ui, { onDone = () => {} } = {}) {
   })
 }
 
+// Refund in Stripe (Lee, 5 Nov 2026): what they paid less A$5, which Lee can change.
+async function refundModal(ui, x, onDone) {
+  const room = await ui.post('refundRoom', { payreqId: x.payreqId })
+  if (!room.ok) return ui.toast(room.data.error)
+  const r = room.data
+  const box = ui.modal(`<h2 style="margin-bottom:4px">Refund in Stripe</h2><p class="muted small" style="margin-bottom:12px">${esc(x.who || 'This family')} · ${esc(x.note || '')} · paid ${esc(money(r.paidCents))}${r.refundedCents ? `, ${esc(money(r.refundedCents))} already refunded` : ''}</p>
+    <label class="j-field"><span>Amount to refund (A$)</span><input class="j-input" id="rf-amt" inputmode="decimal" value="${(r.suggestCents / 100).toFixed(2).replace(/\.00$/, '')}"></label>
+    <p class="muted small" id="rf-hint">Up to ${esc(money(r.roomCents))}. The amount starts at what they paid less A$5 for the Stripe fee.</p>
+    <label class="j-field"><span>Why (optional)</span><input class="j-input" id="rf-why" maxlength="300" placeholder="Cancelled with 24 hours notice"></label>
+    <p class="j-err" id="rf-err" hidden></p>
+    <div class="jq-foot"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="rf-go">Refund</button></div>`)
+  const err = (t) => { const e = box.querySelector('#rf-err'); e.textContent = t; e.hidden = false }
+  // Two taps: Refund, then "Yes, refund A$X" (money back to a card cannot be taken back).
+  const go = box.querySelector('#rf-go'), amt = box.querySelector('#rf-amt')
+  let sure = 0
+  amt.addEventListener('input', () => { sure = 0; go.textContent = 'Refund' })
+  go.addEventListener('click', async () => {
+    const amountCents = cents(amt.value)
+    if (!amountCents) return err('Enter an amount to refund.')
+    if (amountCents > r.roomCents) return err(`Only ${money(r.roomCents)} is left to refund.`)
+    if (sure !== amountCents) { sure = amountCents; go.textContent = `Yes, refund ${money(amountCents)} to their card`; return }
+    go.disabled = true
+    const out = await ui.post('refundPayment', { payreqId: x.payreqId, amountCents, reason: box.querySelector('#rf-why').value })
+    if (!out.ok) { go.disabled = false; sure = 0; go.textContent = 'Refund'; return err(out.data.error) }
+    ui.closeModal(); ui.toast(`Refunded ${money(amountCents)}`); onDone()
+  })
+}
+
 function payModal(ui, c, onDone) {
   const box = ui.modal(`<h2 style="margin-bottom:4px">Record a payment</h2><p class="muted small" style="margin-bottom:12px">${esc(c.player)} · ${esc(c.label)} · ${esc(money(c.owingCents))} to pay</p>
     <div class="j-two"><label class="j-field"><span>How</span><select class="j-select" id="cp-m"><option value="bank">Bank transfer</option><option value="cash">Cash</option><option value="other">Other</option></select></label>
@@ -142,7 +170,7 @@ function draw(ui, v) {
       <section class="jd-card"><h2 style="font-size:17px">By month</h2>${v.byMonth.length ? table('x-bymonth', ['Month', ...GROUP_HEAD], groupRows(v.byMonth)) : '<p class="muted small">No payments yet.</p>'}</section>
     </div>
     <section class="jd-card" style="margin-top:16px"><h2 style="font-size:17px">By player</h2>${v.byPlayer.length ? table('x-player', ['Player', ...GROUP_HEAD], groupRows(v.byPlayer)) : '<p class="muted small">No payments yet.</p>'}</section>
-    <section class="jd-card" style="margin-top:16px"><h2 style="font-size:17px">Payments</h2>${v.lines.length ? `<ul class="jm-hist" id="x-lines">${v.lines.map((x) => { const k = KIND[x.kind] || KIND.other; return `<li><span><b>${esc(x.who || 'Not matched to a player')}</b><small>${esc(day(x.paidDate))} · ${esc(x.note)}${x.coach ? ` · ${esc(x.coach)}` : ''}${x.kind === 'stripe' ? ` · ${x.feeCents == null ? 'fee still loading' : `fee ${esc(money(x.feeCents))}`}` : ''}${x.refundedCents ? ` · paid ${esc(money(x.takenCents))}, refunded ${esc(money(x.refundedCents))}` : ''}</small></span><span style="display:flex;gap:8px;align-items:center"><span class="amt">${esc(money(x.keptCents))}</span><span class="j-pill j-pill-${k[1]}">${esc(k[0])}</span></span></li>` }).join('')}</ul>` : '<p class="muted small">No payments yet.</p>'}</section>`
+    <section class="jd-card" style="margin-top:16px"><h2 style="font-size:17px">Payments</h2>${v.lines.length ? `<ul class="jm-hist" id="x-lines">${v.lines.map((x) => { const k = KIND[x.kind] || KIND.other; return `<li><span><b>${esc(x.who || 'Not matched to a player')}</b><small>${esc(day(x.paidDate))} · ${esc(x.note)}${x.coach ? ` · ${esc(x.coach)}` : ''}${x.kind === 'stripe' ? ` · ${x.feeCents == null ? 'fee still loading' : `fee ${esc(money(x.feeCents))}`}` : ''}${x.refundedCents ? ` · paid ${esc(money(x.takenCents))}, refunded ${esc(money(x.refundedCents))}` : ''}</small></span><span style="display:flex;gap:8px;align-items:center"><span class="amt">${esc(money(x.keptCents))}</span><span class="j-pill j-pill-${k[1]}">${esc(k[0])}</span>${x.kind === 'stripe' && x.payreqId && x.takenCents > x.refundedCents ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-xrefund="${esc(x.payreqId)}">Refund</button>` : ''}</span></li>` }).join('')}</ul>` : '<p class="muted small">No payments yet.</p>'}</section>`
   bindTip(ui.view())
   bindSwitch(ui)
   const root = ui.view()
@@ -151,6 +179,11 @@ function draw(ui, v) {
   root.querySelector('#x-new').addEventListener('click', () => chargeModal(ui, { onDone: () => renderExtraMoney(ui, { fresh: true }) }))
   root.querySelector('#x-csv').addEventListener('click', () => ui.saveFile(`extra-sessions-${v.month || 'all'}.csv`, extraCsv(v, ui)))
   mountSavedChargeButtons(root.querySelector('#x-open'), v.open, ui, () => renderExtraMoney(ui, { fresh: true }))
+  root.querySelector('#x-lines')?.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-xrefund]'); if (!b) return
+    const x = v.lines.find((l) => l.payreqId === b.dataset.xrefund)
+    if (x) refundModal(ui, x, () => renderExtraMoney(ui, { fresh: true }))
+  })
   root.querySelector('#x-open')?.addEventListener('click', async (e) => {
     const li = e.target.closest('[data-charge]'); if (!li) return
     const c = v.open.find((x) => x.id === li.dataset.charge)

@@ -14,6 +14,7 @@ import { juniorsCardShell, fillJuniorsCard, juniorsData } from './jfp-portal-jun
 import { programmeSwitch, bindSwitch, moneyHead, bindTip, prefetchOthers, forget, markUpdated } from './jfp-portal-programmes.js'
 import { renderProMoney, proData } from './jfp-portal-pro.js'
 import { renderExtraMoney, extraData } from './jfp-portal-charges.js'
+import { wholeTerm, wholeTermHtml } from './jfp-portal-wholeterm.js'
 import { renderInvoices } from './jfp-portal-invoices.js'
 import { renderCoachInvoices } from './jfp-portal-coach-invoices.js'
 import { renderIdeas } from './jfp-portal-ideas.js'
@@ -2178,6 +2179,15 @@ function nightlyCard(d) {
   })
 }
 async function loadNightly() { const r = await post('nightly'); if (r.ok) nightlyCard(r.data) }
+// Juniors and Extra sessions join the term's figure as they come in.
+async function fillWholeTerm(m) {
+  const got = {}
+  const draw = () => { const el = $('d-whole'); if (el && P.tab === 'overview' && P.money === m) el.innerHTML = wholeTermHtml(wholeTerm({ jfpCents: m.kpis.incomeCents, since: m.since, ...got })) }
+  await Promise.all([
+    juniorsData(post, { quick: true }).then((d) => { got.juniors = d }, () => { got.juniors = null }).then(draw),
+    extraData(post).then((d) => { got.extra = d }, () => { got.extra = null }).then(draw),
+  ])
+}
 async function renderOverview(redraw = false) {
   if (!redraw || !P.money) {
     view().innerHTML = '<p class="muted">Loading the dashboard</p>'
@@ -2198,7 +2208,7 @@ async function renderOverview(redraw = false) {
       <div class="jd-sync"><button type="button" class="j-btn j-btn-line j-btn-sm" id="d-refresh">Refresh from Stripe</button></div></div>
     ${m.stripeError ? `<div class="j-box j-box-amber" style="margin-bottom:12px">${esc(m.stripeError)}</div>` : ''}
     <div class="jd-grid">
-      <section class="jd-card jd-hero jd-span-5 jd-in" style="--i:0"><div><p class="lbl">Income this term</p><p class="big">${esc(money(k.incomeCents))}</p>${typeof k.netIncomeCents === 'number' ? `<p class="jm-sum"><b>${esc(money(k.netIncomeCents))}</b> kept after Stripe fees</p>` : ''}</div>
+      <section class="jd-card jd-hero jd-span-5 jd-in" style="--i:0"><div id="d-whole">${wholeTermHtml(wholeTerm({ jfpCents: k.incomeCents, since: m.since }))}</div><div><p class="lbl">JFP fees this term</p><p class="jm-sum"><b>${esc(money(k.incomeCents))}</b>${typeof k.netIncomeCents === 'number' ? ` · <b>${esc(money(k.netIncomeCents))}</b> kept after Stripe fees` : ''}</p></div>
         <div class="jd-split">${SERIES.map(([key, n, c]) => `<span><span class="jd-key"><i style="background:${cssVar(c)}"></i>${n}</span><b>${esc(money(key === 'stripe' ? k.stripeCents : key === 'bank' ? k.bankCents : k.cashCents))}</b></span>`).join('')}</div></section>
       <section class="jd-card jd-tiles jd-span-7 jd-in" style="--i:1">
         <div class="jd-tile"><span class="lbl">Still owing</span><span class="val">${esc(money(k.owingCents))}</span><span class="note">${m.status.unpaid + m.status.part} players</span><button type="button" class="link" data-money-filter="unpaid">See who</button></div>
@@ -2227,6 +2237,7 @@ async function renderOverview(redraw = false) {
       ${juniorsCardShell()}
     </div>`
   fillJuniorsCard(juniorsUi())
+  fillWholeTerm(m)
   if (admin) loadNightly()
   // Bank payments to check (Lee, 16 Oct 2026): admins only, one line in the
   // header when lines wait; the check itself is on Money.

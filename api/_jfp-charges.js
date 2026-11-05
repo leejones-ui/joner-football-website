@@ -250,7 +250,7 @@ export function extraLines({ charges = [], payreqs = [] }) {
       const q = p.method === 'stripe' && p.payreqId ? byPayreq.get(p.payreqId) : null
       const refunded = q?.refundedCents || 0
       const fee = p.method === 'stripe' ? (p.feeCents ?? null) : 0
-      lines.push({ kind: p.method, id: p.id, chargeId: c.id, paidDate: p.date, sessionDate: c.sessionDate || '', who: c.playerName, rowId: c.rowId || '', coachId: c.coachId || '', coach: c.coachName || '', note: c.label, takenCents: p.cents, refundedCents: refunded, feeCents: fee, feePending: fee == null, keptCents: p.cents - refunded - (fee || 0), intentId: p.intentId || '' })
+      lines.push({ kind: p.method, id: p.id, chargeId: c.id, paidDate: p.date, sessionDate: c.sessionDate || '', who: c.playerName, rowId: c.rowId || '', coachId: c.coachId || '', coach: c.coachName || '', note: c.label, takenCents: p.cents, refundedCents: refunded, feeCents: fee, feePending: fee == null, keptCents: p.cents - refunded - (fee || 0), intentId: p.intentId || '', payreqId: q ? q.id : '' })
     }
   }
   for (const q of payreqs) {

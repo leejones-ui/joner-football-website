@@ -16,8 +16,9 @@ import { invoiceInput, newInvoice, getInvoice, saveInvoice, listInvoices, viewed
 import { listMatches, listRules, matchInput, rememberKey, saveMatch, saveRule, dropRule, silenceFlag } from './_jfp-stripe-match.js'
 import { invoiceEmail, sendInvoiceEmail } from './_jfp-email.js'
 import { invoicePdfAttachment } from './_jfp-fee-pdf.js'
+import { refundRoom, refundPayreq } from './_jfp-refund-actions.js'
 
-export const MONEY_ACTIONS = new Set(['stripeClassOptions', 'stripeHoliday', 'stripeHolidayUndo', 'stripePro', 'stripeProUndo', 'stripeNotJfp', 'stripeNotJfpUndo', 'stripeMatch', 'stripeMatchRules', 'stripeMatchForget', 'extraMoney', 'createCharge', 'chargeRecord', 'chargeCancel', 'invoiceList', 'invoiceGet', 'invoiceSave', 'invoiceEmailPreview', 'invoiceSend', 'invoiceVoid', 'invoicePay', 'bankInvoice'])
+export const MONEY_ACTIONS = new Set(['refundRoom', 'refundPayment', 'stripeClassOptions', 'stripeHoliday', 'stripeHolidayUndo', 'stripePro', 'stripeProUndo', 'stripeNotJfp', 'stripeNotJfpUndo', 'stripeMatch', 'stripeMatchRules', 'stripeMatchForget', 'extraMoney', 'createCharge', 'chargeRecord', 'chargeCancel', 'invoiceList', 'invoiceGet', 'invoiceSave', 'invoiceEmailPreview', 'invoiceSend', 'invoiceVoid', 'invoicePay', 'bankInvoice'])
 const ISO = /^\d{4}-\d{2}-\d{2}$/
 const fail = (res, status, error, extra = {}) => res.status(status).json({ success: false, error, ...extra })
 const refuse = (res, r) => fail(res, r.status || 400, r.error, r.code ? { code: r.code } : {})
@@ -385,6 +386,16 @@ async function bankInvoice(req, res, principal, config, body, deps) {
 
 export async function moneyAction(req, res, principal, config, body, action, deps) {
   switch (action) {
+    // Refund a card payment in Stripe (Lee, 5 Nov 2026). Lee or Ligia in the portal, never Hermes.
+    case 'refundRoom': {
+      const r = await refundRoom(body.payreqId)
+      return r.error ? fail(res, 400, r.error) : res.status(200).json({ success: true, paidCents: r.paidCents, refundedCents: r.refundedCents, roomCents: r.roomCents, suggestCents: r.suggestCents })
+    }
+    case 'refundPayment': {
+      if (principal?.via === 'hermes') return fail(res, 403, 'Only Lee or Ligia can refund, in the portal.')
+      const r = await refundPayreq({ payreqId: body.payreqId, amountCents: body.amountCents, by: principal.email, reason: body.reason })
+      return r.ok ? res.status(200).json({ success: true, ...r }) : fail(res, 400, r.error)
+    }
     case 'stripeClassOptions': return stripeClassOptions(res, config, body)
     case 'stripeHoliday': return stripeClassify(res, principal, config, body, 'holiday')
     case 'stripeHolidayUndo': return stripeUnclassify(res, principal, body, 'holiday')

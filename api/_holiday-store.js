@@ -590,7 +590,8 @@ export function stripeSecret() {
   return process.env.STRIPE_HOLIDAY_SECRET_KEY || process.env.STRIPE_SECRET_KEY_SYDNEY || ''
 }
 
-export async function stripeFetch(path, { method = 'GET', body } = {}) {
+// idempotencyKey: Stripe does the request once however often it is sent (refunds).
+export async function stripeFetch(path, { method = 'GET', body, idempotencyKey = '' } = {}) {
   const secret = stripeSecret()
   if (!secret) throw new Error('STRIPE_SECRET_KEY_SYDNEY is not configured.')
   const response = await fetch(`https://api.stripe.com/v1${path}`, {
@@ -598,6 +599,7 @@ export async function stripeFetch(path, { method = 'GET', body } = {}) {
     headers: {
       authorization: `Bearer ${secret}`,
       ...(body ? { 'content-type': 'application/x-www-form-urlencoded' } : {}),
+      ...(idempotencyKey ? { 'idempotency-key': idempotencyKey } : {}),
     },
     body: body ? new URLSearchParams(body) : undefined,
   })

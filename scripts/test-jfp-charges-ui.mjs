@@ -97,4 +97,40 @@ await test('Extra sessions: a refund drops Kept, shows Refunded, and Everything 
   assert.equal(FIGURES.extra(v, 2025), null)
 })
 
+await test('Extra sessions: Refund starts at paid less A$5, needs a second tap, then posts the amount (5 Nov 2026)', async () => {
+  const charges = [{ ...CHARGES[0], amountCents: 12000, payments: [{ ...CHARGES[0].payments[0], cents: 12000, payreqId: 'PAY-2' }] }]
+  const v = { ...extraMoneyView({ charges, payreqs: [{ id: 'PAY-2', refundedCents: 0 }] }), at: '2026-10-14T02:00:00.000Z' }
+  const p = await openPortal({ hash: '#money?programme=extra', onPost: (b) => (b.action === 'extraMoney' ? { success: true, extra: v } : b.action === 'refundRoom' ? { success: true, paidCents: 12000, refundedCents: 0, roomCents: 12000, suggestCents: 11500 } : b.action === 'refundPayment' ? { success: true, ok: true, refundId: 're_1' } : { success: true }) })
+  await p.click('#x-lines [data-xrefund="PAY-2"]')
+  await p.settle()
+  assert.equal(p.$('#rf-amt').value, '115')
+  await p.click('#rf-go')
+  assert.equal(p.posts.filter((b) => b.action === 'refundPayment').length, 0, 'the first tap only asks')
+  assert.match(p.$('#rf-go').textContent, /Yes, refund A\$115/)
+  setValue(p, '#rf-amt', '200')
+  await p.click('#rf-go')
+  assert.match(p.text('#rf-err'), /Only A\$120/)
+  setValue(p, '#rf-amt', '110')
+  await p.click('#rf-go'); await p.click('#rf-go')
+  await p.settle()
+  const post = p.posts.find((b) => b.action === 'refundPayment')
+  assert.deepEqual([post.payreqId, post.amountCents], ['PAY-2', 11000])
+  assert.deepEqual(p.errors, [])
+  p.close()
+})
+
+await test('Whole term: JFP fees, Joners Juniors this term and Extra sessions since the term started, after refunds', async () => {
+  const { wholeTerm, wholeTermHtml } = await import('../src/scripts/jfp-portal-wholeterm.js')
+  const juniors = { currentTerm: 'Term 4 2026', byTerm: { 'Term 4 2026': { collectedCents: 300000 }, 'Term 3 2026': { collectedCents: 999 } } }
+  const extra = { lines: [{ paidDate: '2026-11-01', takenCents: 12000, refundedCents: 11500 }, { paidDate: '2026-10-20', takenCents: 9000, refundedCents: 0 }, { paidDate: '2026-08-01', takenCents: 5000, refundedCents: 0 }] }
+  const w = wholeTerm({ jfpCents: 8512600, since: '2026-09-14T00:00:00.000Z', juniors, extra })
+  assert.equal(w.totalCents, 8512600 + 300000 + 500 + 9000)
+  assert.deepEqual(w.waiting, [])
+  const first = wholeTerm({ jfpCents: 8512600, since: '2026-09-14' })
+  assert.deepEqual([first.totalCents, first.waiting], [8512600, ['Joners Juniors', 'Extra sessions']])
+  const failed = wholeTerm({ jfpCents: 100, since: '', juniors: null, extra })
+  assert.deepEqual(failed.failed, ['Joners Juniors'])
+  assert.match(wholeTermHtml(failed), /Joners Juniors could not be read just now, so not counted/)
+})
+
 console.log(`\n${passed} charges and invoices page checks passed`)
