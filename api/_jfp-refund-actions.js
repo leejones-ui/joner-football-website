@@ -4,8 +4,9 @@
 // same code the charge.refunded webhook runs (applyJfpRefunds), so a refund
 // lands once however it arrives.
 //
-// Extra sessions rule: 24 hours or more notice, everything back but A$5;
-// inside 24 hours, nothing (the caller decides that; this only checks money).
+// Extra sessions rule (_jfp-extra-cancel.js cancelQuote, Lee, 7 Nov 2026): 48 hours
+// or more notice, everything back but A$5; 24 to 48 hours, half; under 24
+// hours, nothing (the caller decides that; this only checks money).
 // JFP term fees (Lee, 5 Nov 2026) are refunded by their Stripe payment with
 // refundStripePayment: the A$50 / A$30 and unused sessions are worked out in
 // the portal (src/scripts/jfp-term-refund.js) and staff can change the amount.
