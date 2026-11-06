@@ -1,6 +1,7 @@
 // Staff portal actions for extra sessions (see _jfp-extra.js). Coaches see and
 // change only their own sessions; Lee and Ligia see every coach's, and set the
 // prices coaches pick from.
+import { fillLateCancel } from './_jfp-extra-cancel.js'
 import { saveConfig, listPayreqs, coachById, coachLabel, clean, sydneyToday, dateLabel, formatAud, audit, normName } from './_jfp-store.js'
 import { loadRoster } from './_jfp-airtable.js'
 import { telegramAlert } from './_jfp-notify.js'
@@ -207,6 +208,8 @@ export async function extraAction(req, res, principal, config, body, action, isA
       if (c.ok && c.payreqId) { await setBookingCharge({ slotId: s.id, bookingId: out.booking.id, payreqId: c.payreqId, chargeId: c.charge?.id || '' }); out.booking.payreqId = c.payreqId }
       else { chargeError = c.error || 'The payment could not be made.'; console.error('jfp extra charge failed', chargeError) }
     }
+    // A coach or Ligia putting a player on takes a late cancel's place (Lee, 7 Nov 2026).
+    if (!out.already) await fillLateCancel({ slotId: s.id, filler: out.booking })
     const fresh = await getSlot(s.id)
     return ok(res, { booking: out.booking, already: Boolean(out.already), chargeError, slot: forCoach(staffView(config, fresh || out.slot, await listPayreqs()), isAdmin) })
   }

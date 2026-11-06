@@ -1,16 +1,20 @@
 // The updated terms and cancelling an extra session (Lee, 5 Nov 2026).
 // Every family ticks the terms once (asked again each visit until they do),
 // ticks the extra session terms each time they book one, and can cancel a
-// booked extra session here: 24 hours or more before, back what they paid
-// less A$5; under 24 hours, no refund (api/_jfp-extra-cancel.js).
+// booked extra session here (api/_jfp-extra-cancel.js). Lee, 7 Nov 2026:
+// 48 hours or more before, back what they paid less A$5; 24 to 48 hours, half;
+// under 24 hours, nothing; someone takes the place, the 48 hour refund.
+// Bookings made before 7 Nov keep the 24 hour terms (cancel.rule '24h').
 // JFP term fee refunds (Lee, 5 Nov 2026): A$50 off a full term, A$30 off a
 // half term, unused sessions only once it starts, none after halfway.
 import { esc, api, openSheet, closeSheet, toast } from './jfp-common.js'
 
 export const TERMS_URL = '/terms/#jfp-extra-sessions'
 const EXTRA_LINES = [
-  'Cancel at least 24 hours before the session starts and we refund what you paid, less a A$5 fee to cover card processing.',
+  'Cancel at least 48 hours before the session and we refund what you paid, less a A$5 card processing fee.',
+  'Cancel between 24 and 48 hours before and we refund half of what you paid.',
   'Cancel less than 24 hours before, or miss the session, and it is not refunded.',
+  'If someone else books your place after you cancel, we refund you as if you had given 48 hours notice.',
   'You can cancel in your account, under Extra sessions.',
 ]
 const TERM_LINES = [
@@ -61,16 +65,20 @@ export function cancelExtraSheet(x, onDone) {
   const c = x.cancel
   if (!c) return
   const sheet = openSheet({ title: 'Cancel this extra session', subtitle: `${x.dateLabel} · ${x.time} · ${x.players.join(', ')}` })
+  const days = 'It usually shows on your card in 5 to 10 business days.'
+  const refill = c.refill ? ` If someone else books your place, we refund you ${esc(c.fullLabel)} in all (A$5 kept) automatically.` : ''
   const what = !c.paid
     ? 'It is not paid yet, so there is nothing to refund.'
-    : c.late
-      ? `<b>This is less than 24 hours before the session, so there is no refund.</b> The ${esc(c.paidLabel)} you paid is not returned.`
-      : `<b>You will get ${esc(c.refundLabel)} back</b> to the card you paid with. We keep A$5 to cover card processing. It usually shows in 5 to 10 business days.`
+    : c.band === 'late'
+      ? `<b>This is less than 24 hours before the session, so there is no refund.</b> The ${esc(c.paidLabel)} you paid is not returned.${refill}`
+      : c.band === 'half'
+        ? `<b>This is less than 48 hours before the session, so you get half back: ${esc(c.refundLabel)}</b> to the card you paid with. ${days}${refill}`
+        : `<b>You will get ${esc(c.refundLabel)} back</b> to the card you paid with. We keep A$5 to cover card processing. ${days}`
   sheet.body.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px">
-    <div class="j-box ${c.paid && c.late ? 'j-box-amber' : 'j-box-green'}">${what}</div>
+    <div class="j-box ${c.paid && c.band !== 'full' ? 'j-box-amber' : 'j-box-green'}">${what}</div>
     <p class="ja-small">Your place is given up and the coach is told straight away. This cannot be undone, but you can book again if there is still a place.</p>
     <p class="j-err" data-xc-err hidden></p></div>`
-  sheet.foot.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px;width:100%"><button type="button" class="ja-btn ja-btn-red ja-btn-block" data-xc-go>Cancel the session${c.paid && !c.late ? ` and refund ${esc(c.refundLabel)}` : ''}</button><button type="button" class="ja-btn ja-btn-light ja-btn-block" data-xc-keep>Keep it</button></div>`
+  sheet.foot.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px;width:100%"><button type="button" class="ja-btn ja-btn-red ja-btn-block" data-xc-go>Cancel the session${c.paid && c.refundCents > 0 ? ` and refund ${esc(c.refundLabel)}` : ''}</button><button type="button" class="ja-btn ja-btn-light ja-btn-block" data-xc-keep>Keep it</button></div>`
   sheet.foot.querySelector('[data-xc-keep]').addEventListener('click', () => closeSheet())
   const go = sheet.foot.querySelector('[data-xc-go]')
   go.addEventListener('click', async () => {

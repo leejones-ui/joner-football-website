@@ -375,13 +375,16 @@ export async function marksFor(s) {
 // day after. Only sessions with a player on them. coachId '' is every coach.
 export async function registerExtras(config, { coachId = '', week = '', weekEnd = '', today = sydneyToday() } = {}) {
   const from = week || addDays(today, -13), to = week ? weekEnd : addDays(today, 6)
-  const slots = (await allSlots()).filter((s) => s.status === 'open' && (!coachId || s.coachId === coachId) && s.date >= from && s.date <= to && liveBookings(s).length)
+  // A session nobody is left on after a late cancel stays too: the coach is
+  // paid half for it (lateCancelUnfilled; Lee, 7 Nov 2026).
+  const slots = (await allSlots()).filter((s) => s.status === 'open' && (!coachId || s.coachId === coachId) && s.date >= from && s.date <= to && (liveBookings(s).length || lateCancelUnfilled(s).length))
   slots.sort((a, b) => `${a.date}${to24h(a.time) || ''}`.localeCompare(`${b.date}${to24h(b.time) || ''}`))
   const out = []
   for (const s of slots.slice(0, 100)) out.push({
     id: s.id, coachId: s.coachId, coachName: coachLabel(coachById(config, s.coachId)), date: s.date, dateLabel: dateLabel(s.date),
     time: s.time, durationMin: Number(s.durationMin) || 60, location: s.location, title: s.title || 'Extra session',
     bookings: liveBookings(s).map((b) => ({ id: b.id, name: b.name })), marks: s.date <= today ? await marksFor(s) : {},
+    halfPay: liveBookings(s).length ? [] : lateCancelUnfilled(s).map((b) => b.name),
   })
   return out
 }
@@ -402,6 +405,36 @@ export async function markBooking({ config, principal, isAdmin, slotId, bookingI
     else await clearAttendance({ attendanceId: `${s.id}|${b.id}`, markedBy: principal.email })
   } catch (error) { console.error('jfp extra attendance airtable failed', error); airtable = false }
   return { slot: s, booking: b, status, airtable }
+}
+
+// Late cancels (Lee, 7 Nov 2026, api/_jfp-extra-cancel.js). A paid booking
+// cancelled under 48 hours before keeps booking.lateCancel. If nobody takes
+// the place and nobody else is on the session, the coach is paid half.
+export const lateCancelUnfilled = (s) => (s.bookings || []).filter((b) => b.status === 'removed' && b.lateCancel && b.lateCancel.refill !== 'filled')
+export async function setLateCancel(slotId, bookingId, patch) {
+  return withSlotLock(slotId, async () => {
+    const s = await getSlot(slotId)
+    const b = s?.bookings?.find((x) => x.id === bookingId)
+    if (!b) return null
+    b.lateCancel = { ...(b.lateCancel || {}), ...patch }
+    await putSlot(s)
+    return b
+  })
+}
+// A new booking now holds a place on the session: it takes the place of the
+// earliest late cancel still waiting (one per new booking). Returns that
+// cancelled booking, or null.
+export async function takeLateCancelPlace(slotId, filler) {
+  return withSlotLock(slotId, async () => {
+    const s = await getSlot(slotId)
+    if (!s) return null
+    const b = (s.bookings || []).filter((x) => x.status === 'removed' && x.lateCancel?.refill === 'pending').sort((x, y) => String(x.removedAt).localeCompare(String(y.removedAt)))[0]
+    if (!b) return null
+    b.lateCancel = { ...b.lateCancel, refill: 'filled', filledBy: clean(filler.name, 80), filledById: clean(filler.id, 60), filledAt: new Date().toISOString() }
+    await putSlot(s)
+    await audit({ by: 'system', action: 'extra.lateCancel.filled', target: s.id, after: { booking: b.id, player: b.name, by: filler.name } })
+    return { booking: b, slot: s }
+  })
 }
 
 // Minutes of extra sessions a coach runs in a week (Monday to Sunday) that
@@ -470,7 +503,7 @@ export async function extraSettle(payreqId) {
 }
 // The same lock as booking, so a family booking now is never lost. A paid
 // payment must always finish: after about 6 seconds it goes on without it.
-async function withSlotLock(slotId, fn) {
+export async function withSlotLock(slotId, fn) {
   const lock = `jfp:extra-lock:${slotId}`
   let held = false
   for (let i = 0; i < 20 && !held; i++) {

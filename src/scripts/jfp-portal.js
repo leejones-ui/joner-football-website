@@ -3381,6 +3381,7 @@ function extraRegister(list, { all, today }) {
     <h3 style="font-size:17px">1 on 1s and extra sessions</h3>
     <p class="${left ? 'j-box j-box-amber' : 'muted'} small" style="margin-top:6px">${left ? `<b>${left} to mark.</b> Mark who came, so your hours and invoice match.` : 'Mark who came on the day. Sessions you open in Extra sessions show here.'}</p>
     ${list.map((s) => `<div style="margin-top:12px"><p class="small"><b>${esc(s.dateLabel.replace(/\s\d{4}$/, ''))}, ${esc(s.time)}</b> · ${esc(s.location)} · ${esc(s.title)} · ${esc(s.durationMin)} min${all ? ` · Coach ${esc(s.coachName)}` : ''}</p>
+      ${(s.halfPay || []).length ? `<p class="j-box j-box-amber small" style="margin-top:6px">${esc(s.halfPay.join(', '))} cancelled under 48 hours before and nobody took the place. The coach is paid half for this session.</p>` : ''}
       ${s.bookings.map((b) => `<div class="jp-player" style="cursor:default">${avatar('', b.name, 32)}<span class="nm" style="flex:1 1 auto;min-width:0">${esc(b.name)}${hasStarted(s.date, s.time, today) && !s.marks[b.id] ? ' <span class="j-pill j-pill-red">Not marked</span>' : ''}</span>
         <span class="jp-att">${s.date > today ? '<span class="muted small">Opens on the day</span>' : `<button type="button" class="p" data-xr="${esc(s.id)}|${esc(b.id)}|Present" aria-pressed="${s.marks[b.id] === 'Present'}">Here</button><button type="button" class="a" data-xr="${esc(s.id)}|${esc(b.id)}|Absent" aria-pressed="${s.marks[b.id] === 'Absent'}">Away</button>`}</span></div>`).join('')}</div>`).join('')}
   </article>`

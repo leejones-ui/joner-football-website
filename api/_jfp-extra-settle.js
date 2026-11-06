@@ -10,6 +10,7 @@ import { listCharges as listChargesReal, cancelCharge as cancelChargeReal } from
 import { telegramAlert as telegramReal, barryAlert as barryReal } from './_jfp-notify.js'
 import { formatAud, dateLabel, getPayreq, getConfig, coachById, coachLabel, locationFor, kvCommand } from './_jfp-store.js'
 import { sendStaffNotice } from './_jfp-email.js'
+import { fillLateCancel } from './_jfp-extra-cancel.js'
 
 const SYSTEM = { email: 'system', name: 'Extra session taken' }
 const TOLD = 'jfp:extra-paid-told'
@@ -65,6 +66,10 @@ export async function settleExtraPaid(payreqId, deps = {}) {
     const when = `${dateLabel(s.date)} ${s.time}`
     // Lee hears every paid family booking, in his Barry chat and by email.
     await tell(payreqId, s, barryAlert).catch((e) => console.error('jfp extra paid alert failed', e))
+    // A late cancel's place is taken (Lee, 7 Nov 2026): the coach is paid as
+    // normal and, on the 48 hour terms, that family gets the rest back.
+    const lead = (s.bookings || []).find((b) => b.payreqId === payreqId && b.status !== 'removed')
+    if (lead && !r.overPaid?.length) await fillLateCancel({ slotId: s.id, filler: lead })
     if (r.overPaid?.length) {
       const charges = (await listCharges()).filter((c) => r.overPaid.includes(c.payreqId))
       await telegramAlert(`Extra session ${when} (${s.location}): two families have paid for the same session at the same time.\n${charges.map((c) => `- ${c.playerName || c.label}: ${formatAud(c.amountCents)}`).join('\n')}\nNothing was refunded. Choose who keeps it and refund the other in Stripe.`)
