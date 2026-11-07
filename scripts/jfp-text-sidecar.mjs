@@ -96,12 +96,21 @@ async function settle(guid) {
 async function sendOne(job) {
   // The text must be exactly what was approved.
   if (sha(job.text) !== job.textHash) return relay('receipt', { id: job.id, textHash: job.textHash, outcome: 'failed', error: 'text did not match what was approved; not sent' })
-  const since = Date.now()
-  const r = imsg(['send', '--to', job.to, '--text', job.text, '--service', SERVICE, '--json'])
+  let since = Date.now(), service = SERVICE
+  let r = imsg(['send', '--to', job.to, '--text', job.text, '--service', service, '--json'])
   if (r.error && r.error.code === 'ENOENT') return relay('receipt', { id: job.id, textHash: job.textHash, outcome: 'failed', error: 'imsg not found; not sent' })
-  const back = await readBack(job.to, job.text, since)
+  let back = await readBack(job.to, job.text, since)
   let outcome = 'unknown', error = '', code = ''
-  const st = back.found ? await settle(back.providerId) : null
+  let st = back.found ? await settle(back.providerId) : null
+  // A number with no iMessage (Jaxon's family, 29 Oct 2026) gets the same
+  // text once as an SMS through the work iPhone (Lee, 8 Nov 2026).
+  if (back.found && st?.error && st.service === 'iMessage' && SERVICE === 'auto') {
+    log(`text ${job.id}: iMessage failed (error ${st.error}), sending once as SMS`)
+    since = Date.now(); service = 'sms'
+    r = imsg(['send', '--to', job.to, '--text', job.text, '--service', service, '--json'])
+    back = await readBack(job.to, job.text, since)
+    st = back.found ? await settle(back.providerId) : null
+  }
   if (back.found && st?.error) {
     outcome = 'failed'
     error = `Messages could not send it (error ${st.error})${st.service === 'iMessage' ? ': this number does not take iMessage' : ''}`
@@ -109,7 +118,7 @@ async function sendOne(job) {
   } else if (back.found) outcome = 'sent'
   else if (r.code !== 0) error = `imsg exit ${r.code}: ${(r.err || r.out).replace(/\+?\d[\d\s]{7,}/g, '[number]').slice(0, 200)}`
   else error = 'imsg said sent, but it was not found in Messages afterwards'
-  log(`text ${job.id}: ${outcome}${back.service ? ` via ${back.service}` : ''} (asked for ${SERVICE})${st ? ` state sent=${st.sent} delivered=${st.delivered} error=${st.error}` : ''}`)
+  log(`text ${job.id}: ${outcome}${back.service ? ` via ${back.service}` : ''} (asked for ${service})${st ? ` state sent=${st.sent} delivered=${st.delivered} error=${st.error}` : ''}`)
   return relay('receipt', { id: job.id, textHash: job.textHash, outcome, code, delivered: Boolean(st?.delivered), service: back.service || '', sender: back.sender || '', providerId: back.providerId || '', readback: back, error })
 }
 

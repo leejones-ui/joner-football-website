@@ -42,13 +42,12 @@ export function textComposer({ modal, toast, rowIds = [], requestId = '', accoun
   area.addEventListener('input', count)
   count()
   const ids = accountEmail ? { accountEmail } : requestId ? { requestId } : { rowIds }
-  // No iMessage on this number: WhatsApp becomes the main button.
-  const preferWa = () => { if (!wa) return; wa.classList.replace('j-btn-line', 'j-btn-dark'); const send = box.querySelector('#tx-send'); send.classList.replace('j-btn-dark', 'j-btn-line') }
+  // No iMessage on this number: the office Mac sends it as an SMS instead
+  // (Lee, 8 Nov 2026: "make sure messages always get sent"), so Send stays the main button.
   wa?.addEventListener('click', () => { api('/api/jfp-messages', { action: 'whatsappOpened', ...ids, text: area.value }).catch(() => {}) })
   if (wa) api('/api/jfp-messages', { action: 'textHint', ...ids }).then((h) => {
     if (!h.ok || !h.data.noImessage || !document.body.contains(box)) return
-    preferWa()
-    status('amber', `<b>This number does not take iMessage.</b> A text from 0404 780 351 did not reach them${h.data.since ? ` on ${esc(new Date(h.data.since).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }))}` : ''}. Send it on WhatsApp instead.`)
+    status('blue', '<b>This number does not take iMessage.</b> Send it as normal: it goes as an SMS from 0404 780 351.')
   }).catch(() => {})
   // Always in view (Lee, 19 Oct 2026: "when i click, nothing happens"): on a
   // phone the status box can sit off screen above the buttons.

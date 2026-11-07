@@ -96,7 +96,8 @@ async function receipt(res, body) {
   // Remember a number that does not take iMessage, so the portal says
   // "use WhatsApp" next time; a delivered iMessage clears it.
   if (m.target?.hash && outcome === 'failed' && m.receipt.code === 'no_imessage') await kvCommand(['HSET', keys.noImsg(), m.target.hash, m.receipt.at])
-  if (m.target?.hash && outcome === 'sent' && m.receipt.delivered && m.receipt.service === 'iMessage') await kvCommand(['HDEL', keys.noImsg(), m.target.hash])
+  // Reached them: by iMessage, or as an SMS once iMessage failed (Lee, 8 Nov 2026).
+  if (m.target?.hash && outcome === 'sent' && ((m.receipt.delivered && m.receipt.service === 'iMessage') || m.receipt.service === 'SMS')) await kvCommand(['HDEL', keys.noImsg(), m.target.hash])
   m.leaseUntil = ''
   event(m, 'relay', outcome === 'sent' ? `sent by ${m.receipt.service || 'Messages'} (read back from Messages)` : outcome === 'failed' ? (m.receipt.code === 'no_imessage' ? 'not sent: this number does not take iMessage' : 'not sent') : 'unclear: check Messages before doing anything', { error: m.receipt.error })
   await saveMsg(m)
