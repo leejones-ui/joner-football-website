@@ -94,6 +94,8 @@ t('fees not paid: unpaid, partly paid, not set or a balance', () => {
   assert.equal(feesOwed({ paymentStatus: 'Partially Paid' }), true)
   assert.equal(feesOwed({ paymentStatus: '' }), true)
   assert.equal(feesOwed({ paymentStatus: 'Paid', balanceAud: 50 }), true)
+  assert.equal(feesOwed({ paymentStatus: 'Paid', balanceAud: 50, paidAud: 800 }), true, 'paid on this row, some still owing')
+  assert.equal(feesOwed({ paymentType: 'Sibling / 2 sessions per week', paymentStatus: 'Paid', balanceAud: 1275, paidAud: 0 }), false, 'paid on a sibling row (Will and Hugo Groom)')
   assert.equal(feesOwed({ paymentType: 'JFP Session by session', paymentStatus: 'Unpaid', balanceAud: 0 }), false, 'session by session: nothing billed yet is not owing')
   assert.equal(feesOwed({ paymentType: 'JFP Pro sessions', paymentStatus: 'Unpaid', balanceAud: 160 }), true, 'a billed amount not paid is')
 })

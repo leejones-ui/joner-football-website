@@ -105,10 +105,13 @@ export function newLine(body, { by, role, from, to }) {
 // Fees not paid. A term fee: Unpaid, Partly paid or not set, or a balance
 // still owing. Session by session, Pro sessions or an agency's players: they
 // are billed after the sessions, so "Unpaid" with nothing billed is normal;
-// flagged only when a billed amount is still owing.
+// flagged only when a billed amount is still owing. A row marked Paid with
+// nothing paid on it was paid on a sibling's row (one family payment recorded
+// once, Lee, 8 Nov 2026: Will and Hugo Groom), so its balance is not owing.
+const paidOnSibling = (r) => /^paid$/i.test(String(r.paymentStatus || '')) && r.paidAud != null && Number(r.paidAud) === 0
 export const feesOwed = (r) => isSessionType(r.paymentType)
   ? Number(r.balanceAud || 0) > 0
-  : /^(unpaid|partially paid|not set)$/i.test(String(r.paymentStatus || 'Not set')) || Number(r.balanceAud || 0) > 0
+  : /^(unpaid|partially paid|not set)$/i.test(String(r.paymentStatus || 'Not set')) || (Number(r.balanceAud || 0) > 0 && !paidOnSibling(r))
 // What a coach may see of a line: never a family's payments.
 const forCoach = (l) => { const { unpaid, ...rest } = l; return { ...rest, flags: (l.flags || []).filter((f) => f.code !== 'unpaid') } }
 
