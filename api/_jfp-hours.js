@@ -236,7 +236,7 @@ export async function hoursAction(res, principal, config, body, action, { isAdmi
     if (!e.players && was?.players) e.players = was.players
     // A coach changing hours sends them back for approval, unless they match the timetable;
     // Lee or Ligia editing keeps the status.
-    const auto = !(isAdmin && (was || body.approve)) && await matchesTimetable(config, e, coachId, { listCovers })
+    const auto = !(isAdmin && (was || body.approve)) && ((await getCard(coachId))?.trustHours || await matchesTimetable(config, e, coachId, { listCovers }))
     const autoFields = { status: 'approved', autoApproved: true, decidedBy: 'portal', decidedAt: now, decisionNote: '' }
     const rec = was
       ? { ...was, ...e, editedAt: now, editedBy: principal.email, ...(isAdmin ? {} : auto ? autoFields : { status: 'submitted', autoApproved: false }) }

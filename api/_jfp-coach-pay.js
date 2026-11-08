@@ -60,6 +60,8 @@ export function checkCard(body) {
     for (const [gid, v] of Object.entries(body.custom).slice(0, 40)) { const cents = c(v); if (cents == null) continue; if (!centsOk(cents)) return { error: 'That custom session rate is not right.' }; custom[clean(gid, 80)] = cents }
     if (Object.keys(custom).length) card.custom = custom
   }
+  // Lee, 9 Nov 2026 (Sam): a coach Lee trusts. Their hours count as logged, no approving, and go straight on their invoice.
+  if (body.trustHours === true) card.trustHours = true
   card.camps = 'tbc'
   card.source = clean(body.source, 200)
   return card

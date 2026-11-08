@@ -106,6 +106,7 @@ function cardForm(c, card, bands, groups = []) {
     <div style="margin-top:10px"><b class="small">Custom rate for one session (an hour)</b>
       ${custom.map(([gid, cents]) => `<div style="display:flex;gap:8px;align-items:center;margin-top:6px" data-cu="${esc(gid)}"><span class="small" style="flex:1">${esc(label(gid))}</span><input class="j-input" inputmode="decimal" data-cu-v value="${dollars(cents)}" style="width:150px" placeholder="Remove"></div>`).join('')}
       <div style="display:flex;gap:8px;align-items:center;margin-top:6px"><select class="j-select" data-cu-new style="flex:1"><option value="">Add a custom rate for a session…</option>${mine.filter((g) => !card?.custom?.[g.id]).map((g) => `<option value="${esc(g.id)}">${esc(g.label)}</option>`).join('')}</select><input class="j-input" inputmode="decimal" data-cu-new-v style="width:150px" placeholder="A$"></div></div>
+    <label class="j-check" style="margin-top:10px"><input type="checkbox" data-cf-trust ${card?.trustHours ? 'checked' : ''}> <span><b>Trust their hours.</b> Hours count as they log them, with nothing for you to approve, and go straight on their invoice.</span></label>
     <p class="muted small" style="margin:6px 0">Camps: agreed with Lee before each camp (TBC). Leave a box empty when there is no agreed rate: those lines wait for you.</p>
     <button type="button" class="j-btn j-btn-dark j-btn-sm" data-card-save>Save ${esc(c.name)}'s rates</button></div>`
 }
@@ -158,6 +159,7 @@ export async function renderCoachInvoices(ui) {
         const cardBody = { bands: [...el.querySelectorAll('[data-band]')].map((i) => cents(i.value)) }
         el.querySelectorAll('[data-cf]').forEach((i) => { cardBody[i.dataset.cf] = cents(i.value) })
         cardBody.jjShadow = cardBody.jjHead
+        cardBody.trustHours = el.querySelector('[data-cf-trust]').checked
         cardBody.custom = {}
         el.querySelectorAll('[data-cu]').forEach((row) => { const v = cents(row.querySelector('[data-cu-v]').value); if (v != null) cardBody.custom[row.dataset.cu] = v })
         const ng = el.querySelector('[data-cu-new]').value, nv = cents(el.querySelector('[data-cu-new-v]').value)
@@ -263,7 +265,7 @@ export async function renderCoachInvoices(ui) {
       // What stopped it stays on screen under the button, not in a toast that goes (Sam, 9 Nov 2026: thought it had sent).
       const say = (msg) => { const el = view().querySelector('#inv-send-err'); if (el) { el.textContent = msg; el.hidden = !msg } }
       say('')
-      if (draft.some((l) => !S.edits[l.hoursId]?.remove && l.flags.some((f) => f.code !== 'waiting')) && !(await confirmBox('Some lines are flagged (the register, a cover or another coach). Send anyway? Lee or Ligia will check them.', { ok: 'Send' }))) { say('Not sent yet. Press Send to Lee and Ligia again, then Send in the box that opens.'); return }
+      // No "Send anyway?" box (Lee, 9 Nov 2026: make it simple for the coaches). Any flags go to Lee and Ligia with the invoice.
       btn.disabled = true
       btn.textContent = 'Sending…'
       const lines = Object.entries(S.edits).map(([hoursId, x]) => ({ hoursId, ...x }))
