@@ -175,7 +175,9 @@ export async function renderCoachInvoices(ui) {
     const other = mu && (mu.from < from || mu.to > to) ? mu : null
     const det = d.details || {}
     const missing = ['fullName', 'accountName', 'bsb', 'accountNumber'].some((k) => !det[k])
-    view().innerHTML = `${S.mine ? '<p style="margin-bottom:10px"><button type="button" class="ps-link" id="inv-back">Back to Coach invoices</button></p>' : ''}<div class="jp-head"><div><h1>${S.mine ? 'My own invoice' : 'My invoices'}</h1><p class="muted small" style="margin-top:4px">Made from your hours in My hours. Each session is priced from the players you ticked in My hours (or the register) and your rate. You can change any line before you send it. Send it by <b>Monday 9am</b> (next due ${esc(d.dueLabel)}). Only you, Lee and Ligia see your invoices.</p></div></div>
+    const sent = S.sent ? `<div class="j-card" role="status" style="padding:12px 16px;margin-bottom:14px;border-color:var(--j-green, #1a7f37)"><b>${esc(S.sent)} is sent to Lee and Ligia.</b> <span class="small">${S.sentEmailed ? 'It is below under Sent. Nothing more to do.' : 'It is saved below under Sent, but the email did not go. Tell Lee.'}</span></div>` : ''
+    S.sent = ''
+    view().innerHTML = `${S.mine ? '<p style="margin-bottom:10px"><button type="button" class="ps-link" id="inv-back">Back to Coach invoices</button></p>' : ''}${sent}<div class="jp-head"><div><h1>${S.mine ? 'My own invoice' : 'My invoices'}</h1><p class="muted small" style="margin-top:4px">Made from your hours in My hours. Each session is priced from the players you ticked in My hours (or the register) and your rate. You can change any line before you send it. Send it by <b>Monday 9am</b> (next due ${esc(d.dueLabel)}). Only you, Lee and Ligia see your invoices.</p></div></div>
       <details class="j-card" style="padding:14px 16px;margin-bottom:16px" ${missing ? 'open' : ''}><summary><b>Your invoice details</b>${missing ? ' <span class="j-pill j-pill-amber">Fill these in first</span>' : ''}</summary>
         <p class="muted small" style="margin:8px 0">These print on your invoice, like the one you used to send. Only you, Lee and Ligia see them.</p>${detailsForm(det)}
         <button type="button" class="j-btn j-btn-dark j-btn-sm" id="det-save">Save my details</button></details>
@@ -190,7 +192,7 @@ export async function renderCoachInvoices(ui) {
           <button type="button" class="j-btn j-btn-line j-btn-sm" id="inv-add-line">+ Add a line</button>
           <p style="margin:10px 0;text-align:right" id="inv-total"></p>
           <label class="j-field"><span>Note <span class="muted">(optional)</span></span><input class="j-input" id="inv-note" maxlength="400"></label>
-          <button type="button" class="j-btn j-btn-dark" id="inv-send">Send to Lee and Ligia</button>`
+          <button type="button" class="j-btn j-btn-dark" id="inv-send">Send to Lee and Ligia</button><p class="j-err" id="inv-send-err" role="alert" hidden style="margin-top:8px"></p>`
         : `<p class="muted small" style="margin-top:10px">${toLog.length ? 'Nothing on this invoice yet. Add the sessions above, or add a line here.' : 'No hours logged in these dates that are not on an invoice already. Log them in My hours first, or add a line here.'}</p><button type="button" class="j-btn j-btn-line j-btn-sm" id="inv-add-line">+ Add a line</button>`}
       </section>
       <h2 style="font-size:16px;margin:0 0 10px">Sent</h2>${list.map(card).join('') || '<p class="muted">None yet.</p>'}`
@@ -258,13 +260,19 @@ export async function renderCoachInvoices(ui) {
     view().querySelector('#inv-send')?.addEventListener('click', async (e) => {
       // Held before any await: currentTarget is null after the confirm box (Dean, 26 Oct 2026: Send did nothing).
       const btn = e.currentTarget
-      if (draft.some((l) => !S.edits[l.hoursId]?.remove && l.flags.some((f) => f.code !== 'waiting')) && !(await confirmBox('Some lines are flagged (the register, a cover or another coach). Send anyway? Lee or Ligia will check them.', { ok: 'Send' }))) return
+      // What stopped it stays on screen under the button, not in a toast that goes (Sam, 9 Nov 2026: thought it had sent).
+      const say = (msg) => { const el = view().querySelector('#inv-send-err'); if (el) { el.textContent = msg; el.hidden = !msg } }
+      say('')
+      if (draft.some((l) => !S.edits[l.hoursId]?.remove && l.flags.some((f) => f.code !== 'waiting')) && !(await confirmBox('Some lines are flagged (the register, a cover or another coach). Send anyway? Lee or Ligia will check them.', { ok: 'Send' }))) { say('Not sent yet. Press Send to Lee and Ligia again, then Send in the box that opens.'); return }
       btn.disabled = true
+      btn.textContent = 'Sending…'
       const lines = Object.entries(S.edits).map(([hoursId, x]) => ({ hoursId, ...x }))
       const r = await post('coachInvCreate', { from, to, note: view().querySelector('#inv-note').value, lines, added: S.added })
-      if (!r.ok) { toast(r.data.error); btn.disabled = false; return }
+      if (!r.ok) { btn.disabled = false; btn.textContent = 'Send to Lee and Ligia'; say(`Not sent. ${r.data.error || 'Something went wrong.'} Nothing was saved, so fix that and press Send again, or tell Lee.`); return }
       S.edits = {}; S.added = []
-      toast(r.data.emailed === false ? 'Saved. The email to Lee and Ligia did not go: tell Lee.' : 'Sent to Lee and Ligia'); reload()
+      S.sent = r.data.invoice?.number || 'Your invoice'
+      S.sentEmailed = r.data.emailed !== false
+      reload()
     })
   }
   const invOf = (el) => d.invoices.find((x) => x.id === el.closest('[data-inv]').dataset.inv)

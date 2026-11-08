@@ -255,13 +255,15 @@ export async function invoiceAction(res, principal, config, body, action, { isAd
 
   if (action === 'coachInvCreate') {
     const coachId = myCoachId
-    if (!coachId) return no(403, 'Your login is not linked to a coach yet. Ask Lee.')
+    // A refused send is kept in the audit log, so we can see what stopped it (Sam, 9 Nov 2026: "pressed send", nothing arrived).
+    const refuse = async (code, error) => { try { await audit({ by: principal.email, action: 'coach-invoice.refused', target: coachId || principal.email, after: { error, from: body.from, to: body.to, edits: Array.isArray(body.lines) ? body.lines.length : 0, added: Array.isArray(body.added) ? body.added.length : 0 } }) } catch {} return no(code, error) }
+    if (!coachId) return refuse(403, 'Your login is not linked to a coach yet. Ask Lee.')
     const from = clean(body.from, 10), to = clean(body.to, 10)
-    if (!ISO.test(from) || !ISO.test(to) || to < from) return no(400, 'Choose the first and last day of the invoice.')
-    if (to > today) return no(400, 'An invoice can only cover days already worked.')
+    if (!ISO.test(from) || !ISO.test(to) || to < from) return refuse(400, 'Choose the first and last day of the invoice.')
+    if (to > today) return refuse(400, 'An invoice can only cover days already worked.')
     const details = await getDetails(coachId)
     const missing = NEEDED.filter(([k]) => !details[k]).map(([, l]) => l)
-    if (missing.length) return no(400, `Add ${missing.join(', ')} in Your invoice details first.`)
+    if (missing.length) return refuse(400, `Add ${missing.join(', ')} in Your invoice details first.`)
     const worked = await linesFor(config, coachId, from, to, { listCovers })
     // The coach's changes: { hoursId, remove, description, location, minutes, cents } per line, plus added lines.
     const edits = new Map((Array.isArray(body.lines) ? body.lines : []).slice(0, 200).map((e) => [clean(e?.hoursId, 40), e || {}]))
@@ -270,15 +272,15 @@ export async function invoiceAction(res, principal, config, body, action, { isAd
       const e = edits.get(l.hoursId)
       if (e?.remove) continue
       const x = e ? editLine(l, e, { by: principal.email, role: 'coach' }) : l
-      if (x.error) return no(400, x.error)
+      if (x.error) return refuse(400, x.error)
       lines.push(x)
     }
     for (const a of (Array.isArray(body.added) ? body.added : []).slice(0, 30)) {
       const x = newLine(a || {}, { by: principal.email, role: 'coach', from, to })
-      if (x.error) return no(400, x.error)
+      if (x.error) return refuse(400, x.error)
       lines.push(x)
     }
-    if (!lines.length) return no(400, 'No hours to invoice in those dates. Log them in My hours first.')
+    if (!lines.length) return refuse(400, 'No hours to invoice in those dates. Log them in My hours first.')
     // Claim each hours entry for this invoice, so it can never be on two.
     const id = newId('CINV')
     const claimed = []
@@ -287,7 +289,7 @@ export async function invoiceAction(res, principal, config, body, action, { isAd
       const got = await kvCommand(['SET', `jfp:hours-invoiced:${l.hoursId}`, id, 'NX'])
       if (got === 'OK') claimed.push(l)
     }
-    if (!claimed.some((l) => l.hoursId) && lines.some((l) => l.hoursId)) return no(409, 'Those hours are already on an invoice.')
+    if (!claimed.some((l) => l.hoursId) && lines.some((l) => l.hoursId)) return refuse(409, 'Those hours are already on an invoice.')
     const seq = Number(await kvCommand(['HINCRBY', 'jfp:coach-invoice-seq', coachId, '1']))
     const inv = {
       id, number: `${coachId.toUpperCase()}-${String(seq).padStart(3, '0')}`, coachId, from, to, lines: claimed,
