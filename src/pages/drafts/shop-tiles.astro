@@ -1,0 +1,370 @@
+---
+// Shop front tile options for Lee (9 Nov 2026). Draft only: noindex, /drafts/ is out of the sitemap.
+// Five tile layouts (A to E) and three moving options (T1 to T3), all using the same four doors.
+// Images are today's files; Codex is making new ones, which drop straight into `doors`.
+import BaseLayout from '../../layouts/BaseLayout.astro'
+
+const doors = [
+  { n: '01', href: 'https://shop.jonerfootball.com/', label: 'Apparel', sub: 'Tees, tanks, shorts and caps', img: '/images/shop/apparel/20-urban-court.webp', pos: 'center 25%' },
+  { n: '02', href: '/books', label: 'Books', sub: 'Joner Football Presents', img: '/images/shop/books/joner-football-greatest-goal-scorers-preorder.jpg', pos: 'center' },
+  { n: '03', href: '/shop/training-programs', label: 'Training programs', sub: 'Follow a plan at home', img: '/images/shop/shop-training.webp', pos: '70% center' },
+  { n: '04', href: '/shop/resources-accessories', label: 'Training resources', sub: 'Tools for players and coaches', img: '/images/shop/resources-accessories/scanning-training-tool.webp', pos: 'center' },
+]
+const arrow = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>'
+const opts = [
+  ['A', 'Full bleed four'], ['B', 'Feature and three'], ['C', 'Swipe cards'], ['D', 'Expanding panels'], ['E', 'Clean catalogue'],
+  ['T1', 'Slide up on scroll'], ['T2', 'Auto slider'], ['T3', 'Red wipe'],
+]
+---
+
+<BaseLayout title="Shop tile options | Joner Football" description="Draft shop tile options." noindex={true} noTracking={true}>
+  <main class="sx">
+    <header class="sx-top">
+      <h1>Shop tile options</h1>
+      <p>Five layouts and three moving options. Tap a letter to jump. Same four shops in each.</p>
+      <nav class="sx-jump">{opts.map(([k, t]) => <a href={`#opt-${k}`}><b>{k}</b> {t}</a>)}</nav>
+    </header>
+
+    <!-- A: Full bleed four -->
+    <section id="opt-A" class="sx-opt">
+      <div class="sx-tag"><b>A</b> Full bleed four <span>Photos edge to edge. Big label, red line grows on hover. Phone: 2 by 2.</span></div>
+      <div class="a-grid">
+        {doors.map((d) => (
+          <a class="a-tile" href={d.href}>
+            <img src={d.img} alt="" style={`object-position:${d.pos}`} loading="lazy" />
+            <span class="a-text"><span class="a-n">{d.n}</span><span class="a-label">{d.label}</span><span class="a-line" /></span>
+          </a>
+        ))}
+      </div>
+    </section>
+
+    <!-- B: Feature and three -->
+    <section id="opt-B" class="sx-opt">
+      <div class="sx-tag"><b>B</b> Feature and three <span>Apparel leads big, the other three sit beside it. Phone: big on top, three below.</span></div>
+      <div class="b-grid">
+        {doors.map((d, i) => (
+          <a class={`b-tile${i === 0 ? ' b-main' : ''}`} href={d.href}>
+            <img src={d.img} alt="" style={`object-position:${d.pos}`} loading="lazy" />
+            <span class="b-text">
+              <span class="b-label">{d.label}</span>
+              {i === 0 && <span class="b-sub">{d.sub}</span>}
+              {i === 0 && <span class="b-btn">Shop apparel</span>}
+            </span>
+          </a>
+        ))}
+      </div>
+    </section>
+
+    <!-- C: Swipe cards -->
+    <section id="opt-C" class="sx-opt">
+      <div class="sx-tag"><b>C</b> Swipe cards <span>One row that slides. The next card peeks so people swipe. Arrows on laptop.</span></div>
+      <div class="c-wrap">
+        <div class="c-row" data-c-row>
+          {doors.map((d) => (
+            <a class="c-card" href={d.href}>
+              <span class="c-img"><img src={d.img} alt="" style={`object-position:${d.pos}`} loading="lazy" /></span>
+              <span class="c-n">{d.n}</span>
+              <span class="c-label">{d.label}</span>
+              <span class="c-sub">{d.sub}</span>
+            </a>
+          ))}
+        </div>
+        <div class="c-ctrl">
+          <div class="c-bar"><span data-c-bar /></div>
+          <button type="button" data-c-prev aria-label="Previous"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></button>
+          <button type="button" data-c-next aria-label="Next" set:html={arrow} />
+        </div>
+      </div>
+    </section>
+
+    <!-- D: Expanding panels -->
+    <section id="opt-D" class="sx-opt">
+      <div class="sx-tag"><b>D</b> Expanding panels <span>Four panels. The one you point at (or tap) slides open. Phone: bands that open downwards.</span></div>
+      <div class="d-row" data-d-row>
+        {doors.map((d, i) => (
+          <a class={`d-panel${i === 0 ? ' is-open' : ''}`} href={d.href} data-d-panel>
+            <img src={d.img} alt="" style={`object-position:${d.pos}`} loading="lazy" />
+            <span class="d-shade" />
+            <span class="d-closed"><span class="d-n">{d.n}</span><span class="d-vert">{d.label}</span></span>
+            <span class="d-open"><span class="d-label">{d.label}</span><span class="d-sub">{d.sub}</span><span class="d-btn">Shop now <Fragment set:html={arrow} /></span></span>
+          </a>
+        ))}
+      </div>
+    </section>
+
+    <!-- E: Clean catalogue -->
+    <section id="opt-E" class="sx-opt sx-white">
+      <div class="sx-tag"><b>E</b> Clean catalogue <span>White, photo on top, words under it. Calm, like a fashion store. Works best with clean photos.</span></div>
+      <div class="e-grid">
+        {doors.map((d) => (
+          <a class="e-card" href={d.href}>
+            <span class="e-img"><img src={d.img} alt="" style={`object-position:${d.pos}`} loading="lazy" /></span>
+            <span class="e-row"><span class="e-label">{d.label}</span><span class="e-arrow" set:html={arrow} /></span>
+            <span class="e-sub">{d.sub}</span>
+          </a>
+        ))}
+      </div>
+    </section>
+
+    <!-- T1: Slide up on scroll -->
+    <section id="opt-T1" class="sx-opt">
+      <div class="sx-tag"><b>T1</b> Slide up on scroll <span>Tiles slide up one after another as they come on screen. Works with any layout. Scroll down and back to replay.</span></div>
+      <div class="a-grid t1-grid">
+        {doors.map((d, i) => (
+          <a class="a-tile t1-tile" href={d.href} style={`--i:${i}`} data-t1>
+            <img src={d.img} alt="" style={`object-position:${d.pos}`} loading="lazy" />
+            <span class="a-text"><span class="a-n">{d.n}</span><span class="a-label">{d.label}</span><span class="a-line" /></span>
+          </a>
+        ))}
+      </div>
+    </section>
+
+    <!-- T2: Auto slider -->
+    <section id="opt-T2" class="sx-opt">
+      <div class="sx-tag"><b>T2</b> Auto slider <span>A full width banner that wipes to the next shop every 4 seconds, with story style bars. Swipe or tap the bars.</span></div>
+      <div class="t2" data-t2>
+        {doors.map((d, i) => (
+          <a class={`t2-slide${i === 0 ? ' is-on' : ''}`} href={d.href} data-t2-slide aria-hidden={i === 0 ? 'false' : 'true'} tabindex={i === 0 ? 0 : -1}>
+            <img src={d.img} alt="" style={`object-position:${d.pos}`} loading="lazy" />
+            <span class="t2-shade" />
+            <span class="t2-text"><span class="t2-n">{d.n} / 04</span><span class="t2-label">{d.label}</span><span class="t2-sub">{d.sub}</span><span class="t2-btn">Shop now</span></span>
+          </a>
+        ))}
+        <div class="t2-bars">{doors.map((d, i) => <button type="button" data-t2-bar={i} aria-label={`Show ${d.label}`}><span /></button>)}</div>
+      </div>
+    </section>
+
+    <!-- T3: Red wipe -->
+    <section id="opt-T3" class="sx-opt">
+      <div class="sx-tag"><b>T3</b> Red wipe <span>Point at a tile (or tap on phone): a Joner red panel sweeps across and the name slides in.</span></div>
+      <div class="a-grid">
+        {doors.map((d) => (
+          <a class="a-tile t3-tile" href={d.href}>
+            <img src={d.img} alt="" style={`object-position:${d.pos}`} loading="lazy" />
+            <span class="t3-wipe" />
+            <span class="a-text"><span class="a-n">{d.n}</span><span class="a-label">{d.label}</span></span>
+            <span class="t3-go">Shop now <Fragment set:html={arrow} /></span>
+          </a>
+        ))}
+      </div>
+    </section>
+  </main>
+
+  <style is:global>
+    .sx { --red: #E8000D; --ease: cubic-bezier(0.22, 1, 0.36, 1); background: #0a0a0a; color: #fff; padding-bottom: 80px; }
+    .sx a { color: inherit; text-decoration: none; }
+    .sx img { display: block; width: 100%; height: 100%; object-fit: cover; }
+    .sx-top { max-width: 1280px; margin: 0 auto; padding: 32px 16px 8px; }
+    .sx-top h1 { margin: 0; font-family: var(--font-heading, Anton, sans-serif); font-style: italic; text-transform: uppercase; font-size: clamp(34px, 6vw, 60px); line-height: 1; }
+    .sx-top p { margin: 10px 0 0; color: #a3a3a3; }
+    .sx-jump { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+    .sx-jump a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border: 1px solid rgba(255,255,255,.2); font-size: 14px; }
+    .sx-jump b { color: var(--red); }
+    .sx-opt { max-width: 1280px; margin: 56px auto 0; padding: 0 16px; }
+    .sx-white { background: #fff; color: #0a0a0a; max-width: none; padding: 32px 0 40px; }
+    .sx-white > * { max-width: 1248px; margin-left: auto; margin-right: auto; padding: 0 16px; }
+    .sx-tag { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin-bottom: 16px; font-weight: 700; font-size: 18px; }
+    .sx-tag b { display: inline-grid; place-items: center; min-width: 40px; height: 32px; padding: 0 8px; background: var(--red); color: #fff; font-family: var(--font-heading, Anton, sans-serif); font-style: italic; }
+    .sx-tag span { font-weight: 400; font-size: 14px; color: #a3a3a3; flex-basis: 100%; }
+    .sx-white .sx-tag span { color: #525252; }
+
+    /* A */
+    .a-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+    @media (min-width: 900px) { .a-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+    .a-tile { position: relative; display: block; aspect-ratio: 3 / 4; overflow: hidden; background: #1a1a1a; }
+    @media (min-width: 900px) { .a-tile { aspect-ratio: 3 / 5; } }
+    .a-tile img { transition: transform 900ms var(--ease); }
+    .a-tile::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,.75), rgba(0,0,0,0) 55%); }
+    .a-text { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; padding: 14px; display: grid; gap: 4px; }
+    @media (min-width: 900px) { .a-text { padding: 24px; } }
+    .a-n { font-family: var(--font-heading, Anton, sans-serif); font-style: italic; color: var(--red); letter-spacing: .14em; font-size: 13px; }
+    .a-label { font-family: var(--font-heading, Anton, sans-serif); font-style: italic; text-transform: uppercase; font-size: clamp(22px, 2.6vw, 38px); line-height: .95; }
+    .a-line { display: block; height: 3px; width: 28px; background: var(--red); transition: width 500ms var(--ease); }
+    @media (hover: hover) { .a-tile:hover img { transform: scale(1.05); } .a-tile:hover .a-line { width: 100%; } }
+
+    /* B */
+    .b-grid { display: grid; gap: 4px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .b-tile { position: relative; overflow: hidden; aspect-ratio: 1; background: #1a1a1a; }
+    .b-main { grid-column: 1 / -1; aspect-ratio: 4 / 5; }
+    @media (min-width: 900px) {
+      .b-grid { grid-template-columns: 2fr 1fr; grid-template-rows: repeat(3, minmax(0, 1fr)); height: min(80vh, 760px); }
+      .b-main { grid-column: 1; grid-row: 1 / 4; aspect-ratio: auto; }
+      .b-tile:not(.b-main) { aspect-ratio: auto; }
+    }
+    .b-tile img { transition: transform 900ms var(--ease); }
+    .b-tile::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,.7), rgba(0,0,0,0) 50%); }
+    .b-text { position: absolute; left: 0; bottom: 0; right: 0; z-index: 2; padding: 10px; display: grid; gap: 8px; justify-items: start; }
+    .b-main .b-text { padding: 20px; }
+    @media (min-width: 900px) { .b-main .b-text { padding: 40px; } .b-text { padding: 18px; } }
+    .b-label { font-family: var(--font-heading, Anton, sans-serif); font-style: italic; text-transform: uppercase; font-size: clamp(14px, 1.8vw, 26px); line-height: 1; }
+    .b-main .b-label { font-size: clamp(40px, 7vw, 88px); }
+    .b-sub { color: #e5e5e5; font-size: 16px; }
+    .b-btn { display: inline-flex; align-items: center; min-height: 48px; padding: 0 22px; background: #fff; color: #0a0a0a; font-weight: 800; }
+    @media (hover: hover) { .b-tile:hover img { transform: scale(1.04); } .b-main:hover .b-btn { background: var(--red); color: #fff; } }
+
+    /* C */
+    .c-row { display: grid; grid-auto-flow: column; grid-auto-columns: 78%; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; scroll-behavior: smooth; }
+    .c-row::-webkit-scrollbar { display: none; }
+    @media (min-width: 900px) { .c-row { grid-auto-columns: calc((100% - 24px) / 2.6); } }
+    .c-card { scroll-snap-align: start; display: grid; gap: 6px; }
+    .c-img { display: block; aspect-ratio: 4 / 5; overflow: hidden; background: #1a1a1a; }
+    .c-img img { transition: transform 900ms var(--ease); }
+    @media (hover: hover) { .c-card:hover .c-img img { transform: scale(1.04); } }
+    .c-n { margin-top: 8px; font-family: var(--font-heading, Anton, sans-serif); font-style: italic; color: var(--red); letter-spacing: .14em; font-size: 13px; }
+    .c-label { font-family: var(--font-heading, Anton, sans-serif); font-style: italic; text-transform: uppercase; font-size: clamp(26px, 3vw, 40px); line-height: 1; }
+    .c-sub { color: #a3a3a3; }
+    .c-ctrl { display: flex; align-items: center; gap: 8px; margin-top: 18px; }
+    .c-bar { flex: 1; height: 3px; background: rgba(255,255,255,.15); position: relative; overflow: hidden; }
+    .c-bar span { position: absolute; left: 0; top: 0; bottom: 0; width: 25%; background: var(--red); transition: transform 300ms var(--ease); }
+    .c-ctrl button { width: 48px; height: 48px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.25); background: none; color: #fff; cursor: pointer; }
+    .c-ctrl button svg { width: 20px; height: 20px; }
+    .c-ctrl button:hover { background: #fff; color: #0a0a0a; }
+    @media (pointer: coarse) { .c-ctrl button { display: none; } }
+
+    /* D */
+    .d-row { display: flex; flex-direction: column; gap: 4px; height: 640px; }
+    @media (min-width: 900px) { .d-row { flex-direction: row; height: min(78vh, 720px); } }
+    .d-panel { position: relative; flex: 1 1 0; min-width: 0; min-height: 0; overflow: hidden; background: #1a1a1a; transition: flex-grow 700ms var(--ease); }
+    .d-panel.is-open { flex-grow: 4; }
+    .d-panel img { position: absolute; inset: 0; transition: transform 900ms var(--ease); }
+    .d-shade { position: absolute; inset: 0; background: rgba(0,0,0,.45); transition: background 500ms ease; }
+    .d-panel.is-open .d-shade { background: linear-gradient(to top, rgba(0,0,0,.75), rgba(0,0,0,0) 55%); }
+    .d-closed { position: absolute; inset: 0; display: flex; align-items: center; gap: 12px; padding: 0 16px; transition: opacity 300ms ease; }
+    @media (min-width: 900px) { .d-closed { flex-direction: column; justify-content: flex-end; padding: 24px 0; } }
+    .d-n { font-family: var(--font-heading, Anton, sans-serif); font-style: italic; color: var(--red); letter-spacing: .14em; font-size: 13px; }
+    .d-vert { font-family: var(--font-heading, Anton, sans-serif); font-style: italic; text-transform: uppercase; font-size: 22px; white-space: nowrap; }
+    @media (min-width: 900px) { .d-vert { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 26px; } }
+    .d-open { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px; display: grid; gap: 8px; justify-items: start; opacity: 0; transform: translateY(24px); transition: opacity 400ms ease, transform 600ms var(--ease); }
+    @media (min-width: 900px) { .d-open { padding: 36px; } }
+    .d-panel.is-open .d-closed { opacity: 0; }
+    .d-panel.is-open .d-open { opacity: 1; transform: none; transition-delay: 250ms; }
+    .d-label { font-family: var(--font-heading, Anton, sans-serif); font-style: italic; text-transform: uppercase; font-size: clamp(34px, 5vw, 64px); line-height: .95; }
+    .d-sub { color: #e5e5e5; }
+    .d-btn { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 20px; background: var(--red); font-weight: 800; }
+    .d-btn svg { width: 18px; height: 18px; }
+
+    /* E */
+    .e-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 12px; }
+    @media (min-width: 900px) { .e-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; } }
+    .e-card { display: grid; gap: 4px; }
+    .e-img { display: block; aspect-ratio: 4 / 5; overflow: hidden; background: #f2f1ef; margin-bottom: 8px; }
+    .e-img img { transition: transform 900ms var(--ease); }
+    .e-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .e-label { font-weight: 800; text-transform: uppercase; letter-spacing: .04em; font-size: 15px; }
+    .e-arrow { width: 20px; height: 20px; flex: none; transition: transform 400ms var(--ease); }
+    .e-arrow svg { width: 100%; height: 100%; }
+    .e-sub { color: #6b6b6b; font-size: 14px; }
+    @media (hover: hover) { .e-card:hover .e-img img { transform: scale(1.04); } .e-card:hover .e-arrow { transform: translateX(6px); color: var(--red); } }
+
+    /* T1 */
+    .t1-tile { opacity: 0; transform: translateY(60px); transition: opacity 700ms ease, transform 900ms var(--ease); transition-delay: calc(var(--i) * 120ms); }
+    .t1-tile.is-in { opacity: 1; transform: none; }
+
+    /* T2 */
+    .t2 { position: relative; height: min(78vh, 680px); overflow: hidden; background: #1a1a1a; touch-action: pan-y; }
+    .t2-slide { position: absolute; inset: 0; clip-path: inset(0 0 0 100%); transition: clip-path 900ms var(--ease); z-index: 1; }
+    .t2-slide.is-on { clip-path: inset(0 0 0 0); z-index: 2; }
+    .t2-slide.is-off { clip-path: inset(0 0 0 0); z-index: 1; }
+    .t2-slide img { transform: scale(1.08); transition: transform 5s linear; }
+    .t2-slide.is-on img { transform: scale(1); }
+    .t2-shade { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,.8), rgba(0,0,0,0) 60%); }
+    .t2-text { position: absolute; left: 0; right: 0; bottom: 48px; padding: 0 20px; display: grid; gap: 8px; justify-items: start; }
+    @media (min-width: 900px) { .t2-text { padding: 0 48px; bottom: 64px; } }
+    .t2-text > * { opacity: 0; transform: translateX(-30px); transition: opacity 500ms ease, transform 700ms var(--ease); }
+    .t2-slide.is-on .t2-text > * { opacity: 1; transform: none; }
+    .t2-slide.is-on .t2-label { transition-delay: 300ms; } .t2-slide.is-on .t2-sub { transition-delay: 400ms; } .t2-slide.is-on .t2-btn { transition-delay: 500ms; }
+    .t2-n { font-family: var(--font-heading, Anton, sans-serif); font-style: italic; color: var(--red); letter-spacing: .14em; }
+    .t2-label { font-family: var(--font-heading, Anton, sans-serif); font-style: italic; text-transform: uppercase; font-size: clamp(44px, 8vw, 104px); line-height: .9; }
+    .t2-sub { color: #e5e5e5; font-size: 17px; }
+    .t2-btn { display: inline-flex; align-items: center; min-height: 50px; padding: 0 24px; background: #fff; color: #0a0a0a; font-weight: 800; }
+    .t2-bars { position: absolute; z-index: 3; left: 20px; right: 20px; bottom: 16px; display: flex; gap: 6px; }
+    @media (min-width: 900px) { .t2-bars { left: 48px; right: 48px; bottom: 28px; } }
+    .t2-bars button { flex: 1; height: 24px; display: flex; align-items: center; background: none; border: 0; padding: 0; cursor: pointer; }
+    .t2-bars span { display: block; width: 100%; height: 3px; background: rgba(255,255,255,.3); position: relative; overflow: hidden; }
+    .t2-bars span::after { content: ''; position: absolute; inset: 0; background: #fff; transform: scaleX(0); transform-origin: left; }
+    .t2-bars .is-done span::after { transform: scaleX(1); }
+    .t2-bars .is-run span::after { animation: t2fill 4s linear forwards; }
+    @keyframes t2fill { to { transform: scaleX(1); } }
+
+    /* T3 */
+    .t3-tile::after { display: none; }
+    .t3-wipe { position: absolute; inset: 0; z-index: 1; background: var(--red); transform: scaleX(0); transform-origin: left; transition: transform 550ms var(--ease); mix-blend-mode: multiply; }
+    .t3-tile .a-text { transition: transform 550ms var(--ease); }
+    .t3-tile .a-n { color: #fff; }
+    .t3-tile .a-label { text-shadow: 0 2px 18px rgba(0,0,0,.6); }
+    .t3-go { position: absolute; z-index: 2; top: 14px; right: 14px; display: inline-flex; align-items: center; gap: 6px; font-weight: 800; font-size: 14px; opacity: 0; transform: translateX(-12px); transition: opacity 300ms ease, transform 500ms var(--ease); }
+    .t3-go svg { width: 16px; height: 16px; }
+    .t3-tile:hover .t3-wipe, .t3-tile.is-hot .t3-wipe { transform: scaleX(1); }
+    .t3-tile:hover .a-text, .t3-tile.is-hot .a-text { transform: translateY(-10px); }
+    .t3-tile:hover .t3-go, .t3-tile.is-hot .t3-go { opacity: 1; transform: none; transition-delay: 200ms; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .sx *, .sx *::after { transition-duration: 1ms !important; animation-duration: 1ms !important; }
+      .t1-tile { opacity: 1; transform: none; }
+    }
+  </style>
+
+  <script>
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches
+    const coarse = matchMedia('(pointer: coarse)').matches
+
+    // C: arrows and the progress line under the swipe row.
+    const row = document.querySelector<HTMLElement>('[data-c-row]')
+    const bar = document.querySelector<HTMLElement>('[data-c-bar]')
+    if (row && bar) {
+      const step = () => (row.firstElementChild as HTMLElement).offsetWidth + 12
+      document.querySelector('[data-c-prev]')?.addEventListener('click', () => row.scrollBy({ left: -step() }))
+      document.querySelector('[data-c-next]')?.addEventListener('click', () => row.scrollBy({ left: step() }))
+      const sync = () => {
+        const max = row.scrollWidth - row.clientWidth
+        const share = row.clientWidth / row.scrollWidth
+        bar.style.width = share * 100 + '%'
+        bar.style.transform = `translateX(${max ? (row.scrollLeft / max) * ((1 - share) / share) * 100 : 0}%)`
+      }
+      row.addEventListener('scroll', sync, { passive: true }); addEventListener('resize', sync); sync()
+    }
+
+    // D: hover opens on laptop; first tap opens on phone, second tap follows the link.
+    const panels = [...document.querySelectorAll<HTMLElement>('[data-d-panel]')]
+    const open = (p: HTMLElement) => panels.forEach((x) => x.classList.toggle('is-open', x === p))
+    panels.forEach((p) => {
+      p.addEventListener('mouseenter', () => { if (!coarse) open(p) })
+      p.addEventListener('focus', () => open(p))
+      p.addEventListener('click', (e) => { if (!p.classList.contains('is-open')) { e.preventDefault(); open(p) } })
+    })
+
+    // T1: slide up when on screen, reset when it leaves so Lee can replay it.
+    const io = new IntersectionObserver((es) => es.forEach((e) => e.target.classList.toggle('is-in', e.isIntersecting)), { threshold: 0.15 })
+    document.querySelectorAll('[data-t1]').forEach((el) => io.observe(el))
+
+    // T2: wipe to the next slide every 4 s, bars like stories, swipe on phone, pauses off screen.
+    const t2 = document.querySelector<HTMLElement>('[data-t2]')
+    if (t2) {
+      const slides = [...t2.querySelectorAll<HTMLElement>('[data-t2-slide]')]
+      const bars = [...t2.querySelectorAll<HTMLElement>('[data-t2-bar]')]
+      let at = 0, timer = 0, visible = false
+      const show = (n: number) => {
+        const prev = at; at = (n + slides.length) % slides.length
+        slides.forEach((s, i) => {
+          s.classList.toggle('is-on', i === at); s.classList.toggle('is-off', i === prev && i !== at)
+          s.setAttribute('aria-hidden', String(i !== at)); s.tabIndex = i === at ? 0 : -1
+        })
+        setTimeout(() => slides.forEach((s, i) => { if (i !== at) s.classList.remove('is-off') }), 950)
+        bars.forEach((b, i) => { b.classList.remove('is-run'); b.classList.toggle('is-done', i < at) })
+        void bars[at].offsetWidth
+        if (!reduce && visible) bars[at].classList.add('is-run')
+        clearTimeout(timer); if (!reduce && visible) timer = window.setTimeout(() => show(at + 1), 4000)
+      }
+      bars.forEach((b, i) => b.addEventListener('click', () => show(i)))
+      let x0 = 0
+      t2.addEventListener('touchstart', (e) => { x0 = e.touches[0].clientX }, { passive: true })
+      t2.addEventListener('touchend', (e) => { const dx = e.changedTouches[0].clientX - x0; if (Math.abs(dx) > 40) show(at + (dx < 0 ? 1 : -1)) })
+      new IntersectionObserver(([e]) => { visible = e.isIntersecting; if (visible) show(at); else clearTimeout(timer) }, { threshold: 0.4 }).observe(t2)
+    }
+
+    // T3: on touch screens the first tap plays the wipe, the second follows the link.
+    document.querySelectorAll<HTMLElement>('.t3-tile').forEach((t) => t.addEventListener('click', (e) => {
+      if (coarse && !t.classList.contains('is-hot')) { e.preventDefault(); document.querySelectorAll('.t3-tile').forEach((x) => x.classList.toggle('is-hot', x === t)) }
+    }))
+  </script>
+</BaseLayout>

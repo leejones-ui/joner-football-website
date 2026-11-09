@@ -1,15 +1,14 @@
 ---
 // The Joner shop front (Lee, 9 Nov 2026): four doors, each its own shop. Apparel is the Shopify
-// store at /shop/apparel; books, programs and training resources keep their own pages (the scanning
+// store at shop.jonerfootball.com (the one apparel store, Lee 9 Nov 2026); books, programs and training resources keep their own pages (the scanning
 // app will take over Training resources). Built to become shop.jonerfootball.com later.
 import BaseLayout from '../layouts/BaseLayout.astro'
-import ShopKit from '../components/shop/ShopKit.astro'
 import ProductCard from '../components/shop/ProductCard.astro'
 import { getShopProducts } from '../lib/shopify'
 import '../styles/shop-store.css'
 
 const doors = [
-  { href: '/shop/apparel', label: 'Apparel', img: '/images/shop/apparel/20-urban-court.webp', pos: 'center 30%' },
+  { href: 'https://shop.jonerfootball.com/', label: 'Apparel', img: '/images/shop/apparel/20-urban-court.webp', pos: 'center 30%' },
   { href: '/books', label: 'Books', img: '/images/shop/books/joner-football-greatest-goal-scorers-preorder.jpg', pos: 'center' },
   { href: '/shop/training-programs', label: 'Training programs', img: '/images/shop/shop-training.webp', pos: 'center' },
   { href: '/shop/resources-accessories', label: 'Training resources', img: '/images/shop/resources-accessories/scanning-training-tool.webp', pos: 'center' },
@@ -57,7 +56,7 @@ const sanityPage = await fetchSanityPage('shop')
       <section class="st-wrap" aria-labelledby="st-best">
         <div class="st-head">
           <h2 id="st-best" class="st-title">Best sellers</h2>
-          <a href="/shop/apparel" class="st-all">Shop all apparel</a>
+          <a href="https://shop.jonerfootball.com/" class="st-all">Shop all apparel</a>
         </div>
         <div class="st-grid">
           {best.map((p, i) => <ProductCard product={p} eager={i < 2} />)}
@@ -66,6 +65,5 @@ const sanityPage = await fetchSanityPage('shop')
     )}
     <p class="st-trust">Secure checkout by Shopify</p>
   </main>
-  {best.length > 0 && <ShopKit />}
 </BaseLayout>
 )}

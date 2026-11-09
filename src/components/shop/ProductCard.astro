@@ -1,17 +1,15 @@
 ---
 // One apparel card: photo with a second photo on hover, name, price, colour dots. Tapping the card
-// opens the product sheet (ShopKit); tapping a dot shows that colour on the card and the sheet
-// opens on it. Styles in src/styles/shop-store.css.
-import { cardImages, colourNote, colourSwatches, isLimited, isWide, priceLabel, sized, type ShopProduct } from '../../lib/shopify'
+// opens the product on the Shopify store (shop.jonerfootball.com); a dot shows that colour on the card. Styles in src/styles/shop-store.css.
+import { cardImages, shopUrl, colourNote, colourSwatches, isLimited, isWide, priceLabel, sized, type ShopProduct } from '../../lib/shopify'
 
 interface Props {
   product: ShopProduct
   group?: string
   eager?: boolean
-  href?: string
 }
 
-const { product: p, group, eager = false, href = '/shop/apparel' } = Astro.props
+const { product: p, group, eager = false } = Astro.props
 const { main, hover } = cardImages(p)
 const swatches = colourSwatches(p)
 const note = swatches.length ? '' : colourNote(p)
@@ -19,7 +17,7 @@ const limitedOnly = isLimited(p) && !swatches.some((s) => !s.limited)
 ---
 
 <div class="st-card" data-group={group}>
-  <a href={`${href}#p=${p.handle}`} class="st-link" data-shop-open={p.handle} data-shop-colour={swatches[0]?.value}>
+  <a href={shopUrl(p.handle)} class="st-link">
     <span class="st-img">
       {main && <img class={`st-main${isWide(main) ? ' st-wide' : ''}`} src={sized(main.url, 800)} alt={main.alt} width="800" height="1200" loading={eager ? 'eager' : 'lazy'} />}
       {hover && <img class={`st-hover${isWide(hover) ? ' st-wide' : ''}`} src={sized(hover.url, 800)} alt="" width="800" height="1200" loading="lazy" />}
@@ -51,14 +49,12 @@ const limitedOnly = isLimited(p) && !swatches.some((s) => !s.limited)
 </div>
 
 <script>
-  // Colour dots: swap the card's two photos and remember the colour for the product sheet.
+  // Colour dots: swap the card's two photos.
   document.addEventListener('click', (e) => {
     const b = (e.target as HTMLElement).closest<HTMLButtonElement>('.st-sw button')
     if (!b) return
     const card = b.closest('.st-card')!
-    const link = card.querySelector<HTMLElement>('[data-shop-open]')!
     card.querySelectorAll('.st-sw button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)))
-    link.dataset.shopColour = b.dataset.sw
     const set = (img: HTMLImageElement | null, src?: string, wide?: string) => {
       if (!img || !src) return
       img.src = src

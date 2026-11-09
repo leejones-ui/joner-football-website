@@ -250,3 +250,10 @@ export function sized(url: string, width: number) {
   if (!url) return url
   return url + (url.includes('?') ? '&' : '?') + `width=${width}`
 }
+
+// The product's page on the Shopify store (shop.jonerfootball.com is the one apparel store, Lee 9 Nov 2026).
+// A family card (several Shopify products shown as one) opens its first member.
+export function shopUrl(handle: string) {
+  const fam = SHOP_FAMILIES.find((f) => f.handle === handle)
+  return `https://shop.jonerfootball.com/products/${fam ? fam.members[0].handle : handle}`
+}

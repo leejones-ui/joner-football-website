@@ -43,8 +43,18 @@
   ],
   "redirects": [
     {
+      "source": "/shop/apparel",
+      "destination": "https://shop.jonerfootball.com/",
+      "permanent": true
+    },
+    {
+      "source": "/shop/apparel/",
+      "destination": "https://shop.jonerfootball.com/",
+      "permanent": true
+    },
+    {
       "source": "/shop/off-field-apparel",
-      "destination": "/shop/apparel",
+      "destination": "https://shop.jonerfootball.com/",
       "permanent": true
     },
     {

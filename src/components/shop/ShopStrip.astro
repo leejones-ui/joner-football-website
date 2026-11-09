@@ -1,10 +1,9 @@
 ---
-// "Joner kit" product row for busy pages. Each card opens the product sheet on the same page,
-// so people can buy without leaving. Placed only on pages that do not sell the app
+// "Joner kit" product row for busy pages. Each card opens the product on the Shopify store
+// (shop.jonerfootball.com is the one store, Lee 9 Nov 2026). Placed only on pages that do not sell the app
 // (Lee, 9 Nov 2026: no shop buttons on the app pages, they compete).
-import ShopKit from './ShopKit.astro'
 import ShopPromo from './ShopPromo.astro'
-import { cardImages, getShopProducts, isWide, pickLabel, priceLabel, sized } from '../../lib/shopify'
+import { cardImages, shopUrl, getShopProducts, isWide, priceLabel, sized } from '../../lib/shopify'
 import { SHOP_STRIPS_ON } from '../../data/shop-promo'
 
 interface Props {
@@ -15,7 +14,7 @@ interface Props {
   place: string
 }
 
-const { title = 'Wear the badge.', intro = 'Official Joner Football apparel. Pick your size here and pay in a minute.', limit = 4, theme = 'dark', place } = Astro.props
+const { title = 'Wear the badge.', intro = 'Official Joner Football apparel.', limit = 4, theme = 'dark', place } = Astro.props
 const products = SHOP_STRIPS_ON ? (await getShopProducts()).filter((p) => p.available).slice(0, limit) : []
 ---
 
@@ -29,25 +28,24 @@ const products = SHOP_STRIPS_ON ? (await getShopProducts()).filter((p) => p.avai
           <h2 id={`jss-${place}`} class="jss-title">{title}</h2>
           <p class="jss-intro">{intro}</p>
         </div>
-        <a href="/shop/apparel" class="jss-all">Shop all apparel</a>
+        <a href="https://shop.jonerfootball.com/" class="jss-all">Shop all apparel</a>
       </div>
       <div class="jss-row">
         {products.map((p) => (
-          <a href={`/shop/apparel#p=${p.handle}`} class="jss-card" data-shop-open={p.handle}>
+          <a href={shopUrl(p.handle)} class="jss-card">
             <span class="jss-img">
               {cardImages(p).main && <img class={isWide(cardImages(p).main) ? 'jss-wide' : ''} src={sized(cardImages(p).main!.url, 600)} alt={cardImages(p).main!.alt} loading="lazy" width="600" height="900" />}
               {cardImages(p).hover && <img class={`jss-hover${isWide(cardImages(p).hover) ? ' jss-wide' : ''}`} src={sized(cardImages(p).hover!.url, 600)} alt="" loading="lazy" width="600" height="900" />}
             </span>
             <span class="jss-name">{p.title.replace(/^Joner Football\s+/i, '')}</span>
             <span class="jss-price" data-shop-price set:html={priceLabel(p)} />
-            <span class="jss-cta" data-shop-status>{pickLabel(p)}</span>
+            <span class="jss-cta">Shop now</span>
           </a>
         ))}
       </div>
     </div>
   </section>
 )}
-{products.length > 0 && <ShopKit />}
 
 <style>
   .jss { position: relative; z-index: 2; isolation: isolate; padding: 56px 0; }
