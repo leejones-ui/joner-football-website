@@ -1,17 +1,18 @@
 ---
-// The Joner shop front (Lee, 9 Nov 2026): four doors, each its own shop. Apparel is the Shopify
+// The Joner shop front (Lee, 9 Nov 2026): four doors as expanding panels (option D + T1), each its own shop. Apparel is the Shopify
 // store at shop.jonerfootball.com (the one apparel store, Lee 9 Nov 2026); books, programs and training resources keep their own pages (the scanning
-// app will take over Training resources). Built to become shop.jonerfootball.com later.
+// app will take over Training resources).
 import BaseLayout from '../layouts/BaseLayout.astro'
 import ProductCard from '../components/shop/ProductCard.astro'
+import ShopPanels, { type ShopDoor } from '../components/shop/ShopPanels.astro'
 import { getShopProducts } from '../lib/shopify'
 import '../styles/shop-store.css'
 
-const doors = [
-  { href: 'https://shop.jonerfootball.com/', label: 'Apparel', img: '/images/shop/apparel/20-urban-court.webp', pos: 'center 30%' },
-  { href: '/books', label: 'Books', img: '/images/shop/books/joner-football-greatest-goal-scorers-preorder.jpg', pos: 'center' },
-  { href: '/shop/training-programs', label: 'Training programs', img: '/images/shop/shop-training.webp', pos: 'center' },
-  { href: '/shop/resources-accessories', label: 'Training resources', img: '/images/shop/resources-accessories/scanning-training-tool.webp', pos: 'center' },
+const doors: ShopDoor[] = [
+  { href: 'https://shop.jonerfootball.com/', label: 'Apparel', sub: 'Tees, tanks, shorts and caps', img: '/images/shop/apparel/20-urban-court.webp', pos: 'center 25%' },
+  { href: '/books', label: 'Books', sub: 'Joner Football Presents', img: '/images/shop/books/joner-football-greatest-goal-scorers-preorder.jpg' },
+  { href: '/shop/training-programs', label: 'Training programs', sub: 'Follow a plan at home', img: '/images/shop/shop-training.webp', pos: '70% center' },
+  { href: '/shop/resources-accessories', label: 'Training resources', sub: 'Tools for players and coaches', img: '/images/shop/resources-accessories/scanning-training-tool.webp' },
 ]
 const best = (await getShopProducts()).filter((p) => p.available).slice(0, 4)
 
@@ -40,17 +41,7 @@ const sanityPage = await fetchSanityPage('shop')
 >
   <main class="st">
     <h1 class="st-front-title">Joner Shop</h1>
-    <nav class="st-hero st-four" aria-label="Shops">
-      {doors.map((d, i) => (
-        <a href={d.href} class="st-tile">
-          <img src={d.img} alt="" style={`object-position: ${d.pos}`} loading="eager" />
-          <span class="st-tile-text">
-            <span class="st-tile-label">{d.label}</span>
-            <span class="st-tile-cta">Shop now</span>
-          </span>
-        </a>
-      ))}
-    </nav>
+    <ShopPanels doors={doors} />
 
     {best.length > 0 && (
       <section class="st-wrap" aria-labelledby="st-best">
