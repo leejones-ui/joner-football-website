@@ -1,0 +1,68 @@
+---
+// The /shop front door (Lee, 10 Nov 2026: replaces the expanding panels, which cut off heads).
+// Four portrait cards at 4:5, the same shape as the photos, so nothing important is cropped.
+// Words sit under the photo, never on it. 2 x 2 on phones, 4 across on laptops.
+// Cards slide up in turn when they come on screen. Swap images in `doors` on src/pages/shop.astro.
+export interface ShopDoor {
+  href: string
+  label: string
+  sub: string
+  img: string
+  pos?: string
+}
+interface Props { doors: ShopDoor[] }
+const { doors } = Astro.props
+---
+
+<nav class="sc-grid" aria-label="Shops" data-sc-grid>
+  {doors.map((d, i) => (
+    <a class="sc-card" href={d.href} style={`--i:${i}`} data-sc-card>
+      <span class="sc-photo">
+        <img src={d.img} alt="" style={`object-position:${d.pos || 'center'}`} loading={i < 2 ? 'eager' : 'lazy'} />
+      </span>
+      <span class="sc-text">
+        <span class="sc-label">{d.label}</span>
+        <span class="sc-sub">{d.sub}</span>
+        <span class="sc-go">Shop now <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></span>
+      </span>
+    </a>
+  ))}
+</nav>
+
+<style>
+  .sc-grid { --red: #E8000D; --ease: cubic-bezier(0.22, 1, 0.36, 1); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 12px; max-width: 1400px; margin: 0 auto; padding: 8px 16px 40px; }
+  @media (min-width: 900px) { .sc-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; padding: 8px 32px 56px; } }
+  .sc-card { display: grid; grid-template-rows: auto 1fr; color: #0a0a0a; text-decoration: none; transition: opacity 700ms ease, transform 900ms var(--ease); }
+  .sc-photo { display: block; position: relative; aspect-ratio: 4 / 5; overflow: hidden; background: #f2f2f2; }
+  .sc-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform 900ms var(--ease); }
+  .sc-photo::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: var(--red); transform: scaleX(0); transform-origin: left; transition: transform 500ms var(--ease); }
+  .sc-text { display: flex; flex-direction: column; gap: 4px; padding-top: 12px; }
+  .sc-label { font-family: var(--font-heading, Anton, sans-serif); font-style: italic; text-transform: uppercase; font-size: clamp(20px, 2.2vw, 30px); line-height: 1; }
+  .sc-sub { color: #555; font-size: 14px; line-height: 1.35; }
+  .sc-go { margin-top: auto; align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; color: var(--red); font-weight: 800; font-size: 15px; }
+  .sc-go svg { width: 16px; height: 16px; transition: transform 300ms var(--ease); }
+  @media (hover: hover) {
+    .sc-card:hover .sc-photo img { transform: scale(1.04); }
+    .sc-card:hover .sc-photo::after { transform: scaleX(1); }
+    .sc-card:hover .sc-go svg { transform: translateX(4px); }
+  }
+  .sc-card:focus-visible { outline: 3px solid var(--red); outline-offset: 4px; }
+
+  /* Slide up in turn when the grid comes on screen (only once the script is running). */
+  .sc-grid.is-armed .sc-card { opacity: 0; transform: translateY(48px); }
+  .sc-grid.is-armed .sc-card.is-in { opacity: 1; transform: none; transition-delay: calc(var(--i) * 110ms); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sc-card, .sc-photo img, .sc-photo::after, .sc-go svg { transition: none !important; }
+    .sc-grid.is-armed .sc-card { opacity: 1; transform: none; }
+  }
+</style>
+
+<script>
+  const grid = document.querySelector<HTMLElement>('[data-sc-grid]')
+  if (grid && 'IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    grid.classList.add('is-armed')
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('is-in'); io.unobserve(e.target) } }), { threshold: 0.1 })
+    grid.querySelectorAll('[data-sc-card]').forEach((c) => io.observe(c))
+  }
+</script>
