@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
+import ShopStrip from '../components/shop/ShopStrip.astro'
 import SEOFAQ from '../components/SEOFAQ.astro'
 import { oneToOneFaq } from '../data/jfp-one-to-one.js'
 import GeoAnswers from '../components/GeoAnswers.astro'
@@ -512,6 +513,8 @@ const inputClass = 'tr-input'
 
 
     <!-- App CTA -->
+    <ShopStrip place="training" />
+
     <section class="tr-app">
       <div class="tr-wrap tr-app-inner">
         <div>

@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
+import ShopStrip from '../components/shop/ShopStrip.astro'
 import SEOFAQ from '../components/SEOFAQ.astro'
 import { faqSchema, webPageSchema } from '../lib/seoSchema'
 import ChooseNextStep from '../components/ChooseNextStep.astro'
@@ -2265,6 +2266,8 @@ const homepageSchemas = [
         </div>
       </div>
     </section>
+
+    <ShopStrip place="home" />
 
   </main>
 

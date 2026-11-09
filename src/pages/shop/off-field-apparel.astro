@@ -1,33 +1,14 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
+import ShopKit from '../../components/shop/ShopKit.astro'
+import ShopPromo from '../../components/shop/ShopPromo.astro'
+import { getShopProducts, pickLabel, priceLabel, sized, SHOP_DOMAIN } from '../../lib/shopify'
 
-const video = 'https://apparel.jonerfootball.com/app/uploads/2023/06/WEBSITE-TEASER-.mp4'
-const shopifyStore = 'https://jonerfootball.myshopify.com'
-
-let products = []
-try {
-  const response = await fetch(`${shopifyStore}/products.json?limit=250`)
-  const data = await response.json()
-  products = (data.products || []).map((product: any) => {
-    const variants = product.variants || []
-    const availableVariants = variants.filter((variant: any) => variant.available)
-    const prices = variants
-      .map((variant: any) => Number(variant.price))
-      .filter((price: number) => Number.isFinite(price))
-    const minPrice = prices.length ? Math.min(...prices) : null
-    const image = product.images?.[0]?.src || '/images/shop/shop-apparel.webp'
-
-    return {
-      title: product.title,
-      price: minPrice === null ? 'Price in Shopify' : `$${minPrice.toFixed(2)}`,
-      image,
-      href: `${shopifyStore}/products/${product.handle}`,
-      available: availableVariants.length > 0,
-    }
-  })
-} catch (error) {
-  products = []
-}
+// Live Shopify products: build-time HTML, then the shop script refreshes price and stock and
+// opens each product in a sheet on this page (checkout on Shopify).
+const products = await getShopProducts()
+const sortOrder = (p: { available: boolean }) => (p.available ? 0 : 1)
+products.sort((a, b) => sortOrder(a) - sortOrder(b))
 
 import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
 import { fetchSanityPage } from '../../lib/sanityPages'
@@ -42,10 +23,10 @@ const sanityPage = await fetchSanityPage('shop-off-field-apparel')
 <BaseLayout title="Off Field Apparel | Joner Football Shop" description="Shop Joner Football off field apparel, hoodies, tees, tanks, shorts, hats, and lifestyle gear.">
   <main class="bg-white text-joner-black">
     <section class="grid grid-cols-1 lg:grid-cols-2">
-      <div class="relative min-h-[48vh] lg:min-h-[68vh] overflow-hidden bg-joner-black">
-        <video autoplay muted loop playsinline class="absolute inset-0 w-full h-full object-cover opacity-90">
-          <source src={video} type="video/mp4" />
-        </video>
+      <div class="relative aspect-square lg:aspect-auto lg:min-h-[68vh] overflow-hidden bg-joner-black grid grid-cols-2 grid-rows-2 gap-[2px]">
+        {products.filter((p) => p.images[0]).slice(0, 4).map((p, i) => (
+          <img src={sized(p.images[0].url, 800)} alt={p.images[0].alt} class="w-full h-full min-h-0 object-cover" fetchpriority={i === 0 ? 'high' : undefined} />
+        ))}
       </div>
       <div class="flex items-center px-6 md:px-12 py-14 lg:py-0">
         <div>
@@ -57,20 +38,31 @@ const sanityPage = await fetchSanityPage('shop-off-field-apparel')
     </section>
 
     <section class="px-4 md:px-8 py-8 md:py-12">
+      <ShopPromo />
+      <div class="flex flex-wrap items-end justify-between gap-3 mb-8">
+        <p class="text-gray-700 max-w-xl">Pick a product to see every photo, choose your size and add it to your bag. Checkout is secure through Shopify.</p>
+        <button type="button" data-bag-open class="inline-flex items-center gap-2 min-h-[44px] px-4 rounded-full border border-gray-300 font-bold text-sm hover:border-joner-black">
+          Bag <span class="jfs-badge" data-bag-count>0</span>
+        </button>
+      </div>
+      {products.length === 0 && (
+        <p class="text-lg">The shop is loading slowly right now. <a class="underline text-joner-red" href={`https://${SHOP_DOMAIN}/collections/all`}>Open the Joner shop</a>.</p>
+      )}
       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-5 gap-y-10">
-        {products.map((product) => (
-          <a href={product.href} target="_blank" rel="noopener" class="group block">
-            <div class="relative aspect-[2/3] overflow-hidden bg-gray-100 mb-4">
+        {products.map((product, i) => (
+          <a href={`#p=${product.handle}`} data-shop-open={product.handle} id={`p-${product.handle}`} class="group block">
+            <div class="relative aspect-[2/3] overflow-hidden bg-gray-100 mb-4 rounded-lg">
               {!product.available && <span class="absolute left-3 top-3 z-10 bg-joner-black text-white font-heading uppercase text-xs tracking-widest px-3 py-2">Sold Out</span>}
-              <img src={product.image} alt={product.title} class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+              {product.images[0] && <img src={sized(product.images[0].url, 700)} alt={product.images[0].alt} class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500" loading={i < 4 ? 'eager' : 'lazy'} />}
             </div>
             <h2 class="font-body text-base md:text-lg leading-tight text-joner-black group-hover:text-joner-red transition-colors">{product.title}</h2>
-            <p class="font-heading text-base mt-2">{product.price}</p>
-            <p class="text-xs text-gray-500 mt-1">{product.available ? 'Select options' : 'Currently unavailable'}</p>
+            <p class="font-heading text-base mt-2" data-shop-price set:html={priceLabel(product)} />
+            <p class="text-sm font-bold text-joner-red mt-1" data-shop-status>{pickLabel(product)}</p>
           </a>
         ))}
       </div>
     </section>
   </main>
+  <ShopKit />
 </BaseLayout>
 )}

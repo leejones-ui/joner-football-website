@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
+import ShopStrip from '../components/shop/ShopStrip.astro'
 import SEOFAQ from '../components/SEOFAQ.astro'
 import GeoAnswers from '../components/GeoAnswers.astro'
 import { faqSchema, webPageSchema, breadcrumbSchema } from '../lib/seoSchema'
@@ -107,6 +108,7 @@ const sanityPage = await fetchSanityPage('camps')
         </div>
       </div>
     </section>
+    <ShopStrip place="camps" title="Camp kit." intro="Official Joner Football apparel for camp days and the drive home. Pick your size here." />
   </main>
 
   <GeoAnswers

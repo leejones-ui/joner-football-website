@@ -1,0 +1,26 @@
+---
+import { SHOP_PROMO } from '../../data/shop-promo'
+const p = SHOP_PROMO
+const show = p.on && !!p.headline && Date.now() < Date.parse(p.endsAt)
+---
+
+{show && (
+  <div class="jsp" data-shop-promo data-starts={p.startsAt} data-ends={p.endsAt} hidden>
+    <span class="jsp-label">{p.label}</span>
+    <span class="jsp-text">{p.headline}{p.code && <> Code <b>{p.code}</b></>}</span>
+  </div>
+)}
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-shop-promo]').forEach((el) => {
+    const now = Date.now()
+    el.hidden = !(now >= Date.parse(el.dataset.starts || '') && now <= Date.parse(el.dataset.ends || ''))
+  })
+</script>
+
+<style>
+  .jsp { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; background: var(--color-joner-red, #e30613); color: #fff; border-radius: 12px; padding: 12px 16px; margin-bottom: 20px; }
+  .jsp[hidden] { display: none; }
+  .jsp-label { font-family: var(--font-heading, 'Anton', sans-serif); text-transform: uppercase; letter-spacing: 0.18em; font-size: 13px; background: #0a0a0a; padding: 4px 10px; border-radius: 999px; }
+  .jsp-text { font-weight: 700; font-size: 15px; }
+</style>

@@ -1,0 +1,126 @@
+---
+// The shop's moving parts for one page: product sheet, bag, floating bag button and the script.
+// Any element with data-shop-open="<handle>" opens that product. Include once per page
+// (ShopStrip includes it); Astro only ships the script once.
+import { getShopProducts } from '../../lib/shopify'
+
+const products = await getShopProducts()
+---
+
+<script type="application/json" id="jfs-data" set:html={JSON.stringify(products).replace(/</g, '\\u003c')} />
+
+<dialog id="jfs-sheet" class="jfs-dialog jfs-sheet" aria-labelledby="jfs-title">
+  <div class="jfs-panel">
+    <button type="button" class="jfs-x" data-close aria-label="Close">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+    </button>
+    <div id="jfs-sheet-body"></div>
+  </div>
+</dialog>
+
+<dialog id="jfs-bag" class="jfs-dialog jfs-bag" aria-labelledby="jfs-bag-title">
+  <div class="jfs-panel">
+    <div class="jfs-bag-head">
+      <h2 id="jfs-bag-title">Your bag <span class="jfs-badge" data-bag-count>0</span></h2>
+      <button type="button" class="jfs-x jfs-x-static" data-close aria-label="Close">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+      </button>
+    </div>
+    <ul id="jfs-bag-lines" class="jfs-lines"></ul>
+    <div id="jfs-bag-foot" class="jfs-bag-foot" hidden>
+      <p id="jfs-bag-error" class="jfs-error" role="alert"></p>
+      <div class="jfs-total"><span>Subtotal</span><b id="jfs-bag-total">$0</b></div>
+      <p class="jfs-small">Delivery and any discount codes are added at checkout.</p>
+      <button type="button" class="jfs-add jfs-checkout" data-checkout>Checkout</button>
+      <button type="button" class="jfs-keep" data-close>Keep shopping</button>
+    </div>
+  </div>
+</dialog>
+
+<button type="button" id="jfs-fab" class="jfs-fab" data-bag-open hidden aria-label="Open your bag">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h12l-1 12H7L6 8z" /><path d="M9 8V6a3 3 0 016 0v2" /></svg>
+  <span class="jfs-badge" data-bag-count>0</span>
+</button>
+
+<script>
+  import '../../scripts/jf-shop'
+</script>
+
+<style is:global>
+  html.jfs-lock { overflow: hidden; }
+  .jfs-dialog { padding: 0; border: 0; background: transparent; max-width: none; max-height: none; width: 100%; height: 100%; margin: 0; color: #0a0a0a; font-family: var(--font-body, 'DM Sans', sans-serif); }
+  .jfs-dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
+  .jfs-dialog[open] { display: flex; align-items: flex-end; justify-content: center; }
+  .jfs-panel { position: relative; background: #fff; width: 100%; max-height: 92dvh; overflow-y: auto; overscroll-behavior: contain; border-radius: 18px 18px 0 0; padding-bottom: env(safe-area-inset-bottom); animation: jfs-up 280ms cubic-bezier(0.32, 0.72, 0, 1); }
+  @keyframes jfs-up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+  @media (min-width: 768px) {
+    .jfs-sheet[open] { align-items: center; }
+    .jfs-sheet .jfs-panel { max-width: 920px; border-radius: 18px; max-height: 88vh; }
+    .jfs-sheet #jfs-sheet-body { display: grid; grid-template-columns: 1.1fr 1fr; }
+    .jfs-sheet .jfs-gallery { height: 100%; max-height: 88vh; }
+    .jfs-bag[open] { justify-content: flex-end; align-items: stretch; }
+    .jfs-bag .jfs-panel { max-width: 440px; max-height: none; height: 100%; border-radius: 0; display: flex; flex-direction: column; animation-name: jfs-left; }
+    @keyframes jfs-left { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+  }
+  @media (prefers-reduced-motion: reduce) { .jfs-panel { animation: none; } }
+
+  .jfs-x { position: absolute; top: 10px; right: 10px; z-index: 2; width: 44px; height: 44px; border-radius: 999px; background: rgba(255, 255, 255, 0.92); display: grid; place-items: center; border: 1px solid #e5e5e5; }
+  .jfs-x svg { width: 20px; height: 20px; stroke: #0a0a0a; stroke-width: 2.2; fill: none; stroke-linecap: round; }
+  .jfs-x-static { position: static; }
+
+  .jfs-gallery { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; background: #f3f3f3; aspect-ratio: 4 / 5; max-height: 56dvh; scrollbar-width: none; }
+  .jfs-gallery::-webkit-scrollbar { display: none; }
+  .jfs-gallery img { flex: 0 0 100%; width: 100%; height: 100%; object-fit: cover; scroll-snap-align: start; }
+  .jfs-swipe { margin: 6px 20px 0; font-size: 12px; color: #6b6b6b; }
+  @media (min-width: 768px) { .jfs-swipe { display: none; } .jfs-gallery { aspect-ratio: auto; flex-direction: column; overflow-x: hidden; overflow-y: auto; scroll-snap-type: y mandatory; } .jfs-gallery img { flex: 0 0 auto; height: auto; aspect-ratio: 4 / 5; } }
+
+  .jfs-info { padding: 18px 20px 24px; }
+  @media (min-width: 768px) { .jfs-info { padding: 40px 32px 32px; } }
+  .jfs-type { font-family: var(--font-heading, 'Anton', sans-serif); text-transform: uppercase; letter-spacing: 0.22em; font-size: 11px; color: var(--color-joner-red, #e30613); margin: 0 0 6px; }
+  .jfs-title { font-family: var(--font-heading, 'Anton', sans-serif); text-transform: uppercase; font-size: 28px; line-height: 1.05; margin: 0 0 8px; padding-right: 40px; }
+  .jfs-price { font-size: 20px; font-weight: 700; margin: 0 0 18px; }
+  .jfs-price s, [data-shop-price] s { color: #8a8a8a; font-weight: 400; margin-left: 6px; }
+  .jfs-opt { border: 0; padding: 0; margin: 0 0 16px; }
+  .jfs-opt legend { font-size: 14px; color: #444; margin-bottom: 8px; padding: 0; }
+  .jfs-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .jfs-chip { min-width: 52px; min-height: 44px; padding: 0 14px; border: 1.5px solid #d4d4d4; border-radius: 10px; background: #fff; font-weight: 600; font-size: 15px; color: #0a0a0a; }
+  .jfs-chip[aria-pressed='true'] { border-color: #0a0a0a; background: #0a0a0a; color: #fff; }
+  .jfs-chip[data-out] { color: #a3a3a3; text-decoration: line-through; border-style: dashed; }
+  .jfs-chip[data-out][aria-pressed='true'] { background: #f3f3f3; color: #6b6b6b; border-color: #6b6b6b; }
+  .jfs-buy { display: flex; gap: 10px; align-items: stretch; margin: 6px 0 16px; }
+  .jfs-qty { display: inline-flex; align-items: center; border: 1.5px solid #d4d4d4; border-radius: 10px; }
+  .jfs-qty button { width: 44px; height: 50px; font-size: 20px; color: #0a0a0a; background: none; border: 0; }
+  .jfs-qty span { min-width: 22px; text-align: center; font-weight: 700; }
+  .jfs-qty-sm button { height: 36px; width: 40px; font-size: 18px; }
+  .jfs-add { flex: 1; min-height: 50px; border: 0; border-radius: 10px; background: var(--color-joner-red, #e30613); color: #fff; font-family: 'Inter', var(--font-body, sans-serif); font-weight: 800; font-size: 16px; padding: 0 16px; }
+  .jfs-add:disabled { background: #d4d4d4; color: #555; }
+  .jfs-desc { font-size: 15px; line-height: 1.55; color: #333; margin: 0 0 12px; white-space: pre-line; }
+  .jfs-small { font-size: 12.5px; color: #6b6b6b; margin: 0; }
+
+  .jfs-bag-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 12px 12px 20px; border-bottom: 1px solid #ececec; }
+  .jfs-bag-head h2 { font-family: var(--font-heading, 'Anton', sans-serif); text-transform: uppercase; font-size: 22px; margin: 0; display: flex; align-items: center; gap: 10px; }
+  .jfs-badge { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: var(--color-joner-red, #e30613); color: #fff; font: 700 12px/1 'Inter', sans-serif; }
+  .jfs-lines { list-style: none; margin: 0; padding: 4px 20px; flex: 1; overflow-y: auto; }
+  .jfs-line { display: grid; grid-template-columns: 72px minmax(0, 1fr) auto; gap: 12px; padding: 14px 0; border-bottom: 1px solid #f0f0f0; align-items: start; }
+  .jfs-line img, .jfs-line-ph { width: 72px; height: 90px; object-fit: cover; border-radius: 8px; background: #f3f3f3; }
+  .jfs-line-title { font-weight: 700; font-size: 15px; margin: 0 0 2px; }
+  .jfs-line-var { font-size: 13px; color: #6b6b6b; margin: 0 0 8px; }
+  .jfs-line-end { text-align: right; font-weight: 700; }
+  .jfs-line-end p { margin: 0 0 6px; }
+  .jfs-remove { font-size: 13px; color: #6b6b6b; text-decoration: underline; background: none; border: 0; min-height: 36px; padding: 0; font-weight: 400; }
+  .jfs-empty { padding: 32px 0; color: #6b6b6b; }
+  .jfs-bag-foot { padding: 16px 20px 20px; border-top: 1px solid #ececec; }
+  .jfs-total { display: flex; justify-content: space-between; font-size: 18px; margin-bottom: 6px; }
+  .jfs-checkout { width: 100%; margin-top: 14px; }
+  .jfs-keep { width: 100%; min-height: 44px; margin-top: 6px; background: none; border: 0; font-weight: 600; color: #0a0a0a; text-decoration: underline; }
+  .jfs-error { color: var(--color-joner-red, #e30613); font-size: 14px; margin: 0 0 8px; }
+  .jfs-error:empty { display: none; }
+
+  .jfs-fab { position: fixed; right: 16px; bottom: calc(84px + env(safe-area-inset-bottom)); z-index: 55; width: 56px; height: 56px; border-radius: 999px; background: #0a0a0a; border: 1px solid rgba(255, 255, 255, 0.25); display: grid; place-items: center; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); }
+  .jfs-fab[hidden] { display: none; }
+  .jfs-fab svg { width: 24px; height: 24px; stroke: #fff; stroke-width: 1.8; fill: none; stroke-linejoin: round; }
+  .jfs-fab .jfs-badge { position: absolute; top: -4px; right: -4px; }
+  @media (min-width: 1024px) { .jfs-fab { bottom: 24px; right: 24px; } }
+
+  [data-shop-open][data-sold-out] img { opacity: 0.55; }
+</style>

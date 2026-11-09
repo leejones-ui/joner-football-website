@@ -16,7 +16,7 @@ interface Category {
 }
 
 // Pull real apparel products from Shopify at build time, like
-// /shop/off-field-apparel does. Each image links to its product page.
+// /shop/off-field-apparel does. Each image opens that product on /shop/off-field-apparel.
 const shopifyStore = 'https://jonerfootball.myshopify.com'
 let apparelImages: ProductImage[] = [
   { src: '/images/shop/shop-apparel.webp', href: '/shop/off-field-apparel', title: 'Off Field Apparel' },
@@ -32,7 +32,7 @@ try {
         const handle = p?.handle
         const title = p?.title
         if (typeof src !== 'string' || !src || typeof handle !== 'string' || !handle) return null
-        return { src, href: `${shopifyStore}/products/${handle}`, title: typeof title === 'string' && title ? title : 'Joner Football apparel' } as ProductImage
+        return { src, href: `/shop/off-field-apparel#p=${handle}`, title: typeof title === 'string' && title ? title : 'Joner Football apparel' } as ProductImage
       })
       .filter((p: ProductImage | null): p is ProductImage => p !== null)
       .slice(0, 8)
@@ -108,8 +108,8 @@ const categories: Category[] = [
           cat.images.map((img, i) => (
             <a
               href={img.href}
-              target="_blank"
-              rel="noopener noreferrer"
+              target={img.href.startsWith('/') ? undefined : '_blank'}
+              rel={img.href.startsWith('/') ? undefined : 'noopener noreferrer'}
               aria-label={`Open ${img.title}`}
               class="shop-stage-link"
               data-stage-link

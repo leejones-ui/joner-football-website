@@ -1,5 +1,6 @@
 ---
 import NewsletterSignup from '../components/NewsletterSignup.astro'
+import ShopStrip from '../components/shop/ShopStrip.astro'
 import BaseLayout from './BaseLayout.astro'
 import EmailCapture from '../components/EmailCapture.astro'
 import { breadcrumbSchema } from '../lib/seoSchema'
@@ -139,6 +140,8 @@ const postSchemas = [
         <p class="nl-small nl-postbox__read"><a href="/newsletter/">Read the letters</a></p>
       </div>
     </section>
+
+    <ShopStrip place="blog" title="Train in the kit." />
 
     <!-- Money page internal links -->
     <section class="bg-joner-black py-10 border-t border-white/10">

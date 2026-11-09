@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
+import ShopStrip from '../components/shop/ShopStrip.astro'
 import { leePersonSchema } from '../lib/aiSearchContent'
 import { breadcrumbSchema } from '../lib/seoSchema'
 
@@ -311,6 +312,8 @@ const filmRoom = [
     </section>
 
     <!-- CLOSE -->
+    <ShopStrip place="about" />
+
     <section class="al-close">
       <p class="al-eyebrow">WHEREVER YOU ARE</p>
       <h2 class="al-close-title al-lines">The method travels. Train with Lee from any postcode on earth.</h2>
