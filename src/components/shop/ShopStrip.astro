@@ -4,7 +4,7 @@
 // (Lee, 9 Nov 2026: no shop buttons on the app pages, they compete).
 import ShopKit from './ShopKit.astro'
 import ShopPromo from './ShopPromo.astro'
-import { getShopProducts, pickLabel, priceLabel, sized } from '../../lib/shopify'
+import { cardImages, getShopProducts, isWide, pickLabel, priceLabel, sized } from '../../lib/shopify'
 import { SHOP_STRIPS_ON } from '../../data/shop-promo'
 
 interface Props {
@@ -29,15 +29,16 @@ const products = SHOP_STRIPS_ON ? (await getShopProducts()).filter((p) => p.avai
           <h2 id={`jss-${place}`} class="jss-title">{title}</h2>
           <p class="jss-intro">{intro}</p>
         </div>
-        <a href="/shop/off-field-apparel" class="jss-all">Shop all apparel</a>
+        <a href="/shop" class="jss-all">Shop all apparel</a>
       </div>
       <div class="jss-row">
         {products.map((p) => (
-          <a href={`/shop/off-field-apparel#p=${p.handle}`} class="jss-card" data-shop-open={p.handle}>
+          <a href={`/shop#p=${p.handle}`} class="jss-card" data-shop-open={p.handle}>
             <span class="jss-img">
-              {p.images[0] && <img src={sized(p.images[0].url, 600)} alt={p.images[0].alt} loading="lazy" width="600" height="750" />}
+              {cardImages(p).main && <img class={isWide(cardImages(p).main) ? 'jss-wide' : ''} src={sized(cardImages(p).main!.url, 600)} alt={cardImages(p).main!.alt} loading="lazy" width="600" height="900" />}
+              {cardImages(p).hover && <img class={`jss-hover${isWide(cardImages(p).hover) ? ' jss-wide' : ''}`} src={sized(cardImages(p).hover!.url, 600)} alt="" loading="lazy" width="600" height="900" />}
             </span>
-            <span class="jss-name">{p.title}</span>
+            <span class="jss-name">{p.title.replace(/^Joner Football\s+/i, '')}</span>
             <span class="jss-price" data-shop-price set:html={priceLabel(p)} />
             <span class="jss-cta" data-shop-status>{pickLabel(p)}</span>
           </a>
@@ -67,10 +68,12 @@ const products = SHOP_STRIPS_ON ? (await getShopProducts()).filter((p) => p.avai
   @media (min-width: 640px) { .jss-row { grid-auto-columns: 38%; margin: 0; padding-left: 0; padding-right: 0; } }
   @media (min-width: 1024px) { .jss-row { grid-auto-flow: row; grid-template-columns: repeat(4, minmax(0, 1fr)); overflow: visible; } }
   .jss-card { display: flex; flex-direction: column; scroll-snap-align: start; min-width: 0; }
-  .jss-img { display: block; aspect-ratio: 4 / 5; overflow: hidden; border-radius: 12px; background: #f3f3f3; margin-bottom: 12px; }
-  .jss-img img { width: 100%; height: 100%; object-fit: cover; transition: transform 500ms cubic-bezier(0.32, 0.72, 0, 1); }
-  @media (hover: hover) { .jss-card:hover .jss-img img { transform: scale(1.04); } .jss-card:hover .jss-name { color: var(--color-joner-red, #e30613); } }
-  .jss-name { font-weight: 700; font-size: 15px; line-height: 1.3; }
+  .jss-img { position: relative; display: block; aspect-ratio: 2 / 3; overflow: hidden; background: #f2f1ef; margin-bottom: 12px; }
+  .jss-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .jss-img img.jss-wide { object-fit: contain; padding: 8%; }
+  .jss-hover { opacity: 0; transition: opacity 350ms ease; }
+  @media (hover: hover) { .jss-card:hover .jss-hover { opacity: 1; } .jss-card:hover .jss-name { color: var(--color-joner-red, #e30613); } }
+  .jss-name { font-weight: 600; font-size: 14px; line-height: 1.3; text-transform: uppercase; letter-spacing: 0.03em; }
   .jss-price { font-size: 15px; margin-top: 4px; }
   .jss-cta { margin-top: auto; padding-top: 10px; font-size: 13px; font-weight: 700; color: var(--color-joner-red, #e30613); }
   .jss-dark .jss-price :global(s) { color: #9ca3af; }

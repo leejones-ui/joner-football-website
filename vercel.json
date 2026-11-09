@@ -43,6 +43,11 @@
   ],
   "redirects": [
     {
+      "source": "/shop/off-field-apparel",
+      "destination": "/shop",
+      "permanent": true
+    },
+    {
       "source": "/join-old-2026-06-15",
       "destination": "/join",
       "permanent": true

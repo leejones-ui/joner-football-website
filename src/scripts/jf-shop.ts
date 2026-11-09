@@ -110,9 +110,18 @@ function renderSheet() {
   const compare = v ? v.compareAt : p.compareAt
   const ready = !!v && v.available
   const missing = p.options.find((o) => !picked[o.name])
-  const imgs = p.images.length ? p.images : [{ url: '', alt: p.title }]
+  // Photos of the picked colour first (matched on the photo's alt text, which names the colour),
+  // upright photos before flat lays.
+  const wideImg = (i: { w?: number; h?: number }) => !!(i.w && i.h && i.h < i.w)
+  const colourOpt = p.options.find((o) => /^colou?r$/i.test(o.name) && o.values.length > 1)
+  const colour = colourOpt && picked[colourOpt.name] ? picked[colourOpt.name].toLowerCase() : ''
+  const rank = (i: { alt: string; w?: number; h?: number }) =>
+    (colour && !new RegExp(`\\b${colour.replace(/[^a-z ]/g, '')}\\b`).test(i.alt.toLowerCase()) ? 2 : 0) + (wideImg(i) ? 1 : 0)
+  const imgs: { url: string; alt: string; w?: number; h?: number }[] = p.images.length
+    ? p.images.map((img, n) => ({ img, n })).sort((a, b) => rank(a.img) - rank(b.img) || a.n - b.n).map((x) => x.img)
+    : [{ url: '', alt: p.title }]
   box.innerHTML = `
-    <div class="jfs-gallery" aria-label="Photos">${imgs.map((i, n) => i.url ? `<img src="${esc(sized(i.url, 900))}" alt="${esc(i.alt)}" ${n ? 'loading="lazy"' : ''}>` : '').join('')}</div>
+    <div class="jfs-gallery" aria-label="Photos">${imgs.map((i, n) => i.url ? `<img src="${esc(sized(i.url, 900))}" alt="${esc(i.alt)}" ${wideImg(i) ? 'class="jfs-wide"' : ''} ${n ? 'loading="lazy"' : ''}>` : '').join('')}</div>
     ${imgs.length > 1 ? `<p class="jfs-swipe">${imgs.length} photos, swipe</p>` : ''}
     <div class="jfs-info">
       <p class="jfs-type">${esc(p.type || 'Joner Apparel')}</p>
@@ -137,7 +146,7 @@ function renderSheet() {
           ${!p.available ? 'Sold out' : missing ? `Pick a ${esc(optName(missing.name).toLowerCase())}` : v && !v.available ? 'That one is sold out' : `Add to bag · ${money(price * qty)}`}
         </button>
       </div>
-      ${p.description ? `<p class="jfs-desc">${esc(p.description)}</p>` : ''}
+      ${p.description ? `<details class="jfs-more"><summary>Details</summary><p class="jfs-desc">${esc(p.description)}</p></details>` : ''}
       <p class="jfs-small">Secure checkout by Shopify. Delivery options at checkout.</p>
     </div>`
 }

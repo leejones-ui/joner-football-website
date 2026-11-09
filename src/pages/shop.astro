@@ -1,12 +1,44 @@
 ---
+// Joner apparel store (Lee, 9 Nov 2026: "professional style apparel page", simple, few words,
+// a second photo on hover). Its own clean white look, not the dark site style. Products come live
+// from Shopify (src/lib/shopify.ts); each card opens the product sheet from ShopKit and checks out
+// on Shopify. Books, programs and resources keep their own pages, linked at the bottom.
 import BaseLayout from '../layouts/BaseLayout.astro'
-import ShopShowcase from '../components/ShopShowcase.astro'
+import ShopKit from '../components/shop/ShopKit.astro'
+import ShopPromo from '../components/shop/ShopPromo.astro'
+import { getShopProducts, cardImages, categoryOf, colourNote, isLimited, isWide, priceLabel, sized, SHOP_DOMAIN } from '../lib/shopify'
+
+const products = await getShopProducts()
+products.sort((a, b) => Number(!a.available) - Number(!b.available))
+const group = (p: (typeof products)[number]) => (categoryOf(p) === 'headwear' ? 'headwear' : 'clothing')
+
+// Hero tiles: a model shot for each half of the range.
+const heroFor = (handle: string, index: number, fallbackGroup: string) => {
+  const p = products.find((x) => x.handle === handle) || products.find((x) => group(x) === fallbackGroup)
+  const img = p && (p.images[index] && !isWide(p.images[index]) ? p.images[index] : cardImages(p).main)
+  return img ? sized(img.url, 1200) : ''
+}
+const tiles = [
+  { key: 'clothing', label: 'Clothing', img: heroFor('joner-football-hoodie-black', 0, 'clothing'), pos: 'center 20%' },
+  { key: 'headwear', label: 'Headwear', img: heroFor('joner-football-limited-edition-cap-red', 3, 'headwear'), pos: 'center 8%' },
+]
+const filters = [
+  { key: 'all', label: 'All' },
+  { key: 'clothing', label: 'Clothing' },
+  { key: 'headwear', label: 'Headwear' },
+]
+
+const more = [
+  { href: '/books', label: 'Books' },
+  { href: '/shop/training-programs', label: 'Training programs' },
+  { href: '/shop/resources-accessories', label: 'Resources' },
+]
 
 const schema = {
   '@context': 'https://schema.org',
   '@type': 'CollectionPage',
-  name: 'Shop | Joner Football',
-  description: 'Shop official Joner Football apparel, training programs, books and resources built for players, parents and coaches who care about technique.',
+  name: 'Joner Football Apparel',
+  description: 'Official Joner Football apparel: hoodies, tees, tanks, joggers, shorts, caps and beanies.',
   url: 'https://jonerfootball.com/shop',
 }
 
@@ -21,10 +53,166 @@ const sanityPage = await fetchSanityPage('shop')
   <SanityPageRenderer page={sanityPage} />
 ) : (
 <BaseLayout
-  title="Shop | Joner Football"
-  description="Shop official Joner Football apparel, training programs, books and resources built for players, parents and coaches who care about technique."
+  title="Shop Apparel | Joner Football"
+  description="Official Joner Football apparel: hoodies, tees, tanks, joggers, shorts, caps and beanies."
   schema={schema}
 >
-  <ShopShowcase />
+  <main class="st" data-shop-store>
+    <p class="st-bar">Free AU shipping over $99</p>
+
+    <section class="st-hero" aria-label="Shop by category">
+      {tiles.map((t, i) => (
+        <a href={`/shop?c=${t.key}`} class="st-tile" data-filter-go={t.key}>
+          {t.img && <img src={t.img} alt="" style={`object-position: ${t.pos}`} fetchpriority={i === 0 ? 'high' : undefined} />}
+          <span class="st-tile-text">
+            <span class="st-tile-label">{t.label}</span>
+            <span class="st-tile-cta">Shop now</span>
+          </span>
+        </a>
+      ))}
+    </section>
+
+    <section class="st-wrap" id="st-all" aria-labelledby="st-title">
+      <ShopPromo />
+      <div class="st-head">
+        <h1 id="st-title" class="st-title">Joner Apparel</h1>
+        <div class="st-tools">
+          <div class="st-tabs" role="group" aria-label="Filter">
+            {filters.map((f) => (
+              <button type="button" class="st-tab" data-filter={f.key} aria-pressed={f.key === 'all' ? 'true' : 'false'}>{f.label}</button>
+            ))}
+          </div>
+          <button type="button" class="st-bagbtn" data-bag-open aria-label="Open your bag">
+            Bag <span data-bag-count>0</span>
+          </button>
+        </div>
+      </div>
+
+      {products.length === 0 && (
+        <p class="st-empty">The shop is slow to load right now. <a href={`https://${SHOP_DOMAIN}/collections/all`}>Open the Joner store</a>.</p>
+      )}
+
+      <div class="st-grid">
+        {products.map((p, i) => {
+          const { main, hover } = cardImages(p)
+          const note = colourNote(p)
+          return (
+            <a href={`/shop#p=${p.handle}`} class="st-card" data-shop-open={p.handle} data-group={group(p)}>
+              <span class="st-img">
+                {main && <img class={`st-main${isWide(main) ? ' st-wide' : ''}`} src={sized(main.url, 800)} alt={main.alt} width="800" height="1200" loading={i < 4 ? 'eager' : 'lazy'} />}
+                {hover && <img class={`st-hover${isWide(hover) ? ' st-wide' : ''}`} src={sized(hover.url, 800)} alt="" width="800" height="1200" loading="lazy" />}
+                {isLimited(p) && <span class="st-tag">Limited</span>}
+                <span class="st-tag st-tag-out">Sold out</span>
+                <span class="st-plus" aria-hidden="true">+</span>
+              </span>
+              <span class="st-name">{p.title.replace(/^Joner Football\s+/i, '')}</span>
+              <span class="st-meta"><span data-shop-price set:html={priceLabel(p)} />{note && <span class="st-note">{note}</span>}</span>
+            </a>
+          )
+        })}
+      </div>
+    </section>
+
+    <section class="st-more" aria-labelledby="st-more-title">
+      <h2 id="st-more-title" class="st-more-title">More from Joner</h2>
+      <div class="st-more-row">
+        {more.map((m) => <a href={m.href} class="st-more-link">{m.label}<span aria-hidden="true">&rarr;</span></a>)}
+      </div>
+    </section>
+
+    <p class="st-trust">Secure checkout by Shopify</p>
+  </main>
+  <ShopKit />
 </BaseLayout>
 )}
+
+<script>
+  // Category filter: the tabs, the hero tiles and ?c= in the address all do the same thing.
+  function setFilter(key: string, scroll = false) {
+    const ok = ['all', 'clothing', 'headwear'].includes(key) ? key : 'all'
+    document.querySelectorAll<HTMLElement>('.st-card').forEach((c) => { c.hidden = ok !== 'all' && c.dataset.group !== ok })
+    document.querySelectorAll<HTMLElement>('[data-filter]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.filter === ok)))
+    const url = new URL(location.href)
+    if (ok === 'all') url.searchParams.delete('c'); else url.searchParams.set('c', ok)
+    history.replaceState(history.state, '', url.pathname + url.search + url.hash)
+    if (scroll) document.getElementById('st-all')?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+  }
+  document.addEventListener('click', (e) => {
+    const t = e.target as HTMLElement
+    const tab = t.closest<HTMLElement>('[data-filter]')
+    if (tab) { setFilter(tab.dataset.filter!); return }
+    const tile = t.closest<HTMLElement>('[data-filter-go]')
+    if (tile) { e.preventDefault(); setFilter(tile.dataset.filterGo!, true) }
+  })
+  const start = new URL(location.href).searchParams.get('c')
+  if (start) setFilter(start)
+</script>
+
+<style is:global>
+  .st { background: #fff; color: #111; font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif; -webkit-font-smoothing: antialiased; }
+  .st h1, .st h2 { font-family: inherit; letter-spacing: 0; }
+  .st a { color: inherit; }
+
+  .st-bar { margin: 0; background: #111; color: #fff; text-align: center; font-size: 12px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; padding: 10px 16px; }
+
+  .st-hero { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; background: #fff; }
+  .st-tile { position: relative; display: block; aspect-ratio: 3 / 4; overflow: hidden; background: #ece9e4; }
+  @media (min-width: 900px) { .st-tile { aspect-ratio: auto; height: min(78vh, 760px); } }
+  .st-tile img { width: 100%; height: 100%; object-fit: cover; object-position: center 30%; transition: transform 900ms cubic-bezier(0.22, 1, 0.36, 1); }
+  .st-tile::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0) 45%); }
+  .st-tile-text { position: absolute; left: 0; right: 0; bottom: 0; z-index: 1; padding: 16px; color: #fff; display: flex; flex-direction: column; gap: 6px; }
+  @media (min-width: 900px) { .st-tile-text { padding: 32px; } }
+  .st-tile-label { font-size: clamp(18px, 4vw, 40px); font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; line-height: 1; }
+  .st-tile-cta { font-size: 13px; font-weight: 600; text-decoration: underline; text-underline-offset: 4px; }
+  @media (hover: hover) { .st-tile:hover img { transform: scale(1.03); } .st-tile:hover .st-tile-cta { text-decoration-color: var(--color-joner-red, #e30613); } }
+
+  .st-wrap { max-width: 1440px; margin: 0 auto; padding: 40px 16px 24px; scroll-margin-top: 72px; }
+  @media (min-width: 900px) { .st-wrap { padding: 64px 32px 32px; } }
+  .st-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+  .st-title { margin: 0; font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; }
+  .st-tools { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; }
+  @media (min-width: 700px) { .st-tools { width: auto; } }
+  .st-tabs { display: flex; gap: 2px; margin-left: -10px; }
+  @media (min-width: 700px) { .st-tabs { margin-left: 0; } }
+  .st-tab { min-height: 44px; padding: 0 10px; border: 0; background: none; font: 500 14px/1 inherit; color: #6b6b6b; border-bottom: 2px solid transparent; }
+  .st-tab:hover { color: #111; }
+  .st-tab[aria-pressed='true'] { color: #111; font-weight: 700; border-bottom-color: var(--color-joner-red, #e30613); }
+  .st-bagbtn { min-height: 44px; padding: 0 16px; border: 1px solid #111; background: #fff; color: #111; font: 600 14px/1 inherit; display: inline-flex; align-items: center; gap: 8px; }
+  .st-bagbtn span { min-width: 20px; height: 20px; padding: 0 6px; display: inline-grid; place-items: center; background: #111; color: #fff; font-size: 11px; border-radius: 999px; }
+
+  .st-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 10px; }
+  @media (min-width: 900px) { .st-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 44px 20px; } }
+  @media (min-width: 1200px) { .st-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .st-card { display: flex; flex-direction: column; min-width: 0; text-decoration: none; }
+  .st-card[hidden] { display: none; }
+  .st-img { position: relative; display: block; aspect-ratio: 2 / 3; overflow: hidden; background: #f2f1ef; margin-bottom: 12px; }
+  .st-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+  .st-img img.st-wide { object-fit: contain; object-position: center; padding: 8%; }
+  .st-hover { opacity: 0; transition: opacity 350ms ease; }
+  @media (hover: hover) {
+    .st-card:hover .st-hover { opacity: 1; }
+    .st-card:hover .st-plus { opacity: 1; transform: none; }
+    .st-card:hover .st-name { text-decoration: underline; text-underline-offset: 3px; }
+  }
+  .st-tag { position: absolute; top: 10px; left: 10px; z-index: 1; background: #fff; color: #111; font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 5px 8px; }
+  .st-tag:not(.st-tag-out) { background: var(--color-joner-red, #e30613); color: #fff; }
+  .st-tag-out { display: none; }
+  [data-sold-out] .st-tag-out { display: block; }
+  [data-sold-out] .st-tag-out ~ .st-plus, [data-sold-out] .st-tag:not(.st-tag-out) { display: none; }
+  .st-plus { position: absolute; right: 10px; bottom: 10px; z-index: 1; width: 40px; height: 40px; display: grid; place-items: center; background: #fff; color: #111; font-size: 22px; font-weight: 300; opacity: 0; transform: translateY(6px); transition: opacity 250ms ease, transform 250ms ease; }
+  .st-name { font-size: 13.5px; font-weight: 600; line-height: 1.35; text-transform: uppercase; letter-spacing: 0.03em; }
+  .st-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 4px; font-size: 13.5px; color: #111; }
+  .st-meta s { color: #8a8a8a; }
+  .st-note { color: #6b6b6b; }
+  .st-empty a { text-decoration: underline; }
+
+  .st-more { max-width: 1440px; margin: 0 auto; padding: 48px 16px 8px; border-top: 1px solid #ececec; }
+  @media (min-width: 900px) { .st-more { padding: 64px 32px 8px; } }
+  .st-more-title { margin: 0 0 16px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #6b6b6b; }
+  .st-more-row { display: grid; grid-template-columns: 1fr; gap: 8px; }
+  @media (min-width: 700px) { .st-more-row { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; } }
+  .st-more-link { display: flex; align-items: center; justify-content: space-between; min-height: 60px; padding: 0 20px; background: #f2f1ef; font-size: 16px; font-weight: 700; text-decoration: none; }
+  .st-more-link:hover { background: #111; color: #fff !important; }
+
+  .st-trust { margin: 0; padding: 32px 16px 56px; text-align: center; font-size: 12.5px; color: #6b6b6b; }
+</style>

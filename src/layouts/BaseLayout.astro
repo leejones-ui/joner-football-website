@@ -232,6 +232,8 @@ const allSchemas = schema
       <script src={`https://www.google.com/recaptcha/api.js?render=${recaptchaSiteKey}`} async defer></script>
     )}
     {recaptchaSiteKey && <meta name="recaptcha-site-key" content={recaptchaSiteKey} />}
+    {/* Vercel Web Analytics (cookieless page views; switched on for the project 9 Nov 2026). */}
+    {!noTracking && <script defer src="/_vercel/insights/script.js"></script>}
   </head>
   <body class="bg-joner-black text-white" data-home={(Astro.url.pathname === '/' || Astro.url.pathname === '') ? '' : undefined}>
     <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:bg-red-600 focus:text-white focus:px-4 focus:py-2 focus:z-50 focus:rounded">

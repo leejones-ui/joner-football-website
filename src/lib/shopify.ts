@@ -23,7 +23,8 @@ export interface ShopProduct {
   title: string
   type: string
   description: string
-  images: { url: string; alt: string }[]
+  images: { url: string; alt: string; w: number; h: number }[]
+  tags: string[]
   options: { name: string; values: string[] }[]
   variants: ShopVariant[]
   available: boolean
@@ -34,8 +35,8 @@ export interface ShopProduct {
 export const PRODUCTS_QUERY = `{
   products(first: 50, sortKey: BEST_SELLING) {
     nodes {
-      handle title productType description availableForSale
-      images(first: 6) { nodes { url altText } }
+      handle title productType description availableForSale tags
+      images(first: 16) { nodes { url altText width height } }
       options { name optionValues { name } }
       variants(first: 60) { nodes {
         id title availableForSale
@@ -68,7 +69,8 @@ export function mapProducts(data: any): ShopProduct[] {
       title: p.title,
       type: p.productType || '',
       description: p.description || '',
-      images: (p.images?.nodes || []).map((i: any) => ({ url: i.url, alt: i.altText || p.title })),
+      images: (p.images?.nodes || []).map((i: any) => ({ url: i.url, alt: i.altText || p.title, w: i.width || 0, h: i.height || 0 })),
+      tags: Array.isArray(p.tags) ? p.tags : [],
       options: (p.options || [])
         .map((o: any) => ({ name: o.name, values: (o.optionValues || []).map((v: any) => v.name) }))
         .filter((o: any) => !(o.name === 'Title' && o.values.length === 1 && o.values[0] === 'Default Title')),
@@ -114,6 +116,34 @@ export function pickLabel(p: ShopProduct) {
   if (!first) return 'Add to bag'
   const name = first.name.toLowerCase() === 'color' ? 'colour' : first.name.toLowerCase()
   return `Pick your ${name}`
+}
+
+// Card photos: the first upright photo, and on hover the next one (a flat lay only when there is no
+// second upright shot). Landscape flat lays sit inside the tall card instead of being cropped.
+export function cardImages(p: ShopProduct) {
+  const tall = p.images.filter((i) => !i.w || i.h >= i.w)
+  const wide = p.images.filter((i) => i.w && i.h < i.w)
+  const main = tall[0] || wide[0] || null
+  const hover = tall.find((i) => i !== main) || wide.find((i) => i !== main) || null
+  return { main, hover }
+}
+
+export const isWide = (i: { w: number; h: number } | null) => !!i && !!i.w && i.h < i.w
+
+export type ShopCategory = 'tops' | 'bottoms' | 'headwear' | 'other'
+export function categoryOf(p: ShopProduct): ShopCategory {
+  if (p.tags.includes('headwear')) return 'headwear'
+  if (p.tags.includes('bottoms')) return 'bottoms'
+  if (p.tags.includes('tops')) return 'tops'
+  return 'other'
+}
+
+export const isLimited = (p: ShopProduct) => p.tags.includes('limited-edition')
+
+// "2 colours" under the name when a product comes in more than one.
+export function colourNote(p: ShopProduct) {
+  const c = p.options.find((o) => /^colou?r$/i.test(o.name))
+  return c && c.values.length > 1 ? `${c.values.length} colours` : ''
 }
 
 // Shopify CDN images take a width parameter.

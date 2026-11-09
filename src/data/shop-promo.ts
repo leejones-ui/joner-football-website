@@ -1,8 +1,7 @@
 // The "Joner kit" strips on the home page, blog posts, /training, /camps and /about.
-// OFF while Shopify checkout says "This store isn't set up to receive orders yet" (found 9 Nov 2026):
-// no point sending the busiest pages to a checkout that cannot take payment. Turn on once a test
-// order goes through. /shop/off-field-apparel works either way.
-export const SHOP_STRIPS_ON = false
+// ON since 9 Nov 2026: Shopify checkout reaches the card payment step (it was "This store isn't set
+// up to receive orders yet" earlier that day). Never on the app pages (Lee: they compete).
+export const SHOP_STRIPS_ON = true
 
 // Black Friday (or any sale) banner for the Joner kit strips and the apparel page.
 // OFF until Lee gives the real offer: set `on: true`, the words, and the Sydney start and end.
