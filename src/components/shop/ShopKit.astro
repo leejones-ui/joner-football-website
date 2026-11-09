@@ -85,6 +85,9 @@ const products = await getShopProducts()
   .jfs-opt legend { font-size: 13px; color: #444; margin-bottom: 8px; padding: 0; }
   .jfs-chips { display: flex; flex-wrap: wrap; gap: 8px; }
   .jfs-chip { min-width: 52px; min-height: 44px; padding: 0 14px; border: 1px solid #d4d4d4; border-radius: 0; background: #fff; font-weight: 500; font-size: 15px; color: #0a0a0a; }
+  .jfs-chip { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+  .jfs-dot { width: 16px; height: 16px; border-radius: 999px; border: 1px solid rgba(0, 0, 0, 0.25); flex: none; }
+  .jfs-chip[aria-pressed='true'] .jfs-dot { box-shadow: 0 0 0 2px #fff; }
   .jfs-chip[aria-pressed='true'] { border-color: #0a0a0a; background: #0a0a0a; color: #fff; }
   .jfs-chip[data-out] { color: #a3a3a3; text-decoration: line-through; border-style: dashed; }
   .jfs-chip[data-out][aria-pressed='true'] { background: #f3f3f3; color: #6b6b6b; border-color: #6b6b6b; }

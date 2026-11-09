@@ -29,11 +29,11 @@ const products = SHOP_STRIPS_ON ? (await getShopProducts()).filter((p) => p.avai
           <h2 id={`jss-${place}`} class="jss-title">{title}</h2>
           <p class="jss-intro">{intro}</p>
         </div>
-        <a href="/shop" class="jss-all">Shop all apparel</a>
+        <a href="/shop/apparel" class="jss-all">Shop all apparel</a>
       </div>
       <div class="jss-row">
         {products.map((p) => (
-          <a href={`/shop#p=${p.handle}`} class="jss-card" data-shop-open={p.handle}>
+          <a href={`/shop/apparel#p=${p.handle}`} class="jss-card" data-shop-open={p.handle}>
             <span class="jss-img">
               {cardImages(p).main && <img class={isWide(cardImages(p).main) ? 'jss-wide' : ''} src={sized(cardImages(p).main!.url, 600)} alt={cardImages(p).main!.alt} loading="lazy" width="600" height="900" />}
               {cardImages(p).hover && <img class={`jss-hover${isWide(cardImages(p).hover) ? ' jss-wide' : ''}`} src={sized(cardImages(p).hover!.url, 600)} alt="" loading="lazy" width="600" height="900" />}

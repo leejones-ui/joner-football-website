@@ -3,7 +3,7 @@
 // no-JS fallback). Prices and stock are re-read live from the Storefront API on load, so a size
 // selling out never needs a website deploy. Checkout creates a Shopify cart and sends the buyer
 // to Shopify's own checkout.
-import { PRODUCTS_QUERY, SHOP_ENDPOINT, mapProducts, money, pickLabel, priceLabel, sized, type ShopProduct, type ShopVariant } from '../lib/shopify'
+import { PRODUCTS_QUERY, SHOP_ENDPOINT, colourOption, colourSwatches, familyFor, isWide, mapProducts, money, pickLabel, priceLabel, showsColour, sized, type ShopProduct, type ShopVariant } from '../lib/shopify'
 
 type BagLine = { id: string; qty: number; handle: string; title: string; variant: string; price: number; image: string }
 
@@ -85,13 +85,20 @@ function optionAvailable(p: ShopProduct, name: string, value: string) {
 }
 
 function openProduct(handle: string, opener?: HTMLElement) {
-  const p = products.find((x) => x.handle === handle)
+  let p = products.find((x) => x.handle === handle)
+  let colour = opener?.dataset.shopColour
+  // An old link to one of the caps opens the one cap card on that colour.
+  const fam = p ? null : familyFor(handle)
+  if (fam) { p = products.find((x) => x.handle === fam.handle); colour = colour || fam.colour }
   if (!p) return false
   current = p
   qty = 1
   picked = {}
-  // Preselect options that only have one value (e.g. a single colour).
+  // Preselect options that only have one value (e.g. a single colour), and the colour dot the
+  // card was showing.
   p.options.forEach((o) => { if (o.values.length === 1) picked[o.name] = o.values[0] })
+  const opt = colourOption(p)
+  if (opt && colour && opt.values.includes(colour)) picked[opt.name] = colour
   renderSheet()
   const dlg = $<HTMLDialogElement>('#jfs-sheet')!
   ;(dlg as any)._opener = opener || null
@@ -110,18 +117,16 @@ function renderSheet() {
   const compare = v ? v.compareAt : p.compareAt
   const ready = !!v && v.available
   const missing = p.options.find((o) => !picked[o.name])
-  // Photos of the picked colour first (matched on the photo's alt text, which names the colour),
-  // upright photos before flat lays.
-  const wideImg = (i: { w?: number; h?: number }) => !!(i.w && i.h && i.h < i.w)
-  const colourOpt = p.options.find((o) => /^colou?r$/i.test(o.name) && o.values.length > 1)
-  const colour = colourOpt && picked[colourOpt.name] ? picked[colourOpt.name].toLowerCase() : ''
-  const rank = (i: { alt: string; w?: number; h?: number }) =>
-    (colour && !new RegExp(`\\b${colour.replace(/[^a-z ]/g, '')}\\b`).test(i.alt.toLowerCase()) ? 2 : 0) + (wideImg(i) ? 1 : 0)
+  // Photos of the picked colour first, upright photos before flat lays.
+  const colourOpt = colourOption(p)
+  const colour = colourOpt ? picked[colourOpt.name] || '' : ''
+  const rank = (i: (typeof p.images)[number]) => (colour && !showsColour(i, colour) ? 2 : 0) + (isWide(i) ? 1 : 0)
   const imgs: { url: string; alt: string; w?: number; h?: number }[] = p.images.length
     ? p.images.map((img, n) => ({ img, n })).sort((a, b) => rank(a.img) - rank(b.img) || a.n - b.n).map((x) => x.img)
     : [{ url: '', alt: p.title }]
+  const hex = Object.fromEntries(colourSwatches(p).map((c) => [c.value, c.hex]))
   box.innerHTML = `
-    <div class="jfs-gallery" aria-label="Photos">${imgs.map((i, n) => i.url ? `<img src="${esc(sized(i.url, 900))}" alt="${esc(i.alt)}" ${wideImg(i) ? 'class="jfs-wide"' : ''} ${n ? 'loading="lazy"' : ''}>` : '').join('')}</div>
+    <div class="jfs-gallery" aria-label="Photos">${imgs.map((i, n) => i.url ? `<img src="${esc(sized(i.url, 900))}" alt="${esc(i.alt)}" ${isWide(i) ? 'class="jfs-wide"' : ''} ${n ? 'loading="lazy"' : ''}>` : '').join('')}</div>
     ${imgs.length > 1 ? `<p class="jfs-swipe">${imgs.length} photos, swipe</p>` : ''}
     <div class="jfs-info">
       <p class="jfs-type">${esc(p.type || 'Joner Apparel')}</p>
@@ -133,7 +138,7 @@ function renderSheet() {
           <div class="jfs-chips">${o.values.map((val) => {
             const ok = optionAvailable(p, o.name, val)
             const on = picked[o.name] === val
-            return `<button type="button" class="jfs-chip" data-opt="${esc(o.name)}" data-val="${esc(val)}" aria-pressed="${on}" ${ok ? '' : 'data-out'}>${esc(val)}${ok ? '' : '<span class="sr-only"> sold out</span>'}</button>`
+            return `<button type="button" class="jfs-chip" data-opt="${esc(o.name)}" data-val="${esc(val)}" aria-pressed="${on}" ${ok ? '' : 'data-out'}>${o === colourOpt ? `<span class="jfs-dot" style="background:${esc(hex[val] || '#999')}" aria-hidden="true"></span>` : ''}${esc(val)}${ok ? '' : '<span class="sr-only"> sold out</span>'}</button>`
           }).join('')}</div>
         </fieldset>`).join('')}
       <div class="jfs-buy">

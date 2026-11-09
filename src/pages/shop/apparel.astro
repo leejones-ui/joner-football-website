@@ -1,0 +1,106 @@
+---
+// Joner apparel store (Lee, 9 Nov 2026: professional apparel page, simple, few words, a second
+// photo on hover, colour dots). Products come live from Shopify (src/lib/shopify.ts); each card opens
+// the product sheet from ShopKit and checks out on Shopify. The shop front is /shop.
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import ShopKit from '../../components/shop/ShopKit.astro'
+import ShopPromo from '../../components/shop/ShopPromo.astro'
+import ProductCard from '../../components/shop/ProductCard.astro'
+import { getShopProducts, categoryOf, SHOP_DOMAIN } from '../../lib/shopify'
+import '../../styles/shop-store.css'
+
+const products = await getShopProducts()
+products.sort((a, b) => Number(!a.available) - Number(!b.available))
+const filters = [
+  { key: 'all', label: 'All' },
+  { key: 'tops', label: 'Tops' },
+  { key: 'bottoms', label: 'Bottoms' },
+  { key: 'headwear', label: 'Hats' },
+]
+const banner = [
+  { src: '/images/shop/apparel/24-studio-athlete.webp', alt: 'Joner Football tank top, worn' },
+  { src: '/images/shop/apparel/19-coastal.webp', alt: 'Joner Football Essential Tee in white, worn' },
+  { src: '/images/shop/apparel/22-desert-road.webp', alt: 'Joner Football Essential Tee in black, worn' },
+]
+
+const schema = {
+  '@context': 'https://schema.org',
+  '@type': 'CollectionPage',
+  name: 'Joner Football Apparel',
+  description: 'Official Joner Football apparel: hoodies, tees, tanks, joggers, shorts, caps and beanies.',
+  url: 'https://jonerfootball.com/shop/apparel',
+}
+---
+
+<BaseLayout
+  title="Apparel | Joner Football Shop"
+  description="Official Joner Football apparel: hoodies, tees, tanks, joggers, shorts, caps and beanies."
+  schema={schema}
+>
+  <main class="st">
+    <p class="st-bar">Free AU shipping over $99</p>
+
+    <section class="st-banner">
+      {banner.map((b, i) => <img src={b.src} alt={b.alt} width="1200" height="1500" fetchpriority={i === 0 ? 'high' : undefined} loading={i === 0 ? 'eager' : 'lazy'} />)}
+      <div class="st-banner-text">
+        <h1>Joner Apparel</h1>
+        <p>Technique above everything</p>
+      </div>
+    </section>
+
+    <section class="st-wrap" id="st-all" aria-label="All apparel">
+      <ShopPromo />
+      <div class="st-head">
+        <div class="st-tools">
+          <div class="st-tabs" role="group" aria-label="Filter">
+            {filters.map((f) => (
+              <button type="button" class="st-tab" data-filter={f.key} aria-pressed={f.key === 'all' ? 'true' : 'false'}>{f.label}</button>
+            ))}
+          </div>
+          <button type="button" class="st-bagbtn" data-bag-open aria-label="Open your bag">
+            Bag <span data-bag-count>0</span>
+          </button>
+        </div>
+      </div>
+
+      {products.length === 0 && (
+        <p class="st-empty">The shop is slow to load right now. <a href={`https://${SHOP_DOMAIN}/collections/all`}>Open the Joner store</a>.</p>
+      )}
+
+      <div class="st-grid">
+        {products.map((p, i) => <ProductCard product={p} group={categoryOf(p)} eager={i < 4} />)}
+      </div>
+    </section>
+
+    <section class="st-more" aria-labelledby="st-more-title">
+      <h2 id="st-more-title" class="st-more-title">More from the Joner shop</h2>
+      <div class="st-more-row">
+        <a href="/books" class="st-more-link">Books<span aria-hidden="true">&rarr;</span></a>
+        <a href="/shop/training-programs" class="st-more-link">Training programs<span aria-hidden="true">&rarr;</span></a>
+        <a href="/shop/resources-accessories" class="st-more-link">Training resources<span aria-hidden="true">&rarr;</span></a>
+      </div>
+    </section>
+
+    <p class="st-trust">Secure checkout by Shopify</p>
+  </main>
+  <ShopKit />
+</BaseLayout>
+
+<script>
+  // Filter: the tabs and ?c= in the address do the same thing.
+  const KEYS = ['all', 'tops', 'bottoms', 'headwear']
+  function setFilter(key: string) {
+    const ok = KEYS.includes(key) ? key : 'all'
+    document.querySelectorAll<HTMLElement>('.st-card').forEach((c) => { c.hidden = ok !== 'all' && c.dataset.group !== ok })
+    document.querySelectorAll<HTMLElement>('[data-filter]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.filter === ok)))
+    const url = new URL(location.href)
+    if (ok === 'all') url.searchParams.delete('c'); else url.searchParams.set('c', ok)
+    history.replaceState(history.state, '', url.pathname + url.search + url.hash)
+  }
+  document.addEventListener('click', (e) => {
+    const tab = (e.target as HTMLElement).closest<HTMLElement>('[data-filter]')
+    if (tab) setFilter(tab.dataset.filter!)
+  })
+  const start = new URL(location.href).searchParams.get('c')
+  if (start) setFilter(start)
+</script>
