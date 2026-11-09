@@ -8,7 +8,7 @@ import { fetchSanityPage } from '../lib/sanityPages'
 import { getSanityImageUrl, getSanityText, shouldReplaceSanityPage } from '../lib/sanityPageUtils'
 
 const sanityPage = await fetchSanityPage('hub')
-const pageTitle = sanityPage?.seo?.title || 'Joner Football Hub | Free Training, Technique Test, Camps & App'
+const pageTitle = sanityPage?.seo?.title || 'Joner Football Hub | Free Training, Camps and the App'
 const pageDescription = sanityPage?.seo?.description || 'The free Joner Football Hub. Enter your name and email to access free Joner Football blogs, challenges, coach resources and app links.'
 const heroEyebrow = getSanityText(sanityPage?.heroEyebrow, 'Joner Football Hub')
 const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Joner Football Hub')

@@ -12,7 +12,8 @@ export function getStaticPaths() {
 
 const { letter } = Astro.props as { letter: Letter }
 const pageUrl = `https://jonerfootball.com/newsletter/${letter.slug}/`
-const title = `${letter.title.replace(/\.$/, '')} | A letter from Lee Jones`
+const letterName = letter.title.replace(/\.$/, '')
+const title = `${letterName} | A letter from Lee Jones`.length <= 60 ? `${letterName} | A letter from Lee Jones` : `${letterName} | Lee Jones`
 const description = letter.teaser
 const others = letters.filter((l) => l.slug !== letter.slug).slice(0, 2)
 const schemas = [

@@ -85,7 +85,7 @@ const teamSEOFAQs = [
 
 const schema = [
   webPageSchema({
-    name: 'Joner Football Teams | Player And Coach Development For Clubs',
+    name: 'Joner Football Teams | Player and Coach Development',
     description: 'Joner Football Teams develops every player and supports every coach. Set assignments, track completion with points and photo proof, plan sessions and manage every team in one place.',
     url: 'https://jonerfootball.com/teams/',
   }),
@@ -111,7 +111,7 @@ import { getSanityText, shouldReplaceSanityPage } from '../lib/sanityPageUtils'
 import StickyMobileCta from '../components/StickyMobileCta.astro'
 
 const sanityPage = await fetchSanityPage('teams')
-const pageTitle = sanityPage?.seo?.title || 'Joner Football Teams | Player And Coach Development For Clubs'
+const pageTitle = sanityPage?.seo?.title || 'Joner Football Teams | Player and Coach Development'
 const pageDescription = sanityPage?.seo?.description || 'Joner Football Teams develops every player and supports every coach. Set assignments, track completion, plan sessions and manage every team in one place.'
 const heroEyebrow = getSanityText(sanityPage?.heroEyebrow, 'Joner Football Teams')
 const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Develop Every Player. Support Every Coach.')

@@ -42,18 +42,21 @@ export async function getStaticPaths() {
       }`
     )
     if (posts.length > 0) {
+      const all = posts.map((p: any) => ({ slug: p.slug, title: p.title, excerpt: p.excerpt || '', category: p.category || '' }))
       return posts.map((post: any) => ({
         params: { slug: post.slug },
-        props: { post },
+        props: { post, all },
       }))
     }
   } catch (e) {
     console.error('Sanity fetch failed for blog paths:', e)
   }
 
+  const fallbackAll = fallbackPosts.map((p: any) => ({ slug: p.slug?.current || p.slug, title: p.title, excerpt: p.excerpt || '', category: p.category || '' }))
   return fallbackPosts.map((post: any) => ({
     params: { slug: post.slug?.current || post.slug },
     props: {
+      all: fallbackAll,
       post: {
         ...post,
         slug: post.slug?.current || post.slug,
@@ -64,7 +67,7 @@ export async function getStaticPaths() {
   }))
 }
 
-const { post } = Astro.props
+const { post, all = [] } = Astro.props
 
 const formattedDate = post.publishedAt
   ? new Date(post.publishedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
@@ -105,6 +108,7 @@ const blogSeoOverrides: Record<string, { title?: string; description?: string }>
     title: 'Football Training For Kids | Joner Football',
   },
   'how-to-coach-different-ages-one-drill': {
+    description: 'Lee Jones shows how to coach different ages and abilities with one drill setup by changing the progressions, not the whole session.',
     title: 'Coach Different Ages With One Drill | Joner Football',
   },
   'parents-dont-be-fooled-by-tiktok': {
@@ -112,9 +116,11 @@ const blogSeoOverrides: Record<string, { title?: string; description?: string }>
     description: 'Not every viral football drill helps your child improve. Learn what to look for so training builds real technique and confidence.',
   },
   'viral-football-drills': {
+    description: 'Lee Jones tested five viral football drills. Only one truly relates to the game. What coaches, parents and players should take from it.',
     title: 'Viral Football Drills: What Actually Works | Joner Football',
   },
   'what-makes-great-football-coach': {
+    description: 'What separates a great football coach from an average one? Five qualities to look for, from technical knowledge to communication.',
     title: 'What Makes A Great Football Coach | Joner Football',
   },
   'what-scouts-look-for-young-football-players': {
@@ -124,6 +130,24 @@ const blogSeoOverrides: Record<string, { title?: string; description?: string }>
   'youth-football-winning-mentality': {
     title: 'Youth Football Winning Mentality | Joner Football',
     description: 'Winning mentality in youth football is built through effort, standards, resilience and coachability, not empty hype or shortcuts.',
+  },
+  'football-drills-at-home': {
+    description: '10 football drills at home you can do alone with one ball. How to practise on your own: ball mastery, first touch and weak foot, step by step.',
+    title: 'Football Drills at Home: 10 to Do Alone | Joner Football',
+  },
+  'how-to-plan-progress-pro-level-football-training-sessions': {
+    title: 'How To Plan Pro-Level Football Sessions | Joner Football',
+  },
+  'why-half-turn-changes-everything-football': {
+    description: 'Most players lose the ball before they touch it. Learn why the half turn helps players scan, receive and play forward faster.',
+    title: 'Why The Half Turn Changes Everything | Joner Football',
+  },
+  'half-turn-drills-for-football-coaches': {
+    description: 'Half turn drills for coaches: build scanning, open body shape, first touch and acceleration into your sessions every week.',
+    title: 'Half Turn Drills For Football Coaches | Joner Football',
+  },
+  'improve-first-touch-football': {
+    title: 'How to Improve Your First Touch in Football | Joner Football',
   },
 }
 
@@ -153,8 +177,38 @@ const listSchema = listItems.length >= 3
   : undefined
 
 const slugKey = post.slug?.current || post.slug || Astro.params.slug || ''
+
+// Keep reading: three related posts on every post, so no post relies on the blog index alone for links.
+// Hand-picked by topic (9 Nov 2026 internal link pass); new posts fall back to the same category, then newest.
+const relatedMap: Record<string, string[]> = {
+  'football-drills-at-home': ['improve-first-touch-football', '50-ball-mastery-skills-young-players', '10-mistakes-football-players-make-every-week'],
+  'improve-first-touch-football': ['football-drills-at-home', 'why-half-turn-changes-everything-football', '50-ball-mastery-skills-young-players'],
+  '50-ball-mastery-skills-young-players': ['football-drills-at-home', 'football-training-for-kids', 'improve-first-touch-football'],
+  '10-mistakes-football-players-make-every-week': ['improve-first-touch-football', 'coachability-most-important-trait-football', 'what-scouts-look-for-young-football-players'],
+  'football-camp-packing-list': ['football-training-for-kids', 'youth-football-winning-mentality', '50-ball-mastery-skills-young-players'],
+  'football-training-for-kids': ['parents-dont-be-fooled-by-tiktok', '50-ball-mastery-skills-young-players', 'football-camp-packing-list'],
+  'half-turn-drills-for-football-coaches': ['why-half-turn-changes-everything-football', 'how-to-coach-different-ages-one-drill', 'how-to-plan-progress-pro-level-football-training-sessions'],
+  'why-half-turn-changes-everything-football': ['half-turn-drills-for-football-coaches', 'improve-first-touch-football', 'what-scouts-look-for-young-football-players'],
+  'how-to-coach-different-ages-one-drill': ['how-to-plan-progress-pro-level-football-training-sessions', 'what-makes-great-football-coach', 'half-turn-drills-for-football-coaches'],
+  'coachability-most-important-trait-football': ['youth-football-winning-mentality', 'what-scouts-look-for-young-football-players', '10-mistakes-football-players-make-every-week'],
+  'how-to-plan-progress-pro-level-football-training-sessions': ['how-to-coach-different-ages-one-drill', 'half-turn-drills-for-football-coaches', 'what-makes-great-football-coach'],
+  'parents-dont-be-fooled-by-tiktok': ['viral-football-drills', 'football-training-for-kids', 'football-drills-at-home'],
+  'what-scouts-look-for-young-football-players': ['coachability-most-important-trait-football', 'youth-football-winning-mentality', 'different-football-cultures-shape-young-players'],
+  'viral-football-drills': ['parents-dont-be-fooled-by-tiktok', 'how-to-plan-progress-pro-level-football-training-sessions', 'football-drills-at-home'],
+  'youth-football-winning-mentality': ['coachability-most-important-trait-football', 'what-scouts-look-for-young-football-players', 'different-football-cultures-shape-young-players'],
+  'what-makes-great-football-coach': ['how-to-coach-different-ages-one-drill', 'how-to-plan-progress-pro-level-football-training-sessions', 'coachability-most-important-trait-football'],
+  'different-football-cultures-shape-young-players': ['what-scouts-look-for-young-football-players', 'youth-football-winning-mentality', 'coachability-most-important-trait-football'],
+}
+const others = (all as Array<{ slug: string; title: string; excerpt: string; category: string }>).filter((p) => p.slug && p.slug !== slugKey)
+const related = [
+  ...(relatedMap[slugKey] || []).map((slug) => others.find((p) => p.slug === slug)),
+  ...others.filter((p) => post.category && p.category === post.category),
+  ...others,
+].filter((p, i, list): p is (typeof others)[number] => Boolean(p) && list.findIndex((q) => q?.slug === p!.slug) === i).slice(0, 3)
 const seoOverride = blogSeoOverrides[slugKey] || {}
-const seoTitle = seoOverride.title || `${post.title} | Joner Football Blog`
+// Google cuts titles past about 60 characters: drop to a shorter brand suffix when the long one would not fit.
+const fitTitle = (name: string) => [`${name} | Joner Football Blog`, `${name} | Joner Football`].find((t) => t.length <= 60) || name
+const seoTitle = seoOverride.title || fitTitle(post.title)
 const seoDescription = seoOverride.description || post.excerpt || ''
 ---
 
@@ -174,5 +228,15 @@ const seoDescription = seoOverride.description || post.excerpt || ''
     <Fragment set:html={bodyHtml} />
   ) : (
     <p>Content coming soon.</p>
+  )}
+  {related.length > 0 && (
+    <section class="blog-related" aria-labelledby="blog-related-title">
+      <h2 id="blog-related-title">Keep reading</h2>
+      <ul>
+        {related.map((p) => (
+          <li><a href={`/blog/${p.slug}/`}>{p.title}</a></li>
+        ))}
+      </ul>
+    </section>
   )}
 </BlogPost>
