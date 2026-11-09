@@ -37,6 +37,9 @@ const ALLOWED_EVENTS = new Set([
   'JoinClubPricingClick',
   'JoinPlanAnchorClick',
   'JoinFaqOpen',
+  'ShopViewProduct',
+  'ShopAddToBag',
+  'ShopCheckout',
 ])
 
 function cleanString(value, max = 500) {
