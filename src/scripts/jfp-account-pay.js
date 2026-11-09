@@ -32,12 +32,12 @@ export function oweList(D, want = '') {
   for (const t of [...(D.todo || [])].sort((x, y) => Number(y.id === want) - Number(x.id === want))) {
     out.push({
       key: `pay:${t.id}`, todo: t.id,
-      kicker: t.reason === 'trial' ? 'Book the trial' : t.reason === 'sessions' ? 'Sessions to pay' : t.places?.length > 1 ? 'One payment for the family' : 'Finish your booking',
+      kicker: t.invoice ? `Invoice ${t.invoice.number}` : t.reason === 'trial' ? 'Book the trial' : t.reason === 'sessions' ? 'Sessions to pay' : t.places?.length > 1 ? 'One payment for the family' : 'Finish your booking',
       who: t.players.join(' and '),
       // A family invoice lists each child and their amount; one place, just where and what.
-      lines: t.places?.length > 1 ? t.places.map((x) => [x.name, x.label, x.amountLabel]) : t.places?.length === 1 ? [[t.places[0].label, '', '']] : [[t.group || 'JFP', t.what || '', '']],
+      lines: t.invoice ? [[t.invoice.title, t.invoice.dueLabel ? `Due ${t.invoice.dueLabel}` : '', '']] : t.places?.length > 1 ? t.places.map((x) => [x.name, x.label, x.amountLabel]) : t.places?.length === 1 ? [[t.places[0].label, '', '']] : [[t.group || 'JFP', t.what || '', '']],
       amount: t.amountLabel,
-      note: `${t.reason === 'trial' ? 'Books the trial.' : t.reason === 'sessions' ? 'Pays for these sessions.' : 'Locks the place in.'} Card, Apple Pay${t.afterpay ? ' or Afterpay' : ''}.`,
+      note: t.invoice ? `Pays this invoice.${t.invoice.dueLabel ? ` Due ${t.invoice.dueLabel}, and you can pay it early.` : ''} Card or Apple Pay.` : `${t.reason === 'trial' ? 'Books the trial.' : t.reason === 'sessions' ? 'Pays for these sessions.' : 'Locks the place in.'} Card, Apple Pay${t.afterpay ? ' or Afterpay' : ''}.`,
       expires: t.expiresAt || '',
       waiver: t.needsWaiver ? `data-waiver-for="${esc(t.id)}"` : '',
       kit: t.needsKit ? { done: t.kit, id: t.id } : null,

@@ -48,6 +48,7 @@ import { owedItems, payOwed as makeOwedPayreq, cancelOwed as cancelOwedPayreq } 
 import { familyFees } from './_jfp-account-fees.js'
 import { docForPayreq, pdfDownload } from './_jfp-fee-pdf.js'
 import { docFromRecord } from './_jfp-invoice-pdf.js'
+import { getInvoice } from './_jfp-invoices.js'
 import { calendarToken, emailForToken, familyCalendar } from './_jfp-calendar.js'
 import { coveredOf } from './_jfp-quote.js'
 import { accountOf, openPlayers, addMyPlayer } from './_jfp-account-open.js'
@@ -277,7 +278,11 @@ async function overview(res, parent, body = {}, opts = {}) {
     e.coming = [...await comingDates(r, (e.sessions || []).map((x) => x.iso)).catch(() => new Set())]
   }
   const rowsById = new Map(fam.players.flatMap((p) => p.term4).map((r) => [r.id, r]))
+  // An invoice (a payment plan instalment, Ligia, 9 Nov 2026): what it is for and when it is due, beside its Pay button.
+  const invoiceOf = new Map()
+  for (const q of mine) if (q.invoiceId && ['open', 'checkout'].includes(q.status)) invoiceOf.set(q.id, await getInvoice(q.invoiceId).catch(() => null))
   const todo = mine.filter((q) => ['open', 'checkout'].includes(q.status)).map((q) => {
+    const inv = invoiceOf.get(q.id)
     // An agent's players sign their own waivers: the agent can pay first (Lee, 20 Oct 2026).
     const blockers = q.playerKeys.filter((k) => { const p = fam.players.find((x) => x.key === k); return !p?.waiver && !agentPlayer(p) })
     return {
@@ -289,8 +294,11 @@ async function overview(res, parent, body = {}, opts = {}) {
       ...(q.fromAccount && q.prepay ? { canChoose: true } : {}),
       // A family invoice: each place and what it costs.
       places: ['family', 'sessions'].includes(q.reason) && Array.isArray(q.places) ? q.places.map((x) => ({ name: x.name, label: x.label, amountLabel: formatAud(x.owingCents) })) : [],
+      ...(inv ? { invoice: { number: inv.id, title: inv.lines?.[0]?.description || `Invoice ${inv.id}`, dueDate: inv.dueDate || '', dueLabel: inv.dueDate ? dateLabel(inv.dueDate) : '' } } : {}),
     }
   })
+  // Instalments in the order they are due.
+  todo.sort((a, b) => (a.invoice?.dueDate && b.invoice?.dueDate ? a.invoice.dueDate.localeCompare(b.invoice.dueDate) : 0))
   // Next term: this family's invited players and where each one stands.
   const nt = config.nextTerm
   const statuses = await nextStatuses(nt.name)
