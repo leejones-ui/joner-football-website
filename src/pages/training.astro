@@ -110,7 +110,7 @@ const localBizSchema = {
 
 const trainingSEOFAQs = [
   { q: 'Where is Joner Football training based?', a: 'Joner Football training is based around The HQ in Belrose, Sydney, with programs for players who want sharper technique and clearer coaching.' },
-  { q: 'What football training programs are available?', a: 'Training options include JFP, professional training, Joners Juniors, game analysis, app training and other development pathways.' },
+  { q: 'What football training programs are available?', a: 'Training options include JFP small groups, 1 on 1 coaching, professional training, Joners Juniors, game analysis and the Joner Football App.' },
   { q: 'What ages can train with Joner Football in Sydney?', a: 'JFP small-group training starts from age 8, Joners Juniors covers younger players building first habits, and professional training supports serious teenage and senior players.' },
   { q: 'Can younger players train at Joner Football?', a: 'Yes. Joners Juniors and JFP give younger players a strong foundation with clear standards, better habits and coach-led technical work.' },
   oneToOneFaq,
@@ -173,8 +173,9 @@ const inputClass = 'tr-input'
       <div class="tr-hero-shade" aria-hidden="true"></div>
       <div class="tr-wrap tr-hero-content">
         <div class="tr-hero-copy">
-          <p class="tr-eyebrow">Sydney training hub</p>
-          <h1 class="tr-h1">Find the right <span class="tr-hook">training.</span></h1>
+          <h1 class="tr-eyebrow">Football coaching in Sydney</h1>
+          <p class="tr-h1">Find the right <span class="tr-hook">training.</span></p>
+          <p class="tr-hero-sub">Small groups, 1 on 1 and juniors at our HQ in Belrose, plus fields in North Turramurra and Rydalmere.</p>
           <div class="tr-hero-cta">
             <BookNowButton size="lg" place="training-hero" />
             <a href="#choose-path" class="btn-outline">Compare programs</a>
@@ -252,6 +253,7 @@ const inputClass = 'tr-input'
         <nav class="tr-also" aria-label="More training options">
           <a href="/app">JF App</a>
           <a href="/hq">The HQ</a>
+          <a href="/training/1-on-1-football-coaching/">1 on 1 Coaching</a>
           <a href="/training/professional-training">Professional Training</a>
           <a href="/training/game-analysis">Game Analysis</a>
         </nav>
@@ -537,7 +539,7 @@ const inputClass = 'tr-input'
       },
       {
         heading: 'What you get',
-        body: 'Coach-led technical training at The HQ in Belrose and on field: JFP small-group development, professional training, Joners Juniors and game analysis. Every pathway is built around touch, striking and game impact.',
+        body: 'Coach-led technical training at The HQ in Belrose and on fields in North Turramurra and Rydalmere: JFP small-group development, 1 on 1 coaching, professional training, Joners Juniors and game analysis. Every pathway is built around touch, striking and game impact.',
       },
       {
         heading: 'Why it works',
@@ -551,6 +553,7 @@ const inputClass = 'tr-input'
     links={[
       { label: 'The HQ in Belrose', href: '/hq' },
       { label: 'JFP Program', href: '/training/jfp-program' },
+      { label: '1 on 1 coaching', href: '/training/1-on-1-football-coaching/' },
       { label: 'Joners Juniors', href: '/jonersjuniors/' },
       { label: 'Football camps', href: '/camps' },
       { label: 'The football training app', href: '/app' },
@@ -578,6 +581,7 @@ const inputClass = 'tr-input'
     .tr-hero-content { position: relative; display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 40px; align-items: center; }
     .tr-hero-copy { min-width: 0; }
     .tr-hero .tr-h1 { font-size: clamp(2.8rem, 7vw, 5.6rem); }
+    .tr-hero-sub { margin: 18px 0 0; max-width: 520px; font-size: 17px; line-height: 1.55; color: rgba(255,255,255,.88); }
 
     /* Training wheel (restored from the previous hero, Lee 18 Oct 2026) */
     @keyframes training-orbit-spin {

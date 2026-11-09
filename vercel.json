@@ -394,17 +394,17 @@
     },
     {
       "source": "/1on1-elite-training",
-      "destination": "/training/professional-training",
+      "destination": "/training/1-on-1-football-coaching/",
       "permanent": true
     },
     {
       "source": "/1on1-elite-training/",
-      "destination": "/training/professional-training",
+      "destination": "/training/1-on-1-football-coaching/",
       "permanent": true
     },
     {
       "source": "/1on1-elite-training//1000",
-      "destination": "/training/professional-training",
+      "destination": "/training/1-on-1-football-coaching/",
       "permanent": true
     },
     {

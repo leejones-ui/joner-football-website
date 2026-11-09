@@ -1,0 +1,312 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import SEOFAQ from '../../components/SEOFAQ.astro'
+import { oneToOneNote, oneToOneFaq } from '../../data/jfp-one-to-one.js'
+import { faqSchema, webPageSchema, breadcrumbSchema } from '../../lib/seoSchema'
+
+// 1 on 1 football coaching in Sydney (9 Nov 2026). Built from a keyword brief of the
+// top Google results for "1 on 1 football coaching sydney" / "private soccer coaching
+// sydney". Replaces the old /1on1-elite-training page (577 clicks a year before it was
+// redirected). Enquiry only: times and price are sent back by the team, because 1 on 1
+// is normally only bookable in school hours and the holidays (Lee, 14 Oct 2026).
+// Enquiries go to /api/contact-enquiry type 'training-sydney' (training inbox).
+const SITE = 'https://jonerfootball.com'
+const url = `${SITE}/training/1-on-1-football-coaching/`
+const title = '1 on 1 Football Coaching Sydney | Joner Football'
+const description = 'Private 1 on 1 football coaching at Joner Football HQ, Belrose. One player, one coach, every rep on your game. Enquire for times.'
+
+const gains = [
+  { t: 'Feedback on every rep', c: 'The coach watches only your player, so every touch gets corrected.' },
+  { t: 'Built for them', c: 'Their position, their level, their goals. Nothing generic.' },
+  { t: 'Faster progress', c: 'More touches in an hour than a week of team training.' },
+  { t: 'Pro level detail', c: 'The same detail Lee Jones uses with professional players.' },
+]
+
+const steps = [
+  { t: 'Enquire', c: 'Tell us about the player and what they want to work on.' },
+  { t: 'Pick a time', c: 'We send the times we have free and the price.' },
+  { t: 'Train', c: 'One hour at the HQ in Belrose. Ball, cones and coach, all on your player.' },
+]
+
+const faqs = [
+  { q: 'Do you offer 1 on 1 football coaching in Sydney?', a: 'Yes. Joner Football runs private 1 on 1 football coaching at the Joner Football HQ, Unit 2, 20 Narabang Way, Belrose, on Sydney’s Northern Beaches.' },
+  oneToOneFaq,
+  { q: 'Who is 1 on 1 coaching for?', a: 'Players of any level who want faster progress: young players building their technique, club and representative players, and senior and professional players who want detail on their game.' },
+  { q: 'What happens in a 1 on 1 session?', a: 'The coach works only with your player for the hour: first touch, striking, ball mastery, 1v1s, finishing or position work, picked around what the player needs most.' },
+  { q: 'Can two players share a session?', a: 'Yes. Two players can share a session with one coach. Say so on the enquiry form.' },
+  { q: 'How much does 1 on 1 coaching cost?', a: 'Send the enquiry form and we reply with the price and the times we have free.' },
+]
+
+const schemas = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Service',
+    name: '1 on 1 football coaching',
+    serviceType: 'Private football coaching',
+    description,
+    url,
+    provider: { '@type': 'Organization', '@id': `${SITE}/#organization`, name: 'Joner Football' },
+    areaServed: { '@type': 'City', name: 'Sydney' },
+    availableChannel: {
+      '@type': 'ServiceChannel',
+      serviceLocation: {
+        '@type': 'Place',
+        name: 'Joner Football HQ',
+        address: { '@type': 'PostalAddress', streetAddress: 'Unit 2, 20 Narabang Way', addressLocality: 'Belrose', addressRegion: 'NSW', postalCode: '2085', addressCountry: 'AU' },
+      },
+    },
+  },
+  webPageSchema({ name: title, description, url }),
+  breadcrumbSchema([
+    { name: 'Home', url: `${SITE}/` },
+    { name: 'Sydney Football Training', url: `${SITE}/training/` },
+    { name: '1 on 1 Football Coaching', url },
+  ]),
+  faqSchema(faqs),
+]
+---
+
+<BaseLayout title={title} description={description} canonical={url} schema={schemas} ogImage={`${SITE}/images/training/professional-showcase/img-7717-action.webp`}>
+  <Fragment slot="head">
+    <link rel="preload" as="image" href="/images/training/professional-showcase/img-7717-action.webp" fetchpriority="high" />
+  </Fragment>
+
+  <div class="oo-page">
+    <section class="oo-hero">
+      <img class="oo-hero-img" src="/images/training/professional-showcase/img-7717-action.webp" alt="Lee Jones coaching a player 1 on 1" fetchpriority="high" />
+      <div class="oo-shade" aria-hidden="true"></div>
+      <div class="oo-wrap oo-hero-content">
+        <h1 class="oo-eyebrow">1 on 1 football coaching in Sydney</h1>
+        <p class="oo-h1">One player.<span class="oo-hook">One coach.</span></p>
+        <p class="oo-sub">Private sessions at the Joner Football HQ in Belrose. Every rep is about your player's game.</p>
+        <div class="oo-cta"><a class="btn-red" href="#enquire">Enquire now</a></div>
+      </div>
+    </section>
+
+    <section class="oo-gains">
+      <div class="oo-wrap">
+        <p class="oo-kicker">Why 1 on 1</p>
+        <h2 class="oo-h2">What your player gets.</h2>
+        <div class="oo-grid">
+          {gains.map((g) => (
+            <div class="oo-card">
+              <span class="oo-tick" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5" /></svg></span>
+              <h3>{g.t}</h3>
+              <p>{g.c}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="oo-how">
+      <div class="oo-wrap">
+        <p class="oo-kicker">How it works</p>
+        <h2 class="oo-h2">Three steps.</h2>
+        <ol class="oo-steps">
+          {steps.map((s, i) => (
+            <li class="oo-step">
+              <span class="oo-n">{String(i + 1).padStart(2, '0')}</span>
+              <h3>{s.t}</h3>
+              <p>{s.c}</p>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
+
+    <section class="oo-when">
+      <div class="oo-wrap oo-when-layout">
+        <div>
+          <p class="oo-kicker">When and where</p>
+          <h2 class="oo-h2">{oneToOneNote.title}.</h2>
+          <ul class="oo-list">
+            {oneToOneNote.points.map((p) => <li>{p}</li>)}
+          </ul>
+          <p class="oo-where"><b>Joner Football HQ</b><span>Unit 2, 20 Narabang Way, Belrose NSW 2085</span><a href="/hq">About the HQ</a></p>
+        </div>
+        <div class="oo-video">
+          <iframe
+            srcdoc={`<style>*{padding:0;margin:0;overflow:hidden}html,body{height:100%;background:#0a0a0a}img,span{position:absolute;width:100%;top:0;bottom:0;margin:auto}img{height:100%;object-fit:cover}span{height:1.5em;text-align:center;font:48px/1.5 sans-serif;color:#fff;text-shadow:0 0 0.5em black}</style><a href=https://www.youtube.com/embed/eCmL9QiFtVk?autoplay=1><img src=https://img.youtube.com/vi/eCmL9QiFtVk/hqdefault.jpg alt='Full 1 on 1 session at Joner Football HQ'><span>&#x25BA;</span></a>`}
+            src="https://www.youtube.com/embed/eCmL9QiFtVk"
+            title="Full 1 on 1 session at Joner Football HQ"
+            loading="lazy"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen
+          ></iframe>
+          <p>Watch a full 1 on 1 session at the HQ.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="oo-enquire" id="enquire">
+      <div class="oo-wrap oo-enquire-layout">
+        <div class="oo-enquire-copy">
+          <p class="oo-kicker">Enquire</p>
+          <h2 class="oo-h2">Ask about 1 on 1.</h2>
+          <p>Tell us about the player. We reply with free times and the price.</p>
+          <nav class="oo-also" aria-label="Other training">
+            <a href="/training/jfp-program">Small groups (JFP)</a>
+            <a href="/training/professional-training">Professional training</a>
+            <a href="/training/game-analysis">Game analysis</a>
+          </nav>
+        </div>
+        <form id="oo-form" class="oo-form" novalidate>
+          <div class="oo-row">
+            <label class="oo-field"><span>Your name</span><input type="text" name="name" autocomplete="name" required /></label>
+            <label class="oo-field"><span>Mobile</span><input type="tel" name="phone" autocomplete="tel" inputmode="tel" required /></label>
+          </div>
+          <label class="oo-field"><span>Email</span><input type="email" name="email" autocomplete="email" required /></label>
+          <div class="oo-row">
+            <label class="oo-field"><span>Player's name</span><input type="text" name="playerName" required /></label>
+            <label class="oo-field"><span>Player's age</span><input type="text" name="playerAge" inputmode="numeric" maxlength="3" required /></label>
+          </div>
+          <fieldset class="oo-field">
+            <legend>Who is training?</legend>
+            <div class="oo-seg">
+              <label><input type="radio" name="sessionType" value="1 on 1 (one player)" required /><span>One player</span></label>
+              <label><input type="radio" name="sessionType" value="Shared (two players)" /><span>Two players</span></label>
+            </div>
+          </fieldset>
+          <label class="oo-field"><span>What do they want to work on?</span><textarea name="message" rows="3" maxlength="2000" placeholder="For example: first touch, finishing, confidence on the ball" required></textarea></label>
+          <label class="oo-field"><span>Best days and times <small>(optional)</small></span><input type="text" name="availability" placeholder="For example: weekday mornings, school holidays" /></label>
+          <label class="oo-check">
+            <input type="checkbox" name="marketingOptIn" value="true" />
+            <span>Send me Joner Football news and training tips by email.</span>
+          </label>
+          <p id="oo-status" class="oo-status" role="status" hidden></p>
+          <button type="submit" class="btn-red oo-submit">Send enquiry</button>
+        </form>
+      </div>
+    </section>
+  </div>
+
+  <SEOFAQ title="Questions about 1 on 1 coaching." items={faqs} />
+
+  <style>
+    .oo-page { --jf-red: #E8000D; --font-display: var(--font-heading, Anton, Impact, sans-serif); background: #000; color: #fff; overflow: hidden; }
+    .oo-wrap { width: min(1120px, calc(100% - 32px)); margin: 0 auto; }
+    .oo-kicker { margin: 0 0 12px; font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 13px; letter-spacing: .2em; text-transform: uppercase; color: var(--jf-red); }
+    .oo-h2 { margin: 0; font-family: var(--font-display); font-style: italic; font-weight: 900; text-transform: uppercase; font-size: clamp(2.1rem, 5vw, 3.4rem); line-height: 1; }
+
+    .oo-hero { position: relative; min-height: 80dvh; display: flex; align-items: flex-end; padding: 120px 0 56px; }
+    .oo-hero-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 45% center; }
+    .oo-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.1) 0%, rgba(0,0,0,.1) 35%, rgba(0,0,0,.85) 100%), linear-gradient(90deg, rgba(0,0,0,.55), rgba(0,0,0,0)); }
+    .oo-hero-content { position: relative; }
+    .oo-eyebrow { margin: 0; font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 13px; letter-spacing: .2em; text-transform: uppercase; color: #fff; }
+    .oo-h1 { margin: 14px 0 0; font-family: var(--font-display); font-style: italic; font-weight: 900; text-transform: uppercase; font-size: clamp(2.8rem, 9vw, 6.4rem); line-height: .92; }
+    .oo-hook { display: block; color: var(--jf-red); }
+    .oo-sub { margin: 22px 0 0; max-width: 560px; font-size: 18px; line-height: 1.55; color: rgba(255,255,255,.88); }
+    .oo-cta { margin-top: 30px; }
+    .oo-cta .btn-red { min-width: 220px; min-height: 52px; }
+
+    .oo-gains { background: #fff; color: #000; padding: 76px 0; }
+    .oo-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 30px; }
+    .oo-card { padding: 22px; border: 1px solid rgba(0,0,0,.12); }
+    .oo-card h3 { margin: 16px 0 6px; font-family: var(--font-display); font-style: italic; font-weight: 900; text-transform: uppercase; font-size: 1.35rem; line-height: 1.05; }
+    .oo-card p { margin: 0; color: rgba(0,0,0,.68); line-height: 1.6; }
+    .oo-tick { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--jf-red); display: inline-grid; place-items: center; color: var(--jf-red); }
+    .oo-tick svg { width: 17px; height: 17px; }
+
+    .oo-how { padding: 80px 0; background: #0a0a0a; }
+    .oo-steps { list-style: none; margin: 30px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    .oo-step { padding: 26px 24px; border: 1px solid rgba(255,255,255,.12); background: #111; }
+    .oo-n { font-family: var(--font-display); font-style: italic; font-weight: 900; letter-spacing: .16em; color: var(--jf-red); }
+    .oo-step h3 { margin: 18px 0 8px; font-family: var(--font-display); font-style: italic; font-weight: 900; text-transform: uppercase; font-size: clamp(1.5rem, 2.6vw, 2rem); line-height: 1; }
+    .oo-step p { margin: 0; color: rgba(255,255,255,.72); line-height: 1.6; }
+
+    .oo-when { padding: 80px 0; background: #000; }
+    .oo-when-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; align-items: center; }
+    .oo-list { margin: 24px 0 0; padding: 0 0 0 20px; display: grid; gap: 10px; color: rgba(255,255,255,.8); line-height: 1.6; }
+    .oo-list li::marker { color: var(--jf-red); }
+    .oo-where { display: grid; gap: 4px; margin: 26px 0 0; padding: 16px 18px; border-left: 3px solid var(--jf-red); background: rgba(232,0,13,.12); }
+    .oo-where span { color: rgba(255,255,255,.82); }
+    .oo-where a { color: #fff; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; min-height: 44px; display: inline-flex; align-items: center; width: max-content; }
+    .oo-video iframe { width: 100%; aspect-ratio: 16 / 9; border: 0; display: block; background: #0a0a0a; }
+    .oo-video p { margin: 10px 0 0; color: rgba(255,255,255,.65); font-size: 15px; }
+
+    .oo-enquire { padding: 88px 0; background: #0a0a0a; }
+    .oo-enquire-layout { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 48px; align-items: start; }
+    .oo-enquire-copy > p { margin: 18px 0 0; max-width: 440px; color: rgba(255,255,255,.75); line-height: 1.65; }
+    .oo-also { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+    .oo-also a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border: 1px solid rgba(255,255,255,.22); color: #fff; font-size: 14px; font-weight: 600; }
+    .oo-form { display: grid; gap: 16px; padding: 24px; background: #000; border: 1px solid rgba(255,255,255,.12); }
+    .oo-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .oo-field { display: grid; gap: 7px; margin: 0; padding: 0; border: 0; min-width: 0; }
+    .oo-field > span, .oo-field legend { font-size: 14px; font-weight: 600; color: rgba(255,255,255,.9); padding: 0; }
+    .oo-field small { font-weight: 400; color: rgba(255,255,255,.55); }
+    .oo-field legend { margin-bottom: 7px; }
+    .oo-form input[type="text"], .oo-form input[type="tel"], .oo-form input[type="email"], .oo-form textarea { width: 100%; min-height: 50px; padding: 13px 14px; border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.06); color: #fff; font: inherit; font-size: 16px; border-radius: 0; outline: none; }
+    .oo-form textarea { resize: vertical; min-height: 96px; }
+    .oo-form input::placeholder, .oo-form textarea::placeholder { color: rgba(255,255,255,.45); }
+    .oo-form input:focus, .oo-form textarea:focus { border-color: #fff; }
+    .oo-form [aria-invalid="true"] { border-color: #ff6b6b; }
+    .oo-seg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .oo-seg label { position: relative; }
+    .oo-seg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+    .oo-seg span { display: grid; place-items: center; min-height: 50px; border: 1px solid rgba(255,255,255,.18); font-weight: 650; cursor: pointer; }
+    .oo-seg input:checked + span { background: #fff; color: #000; border-color: #fff; }
+    .oo-seg input:focus-visible + span { outline: 2px solid #fff; outline-offset: 2px; }
+    .oo-check { display: flex; gap: 12px; align-items: flex-start; min-height: 44px; color: rgba(255,255,255,.75); font-size: 15px; line-height: 1.5; cursor: pointer; }
+    .oo-check input { width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--jf-red); flex: none; }
+    .oo-status { margin: 0; font-size: 15px; line-height: 1.5; }
+    .oo-status.ok { color: #4ade80; } .oo-status.bad { color: #fbbf24; }
+    .oo-submit { width: 100%; min-height: 54px; }
+
+    @media (max-width: 960px) {
+      .oo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .oo-when-layout, .oo-enquire-layout { grid-template-columns: minmax(0, 1fr); }
+      .oo-steps { grid-template-columns: minmax(0, 1fr); }
+    }
+    @media (max-width: 640px) {
+      .oo-hero { min-height: 78dvh; padding: 100px 0 40px; }
+      .oo-sub { font-size: 16px; }
+      .oo-cta .btn-red { width: 100%; }
+      .oo-gains, .oo-how, .oo-when, .oo-enquire { padding: 56px 0; }
+      .oo-grid, .oo-row { grid-template-columns: minmax(0, 1fr); }
+      .oo-form { padding: 18px; }
+    }
+  </style>
+
+  <script>
+    const form = document.getElementById('oo-form') as HTMLFormElement | null
+    const status = document.getElementById('oo-status')
+    const say = (text: string, ok: boolean) => { if (!status) return; status.hidden = false; status.className = 'oo-status ' + (ok ? 'ok' : 'bad'); status.textContent = text }
+    if (form) {
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault()
+        let firstBad: HTMLElement | null = null
+        form.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input[required], textarea[required]').forEach((el) => {
+          const bad = el.type === 'radio' ? !form.querySelector(`input[name="${el.name}"]:checked`) : !el.checkValidity() || !el.value.trim()
+          if (el.type !== 'radio') el.setAttribute('aria-invalid', bad ? 'true' : 'false')
+          if (bad && !firstBad) firstBad = el
+        })
+        if (firstBad) { say('Please fill in every box (days and times are optional).', false); (firstBad as HTMLElement).focus(); return }
+        const submit = form.querySelector('button[type="submit"]') as HTMLButtonElement | null
+        const data = new FormData(form)
+        const payload: Record<string, unknown> = {}
+        data.forEach((value, key) => { payload[key] = value })
+        payload.enquiryType = 'training-sydney'
+        payload.trainingInterest = '1 on 1 coaching'
+        payload.location = 'Joner Football HQ, Belrose'
+        payload.message = '1 ON 1 COACHING ENQUIRY\n\nWho is training: ' + (payload.sessionType || 'Not answered') + '\n\n' + (payload.message || '') + (payload.availability ? '\n\nBest times: ' + payload.availability : '')
+        payload.marketingOptIn = data.get('marketingOptIn') === 'true'
+        if (status) status.hidden = true
+        if (submit) { submit.disabled = true; submit.textContent = 'Sending...' }
+        try {
+          const w = window as unknown as { JonerRecaptcha?: { getToken: (a: string) => Promise<string> } }
+          payload.recaptchaToken = w.JonerRecaptcha ? await w.JonerRecaptcha.getToken('one_on_one').catch(() => '') : ''
+          const res = await fetch('/api/contact-enquiry', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+          const out = await res.json().catch(() => null)
+          if (!out || !out.success) throw new Error((out && out.error) || 'That did not send. Please try again.')
+          form.reset()
+          say('Sent. Thank you. We will be in touch soon with free times and the price.', true)
+        } catch (error) {
+          say(error instanceof Error && error.message ? error.message : 'That did not send. Please try again.', false)
+        } finally {
+          if (submit) { submit.disabled = false; submit.textContent = 'Send enquiry' }
+        }
+      })
+    }
+  </script>
+</BaseLayout>
