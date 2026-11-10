@@ -17,6 +17,7 @@ import { renderReports, reportsHomeBlock, unreadReports } from './jfp-account-re
 import { feedbackHomeBlock, feedbackClick } from './jfp-account-feedback.js'
 import { newSessions, markSeen, newSessionsPopup } from './jfp-account-new.js'
 import { askWhere } from './jfp-account-where.js'
+import { renderCamps, loadCamp, holidayRequest, campsCard, holidayClick, homeTiles } from './jfp-account-camps.js'
 import { askTerms, cancelExtraSheet, makeupLine } from './jfp-account-terms.js'
 import { coachRow, coachSheet, renderCoaches } from './jfp-account-coach.js'
 import { attendanceLine, pastMark, unreadNotes, notesHomeBlock, makeupsHomeBlock, askMakeup, renderNotes, renderAlerts, pushOffered, loginRow, loginSheet } from './jfp-account-more.js'
@@ -26,7 +27,7 @@ let D = null
 let PROF = null
 // Fees (14 Oct 2026): read when the Fees tab first opens, again after each load.
 let FEES = null
-const PANELS = ['home', 'sessions', 'fees', 'family', 'news', 'notes', 'reports', 'alerts', 'info', 'waivers', 'cancel', 'keep', 'term', 'coaches', 'holidays', 'extra', 'analysis', 'videos', 'app', 'contact']
+const PANELS = ['home', 'sessions', 'fees', 'family', 'news', 'notes', 'reports', 'alerts', 'info', 'waivers', 'cancel', 'keep', 'term', 'coaches', 'holidays', 'camps', 'extra', 'analysis', 'videos', 'app', 'contact']
 let current = 'home'
 const KIT_URL = 'https://www.besteamsport.com.au/collections/joner-football'
 const IMG = '/images/jfp-account'
@@ -169,8 +170,16 @@ async function start() {
     else if (D) toast(D.players.length ? 'The question is closed for now. Thank you.' : 'Sign in with the email we sent it to.')
   } else if (D?.askWhere) askWhere(D)
   else if (D?.termsAsk) askTerms(D)
-  else if (h !== 'extra' && h !== 'holidays') newSessionsPopup(D, (k) => show(k))
-  loadProfiles()
+  else if (h === 'home' || !h) {
+    // A waiver not signed or player details missing: the To sort sheet opens
+    // by itself, once per visit (Lee, 10 Nov 2026: "that window should pop up
+    // straight away"). Otherwise the new sessions pop up, as before.
+    if (!todoPop()) newSessionsPopup(D, (k) => show(k))
+  } else if (h !== 'extra' && h !== 'holidays' && h !== 'camps') newSessionsPopup(D, (k) => show(k))
+  // Player details arrive a moment later: the same pop up if any are missing.
+  loadProfiles().then(() => { if (current === 'home' && !document.querySelector('.j-sheet')) todoPop() })
+  // The camp (dates, places) for the Home tile and the Camps page.
+  loadCamp().then(() => { const t = document.querySelector('[data-home-tiles]'); if (t && D) t.outerHTML = tilesHtml(); const hc = document.querySelector('.ja-camps-card'); if (hc) hc.outerHTML = campsCard() })
 }
 
 async function confirmPaid(sid) {
@@ -224,6 +233,14 @@ function viewAsBar(v) {
   bar.innerHTML = `<span>View only: you are seeing ${esc(v.player ? `${v.player}'s family` : 'this family')}'s account as they see it. Nothing here can be changed. ${left} min left.</span><button type="button" style="font:inherit;font-weight:700;padding:6px 14px;border-radius:6px;border:2px solid #fff;background:transparent;color:#fff;cursor:pointer">Exit</button>`
   bar.querySelector('button').addEventListener('click', async () => { await api('/api/jfp-account', { action: 'viewAsEnd' }); dropViewPass(); if (window.opener) window.close(); location.href = '/jfp-portal/' })
   document.body.prepend(bar)
+}
+function todoPop() {
+  let shown = false
+  try { shown = sessionStorage.getItem('ja-todo-pop') === '1' } catch {}
+  if (!D || D.playerLogin || shown || !(unsignedWaivers().length || infoGaps().length)) return false
+  try { sessionStorage.setItem('ja-todo-pop', '1') } catch {}
+  todoSheet()
+  return true
 }
 async function loadProfiles() {
   if (D?.playerLogin) return
@@ -287,13 +304,18 @@ function nav() {
       { key: 'waivers', label: 'Waivers', icon: 'sign', dot: unsigned > 0 },
       { key: 'contact', label: 'Contact us', icon: 'chat' },
     ] },
+    // Book (Lee, 10 Nov 2026): everything a family can book, with Camps as
+    // its own page, apart from holiday training at HQ.
+    { label: 'Book', items: [
+      { key: 'extra', label: 'Extra sessions', icon: 'calplus', count: newSessions(D).extra.length },
+      { key: 'holidays', label: 'Holiday training', icon: 'sun', count: newSessions(D).holiday.length },
+      { key: 'camps', label: 'Camps', icon: 'tent' },
+      { key: 'analysis', label: 'Game analysis', icon: 'video' },
+      { href: links.booking, label: 'Timetable', icon: 'grid' },
+    ] },
     { label: 'Explore Joner', items: [
       { key: 'term', label: `${termShort()} info`, icon: 'info' },
       ...coachesItem(),
-      { key: 'holidays', label: 'Holiday training', icon: 'sun', count: newSessions(D).holiday.length },
-      { key: 'extra', label: 'Book extra sessions', icon: 'calplus', count: newSessions(D).extra.length },
-      { key: 'analysis', label: 'Game analysis', icon: 'video' },
-      { href: links.booking, label: 'Timetable', icon: 'grid' },
       { key: 'videos', label: 'Videos', icon: 'play' },
       { key: 'app', label: 'The JF App', icon: 'phone' },
       { href: D?.kitUrl || KIT_URL, label: 'JF training kit', icon: 'shirt', ext: true },
@@ -307,7 +329,7 @@ function navItem(it) {
 }
 const NAV_KEY = 'ja-nav-open'
 // Open on a first visit: My JFP and Manage. Explore Joner until opened.
-const NAV_DEFAULT = { 'My JFP': true, 'Manage': true }
+const NAV_DEFAULT = { 'My JFP': true, 'Manage': true, 'Book': true }
 function navOpen() { try { return { ...NAV_DEFAULT, ...(JSON.parse(localStorage.getItem(NAV_KEY) || '{}') || {}) } } catch { return { ...NAV_DEFAULT } } }
 function navGroup(g, open) {
   if (g.items.length === 1) return `<div class="ja-nav-one">${navItem(g.items[0])}</div>`
@@ -458,7 +480,7 @@ function show(panel, { keepScroll = false } = {}) {
 const pane = (k) => document.querySelector(`[data-pane="${k}"]`)
 // Read notes or a report: the badges and Home's New cards update (28 Oct 2026).
 function afterRead() { renderShell(); const h = pane('home'); if (h) { delete h.dataset.drawn; if (current === 'home') drawPane('home') } }
-const DRAW = { home: () => renderHome(), sessions: () => renderSessions(), fees: () => renderFees(), family: () => renderFamily(), news: () => renderNews(), info: () => renderInfo(), waivers: () => renderWaivers(), cancel: () => renderCancel(), keep: () => renderKeep(), term: () => renderTerm(), coaches: () => renderCoaches(pane('coaches'), D), holidays: () => renderHolidays(), extra: () => renderExtraPage(), analysis: () => renderAnalysis(pane('analysis'), D), videos: () => renderVideos(), app: () => renderApp(), contact: () => renderContact(), notes: () => renderNotes(pane('notes'), D, afterRead), reports: () => renderReports(pane('reports'), D, afterRead), alerts: () => renderAlerts(pane('alerts'), D) }
+const DRAW = { home: () => renderHome(), sessions: () => renderSessions(), fees: () => renderFees(), family: () => renderFamily(), news: () => renderNews(), info: () => renderInfo(), waivers: () => renderWaivers(), cancel: () => renderCancel(), keep: () => renderKeep(), term: () => renderTerm(), coaches: () => renderCoaches(pane('coaches'), D), holidays: () => renderHolidays(), camps: () => renderCamps(pane('camps')), extra: () => renderExtraPage(), analysis: () => renderAnalysis(pane('analysis'), D), videos: () => renderVideos(), app: () => renderApp(), contact: () => renderContact(), notes: () => renderNotes(pane('notes'), D, afterRead), reports: () => renderReports(pane('reports'), D, afterRead), alerts: () => renderAlerts(pane('alerts'), D) }
 function drawPane(panel) { DRAW[panel]?.(); const el = document.querySelector(`[data-pane="${panel}"]`); if (el) el.dataset.drawn = '1' }
 
 function render() {
@@ -627,6 +649,12 @@ function renderNews() {
   })
 }
 
+// Home is options to click (Lee, 10 Nov 2026): photo tiles for what to book,
+// small tiles for the jobs. The camp tile fills in once the camp is read.
+function tilesHtml() {
+  const n = newSessions(D)
+  return homeTiles(D, { booked: D.players.some((p) => p.enrolments.length), bookUrl: D.bookUrl || '/jfp-booking/', owing: feesOwing() > 0, gaps: infoGaps().length > 0, unsigned: unsignedWaivers().length > 0, solo: solo(), newExtra: n.extra.length, newHoliday: n.holiday.length })
+}
 function renderHome() {
   const el = document.querySelector('[data-pane="home"]')
   if (!D) return
@@ -635,16 +663,10 @@ function renderHome() {
   const name = D.self ? first(D.players[0]?.name) : D.parentName ? first(D.parentName) : ''
   const today = fmt(Date.now(), { weekday: 'long', day: 'numeric', month: 'long' })
   const head = `<header class="ja-head"><p class="ja-kicker"><i></i>${esc(today)}${tw && /^Week/.test(tw.label) ? ` · ${esc(tw.label)}` : ''}</p><h1 class="ja-display">${name ? `Hi ${esc(name)}` : 'Welcome'}</h1></header>`
-  const promos = `<section class="ja-sec">${secHead('More from JFP')}<div class="ja-rail-wrap"><div class="ja-rail promos">
-      <button type="button" class="ja-promo" data-go="keep"><img src="${IMG}/photos/lee-coaching-field-900x1100.webp" alt="" loading="lazy"><span class="go">${ic('arrow')}</span><p class="ja-kicker"><i></i>${esc(D.keep?.name || 'Next term')}</p><h3>Keep your spot</h3><p>Same day, same time, same group. Current ${D.self ? 'players' : 'families'} get first call.</p></button>
-      <button type="button" class="ja-promo" data-go="holidays"><img src="${IMG}/photos/hq-indoor-800x1000.webp" alt="" loading="lazy"><span class="go">${ic('arrow')}</span><p class="ja-kicker"><i></i>School holidays</p><h3>Holiday training</h3><p>JFP players book holiday training and camps first.</p></button>
-      <button type="button" class="ja-promo red" data-go="app"><img src="/images/app/joner-app-main-iphone-current-transparent.webp" alt="" loading="lazy"><span class="go">${ic('arrow')}</span><p class="ja-kicker"><i></i>Free for JFP players</p><h3>The JF App</h3><p>Keep training between sessions.</p></button>
-    </div></div></section>`
-  const watch = `<section class="ja-sec">${secHead('Watch at HQ', 'Real sessions from inside Joner Football HQ.', 'r-home')}<div class="ja-rail-wrap"><div class="ja-rail" id="r-home">${hqVideos.slice(0, 6).map(vidCard).join('')}</div></div><p style="margin-top:14px"><button type="button" class="ja-btn ja-btn-line ja-btn-sm" data-go="videos">All training videos ${ic('arrow')}</button></p></section>`
   // A Juniors-only family: the Juniors card and its to do, no JFP "nothing booked".
   if (!D.players.length && D.juniors) {
     el.innerHTML = `<header class="ja-head"><p class="ja-kicker"><i></i>Joners Juniors · ${esc(D.juniors.term)}</p><h1 class="ja-display">${name ? `Hi ${esc(name)}` : 'Welcome'}</h1></header>
-      ${guideCard()}<div class="ja-home"><div class="ja-stack">${jjHomeCard()}</div><div class="ja-stack">${bookedExtrasBlock(D)}${newsBlock()}${todoCards()}${requestsBlock()}</div></div>${watch}`
+      ${guideCard()}<div class="ja-home"><div class="ja-stack">${jjHomeCard()}</div><div class="ja-stack">${bookedExtrasBlock(D)}${newsBlock()}${todoCards()}${requestsBlock()}</div></div>${tilesHtml()}`
     return
   }
   // Anyone can have an account (round 2 item 8): nobody booked into a
@@ -653,12 +675,12 @@ function renderHome() {
     const list = D.players.length ? `<div class="ja-card"><div class="ja-card-head"><h3 class="ja-h3">${D.self ? 'Your profile' : 'Your players'}</h3><button type="button" class="ja-link ja-small" data-go="info">${D.self ? 'My profile' : 'Player information'}</button></div><ul class="ja-list">
       ${D.players.map((p) => `<li class="ja-row">${face(p.name, p.photo)}<div><b>${esc(p.name)}</b><small>Not booked into a session yet</small></div><div class="ja-flags">${p.waiver.onFile ? '<span class="ja-dot ok">Waiver</span>' : `<button type="button" class="ja-dot bad" data-waiver-player="${esc(p.key)}">Sign waiver</button>`}</div></li>`).join('')}</ul></div>` : ''
     el.innerHTML = `${head}${guideCard()}
-      <div class="ja-ticket" style="min-height:420px" data-no-session><img src="${IMG}/photos/ntra-field-900x1100.webp" alt=""><div class="ja-ticket-top"><span class="ja-live"><i></i>${esc(D.term)}</span></div>
+      <div class="ja-ticket ja-ticket-slim" data-no-session><img src="${IMG}/photos/ntra-field-900x1100.webp" alt=""><div class="ja-ticket-top"><span class="ja-live"><i></i>${esc(D.term)}</span></div>
         <div class="ja-ticket-body"><h2 class="ja-ticket-date"><span>You're not booked</span><span class="t">into a session yet</span></h2>
         <p class="ja-meta">Pick a session on the timetable. ${D.players.length ? 'Your player details are saved, so booking is quick.' : 'Add your players first and booking is quick.'}</p>
         <div class="ja-actions"><a class="ja-btn ja-btn-red" href="${esc(D.bookUrl || '/jfp-booking/')}">Book a session</a><button type="button" class="ja-btn ja-btn-glass" data-add-player>${D.players.length ? 'Add another player' : 'Add a player'}</button></div>
         <p class="ja-small" style="margin-top:14px;color:rgba(255,255,255,.75)">Booked with another email? Sign out and use that one. Already train with us? <button type="button" class="ja-link" data-go="contact" style="color:#fff">Contact us</button></p></div></div>
-      <div class="ja-stack" style="margin-top:14px">${bookedExtrasBlock(D)}${newsBlock()}${todoCards()}${list}${requestsBlock()}</div>${promos}${watch}`
+      ${tilesHtml()}<div class="ja-stack" style="margin-top:14px">${bookedExtrasBlock(D)}${newsBlock()}${todoCards()}${list}${requestsBlock()}</div>`
     return
   }
   const ups = upcoming().filter((x) => x.next)
@@ -678,7 +700,7 @@ function renderHome() {
       <div class="ja-stack">${D.playerLogin ? playerWaiverStep() : strip ? `<p class="ja-label">To do</p>${strip}` : `<div class="ja-strip is-done">${ic('check')}<span class="ja-mr-tx"><b>All sorted</b><small>Nothing to sign or pay right now.</small></span></div>`}${feedbackHomeBlock(D)}${reportsHomeBlock(D)}${bookedExtrasBlock(D)}${makeupsHomeBlock(D)}${notesHomeBlock(D)}${newsBlock()}
         ${jjHomeCard()}${notBooked.length ? `<div class="ja-card"><p class="ja-small ja-muted">${notBooked.map((p) => p.placeNoSession ? `<b class="ja-ink">${esc(p.name)}</b> has a place. We will confirm the day and time.` : `<b class="ja-ink">${esc(p.name)}</b> is not booked this term. <a class="ja-link" href="${links.booking}">See the timetable</a>`).join('<br>')}</p></div>` : ''}${requestsBlock()}</div>
     </div>
-    ${D.playerLogin ? '' : promos}${watch}`
+    ${tilesHtml()}`
 }
 
 // An agent's player, signed in with their own login: their waiver (Lee, 20 Oct 2026).
@@ -1227,18 +1249,15 @@ function renderHolidays() {
   const sessions = list.length
     ? `<section class="ja-sec" id="hol-sessions">${secHead('Sessions you can book')}
         <div class="ja-actions" style="margin:0 0 12px">${open ? book : ''}<span class="ja-small ja-muted">${open ? `${open} open · ` : 'All taken just now · '}${esc(h.where || `${hq.name}, Belrose`)}</span></div>
-        <p class="j-err" data-hol-err hidden></p>
         <div class="ja-grid ja-grid-2">${byDay.map((d) => `<article class="ja-card"><p class="ja-kicker"><i></i>${esc(d.label)}</p><ul class="ja-list" style="margin-top:8px">${d.items.map(row).join('')}</ul></article>`).join('')}</div></section>`
-    : `<section class="ja-sec" id="hol-sessions"><article class="ja-card" style="padding:24px"><p class="ja-kicker"><i></i>Holiday training</p><h2 class="ja-h2" style="margin-top:10px">No holiday sessions to book yet</h2>
-        <p class="ja-lede" style="font-size:15px">${esc(holidays.last)} training is done. The next block runs in the NSW summer school holidays, ${esc(holidays.from)} to ${esc(holidays.to)}. The sessions show here as soon as they open.</p>
-        <dl class="ja-dl"><div><dt>Where</dt><dd>${esc(hq.name)}, Belrose</dd></div><div><dt>Sessions</dt><dd>1 to 1, shared and small groups, 60 or 90 minutes</dd></div></dl></article></section>`
-  el.innerHTML = `${pageHead('School holidays', 'Holiday training', 'Training at Joner Football HQ in the school holidays. JFP players book first.')}
+    : ''
+  // A hero photo, few words, one request form and a way to Camps (Lee, 10 Nov 2026).
+  el.innerHTML = `${hero({ img: `${IMG}/photos/lee-one-on-one-1200x900.webp`, kicker: 'School holidays', title: 'Holiday training', lede: `1 on 1 and small group training at ${esc(hq.name)}, Belrose.`, actions: `${open ? book : '<button type="button" class="ja-btn ja-btn-red" data-hol-jump>Request a session</button>'}<button type="button" class="ja-btn ja-btn-glass" data-go="camps">Camps</button>` })}
+    <p class="j-err" data-hol-err hidden></p>
     ${sessions}
-    <div class="ja-band" style="margin-top:14px"><div><p class="ja-kicker"><i></i>JFP players</p><h2 style="margin-top:10px">You book first</h2><p style="margin-top:8px">Joner Football Performance players get first booking rights for holiday training and camps.</p></div></div>
-    <div class="ja-grid ja-grid-2" style="margin-top:14px">
-      <article class="ja-card ja-venue"><img src="${IMG}/photos/camp-rydalmere-1200x800.webp" alt="Joner Football Camp in Sydney" loading="lazy"><div class="bd"><p class="ja-kicker"><i></i>Joner Football Camps</p><h3 style="margin-top:6px">Camps</h3><p>Dates, locations and everything else about our camps are on the website.</p><div class="ja-actions"><a class="ja-btn ja-btn-red" href="/camps" target="_blank" rel="noopener">See our camps ${ic('ext')}</a></div></div></article>
-    </div>`
-  el.querySelector('[data-hol-book]')?.addEventListener('click', async (e) => {
+    <div class="ja-grid ja-grid-2 ja-hol-grid" style="margin-top:14px">${holidayRequest(D)}${campsCard()}</div>`
+  el.querySelector('[data-hol-jump]')?.addEventListener('click', () => el.querySelector('#hol-request')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+  el.querySelectorAll('[data-hol-book]').forEach((bk) => bk.addEventListener('click', async (e) => {
     const btn = e.currentTarget
     const err = el.querySelector('[data-hol-err]')
     btn.disabled = true
@@ -1248,7 +1267,7 @@ function renderHolidays() {
     if (r.ok || r.data.code === 'password') { location.href = r.data.url || '/holiday-bookings/'; return }
     err.textContent = r.data.error || 'Could not open holiday booking. Try again.'
     err.hidden = false
-  })
+  }))
 }
 
 // ---------- training videos ----------
@@ -1701,6 +1720,7 @@ document.addEventListener('click', async (e) => {
   if (sec) return toggleNav(sec.dataset.navsec)
   if (t.closest('[data-waiver-all]')) return waiverSheet(unsignedWaivers().map((p) => p.key))
   if (extraClick(t, { D })) return
+  if (D && await holidayClick(t, D)) return
   const mk = t.closest('[data-makeup-ask]'); if (mk) return askMakeup(mk.dataset.makeupAsk, load)
   if (t.closest('#sign-out') || t.closest('#ja-signout2') || t.closest('#sign-out-fam')) { clearLast(); await signOut('parent'); location.href = '/jfp-account/'; return }
   if (t.closest('[data-contact]')) { e.preventDefault(); if (D) { closeSheet(true); show('contact') } else contactSheet(); return }

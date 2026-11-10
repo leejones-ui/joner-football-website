@@ -1073,3 +1073,41 @@ body:has(.ja[data-theme="light"]) { background: #F5F5F3 !important; }
 .ja .ja-fb-n[aria-checked="true"] { background: var(--ja-red); border-color: var(--ja-red); color: #fff; }
 .ja .ja-fb-ends { display: flex; justify-content: space-between; margin-top: 6px; }
 @media (max-width: 420px) { .ja .ja-fb-scale { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+
+/* Home tiles, Camps and Holiday training (Lee, 10 Nov 2026): Home is options
+   to click. Photo tiles for what to book, small tiles for the jobs. */
+.ja-tiles-sec { margin-top: 28px; }
+.ja-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (min-width: 900px) { .ja-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; } }
+.ja .ja-tile { position: relative; display: flex; flex-direction: column; text-align: left; padding: 0; border: 1px solid var(--ja-line); border-radius: 20px; overflow: hidden; background: var(--ja-panel); color: var(--ja-ink); text-decoration: none; cursor: pointer; transition: transform .25s var(--ja-ease), border-color .2s; }
+.ja .ja-tile:hover { transform: translateY(-3px); border-color: var(--ja-red); }
+.ja-tile .ph { position: relative; display: block; aspect-ratio: 4 / 3; overflow: hidden; background: #18181B; }
+.ja-tile .ph img { width: 100%; height: 100%; object-fit: cover; transition: transform .8s var(--ja-ease); }
+.ja-tile:hover .ph img { transform: scale(1.05); }
+.ja-tile .tx { display: grid; gap: 3px; padding: 12px 44px 14px 14px; }
+.ja-tile .tx b { font: 700 15px/1.2 Inter, system-ui, sans-serif; }
+.ja-tile .tx small { font-size: 12.5px; line-height: 1.3; color: var(--ja-muted); }
+.ja-tile .go { position: absolute; right: 12px; bottom: 14px; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--ja-red); color: #fff; }
+.ja-tile .go svg { width: 14px; height: 14px; }
+.ja-tile-badge { position: absolute; left: 10px; top: 10px; padding: 5px 9px; border-radius: 999px; background: var(--ja-red); color: #fff; font: 700 10px/1 Inter, system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase; }
+@media (min-width: 900px) { .ja-tile .tx { padding: 16px 52px 18px 18px; } .ja-tile .tx b { font-size: 17px; } .ja-tile .tx small { font-size: 13.5px; } .ja-tile .go { right: 16px; bottom: 18px; width: 32px; height: 32px; } }
+.ja-tiles-sm { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+@media (min-width: 900px) { .ja-tiles-sm { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 14px; } }
+@media (min-width: 1640px) { .ja-tiles-sm { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+.ja .ja-tile-sm { display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 12px 14px; border: 1px solid var(--ja-line); border-radius: 16px; background: var(--ja-panel); color: var(--ja-ink); text-align: left; cursor: pointer; transition: border-color .2s; }
+.ja .ja-tile-sm:hover { border-color: var(--ja-red); }
+.ja-tile-sm > svg:first-child { width: 20px; height: 20px; flex: none; }
+.ja-tile-sm b { flex: 1; min-width: 0; font: 600 14px/1.2 Inter, system-ui, sans-serif; }
+.ja-tile-sm .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ja-red); flex: none; }
+.ja-tile-sm .ja-mr-go { width: 16px; height: 16px; flex: none; color: var(--ja-faint); }
+@media (max-width: 420px) { .ja-tile-sm .ja-mr-go { display: none; } }
+/* Not booked yet: a short banner, not a full screen. */
+.ja-ticket.ja-ticket-slim { min-height: 0; }
+.ja-ticket-slim .ja-ticket-body { padding-top: 26px; }
+.ja .ja-ticket-slim .ja-ticket-date { font-size: clamp(38px, 9vw, 60px); line-height: .9; }
+.ja-campfacts { padding: 20px; }
+.ja-campfacts .ja-row small { display: block; }
+.ja-holreq { padding: 24px; }
+.ja-hol-grid { align-items: stretch; }
+.ja-hol-grid .ja-promo { min-height: 280px; height: 100%; }
+.ja-campfacts .ja-row b { white-space: normal; }
