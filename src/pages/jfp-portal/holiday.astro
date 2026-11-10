@@ -2,7 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro'
 ---
 
-<BaseLayout title="Holiday training | JFP Portal" description="School holiday training, inside the JFP portal." canonical="https://jonerfootball.com/jfp-portal/holiday/" noindex noTracking hideChrome hideMobileAppCta>
+<BaseLayout title="Holiday training | Joner Football Portal" description="School holiday training, inside the Joner Football Portal." canonical="https://jonerfootball.com/jfp-portal/holiday/" noindex noTracking hideChrome hideMobileAppCta>
   <main class="bg-joner-black text-white min-h-screen">
     <!-- Secret prompt -->
     <section id="admin-gate" class="min-h-[70vh] flex items-center" hidden>
@@ -341,7 +341,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro'
         body: JSON.stringify({ action, ...payload }),
       })
       const data = await res.json().catch(() => ({}))
-      if (res.status === 401) { lock(); throw new Error('Sign in to the JFP portal first.') }
+      if (res.status === 401) { lock(); throw new Error('Sign in to the Joner Football Portal first.') }
       if (!res.ok || !data.success) throw new Error(data.error || 'Request failed.')
       return data
     }
@@ -350,7 +350,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro'
     function lock() {
       $('admin-app').hidden = true
       $('admin-gate').hidden = false
-      $('admin-gate').innerHTML = '<div class="w-full max-w-md mx-auto px-4 py-16"><p class="font-heading uppercase tracking-[0.28em] text-joner-red text-sm mb-4">Holiday training</p><p class="mb-6">Sign in to the JFP portal as Lee or Ligia to manage holiday training.</p><a class="btn-red" href="/jfp-portal/" target="_top">Open the JFP portal</a></div>'
+      $('admin-gate').innerHTML = '<div class="w-full max-w-md mx-auto px-4 py-16"><p class="font-heading uppercase tracking-[0.28em] text-joner-red text-sm mb-4">Holiday training</p><p class="mb-6">Sign in to the Joner Football Portal as Lee or Ligia to manage holiday training.</p><a class="btn-red" href="/jfp-portal/" target="_top">Open the Joner Football Portal</a></div>'
     }
     $('logout').hidden = true
 

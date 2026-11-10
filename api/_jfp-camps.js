@@ -144,7 +144,8 @@ export async function campsStripe({ year, fresh = false, quick = false } = {}, d
     if (after) q.set('starting_after', after)
     const d = await fetchStripe(`/checkout/sessions?${q}`)
     for (const s of d.data || []) {
-      if (s.payment_status !== 'paid' || !s.metadata?.registrationId || !s.metadata?.camp) continue
+      // New portal camp sign-ups carry campBookingId (10 Nov 2026), the old camps registrationId.
+      if (s.payment_status !== 'paid' || !(s.metadata?.registrationId || s.metadata?.campBookingId) || !s.metadata?.camp) continue
       const charge = s.payment_intent?.latest_charge && typeof s.payment_intent.latest_charge === 'object' ? s.payment_intent.latest_charge : null
       const fee = !s.amount_total ? { fee: 0 } : feeFrom(charge)
       sessions.push({ camp: String(s.metadata.camp).slice(0, 120), currency: String(s.currency || 'aud').toUpperCase(), day: new Date(((s.created || 0) + 36000) * 1000).toISOString().slice(0, 10), amountCents: s.amount_total || 0, refundedCents: charge?.amount_refunded || 0, feeCents: fee ? fee.fee : null })

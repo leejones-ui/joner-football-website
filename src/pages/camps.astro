@@ -7,8 +7,8 @@ import { faqSchema, webPageSchema, breadcrumbSchema } from '../lib/seoSchema'
 
 
 const campSEOFAQs = [
-  { q: 'Are any Joner Football camps currently available?', a: 'No. There are no further Joner Football camps scheduled for the rest of 2026.' },
-  { q: 'When will new Joner Football camps be announced?', a: 'Future camp dates and destinations will be published here when they are confirmed.' },
+  { q: 'Are any Joner Football camps currently available?', a: 'Yes. The Christmas Drop and Shop Camp runs in Sydney on Monday 21 and Tuesday 22 December 2026, 9am to 12pm, for ages 5 to 14. Book one day or both, with 72 places a day.' },
+  { q: 'When will new Joner Football camps be announced?', a: 'Camps for 2027 will be published here when they are confirmed.' },
   { q: 'What age are the camps for?', a: 'Most Joner Football camps are built for motivated young players who want to improve technique, confidence and game impact in a high-energy coaching environment.' },
   { q: 'What do players work on at camp?', a: 'Players work on technical detail, ball mastery, attacking skills, confidence, decision-making and the standards Lee Jones expects in high-level football training.' },
   { q: 'How can players train with Joner Football between camps?', a: 'Players can train with Joner Football through the app, with structured sessions designed to improve technique, confidence and game impact.' },
@@ -17,7 +17,7 @@ const campSEOFAQs = [
 const campsPageSchemas = [
   webPageSchema({
     name: 'Football Camps | Joner Football',
-    description: 'There are no further Joner Football camps scheduled for 2026. Future camp dates and destinations will be announced here.',
+    description: 'Joner Football camps. Now booking: the Christmas Drop and Shop Camp in Sydney, 21 and 22 December 2026, 9am to 12pm.',
     url: 'https://jonerfootball.com/camps/',
   }),
   breadcrumbSchema([
@@ -58,7 +58,7 @@ const sanityPage = await fetchSanityPage('camps')
 ) : (
 <BaseLayout
   title="Football Camps | Joner Football"
-  description="There are no further Joner Football camps scheduled for 2026. Future camp dates and destinations will be announced here."
+  description="Joner Football camps. Now booking: the Christmas Drop and Shop Camp in Sydney, 21 and 22 December 2026, 9am to 12pm. 72 places a day."
   schema={campsPageSchemas}
 >
   <Fragment slot="head">
@@ -70,28 +70,28 @@ const sanityPage = await fetchSanityPage('camps')
       <img class="cp-hero-img" src="/images/camps/hub/camps-hero-lee-coaching.webp" alt="Lee Jones coaching players at a Joner Football camp" fetchpriority="high" />
       <div class="cp-hero-shade" aria-hidden="true"></div>
       <div class="cp-wrap cp-hero-content">
-        <p class="cp-eyebrow">Joner Football Camps</p>
-        <h1 class="cp-h1">No upcoming <span class="cp-hook">camps.</span></h1>
-        <p class="cp-hero-sub">There are no further Joner Football camps scheduled for the rest of 2026. Future dates and destinations will be announced here when they are confirmed.</p>
+        <p class="cp-eyebrow">Now booking · Sydney</p>
+        <h1 class="cp-h1">Christmas drop <span class="cp-hook">and shop.</span></h1>
+        <p class="cp-hero-sub">Two football mornings, Monday 21 and Tuesday 22 December, 9am to 12pm. Drop them with our coaches and get the Christmas shopping done. Ages 5 to 14.</p>
         <div class="cp-hero-cta">
-          <a href="/join" class="btn-red">Train With The App</a>
+          <a href="/camps/christmas-drop-and-shop/" class="btn-red">Book a place</a>
         </div>
-        <p class="cp-hero-note"><span class="cp-dot" aria-hidden="true"></span>2026 camp calendar: season complete.</p>
+        <p class="cp-hero-note"><span class="cp-dot" aria-hidden="true"></span><span id="cp-left">72 places a day. One day A$150, both days A$250.</span></p>
       </div>
     </section>
 
     <section id="camp-destinations" class="cp-status scroll-mt-24">
       <div class="cp-wrap cp-status-layout">
         <div>
-          <p class="cp-kicker">2026 camp calendar</p>
-          <h2 class="cp-h2">2026 camps complete.</h2>
-          <p class="cp-lead">There are no camp registrations open for the remainder of the year.</p>
+          <p class="cp-kicker">Camp calendar</p>
+          <h2 class="cp-h2">Christmas camp is open.</h2>
+          <p class="cp-lead">Our USA and Sydney camps for 2026 are done. One more before Christmas: two mornings in Sydney, book one day or both. Camps for 2027 will be announced here.</p>
         </div>
-        <div class="cp-keep">
-          <h3>Want to keep improving?</h3>
-          <p>Use the Joner Football App for structured training sessions you can follow anywhere.</p>
-          <a href="/join" class="btn-red">View App Plans</a>
-        </div>
+        <a class="cp-keep cp-xmas" href="/camps/christmas-drop-and-shop/">
+          <h3>Christmas Drop and Shop</h3>
+          <p>Mon 21 and Tue 22 December · 9am to 12pm · Sydney · Ages 5 to 14. One day A$150, both days A$250.</p>
+          <span class="btn-red">Book a place</span>
+        </a>
       </div>
     </section>
 
@@ -129,7 +129,7 @@ const sanityPage = await fetchSanityPage('camps')
       },
       {
         heading: 'Best next step',
-        body: 'There are no further camps scheduled for 2026. Between camp seasons, players can keep improving with structured Joner Football App sessions.',
+        body: 'Book the Christmas Drop and Shop Camp in Sydney (21 and 22 December). Between camps, players can keep improving with structured Joner Football App sessions.',
       },
     ]}
     links={[
@@ -142,6 +142,16 @@ const sanityPage = await fetchSanityPage('camps')
     intro="For parents and players deciding if a camp is the right next step."
     items={campSEOFAQs}
   />
+
+  <script>
+    // Live places left for the Christmas camp (falls back to the static line).
+    fetch('/api/camp-book?camp=christmas-drop-and-shop', { cache: 'no-store' }).then((r) => r.json()).then((d) => {
+      const days = d?.camp?.days?.filter((x) => !x.past) || []
+      const el = document.getElementById('cp-left')
+      if (!el || !days.length) return
+      el.textContent = days.map((x) => `${x.short}: ${x.left ? `${x.left} of ${x.capacity} places left` : 'full'}`).join(' · ')
+    }).catch(() => {})
+  </script>
 
   <style>
     .cp-page { --jf-red: #E8000D; --font-display: var(--font-heading, Anton, Impact, sans-serif); background: #000; color: #fff; overflow: hidden; }
@@ -168,6 +178,7 @@ const sanityPage = await fetchSanityPage('camps')
     .cp-keep { padding: 28px; border: 1px solid rgba(0,0,0,.12); border-left: 3px solid var(--jf-red); }
     .cp-keep h3 { margin: 0; font-family: var(--font-display); font-style: italic; font-weight: 900; text-transform: uppercase; font-size: 1.6rem; line-height: 1.05; }
     .cp-keep p { margin: 10px 0 22px; color: rgba(0,0,0,.68); line-height: 1.6; }
+    .cp-xmas { display: block; color: inherit; text-decoration: none; }
     .cp-keep .btn-red { min-height: 50px; padding: 0 26px; display: inline-flex; align-items: center; justify-content: center; }
 
     .cp-reviews { padding: 80px 0; background: #0a0a0a; }

@@ -87,7 +87,7 @@ async function handleAdmin(req, res) {
   // sign-in. The admin secret still works for scripts.
   if (!requireAdmin(req, body)) {
     const staff = sameOrigin(req) ? await staffPrincipal(req, await getJfpConfig()) : null
-    if (!staff) return fail(res, 401, 'Sign in to the JFP portal as Lee or Ligia.')
+    if (!staff) return fail(res, 401, 'Sign in to the Joner Football Portal as Lee or Ligia.')
     // A coach is signed in, but holiday training is Lee and Ligia's.
     if (staff.role !== 'admin') return fail(res, 403, 'Not allowed.')
   }

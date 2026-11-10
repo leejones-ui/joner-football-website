@@ -146,6 +146,23 @@ function redis(cmd) {
         store.delete(key)
         return e.value
       }
+      if (script.includes("ARGV[6] ~= '1'")) {
+        // Camp hold (api/_camp-store.js): every chosen day at once, or none.
+        const n = Number(args[1]); const keys = args.slice(2, 2 + n)
+        const [now, score, id, want, cap, force] = args.slice(2 + n)
+        for (const [k, key] of keys.entries()) {
+          const z = zset(key)
+          for (const [m, sc] of z) if (sc <= Number(now)) z.delete(m)
+          const own = [...z.keys()].filter((m) => m.startsWith(`${id}#`)).length
+          if (force !== '1' && z.size - own + Number(want) > Number(cap)) return k + 1
+        }
+        for (const key of keys) {
+          const z = zset(key)
+          for (const m of [...z.keys()]) if (m.startsWith(`${id}#`)) z.delete(m)
+          for (let i = 1; i <= Number(want); i++) z.set(`${id}#${i}`, Number(score))
+        }
+        return 0
+      }
       if (script.includes("ARGV[5] .. '#' .. i")) {
         // JFP hold: counted places, resized atomically for the same booking
         const [, , key, now, available, want, expiry, id] = args
@@ -821,7 +838,7 @@ function shimRes(res) {
 }
 
 const handlers = {}
-for (const name of ['holiday-access', 'holiday-slots', 'holiday-book', 'holiday-confirm', 'holiday-payment-webhook', 'holiday-admin', 'jfp-access', 'jfp-groups', 'jfp-book', 'jfp-confirm', 'jfp-auth', 'jfp-account', 'jfp-portal-data', 'jfp-messages', 'jfp-messages-relay', 'jfp-pay', 'jfp-invoice', 'jfp-admin', 'juniors-info', 'juniors-registration', 'juniors-payment-webhook']) {
+for (const name of ['holiday-access', 'holiday-slots', 'holiday-book', 'holiday-confirm', 'holiday-payment-webhook', 'holiday-admin', 'jfp-access', 'jfp-groups', 'jfp-book', 'jfp-confirm', 'jfp-auth', 'jfp-account', 'jfp-portal-data', 'jfp-messages', 'jfp-messages-relay', 'jfp-pay', 'jfp-invoice', 'jfp-admin', 'juniors-info', 'juniors-registration', 'juniors-payment-webhook', 'camp-book']) {
   handlers[name] = (await import(`../api/${name}.js`)).default
 }
 

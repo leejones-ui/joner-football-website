@@ -1393,3 +1393,46 @@ a.sr-only[href="#main-content"]:focus { position: fixed !important; top: 16px; l
 .jm-latest-sum { margin: 0 0 6px; color: var(--j-ink-2); }
 .jm-latest .jm-hist li span { overflow-wrap: anywhere; }
 .jm-latest .j-chips { flex-wrap: wrap; overflow: visible; }
+
+/* Camps (Lee, 10 Nov 2026): camp sign-ups, places per day, the day list. Scoped .cs-*. */
+.cs-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 14px; }
+.cs-name { font-size: 15px; }
+.cs-links { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+.cs-days { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 12px; margin: 0 0 16px; }
+.cs-day { border: 1px solid var(--j-line); border-radius: 12px; background: var(--j-surface); padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+.cs-lbl { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--ps-text-2); }
+.cs-big { margin: 0; font-size: 28px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.cs-big small { font-size: 14px; font-weight: 600; color: var(--ps-text-2); }
+.cs-meter { height: 6px; border-radius: 99px; background: var(--j-surface-2, rgba(127,127,127,.15)); overflow: hidden; }
+.cs-meter i { display: block; height: 100%; background: var(--j-red, #E8000D); border-radius: 99px; }
+.cs-note { margin: auto 0 0; font-size: 13px; color: var(--ps-text-2); }
+.cs-seg { margin: 0 0 14px; }
+.cs-flag { color: var(--j-red, #E8000D); font-weight: 650; }
+.cs-check { display: inline-flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.cs-player { border-top: 1px solid var(--j-line); padding: 10px 0 6px; }
+.cs-player .cs-lbl { margin-bottom: 6px; }
+.cs-kv { display: grid; grid-template-columns: minmax(110px, 34%) minmax(0, 1fr); gap: 10px; padding: 4px 0; font-size: 14px; }
+.cs-kv span { color: var(--ps-text-2); }
+.cs-kv b { font-weight: 600; overflow-wrap: anywhere; }
+.cs-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 14px; }
+.cs-danger { color: var(--j-red, #E8000D) !important; }
+.cs-fs { border: 1px solid var(--j-line); border-radius: 10px; padding: 8px 12px 12px; margin: 0 0 10px; }
+.cs-fs legend { font-size: 13px; font-weight: 700; padding: 0 4px; }
+.cs-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 8px 12px; margin-bottom: 8px; }
+.cs-grid label, .cs-fs > label { display: block; }
+.cs-daypick { display: flex; gap: 8px 16px; flex-wrap: wrap; margin: 0 0 12px; }
+.cs-tick { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 14px; }
+.cs-tick small { color: var(--ps-text-2); }
+@media (max-width: 760px) {
+  .cs-links { margin-left: 0; width: 100%; }
+  .cs-big { font-size: 24px; }
+  .cs-days { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .cs-day { padding: 12px; }
+  .cs-day:nth-child(odd):last-child { grid-column: 1 / -1; }
+  .cs-daylist td.ps-end.ps-keep { display: block; grid-column: 1 / -1; text-align: left; }
+  .cs-check { justify-content: flex-start; }
+}
+@media print {
+  .jp-sidebar, .jp-topbar, header.jp-top, .ps-head, .cs-bar, .cs-days, .cs-seg, .ps-tools, #nav, .jp-nav { display: none !important; }
+  .cs-daylist { font-size: 11px; }
+}

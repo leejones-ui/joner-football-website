@@ -1,0 +1,622 @@
+---
+// Christmas Drop and Shop Camp (Lee, 10 Nov 2026). Families book a place per
+// day, pay with Stripe, get every detail by email, and Lee and Ligia manage
+// it all in the Joner Football Portal (Camps). The live parts (places left,
+// prices, venue) come from /api/camp-book; the text below is what shows
+// before that answers. The server's copy is XMAS_2026 in api/_camp-store.js.
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import { faqSchema, breadcrumbSchema } from '../../lib/seoSchema'
+
+const SLUG = 'christmas-drop-and-shop'
+const url = `https://jonerfootball.com/camps/${SLUG}/`
+const days = [
+  { id: 'mon', label: 'Monday 21 December', short: 'Mon 21 Dec', date: '2026-12-21' },
+  { id: 'tue', label: 'Tuesday 22 December', short: 'Tue 22 Dec', date: '2026-12-22' },
+]
+const CAP = 72
+const jerseySizes = ['Youth XS (4 to 6)', 'Youth S (6 to 8)', 'Youth M (8 to 10)', 'Youth L (10 to 12)', 'Youth XL (12 to 14)', 'Adult S', 'Adult M', 'Adult L', 'Adult XL']
+const heardAbout = ['Instagram', 'Facebook', 'Google', 'YouTube', 'Email', 'Friend / word of mouth', 'Previous Joner player', 'JFP family', 'Coach / club', 'Other']
+
+const faqs = [
+  { q: 'What is a drop and shop camp?', a: 'Drop your player with our coaches at 9am, go and get the Christmas shopping done, and collect them at 12pm. Three hours of proper football coaching while you shop.' },
+  { q: 'Can we book one day or both?', a: 'Either. One day is A$150 per player. Both days are A$250 per player, which saves A$50.' },
+  { q: 'How many players are there?', a: 'We cap it at 72 players a day and split them into small groups by age and ability, each with its own coach.' },
+  { q: 'What ages is it for?', a: 'Boys and girls aged 5 to 14, from first timers to club players.' },
+  { q: 'What do they need to bring?', a: 'Boots and runners, shin pads, a full water bottle, a hat and sunscreen, and a small snack. Everything is in the confirmation email.' },
+  { q: 'What if we need to cancel?', a: 'Email us. Cancel 14 days or more before camp for a refund, less the card fee. Inside 14 days we cannot refund.' },
+]
+const schema = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Event',
+    name: 'Joner Football Christmas Drop and Shop Camp',
+    description: 'Two football mornings for players aged 5 to 14 in Sydney, 21 and 22 December 2026, 9am to 12pm. Book one day or both.',
+    startDate: '2026-12-21T09:00:00+11:00',
+    endDate: '2026-12-22T12:00:00+11:00',
+    eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+    eventStatus: 'https://schema.org/EventScheduled',
+    location: { '@type': 'Place', name: 'Sydney', address: { '@type': 'PostalAddress', addressLocality: 'Sydney', addressRegion: 'NSW', addressCountry: 'AU' } },
+    image: ['https://jonerfootball.com/images/camps/sydney-2026/photos/rydalmere-camp-running.jpg'],
+    organizer: { '@type': 'Organization', name: 'Joner Football', url: 'https://jonerfootball.com' },
+    offers: [
+      { '@type': 'Offer', name: 'One day', price: '150', priceCurrency: 'AUD', availability: 'https://schema.org/LimitedAvailability', url, validFrom: '2026-11-10' },
+      { '@type': 'Offer', name: 'Both days', price: '250', priceCurrency: 'AUD', availability: 'https://schema.org/LimitedAvailability', url, validFrom: '2026-11-10' },
+    ],
+    maximumAttendeeCapacity: CAP,
+  },
+  breadcrumbSchema([
+    { name: 'Home', url: 'https://jonerfootball.com/' },
+    { name: 'Football Camps', url: 'https://jonerfootball.com/camps/' },
+    { name: 'Christmas Drop and Shop Camp', url },
+  ]),
+  faqSchema(faqs),
+]
+---
+
+<BaseLayout
+  title="Christmas Drop and Shop Football Camp, Sydney | Joner Football"
+  description="Two football mornings, 21 and 22 December, 9am to 12pm. Drop them with our coaches and go shopping. Ages 5 to 14. 72 places a day."
+  canonical={url}
+  ogImage="https://jonerfootball.com/images/camps/sydney-2026/photos/rydalmere-camp-running.jpg"
+  schema={schema}
+  hideFooterSignup
+>
+  <Fragment slot="head">
+    <link rel="preload" as="image" href="/images/camps/sydney-2026/photos/rydalmere-camp-running.jpg" fetchpriority="high" />
+  </Fragment>
+
+  <main class="xc" id="xc" data-slug={SLUG}>
+    <!-- Paid: shown when Stripe sends the family back -->
+    <section class="xc-done" id="xc-done" hidden aria-live="polite">
+      <div class="xc-wrap">
+        <p class="xc-kick">Christmas Drop and Shop</p>
+        <h1 class="xc-h1" id="xc-done-h">Checking your payment<span>.</span></h1>
+        <p class="xc-lead" id="xc-done-p">One moment while Stripe confirms it.</p>
+        <div class="xc-done-card" id="xc-done-card" hidden></div>
+        <a class="xc-btn xc-btn-line" href={`/camps/${SLUG}/#book`} id="xc-again" hidden>Book another player</a>
+      </div>
+    </section>
+
+    <section class="xc-hero">
+      <img class="xc-hero-img" src="/images/camps/sydney-2026/photos/rydalmere-camp-running.jpg" alt="Players running out at a Joner Football camp in Sydney" width="1280" height="854" fetchpriority="high" />
+      <div class="xc-hero-shade" aria-hidden="true"></div>
+      <div class="xc-wrap xc-hero-in">
+        <p class="xc-eyebrow">Christmas holiday camp · Sydney</p>
+        <h1 class="xc-h1">Drop and <span>shop.</span></h1>
+        <p class="xc-hero-sub">Two football mornings, 21 and 22 December, 9am to 12pm. Drop them with our coaches, get the Christmas shopping done, collect a happy, tired footballer.</p>
+        <div class="xc-live" id="xc-live">
+          {days.map((d) => (
+            <div class="xc-live-day" data-live={d.id}>
+              <span class="xc-live-lbl">{d.short}</span>
+              <span class="xc-live-n"><b data-left>{CAP}</b> places left</span>
+              <span class="xc-live-bar" aria-hidden="true"><i data-bar style="width:0%"></i></span>
+            </div>
+          ))}
+        </div>
+        <div class="xc-hero-cta">
+          <a href="#book" class="xc-btn">Book a place</a>
+          <span class="xc-from">From A$150 · 72 places a day</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="xc-facts" aria-label="Camp details">
+      <div class="xc-wrap xc-facts-grid">
+        <div><span>When</span><b>Mon 21 and Tue 22 Dec</b></div>
+        <div><span>Times</span><b>9am to 12pm</b><small>Drop off from 8:45am</small></div>
+        <div><span>Ages</span><b data-camp="ages">5 to 14</b><small>Boys and girls</small></div>
+        <div><span>Where</span><b data-camp="where">Sydney</b><small data-camp="address">Venue confirmed by email</small></div>
+      </div>
+    </section>
+
+    <section class="xc-how">
+      <div class="xc-wrap">
+        <p class="xc-kick">How it works</p>
+        <h2 class="xc-h2">Three hours. Zero stress.</h2>
+        <ol class="xc-steps">
+          <li><b>8:45am</b><span>Drop off. Sign in with a coach and you are free to go.</span></li>
+          <li><b>9am to 12pm</b><span>Ball mastery, 1v1s, finishing and games, in small groups by age and ability.</span></li>
+          <li><b>12pm</b><span>Collect them from the same spot. We only hand players to the people you name.</span></li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="xc-split">
+      <div class="xc-wrap xc-split-grid">
+        <img src="/images/camps/christmas-2026/lee-coaching.webp" alt="Lee Jones coaching a group of players at a Joner Football camp" width="1200" height="801" loading="lazy" />
+        <div>
+          <p class="xc-kick">Proper coaching</p>
+          <h2 class="xc-h2">Not a babysitting camp.</h2>
+          <p class="xc-p">The same coaching millions of players follow online, live on the pitch. Every group has its own coach, so first timers get looked after and club players get pushed.</p>
+          <ul class="xc-ticks">
+            <li>Small groups by age and ability</li>
+            <li>Coached by Lee Jones and the Joner Football team</li>
+            <li>First timers looked after, club players pushed</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="xc-price">
+      <div class="xc-wrap">
+        <p class="xc-kick">Price per player</p>
+        <h2 class="xc-h2">One day or both.</h2>
+        <div class="xc-price-grid">
+          <div class="xc-price-card"><span>One day</span><b data-price="one">A$150</b><small>Monday or Tuesday</small></div>
+          <div class="xc-price-card is-best"><em>Best value</em><span>Both days</span><b data-price="all">A$250</b><small data-price="save">Save A$50</small></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="xc-book" id="book">
+      <div class="xc-wrap xc-book-wrap">
+        <p class="xc-kick">Book a place</p>
+        <h2 class="xc-h2">Lock in your spot.</h2>
+        <p class="xc-p">Only {CAP} places a day. Your place is held while you pay, and the confirmation email has everything for the day.</p>
+        <div class="xc-banner" id="xc-banner" role="status" hidden></div>
+
+        <form id="xc-form" novalidate>
+          <fieldset class="xc-step">
+            <legend><i>1</i> Which days?</legend>
+            <div class="xc-days" role="radiogroup" aria-label="Days">
+              {days.map((d) => (
+                <label class="xc-day" data-dayopt={d.id}>
+                  <input type="radio" name="days" value={d.id} />
+                  <span class="xc-day-name">{d.label}</span>
+                  <span class="xc-day-price" data-p1>A$150</span>
+                  <span class="xc-day-left" data-dleft>{CAP} places left</span>
+                </label>
+              ))}
+              <label class="xc-day is-best" data-dayopt="all">
+                <input type="radio" name="days" value="all" checked />
+                <span class="xc-day-name">Both days <em>Best value</em></span>
+                <span class="xc-day-price" data-pall>A$250</span>
+                <span class="xc-day-left" data-dleft-all>Save A$50</span>
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset class="xc-step">
+            <legend><i>2</i> Players</legend>
+            <div id="xc-players"></div>
+            <button type="button" class="xc-btn xc-btn-line xc-btn-sm" id="xc-add">+ Add a brother or sister</button>
+          </fieldset>
+
+          <fieldset class="xc-step">
+            <legend><i>3</i> Parent and pick up</legend>
+            <div class="xc-grid">
+              <label class="xc-f"><span>Parent or guardian name *</span><input name="parentName" autocomplete="name" required /></label>
+              <label class="xc-f"><span>Email *</span><input name="email" type="email" autocomplete="email" inputmode="email" required id="xc-email" /></label>
+              <label class="xc-f"><span>Mobile *</span><input name="mobile" type="tel" autocomplete="tel" inputmode="tel" required /></label>
+              <label class="xc-f"><span>Who is collecting? (if not you)</span><input name="pickup" placeholder="Name and how they know the player" /></label>
+              <label class="xc-f"><span>Emergency contact name *</span><input name="emergencyName" required /></label>
+              <label class="xc-f"><span>Emergency contact mobile *</span><input name="emergencyMobile" type="tel" inputmode="tel" required /></label>
+              <label class="xc-f"><span>Where did you hear about the camp? *</span><select name="heardAbout" required><option value="">Select</option>{heardAbout.map((h) => <option>{h}</option>)}</select></label>
+            </div>
+            <label class="xc-f"><span>Anything else we should know?</span><textarea name="extraInfo" rows="3"></textarea></label>
+          </fieldset>
+
+          <div class="xc-pay">
+            <label class="xc-agree"><input type="checkbox" name="agreement" required /> <span>I agree to the <a href="/terms" target="_blank" rel="noopener">terms</a>, give permission for my child to take part, and understand refunds are only given for cancellations 14 days or more before camp.</span></label>
+            <div class="xc-total"><span id="xc-sum">1 player · both days</span><b id="xc-total">A$250</b></div>
+            <p class="xc-err" id="xc-err" role="alert"></p>
+            <button type="submit" class="xc-btn xc-btn-block" id="xc-submit">Pay A$250 with Stripe</button>
+            <p class="xc-small">Secure payment by Stripe. Card, Apple Pay and Google Pay.</p>
+          </div>
+        </form>
+
+        <div class="xc-wait" id="xc-wait" hidden>
+          <h3>That day is full.</h3>
+          <p class="xc-p">Leave your details and we will call you first if a place opens.</p>
+          <form id="xc-wait-form" novalidate class="xc-grid">
+            <label class="xc-f"><span>Your name *</span><input name="parentName" required /></label>
+            <label class="xc-f"><span>Email *</span><input name="email" type="email" required /></label>
+            <label class="xc-f"><span>Mobile *</span><input name="mobile" type="tel" required /></label>
+            <label class="xc-f"><span>Players and ages</span><input name="players" placeholder="Sam (9), Ella (7)" /></label>
+            <button type="submit" class="xc-btn">Join the waitlist</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <section class="xc-bring">
+      <div class="xc-wrap xc-split-grid">
+        <div>
+          <p class="xc-kick">What to bring</p>
+          <h2 class="xc-h2">Pack the night before.</h2>
+          <ul class="xc-ticks" id="xc-bring">
+            <li>Football boots and runners</li>
+            <li>Shin pads</li>
+            <li>A full water bottle</li>
+            <li>Hat and sunscreen on before drop off</li>
+            <li>A small snack for the break</li>
+          </ul>
+        </div>
+        <div class="xc-faq">
+          <p class="xc-kick">Questions</p>
+          {faqs.map((f) => (
+            <details><summary>{f.q}</summary><p>{f.a}</p></details>
+          ))}
+          <p class="xc-small">Anything else: <a href="mailto:ligia@jonerfootball.com">ligia@jonerfootball.com</a></p>
+        </div>
+      </div>
+    </section>
+
+    <div class="xc-sticky" id="xc-sticky" hidden>
+      <span id="xc-sticky-t">72 places a day</span>
+      <a href="#book" class="xc-btn xc-btn-sm">Book a place</a>
+    </div>
+  </main>
+
+  <template id="xc-player-tpl">
+    <div class="xc-player">
+      <div class="xc-player-head"><b>Player <span data-n>1</span></b><button type="button" class="xc-link" data-remove>Remove</button></div>
+      <div class="xc-grid">
+        <label class="xc-f"><span>First name *</span><input data-f="firstName" autocomplete="off" required /></label>
+        <label class="xc-f"><span>Surname *</span><input data-f="surname" autocomplete="off" required /></label>
+        <label class="xc-f"><span>Age *</span><input data-f="age" inputmode="numeric" maxlength="2" required /></label>
+        <label class="xc-f"><span>Jersey size *</span><select data-f="jerseySize" required><option value="">Select size</option>{jerseySizes.map((s) => <option>{s}</option>)}</select></label>
+        <label class="xc-f"><span>Done a Joner camp before? *</span><select data-f="previousCamp" required><option value="">Select</option><option>Yes</option><option>No</option></select></label>
+        <label class="xc-f"><span>Current club / level</span><input data-f="clubLevel" placeholder="e.g. Forest Rangers U10" /></label>
+      </div>
+      <label class="xc-f"><span>Medical notes (allergies, asthma, anything we should know)</span><input data-f="medical" /></label>
+    </div>
+  </template>
+
+  <style is:global>
+    .xc { --red: #E8000D; --ink: #0a0a0a; --mute: #5c5c5c; --line: #e4e4e4; --soft: #f5f5f5; --display: var(--font-heading, Anton, Impact, sans-serif); background: #fff; color: var(--ink); overflow-x: clip; }
+    .xc-wrap { width: min(1120px, calc(100% - 32px)); margin: 0 auto; }
+    .xc-kick, .xc-eyebrow { margin: 0 0 10px; font-family: var(--display); font-style: italic; font-size: 13px; letter-spacing: .18em; text-transform: uppercase; color: var(--red); }
+    .xc-eyebrow { color: #fff; }
+    .xc-h1 { margin: 0; font-family: var(--display); font-style: italic; text-transform: uppercase; font-size: clamp(3rem, 12vw, 7rem); line-height: .9; }
+    .xc-h1 span { color: var(--red); }
+    .xc-h2 { margin: 0 0 14px; font-family: var(--display); font-style: italic; text-transform: uppercase; font-size: clamp(2rem, 6vw, 3.2rem); line-height: .98; }
+    .xc-p, .xc-lead { margin: 0 0 16px; font-size: 17px; line-height: 1.6; color: var(--mute); max-width: 620px; }
+    .xc-small { margin: 10px 0 0; font-size: 13px; color: var(--mute); }
+    .xc-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 52px; padding: 0 26px; border-radius: 10px; border: 2px solid var(--red); background: var(--red); color: #fff !important; font-weight: 800; font-size: 16px; text-decoration: none; cursor: pointer; transition: transform .15s, background .15s; }
+    .xc-btn:hover { background: #c4000b; border-color: #c4000b; }
+    .xc-btn:active { transform: scale(.98); }
+    .xc-btn:disabled { opacity: .6; cursor: wait; }
+    .xc-btn-line { background: transparent; color: var(--ink) !important; border-color: var(--ink); }
+    .xc-btn-line:hover { background: var(--ink); color: #fff !important; border-color: var(--ink); }
+    .xc-btn-sm { min-height: 44px; padding: 0 18px; font-size: 15px; }
+    .xc-btn-block { width: 100%; }
+    .xc-link { background: none; border: 0; color: var(--red); font-weight: 700; cursor: pointer; padding: 10px 0; min-height: 44px; font-size: 14px; }
+
+    .xc-hero { position: relative; min-height: min(88dvh, 820px); display: flex; align-items: flex-end; padding: 110px 0 40px; color: #fff; background: #000; }
+    .xc-hero-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 60%; }
+    .xc-hero-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.35) 0%, rgba(0,0,0,.25) 35%, rgba(0,0,0,.92) 100%); }
+    .xc-hero-in { position: relative; }
+    .xc-hero-sub { margin: 18px 0 0; max-width: 560px; font-size: 18px; line-height: 1.55; color: rgba(255,255,255,.9); }
+    .xc-live { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 24px 0 0; max-width: 520px; }
+    .xc-live-day { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: 12px; background: rgba(255,255,255,.1); backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,.18); }
+    .xc-live-lbl { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.75); }
+    .xc-live-n { font-size: 15px; } .xc-live-n b { font-size: 22px; font-variant-numeric: tabular-nums; }
+    .xc-live-day.is-low .xc-live-n b, .xc-live-day.is-full .xc-live-n b { color: #ff5a5f; }
+    .xc-live-bar { height: 5px; border-radius: 99px; background: rgba(255,255,255,.2); overflow: hidden; }
+    .xc-live-bar i { display: block; height: 100%; background: var(--red); border-radius: 99px; transition: width .8s cubic-bezier(.22,1,.36,1); }
+    .xc-hero-cta { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 24px; }
+    .xc-from { font-size: 15px; font-weight: 600; color: rgba(255,255,255,.85); }
+
+    .xc-facts { background: var(--ink); color: #fff; padding: 18px 0; }
+    .xc-facts-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+    .xc-facts-grid div { display: flex; flex-direction: column; gap: 2px; }
+    .xc-facts-grid span { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--red); }
+    .xc-facts-grid b { font-size: 16px; }
+    .xc-facts-grid small { font-size: 13px; color: rgba(255,255,255,.65); }
+
+    .xc-how, .xc-split, .xc-price, .xc-book, .xc-bring { padding: 64px 0; }
+    .xc-how { background: var(--soft); }
+    .xc-steps { list-style: none; margin: 24px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; counter-reset: s; }
+    .xc-steps li { background: #fff; border-radius: 14px; padding: 20px; border-top: 4px solid var(--red); display: flex; flex-direction: column; gap: 6px; }
+    .xc-steps b { font-family: var(--display); font-style: italic; font-size: 26px; text-transform: uppercase; }
+    .xc-steps span { color: var(--mute); line-height: 1.5; }
+    .xc-split-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; align-items: center; }
+    .xc-split img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 16px; }
+    .xc-ticks { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+    .xc-ticks li { position: relative; padding-left: 30px; font-weight: 600; line-height: 1.45; }
+    .xc-ticks li::before { content: ''; position: absolute; left: 0; top: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--red) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5'%3E%3Cpath d='M5 12l5 5 9-10'/%3E%3C/svg%3E") center / 12px no-repeat; }
+
+    .xc-price { background: var(--soft); }
+    .xc-price-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; max-width: 640px; margin-top: 20px; }
+    .xc-price-card { position: relative; background: #fff; border: 2px solid var(--line); border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 4px; }
+    .xc-price-card.is-best { border-color: var(--red); }
+    .xc-price-card em { position: absolute; top: -12px; left: 18px; background: var(--red); color: #fff; font-style: normal; font-size: 12px; font-weight: 800; padding: 3px 10px; border-radius: 99px; text-transform: uppercase; letter-spacing: .06em; }
+    .xc-price-card span { font-weight: 800; font-size: 15px; text-transform: uppercase; letter-spacing: .04em; color: var(--mute); }
+    .xc-price-card b { font-family: var(--display); font-style: italic; font-size: 46px; line-height: 1; }
+    .xc-price-card small { color: var(--mute); font-size: 14px; }
+
+    .xc-book-wrap { max-width: 760px; }
+    .xc-banner { margin: 0 0 16px; padding: 14px 16px; border-radius: 12px; background: #fff4e5; border: 1px solid #ffd59e; font-weight: 600; }
+    .xc-step { border: 0; margin: 0 0 28px; padding: 0; min-width: 0; }
+    .xc-step legend { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-style: italic; text-transform: uppercase; font-size: 24px; margin-bottom: 14px; padding: 0; }
+    .xc-step legend i { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--red); color: #fff; font-style: normal; font-family: inherit; font-size: 16px; }
+    .xc-days { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .xc-day { position: relative; display: flex; flex-direction: column; gap: 4px; padding: 16px; border: 2px solid var(--line); border-radius: 14px; cursor: pointer; background: #fff; transition: border-color .15s, box-shadow .15s; min-height: 108px; }
+    .xc-day input { position: absolute; opacity: 0; pointer-events: none; }
+    .xc-day:has(input:checked) { border-color: var(--red); box-shadow: 0 0 0 3px rgba(232,0,13,.12); }
+    .xc-day:has(input:focus-visible) { outline: 3px solid #6da7ec; outline-offset: 2px; }
+    .xc-day.is-full { opacity: .55; cursor: not-allowed; }
+    .xc-day-name { font-weight: 800; font-size: 16px; }
+    .xc-day-name em { display: inline-block; margin-left: 4px; background: var(--red); color: #fff; font-style: normal; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 99px; text-transform: uppercase; vertical-align: 2px; }
+    .xc-day-price { font-family: var(--display); font-style: italic; font-size: 28px; line-height: 1; }
+    .xc-day-left { margin-top: auto; font-size: 13px; color: var(--mute); font-weight: 600; }
+    .xc-day.is-low .xc-day-left, .xc-day.is-full .xc-day-left { color: var(--red); }
+    .xc-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; }
+    .xc-f { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; min-width: 0; }
+    .xc-grid .xc-f { margin-bottom: 0; }
+    .xc-grid + .xc-f { margin-top: 12px; }
+    .xc-f > span { font-size: 13px; font-weight: 700; color: var(--ink); }
+    .xc-f input, .xc-f select, .xc-f textarea { width: 100%; min-height: 50px; padding: 12px 14px; border: 1.5px solid #d0d0d0; border-radius: 10px; background: #fff; font: inherit; font-size: 16px; color: var(--ink); }
+    .xc-f textarea { min-height: 90px; resize: vertical; }
+    .xc-f input:focus, .xc-f select:focus, .xc-f textarea:focus { outline: none; border-color: var(--ink); box-shadow: 0 0 0 3px rgba(0,0,0,.08); }
+    .xc-f .is-bad, .xc-f input[aria-invalid="true"], .xc-f select[aria-invalid="true"] { border-color: var(--red); }
+    .xc-player { border: 1.5px solid var(--line); border-radius: 14px; padding: 16px; margin: 0 0 12px; background: #fcfcfc; }
+    .xc-player-head { display: flex; align-items: center; justify-content: space-between; margin: -6px 0 6px; }
+    .xc-player:first-child [data-remove] { display: none; }
+    .xc-pay { border-top: 2px solid var(--ink); padding-top: 20px; }
+    .xc-agree { display: flex; gap: 12px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--mute); margin-bottom: 18px; }
+    .xc-agree input { width: 22px; height: 22px; flex: none; margin-top: 1px; accent-color: var(--red); }
+    .xc-agree a { color: var(--red); font-weight: 700; }
+    .xc-total { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    .xc-total span { color: var(--mute); font-weight: 600; }
+    .xc-total b { font-family: var(--display); font-style: italic; font-size: 38px; }
+    .xc-err { min-height: 20px; margin: 0 0 8px; color: var(--red); font-weight: 700; }
+    .xc-wait { margin-top: 24px; padding: 20px; border-radius: 14px; background: var(--soft); }
+    .xc-wait h3 { margin: 0 0 6px; font-family: var(--display); font-style: italic; text-transform: uppercase; font-size: 24px; }
+
+    .xc-faq details { border-bottom: 1px solid var(--line); }
+    .xc-faq summary { cursor: pointer; padding: 14px 0; font-weight: 800; list-style: none; display: flex; justify-content: space-between; gap: 12px; min-height: 44px; }
+    .xc-faq summary::after { content: '+'; color: var(--red); font-size: 22px; line-height: 1; }
+    .xc-faq details[open] summary::after { content: '−'; }
+    .xc-faq details p { margin: 0 0 14px; color: var(--mute); line-height: 1.55; }
+    .xc-faq a { color: var(--red); font-weight: 700; }
+
+    .xc-done { padding: 120px 0 56px; background: var(--soft); }
+    .xc-done-card { margin: 18px 0; padding: 18px; border-radius: 14px; background: #fff; border: 1px solid var(--line); max-width: 560px; }
+    .xc-done-card div { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+    .xc-done-card div:last-child { border: 0; }
+    .xc-done-card span { color: var(--mute); }
+
+    .xc-sticky { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: rgba(10,10,10,.96); color: #fff; font-weight: 700; font-size: 14px; }
+    .xc-sticky[hidden] { display: none; }
+
+    @media (max-width: 900px) {
+      .xc-facts-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .xc-steps { grid-template-columns: minmax(0, 1fr); }
+      .xc-split-grid { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+    }
+    @media (max-width: 640px) {
+      .xc-hero { min-height: 92dvh; padding: 96px 0 28px; }
+      .xc-hero-sub { font-size: 16px; }
+      .xc-hero-cta .xc-btn { width: 100%; }
+      .xc-how, .xc-split, .xc-price, .xc-book, .xc-bring { padding: 48px 0; }
+      .xc-days { grid-template-columns: minmax(0, 1fr); }
+      .xc-day { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 12px; }
+      .xc-day-name { grid-column: 1; }
+      .xc-day-price { grid-column: 2; grid-row: 1 / span 2; font-size: 26px; }
+      .xc-day-left { grid-column: 1; margin-top: 0; }
+      .xc-grid { grid-template-columns: minmax(0, 1fr); }
+      .xc-price-card b { font-size: 38px; }
+      .xc-price-card { padding: 18px 14px; }
+    }
+    @media (min-width: 641px) { .xc-sticky { display: none !important; } }
+    @media (prefers-reduced-motion: reduce) { .xc-live-bar i, .xc-btn { transition: none; } }
+  </style>
+
+  <script>
+    const root = document.getElementById('xc') as HTMLElement
+    const SLUG = root.dataset.slug as string
+    const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T
+    const aud = (c: number) => `A$${(c / 100) % 1 ? (c / 100).toFixed(2) : c / 100}`
+    let camp: any = null
+    const track = (name: string, data: Record<string, unknown>) => { try { (window as any).JonerTracking?.trackEvent?.(name, { custom_data: data }) } catch {} }
+
+    const form = $('xc-form') as HTMLFormElement
+    // ---------- players ----------
+    const list = $('xc-players')
+    const tpl = $('xc-player-tpl') as HTMLTemplateElement
+    function addPlayer(surname = '') {
+      if (list.children.length >= 6) return
+      const node = tpl.content.firstElementChild!.cloneNode(true) as HTMLElement
+      list.appendChild(node)
+      if (surname) (node.querySelector('[data-f="surname"]') as HTMLInputElement).value = surname
+      node.querySelector('[data-remove]')!.addEventListener('click', () => { node.remove(); number(); total() })
+      number(); total()
+    }
+    function number() { [...list.children].forEach((n, i) => { (n.querySelector('[data-n]') as HTMLElement).textContent = String(i + 1) }); $('xc-add').hidden = list.children.length >= 6 }
+    $('xc-add').addEventListener('click', () => { const first = list.querySelector('[data-f="surname"]') as HTMLInputElement; addPlayer(first?.value || ''); (list.lastElementChild!.querySelector('input') as HTMLInputElement).focus() })
+
+    // ---------- days and total ----------
+    const chosen = () => (form.querySelector('input[name="days"]:checked') as HTMLInputElement)?.value || ''
+    const dayIds = () => { const v = chosen(); return v === 'all' ? (camp?.days || [{ id: 'mon' }, { id: 'tue' }]).map((d: any) => d.id) : v ? [v] : [] }
+    function eachPrice() {
+      const p = camp?.prices || { oneDay: 15000, allDays: 25000 }
+      return chosen() === 'all' ? p.allDays : p.oneDay
+    }
+    function total() {
+      const n = list.children.length
+      const t = eachPrice() * n
+      const what = chosen() === 'all' ? 'both days' : (camp?.days || []).find((d: any) => d.id === chosen())?.short || 'one day'
+      $('xc-sum').textContent = `${n} player${n === 1 ? '' : 's'} · ${what}`
+      $('xc-total').textContent = aud(t)
+      $('xc-submit').textContent = `Pay ${aud(t)} with Stripe`
+      showWait()
+    }
+    form.querySelectorAll('input[name="days"]').forEach((r) => r.addEventListener('change', total))
+    addPlayer()
+
+    // ---------- live places ----------
+    function paint(c: any) {
+      camp = c
+      const low = c.lowAt || 20
+      for (const d of c.days) {
+        const pct = Math.round((d.taken / d.capacity) * 100)
+        const live = root.querySelector(`[data-live="${d.id}"]`) as HTMLElement
+        if (live) {
+          live.querySelector('[data-left]')!.textContent = String(d.left)
+          ;(live.querySelector('[data-bar]') as HTMLElement).style.width = `${Math.max(pct, d.taken ? 3 : 0)}%`
+          live.classList.toggle('is-low', d.left > 0 && d.left <= low)
+          live.classList.toggle('is-full', d.left === 0)
+          if (d.left === 0) live.querySelector('.xc-live-n')!.innerHTML = '<b>Full</b> · waitlist open'
+        }
+        const opt = root.querySelector(`[data-dayopt="${d.id}"]`) as HTMLElement
+        if (opt) {
+          opt.querySelector('[data-p1]')!.textContent = aud(c.prices.oneDay)
+          opt.querySelector('[data-dleft]')!.textContent = d.left === 0 ? 'Full · join the waitlist' : d.left <= low ? `Only ${d.left} place${d.left === 1 ? '' : 's'} left` : `${d.left} places left`
+          opt.classList.toggle('is-low', d.left > 0 && d.left <= low)
+          opt.classList.toggle('is-full', !d.bookable)
+        }
+      }
+      const all = root.querySelector('[data-dayopt="all"]') as HTMLElement
+      all.querySelector('[data-pall]')!.textContent = aud(c.prices.allDays)
+      all.querySelector('[data-dleft-all]')!.textContent = c.prices.save ? `Save ${aud(c.prices.save)}` : ''
+      all.classList.toggle('is-full', c.days.some((d: any) => !d.bookable))
+      root.querySelectorAll('[data-price="one"]').forEach((e) => { e.textContent = aud(c.prices.oneDay) })
+      root.querySelectorAll('[data-price="all"]').forEach((e) => { e.textContent = aud(c.prices.allDays) })
+      root.querySelectorAll('[data-price="save"]').forEach((e) => { e.textContent = c.prices.save ? `Save ${aud(c.prices.save)}` : 'Every day' })
+      if (c.ages) root.querySelector('[data-camp="ages"]')!.textContent = c.ages.replace(/^Ages\s*/i, '')
+      if (c.location) { root.querySelector('[data-camp="where"]')!.textContent = c.location; root.querySelector('[data-camp="address"]')!.textContent = c.address || '' }
+      if (Array.isArray(c.bring) && c.bring.length) $('xc-bring').innerHTML = c.bring.map((b: string) => `<li>${b.replace(/[<>&]/g, '')}</li>`).join('')
+      const lefts = c.days.filter((d: any) => !d.past).map((d: any) => d.left)
+      const min = lefts.length ? Math.min(...lefts) : 0
+      $('xc-sticky-t').textContent = min === 0 ? 'Some days full · waitlist open' : min <= low ? `Only ${min} places left` : 'From A$150 · 72 places a day'
+      if (c.status !== 'open') { form.hidden = true; banner(c.status === 'closed' ? 'Bookings for this camp are closed.' : 'This camp is not taking bookings.') }
+      showWait()
+    }
+    function showWait() {
+      if (!camp) return
+      const ids = dayIds()
+      const full = ids.some((id: string) => !camp.days.find((d: any) => d.id === id)?.bookable)
+      $('xc-wait').hidden = !full
+      ;($('xc-submit') as HTMLButtonElement).disabled = full
+    }
+    function banner(text: string) { const b = $('xc-banner'); b.textContent = text; b.hidden = !text }
+
+    async function load(extra = '') {
+      try {
+        const r = await fetch(`/api/camp-book?camp=${SLUG}${extra}`, { cache: 'no-store' })
+        const d = await r.json()
+        if (d?.camp) paint(d.camp)
+        return d
+      } catch { return null }
+    }
+
+    // ---------- back from Stripe ----------
+    const qs = new URLSearchParams(location.search)
+    async function paidFlow() {
+      const id = qs.get('booked') || '', sid = qs.get('session_id') || ''
+      $('xc-done').hidden = false
+      window.scrollTo(0, 0)
+      for (let i = 0; i < 12; i++) {
+        const d = await load(`&booked=${encodeURIComponent(id)}&session_id=${encodeURIComponent(sid)}`)
+        const b = d?.booking
+        if (b?.status === 'paid') {
+          $('xc-done-h').innerHTML = `You're booked in<span>.</span>`
+          $('xc-done-p').textContent = `Check your inbox: everything for the day is on its way. Booking ${b.id}.`
+          const card = $('xc-done-card')
+          card.innerHTML = `<div><span>Player${b.players.length > 1 ? 's' : ''}</span><b>${b.players.join(', ').replace(/[<>&]/g, '')}</b></div><div><span>Days</span><b>${b.days}</b></div><div><span>Paid</span><b>${b.paid}</b></div>`
+          card.hidden = false
+          $('xc-again').hidden = false
+          const k = `xc-purchase-${b.id}`
+          try { if (!sessionStorage.getItem(k)) { sessionStorage.setItem(k, '1'); track('Purchase', { value: b.amount, currency: 'AUD', content_name: 'Christmas Drop and Shop Camp', content_ids: [b.id] }) } } catch {}
+          history.replaceState(null, '', location.pathname)
+          return
+        }
+        if (b?.status === 'unpaid' || b?.status === 'unknown' || b?.status === 'cancelled') break
+        await new Promise((r) => setTimeout(r, 2500))
+      }
+      $('xc-done-h').innerHTML = `Nearly there<span>.</span>`
+      $('xc-done-p').textContent = 'We could not confirm the payment yet. If you paid, the confirmation email will arrive shortly. If not, book again below or email ligia@jonerfootball.com.'
+    }
+    async function cancelledFlow() {
+      try {
+        const r = await fetch('/api/camp-book', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'release', id: qs.get('cancelled'), t: qs.get('t') }) })
+        const d = await r.json()
+        if (d.state === 'paid' || d.state === 'confirming') banner('Your payment went through, you are booked in. Check your email.')
+        else banner('Payment not finished, so your places were let go. You can book again below.')
+      } catch {}
+      history.replaceState(null, '', location.pathname + '#book')
+      load()
+    }
+    if (qs.get('booked') && qs.get('session_id')) paidFlow()
+    else if (qs.get('cancelled')) cancelledFlow()
+    else load()
+    track('ViewContent', { content_name: 'Christmas Drop and Shop Camp', content_category: 'camp' })
+
+    // ---------- submit ----------
+    const email = $('xc-email') as HTMLInputElement
+    try { (window as any).JonerEmailGuard?.protectEmailInput?.(email) } catch {}
+    function bad(msg: string, el?: Element | null) {
+      $('xc-err').textContent = msg
+      if (el) { (el as HTMLElement).setAttribute('aria-invalid', 'true'); (el as HTMLElement).focus(); (el as HTMLElement).scrollIntoView({ block: 'center', behavior: 'smooth' }) }
+      return false
+    }
+    form.addEventListener('input', (e) => { (e.target as HTMLElement).removeAttribute('aria-invalid'); if ($('xc-err').textContent) $('xc-err').textContent = '' })
+    function check() {
+      if (!dayIds().length) return bad('Choose which days.', form.querySelector('input[name="days"]'))
+      for (const p of list.children) for (const f of p.querySelectorAll('[required]')) if (!(f as HTMLInputElement).value.trim()) return bad('Fill in every player detail marked *.', f)
+      for (const p of list.children) { const a = Number((p.querySelector('[data-f="age"]') as HTMLInputElement).value); if (!a || a < 3 || a > 18) return bad('Enter an age between 3 and 18.', p.querySelector('[data-f="age"]')) }
+      for (const f of form.querySelectorAll('.xc-step:nth-of-type(3) [required]')) if (!(f as HTMLInputElement).value.trim()) return bad('Fill in every parent detail marked *.', f)
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.value.trim())) return bad('Check the email address.', email)
+      const agree = form.querySelector('input[name="agreement"]') as HTMLInputElement
+      if (!agree.checked) return bad('Please tick to accept the terms.', agree)
+      return true
+    }
+    let busy = false
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      if (busy || !check()) return
+      busy = true
+      const btn = $('xc-submit') as HTMLButtonElement
+      btn.disabled = true
+      btn.textContent = 'Holding your places…'
+      const fd = new FormData(form)
+      const players = [...list.children].map((p) => Object.fromEntries([...p.querySelectorAll('[data-f]')].map((f) => [(f as HTMLElement).dataset.f, (f as HTMLInputElement).value.trim()])))
+      const body: Record<string, unknown> = { action: 'book', camp: SLUG, days: dayIds(), players, agreement: fd.get('agreement') === 'on' }
+      for (const k of ['parentName', 'email', 'mobile', 'pickup', 'emergencyName', 'emergencyMobile', 'heardAbout', 'extraInfo']) body[k] = String(fd.get(k) || '').trim()
+      try { body.recaptchaToken = (window as any).JonerRecaptcha ? await (window as any).JonerRecaptcha.getToken('camp_book') : '' } catch {}
+      try {
+        const r = await fetch('/api/camp-book', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+        const d = await r.json().catch(() => ({}))
+        if (r.ok && d.url) {
+          track('InitiateCheckout', { value: (d.totalCents || 0) / 100, currency: 'AUD', content_name: 'Christmas Drop and Shop Camp', num_items: players.length })
+          btn.textContent = 'Opening Stripe…'
+          location.href = d.url
+          return
+        }
+        if (d.camp) paint(d.camp)
+        bad(d.error || 'Something went wrong. Please try again.')
+      } catch { bad('No connection. Check your internet and try again.') }
+      busy = false
+      btn.disabled = false
+      total()
+    })
+
+    // ---------- waitlist ----------
+    const wf = $('xc-wait-form') as HTMLFormElement
+    wf.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const fd = new FormData(wf)
+      const body: Record<string, unknown> = { action: 'waitlist', camp: SLUG, days: dayIds() }
+      for (const k of ['parentName', 'email', 'mobile', 'players']) body[k] = String(fd.get(k) || '').trim()
+      try { body.recaptchaToken = (window as any).JonerRecaptcha ? await (window as any).JonerRecaptcha.getToken('camp_waitlist') : '' } catch {}
+      const btn = wf.querySelector('button') as HTMLButtonElement
+      btn.disabled = true
+      const r = await fetch('/api/camp-book', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).catch(() => null)
+      const d = r ? await r.json().catch(() => ({})) : {}
+      btn.disabled = false
+      if (r?.ok) { wf.innerHTML = '<p class="xc-p"><b>You are on the waitlist.</b> We will call you first if a place opens.</p>'; track('Lead', { content_name: 'Christmas camp waitlist' }) } else alert(d.error || 'Could not save. Please try again.')
+    })
+
+    // ---------- phone: sticky Book bar until the form is on screen ----------
+    const sticky = $('xc-sticky')
+    if ('IntersectionObserver' in window) {
+      const hero = root.querySelector('.xc-hero') as HTMLElement
+      let heroIn = true, bookIn = false
+      const upd = () => { sticky.hidden = heroIn || bookIn || !$('xc-done').hidden }
+      new IntersectionObserver(([e]) => { heroIn = e.isIntersecting; upd() }, { threshold: 0.15 }).observe(hero)
+      new IntersectionObserver(([e]) => { bookIn = e.isIntersecting; upd() }, { threshold: 0 }).observe($('book'))
+    }
+  </script>
+</BaseLayout>

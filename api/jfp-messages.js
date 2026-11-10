@@ -510,7 +510,7 @@ const AGENT_SENDS = new Set(['quickText', 'approve', 'sendCampaign', 'sendGuide'
 async function handle(req, res) {
   res.setHeader('Cache-Control', 'no-store')
   res.setHeader('X-Content-Type-Options', 'nosniff')
-  if (process.env.JFP_PORTAL_ENABLED !== 'true') return fail(res, 503, 'The JFP portal is not open yet.')
+  if (process.env.JFP_PORTAL_ENABLED !== 'true') return fail(res, 503, 'The Joner Football Portal is not open yet.')
   if (req.method !== 'POST') return fail(res, 405, 'Method not allowed')
   if (!sameOrigin(req)) return fail(res, 403, 'Invalid request origin')
   let body

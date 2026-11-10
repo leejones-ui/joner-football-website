@@ -118,7 +118,7 @@ function groupRows(config, group, fromIso = '', product = '') {
 // ---------- sign in ----------
 
 export async function sendSignInCode({ email, code, audience }) {
-  const who = audience === 'staff' ? 'the JFP staff portal' : 'My account'
+  const who = audience === 'staff' ? 'the Joner Football Portal' : 'My account'
   const body = `${p(`Here is your code to sign in to ${who}:`)}
 <p style="margin:8px 0 18px;font-size:34px;letter-spacing:8px;font-weight:800;color:#111827;">${esc(code)}</p>
 ${p('It works once, for 10 minutes. If you did not ask for it, ignore this email.')}`
@@ -467,7 +467,7 @@ export async function sendAttentionAlert({ record, reason, info, config }) {
     ['Amount', esc(formatAud(info.amountCents || 0))],
     ...(info.extra ? [['Players', esc(info.extra)]] : []),
     ['Stripe', info.intentId ? link(info.intentId, `https://dashboard.stripe.com/payments/${info.intentId}`) : esc(info.sessionId)],
-  ])}${p('It is also flagged in the JFP portal under Payments.')}`
+  ])}${p('It is also flagged in the Joner Football Portal under Payments.')}`
   return send({ to: staffTo(config), subject: `JFP payment needs checking: ${record.id}`, html: shell({ heading: 'A payment needs checking', body }) })
 }
 
@@ -546,7 +546,7 @@ ${rows([
     ['Email', esc(first.email)],
     ['Mobile', esc(first.mobile)],
     ['Message', esc(first.message || 'None')],
-  ])}${p('Review them in the JFP portal.')}`
+  ])}${p('Review them in the Joner Football Portal.')}`
   return send({ to: staffTo(config), subject: `JFP ${n} sessions: ${first.players.map((x) => x.name).join(', ')}`, html: shell({ heading: `New requests for ${n} sessions`, body }), replyTo: first.email })
 }
 
@@ -583,7 +583,7 @@ export async function sendRequestAlert({ request, group, config }) {
     ['Email', esc(request.email)],
     ['Mobile', esc(request.mobile)],
     ['Message', esc(request.message || 'None')],
-  ])}${p('Review it in the JFP portal.')}`
+  ])}${p('Review it in the Joner Football Portal.')}`
   return send({ to: staffTo(config), subject: `JFP ${KIND_WORD[request.kind] || 'request'}: ${request.players.map((x) => x.name).join(', ')}, ${group.day} ${group.time}`, html: shell({ heading: `New ${KIND_WORD[request.kind] || 'request'}`, body }), replyTo: request.email })
 }
 
@@ -614,7 +614,7 @@ function cancelBody(rec, { forStaff }) {
     ...(withdrawn ? [] : [['Reason', esc(rec.reason)], ['Note', note], ['Notice given', esc(rec.noticeLabel)]]),
     ...(forStaff ? [[rec.self ? 'Contact' : 'Parent', rec.self ? 'The player (own contact)' : esc(rec.parentName || '')], ['Email', esc(rec.email)], ['Coaches', esc((rec.coachNames || []).join(', ') || 'No coach set')]] : []),
   ]
-  return `${intro}${lateLine}${rows(list)}${forStaff ? p('You can see every cancellation, and how much notice families give, under Cancellations in the JFP portal.') : ''}`
+  return `${intro}${lateLine}${rows(list)}${forStaff ? p('You can see every cancellation, and how much notice families give, under Cancellations in the Joner Football Portal.') : ''}`
 }
 
 function cancelSubject(rec) {

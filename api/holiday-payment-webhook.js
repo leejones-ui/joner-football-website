@@ -13,6 +13,8 @@ import { jjWebhook } from './_jj-pay.js'
 import { jfpIdForCharge, applyJfpRefunds } from './_jfp-refunds.js'
 // Saved card or bank account, auto-charge after each session (claude/card-on-file).
 import { savedPayIntentEvent, savedPaySetupEvent } from './_jfp-saved-pay.js'
+// Camp sign-ups (Lee, 10 Nov 2026): metadata campBookingId, managed in the portal Camps tab.
+import { finaliseCampBooking, expireCampBooking, campBookingIdFromSession } from './_camp-store.js'
 
 export const config = { api: { bodyParser: false } }
 
@@ -105,6 +107,28 @@ export default async function handler(req, res) {
     } catch (error) {
       console.error('jfp saved pay webhook failed', error)
       return res.status(500).json({ success: false, error: 'Saved payment processing failed' })
+    }
+  }
+
+  // Camp sign-ups: the session says which booking it is.
+  const campId = campBookingIdFromSession(session)
+  if (campId) {
+    try {
+      if (type === 'checkout.session.completed' || type === 'checkout.session.async_payment_succeeded') {
+        if (session.payment_status !== 'paid') return res.status(200).json({ success: true, skipped: 'not-paid', campId })
+        const r = await finaliseCampBooking(campId, session)
+        if (r.busy) return res.status(500).json({ success: false, campId, busy: true })
+        return res.status(200).json({ success: true, campId, missing: r.missing === true, verified })
+      }
+      if (type === 'checkout.session.expired' || type === 'checkout.session.async_payment_failed') {
+        if (session.status !== 'expired' && session.payment_status === 'paid') return res.status(200).json({ success: true, skipped: 'paid', campId })
+        const r = await expireCampBooking(campId)
+        return res.status(200).json({ success: true, campId, released: r.changed, verified })
+      }
+      return res.status(200).json({ success: true, ignored: type })
+    } catch (error) {
+      console.error('camp webhook failed', error)
+      return res.status(500).json({ success: false, error: 'Webhook processing failed' })
     }
   }
 

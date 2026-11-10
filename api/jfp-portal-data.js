@@ -70,6 +70,8 @@ import { playerQuote, saveQuote, saveDefaultQuote, addQuote, termRun } from './_
 import { linkProfile, accountsWithNoSession, allAccounts, accountOf } from './_jfp-account-open.js'
 import { removedPlayers, removedMatches, removedPrefill, reasonCounts, removedSource, backNote, markAddedBack } from './_jfp-removed.js'
 import { campsMoneyData, campsStripe } from './_jfp-camps.js'
+// Camp sign-ups (Lee, 10 Nov 2026): the Camps tab, admin only.
+import { CAMP_ACTIONS, campAction } from './_camp-admin.js'
 import { isPeriodId, periodOf as holidayPeriodOf, periodLabel, pickablePeriods, rangeLabel, OTHER, OTHER_LABEL } from './_holiday-periods.js'
 import { allocateTermMoney, collectedOf, venuesForTerm, venuesFromLedger, venuesFromHistory, venueTerms, juniorsByVenue, previousTerm, totalOf, emptyVenue, costsOfTerm, withCosts, costTotals, checkCostLines, costTermOk } from './_jfp-venues.js'
 import { registerChecks, yearsOf, termsOfYear, termFromLive, termFromLedger, termFromRegister, yearSummary } from './_jfp-years.js'
@@ -3673,7 +3675,7 @@ async function detailedPlanAction(res, principal, config, body, isAdmin, action)
 async function handle(req, res) {
   res.setHeader('Cache-Control', 'no-store')
   res.setHeader('X-Content-Type-Options', 'nosniff')
-  if (process.env.JFP_PORTAL_ENABLED !== 'true') return fail(res, 503, 'The JFP portal is not open yet.')
+  if (process.env.JFP_PORTAL_ENABLED !== 'true') return fail(res, 503, 'The Joner Football Portal is not open yet.')
   if (req.method !== 'POST') return fail(res, 405, 'Method not allowed')
   if (!sameOrigin(req)) return fail(res, 403, 'Invalid request origin')
   let body
@@ -4088,6 +4090,7 @@ async function handle(req, res) {
     // Announcements: coaches write their own, Lee or Ligia approves (29 Oct 2026; _jfp-announce.js).
     if (!isAdmin && ANNOUNCE_COACH_ACTIONS.has(action)) return await announceAction(req, res, principal, config, body, action, await listGroups())
     if (!isAdmin) return fail(res, 403, 'Not allowed.')
+    if (CAMP_ACTIONS.has(action)) return await campAction(res, principal, body, action)
     if (MAKEUP_ADMIN_ACTIONS.has(action)) {
       const out = action === 'emergencyCancel' ? await emergencyCancel({ principal, config, body }) : action === 'emergencyUncancel' ? await emergencyUncancel({ principal, body }) : action === 'emergencyEmail' ? await emergencyEmail({ principal, config, body }) : action === 'makeupUpdate' ? await makeupUpdate({ principal, config, body }) : { status: 200, ...(await makeupsList({ config })) }
       const { status, error, ...rest } = out
