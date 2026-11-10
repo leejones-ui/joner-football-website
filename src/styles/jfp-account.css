@@ -1111,3 +1111,11 @@ body:has(.ja[data-theme="light"]) { background: #F5F5F3 !important; }
 .ja-hol-grid { align-items: stretch; }
 .ja-hol-grid .ja-promo { min-height: 280px; height: 100%; }
 .ja-campfacts .ja-row b { white-space: normal; }
+/* Not booked yet: one plain card under the tiles (Lee, 10 Nov 2026). */
+.ja-nobook { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 24px; padding: 20px; margin-top: 14px; }
+.ja-nobook > div:first-child { flex: 1 1 320px; min-width: 0; }
+.ja-nobook .ja-h3 { margin: 4px 0 6px; }
+.ja-nobook .ja-actions { margin: 0; }
+.ja-tiles-sec + .ja-guide { margin-top: 14px; }
+.ja-camp-pop-img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 16px; }
+[data-pane="holidays"] .ja-hero > img { object-position: 50% 12%; }

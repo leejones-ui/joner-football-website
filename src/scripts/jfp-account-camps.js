@@ -7,7 +7,7 @@
 // system (/api/camp-book, the Websites build), so nothing here goes stale.
 // Booking and paying happen on the camp page. Holiday training requests go
 // to Ligia the same way as Contact us.
-import { esc, api, toast, recaptcha } from './jfp-common.js'
+import { esc, api, toast, recaptcha, openSheet, closeSheet } from './jfp-common.js'
 import { ic } from './jfp-account-icons.js'
 import { hero } from './jfp-account-ui.js'
 
@@ -111,7 +111,7 @@ export async function holidayClick(t, D) {
 // ---------- Home: where do you want to go? ----------
 
 // Photo tiles for the things to book, then small tiles for the jobs.
-export function homeTiles(D, { booked, bookUrl, owing, gaps, unsigned, solo, newExtra = 0, newHoliday = 0 }) {
+export function homeTiles(D, { booked, bookUrl, owing, gaps, unsigned, reports, solo, newExtra = 0, newHoliday = 0 }) {
   const big = (o) => {
     const inner = `<span class="ph"><img src="${esc(o.img)}" alt="" loading="lazy">${o.badge ? `<span class="ja-tile-badge">${esc(o.badge)}</span>` : ''}</span><span class="tx"><b>${esc(o.title)}</b><small>${esc(o.sub)}</small></span><span class="go" aria-hidden="true">${ic('arrow')}</span>`
     return o.href ? `<a class="ja-tile" href="${esc(o.href)}">${inner}</a>` : `<button type="button" class="ja-tile" data-go="${o.go}">${inner}</button>`
@@ -119,22 +119,46 @@ export function homeTiles(D, { booked, bookUrl, owing, gaps, unsigned, solo, new
   const small = (o) => `<button type="button" class="ja-tile-sm" data-go="${o.go}">${ic(o.icon)}<b>${esc(o.title)}</b>${o.dot ? '<span class="dot" aria-label="Needs attention"></span>' : ''}${ic('right', 'ja-mr-go')}</button>`
   const camp = campOpen(CAMP)
   const bigs = [
-    booked ? { go: 'sessions', img: `${IMG}/ntra-field-900x1100.webp`, title: 'My sessions', sub: 'Dates, times and where to be' } : { href: bookUrl, img: `${IMG}/ntra-field-900x1100.webp`, title: 'Book a session', sub: 'Pick a group on the timetable' },
+    booked ? { go: 'sessions', img: `${IMG}/lee-ball-900.webp`, title: 'My sessions', sub: 'Dates, times and where to be' } : { href: bookUrl, img: `${IMG}/lee-ball-900.webp`, title: 'Book a session', sub: 'Pick a group on the timetable' },
     { go: 'extra', img: `${IMG}/lee-one-on-one-1200x900.webp`, title: 'Book extra sessions', sub: 'More training in term time', badge: newExtra ? `${newExtra} new` : '' },
-    { go: 'holidays', img: `${IMG}/hq-indoor-960x720.webp`, title: 'Holiday training', sub: '1 on 1 and small groups at HQ', badge: newHoliday ? `${newHoliday} new` : '' },
+    { go: 'holidays', img: `${IMG}/indoor-coaching-900.webp`, title: 'Holiday training', sub: '1 on 1 and small groups at HQ', badge: newHoliday ? `${newHoliday} new` : '' },
     { go: 'camps', img: `${CAMP_IMG}/lee-coaching-group.jpg`, title: 'Camps', sub: camp ? `${CAMP.title}, ${(CAMP.days || []).map((d) => d.short).join(' and ')}` : 'Joner Football Camps', badge: camp ? 'Booking now' : '' },
   ]
   const smalls = D.playerLogin
     ? [booked && { go: 'cancel', icon: 'xcircle', title: "Can't make it" }, { go: 'videos', icon: 'play', title: 'Videos' }, { go: 'contact', icon: 'chat', title: 'Contact us' }]
+    // Always six, three and three (Lee, 10 Nov 2026). Waivers still pop up
+    // on sign in and sit in To do when one is unsigned.
     : [
-      booked && { go: 'cancel', icon: 'xcircle', title: "Can't make it" },
+      booked ? { go: 'cancel', icon: 'xcircle', title: "Can't make it" } : { go: 'waivers', icon: 'sign', title: 'Waivers', dot: unsigned },
       { go: 'fees', icon: 'card', title: 'Fees', dot: owing },
       { go: 'info', icon: 'user', title: solo ? 'My profile' : 'Player information', dot: gaps },
-      { go: 'waivers', icon: 'sign', title: 'Waivers', dot: unsigned },
+      { go: 'reports', icon: 'spark', title: 'Player reports', dot: reports },
       { go: 'analysis', icon: 'video', title: 'Game analysis' },
       { go: 'contact', icon: 'chat', title: 'Contact us' },
     ]
   return `<section class="ja-sec ja-tiles-sec" data-home-tiles><div class="ja-sec-head"><div><h2 class="ja-h2">Where do you want to go?</h2></div></div>
     <div class="ja-tiles">${(D.playerLogin ? bigs.slice(0, 1) : bigs).map(big).join('')}</div>
     <div class="ja-tiles-sm">${smalls.filter(Boolean).map(small).join('')}</div></section>`
+}
+
+// The camp is open: tell each family once on this device (Lee, 10 Nov 2026:
+// "a message pop up in peoples portals"). Never on top of another window.
+export function campPopup(go) {
+  const c = CAMP
+  if (!campOpen(c)) return false
+  const key = `ja-camp-pop:${c.id}`
+  try { if (localStorage.getItem(key)) return false; localStorage.setItem(key, '1') } catch { return false }
+  const p = c.prices || {}
+  const sheet = openSheet({ title: c.title || 'Camp', subtitle: 'Joner Football Camps · Booking now' })
+  sheet.sheet.classList.add('ja-camp-pop')
+  sheet.body.innerHTML = `<img class="ja-camp-pop-img" src="${CAMP_IMG}/lee-coaching-group.jpg" alt="">
+    <ul class="ja-list" style="margin-top:12px">
+      <li class="ja-row"><span class="ja-num">${ic('calendar')}</span><div><b>${esc(datesLine(c))}</b><small>${esc(c.timesLabel || '')}${c.ages ? ` · ${esc(c.ages)}` : ''}</small></div></li>
+      <li class="ja-row"><span class="ja-num">${ic('pin')}</span><div><b>${esc(c.location || '')}</b><small>${esc(c.address || '')}</small></div></li>
+      ${p.oneDay ? `<li class="ja-row"><span class="ja-num">${ic('card')}</span><div><b>${esc(aud(p.oneDay))} for one day${p.allDays ? `, ${esc(aud(p.allDays))} for both` : ''}</b><small>Limited places</small></div></li>` : ''}
+    </ul>`
+  sheet.foot.innerHTML = `<button type="button" class="ja-btn ja-btn-line" data-cpx="later">Not now</button><button type="button" class="ja-btn ja-btn-red" data-cpx="go">See the camp</button>`
+  sheet.foot.querySelector('[data-cpx="later"]').addEventListener('click', () => closeSheet())
+  sheet.foot.querySelector('[data-cpx="go"]').addEventListener('click', () => { closeSheet(); go('camps') })
+  return true
 }

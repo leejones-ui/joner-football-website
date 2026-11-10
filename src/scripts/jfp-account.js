@@ -17,7 +17,7 @@ import { renderReports, reportsHomeBlock, unreadReports } from './jfp-account-re
 import { feedbackHomeBlock, feedbackClick } from './jfp-account-feedback.js'
 import { newSessions, markSeen, newSessionsPopup } from './jfp-account-new.js'
 import { askWhere } from './jfp-account-where.js'
-import { renderCamps, loadCamp, holidayRequest, campsCard, holidayClick, homeTiles } from './jfp-account-camps.js'
+import { renderCamps, loadCamp, holidayRequest, campsCard, holidayClick, homeTiles, campPopup } from './jfp-account-camps.js'
 import { askTerms, cancelExtraSheet, makeupLine } from './jfp-account-terms.js'
 import { coachRow, coachSheet, renderCoaches } from './jfp-account-coach.js'
 import { attendanceLine, pastMark, unreadNotes, notesHomeBlock, makeupsHomeBlock, askMakeup, renderNotes, renderAlerts, pushOffered, loginRow, loginSheet } from './jfp-account-more.js'
@@ -175,6 +175,7 @@ async function start() {
     // by itself, once per visit (Lee, 10 Nov 2026: "that window should pop up
     // straight away"). Otherwise the new sessions pop up, as before.
     if (!todoPop()) newSessionsPopup(D, (k) => show(k))
+    loadCamp().then(() => { if (current === 'home' && !D.playerLogin && !document.querySelector('.j-sheet')) campPopup((k) => show(k)) })
   } else if (h !== 'extra' && h !== 'holidays' && h !== 'camps') newSessionsPopup(D, (k) => show(k))
   // Player details arrive a moment later: the same pop up if any are missing.
   loadProfiles().then(() => { if (current === 'home' && !document.querySelector('.j-sheet')) todoPop() })
@@ -653,7 +654,7 @@ function renderNews() {
 // small tiles for the jobs. The camp tile fills in once the camp is read.
 function tilesHtml() {
   const n = newSessions(D)
-  return homeTiles(D, { booked: D.players.some((p) => p.enrolments.length), bookUrl: D.bookUrl || '/jfp-booking/', owing: feesOwing() > 0, gaps: infoGaps().length > 0, unsigned: unsignedWaivers().length > 0, solo: solo(), newExtra: n.extra.length, newHoliday: n.holiday.length })
+  return homeTiles(D, { booked: D.players.some((p) => p.enrolments.length), bookUrl: D.bookUrl || '/jfp-booking/', owing: feesOwing() > 0, gaps: infoGaps().length > 0, unsigned: unsignedWaivers().length > 0, reports: unreadReports(D) > 0, solo: solo(), newExtra: n.extra.length, newHoliday: n.holiday.length })
 }
 function renderHome() {
   const el = document.querySelector('[data-pane="home"]')
@@ -666,7 +667,7 @@ function renderHome() {
   // A Juniors-only family: the Juniors card and its to do, no JFP "nothing booked".
   if (!D.players.length && D.juniors) {
     el.innerHTML = `<header class="ja-head"><p class="ja-kicker"><i></i>Joners Juniors · ${esc(D.juniors.term)}</p><h1 class="ja-display">${name ? `Hi ${esc(name)}` : 'Welcome'}</h1></header>
-      ${guideCard()}<div class="ja-home"><div class="ja-stack">${jjHomeCard()}</div><div class="ja-stack">${bookedExtrasBlock(D)}${newsBlock()}${todoCards()}${requestsBlock()}</div></div>${tilesHtml()}`
+      ${tilesHtml()}${guideCard()}<div class="ja-home"><div class="ja-stack">${jjHomeCard()}</div><div class="ja-stack">${bookedExtrasBlock(D)}${newsBlock()}${todoCards()}${requestsBlock()}</div></div>`
     return
   }
   // Anyone can have an account (round 2 item 8): nobody booked into a
@@ -674,13 +675,13 @@ function renderHome() {
   if (!D.players.some((p) => p.enrolments.length || p.placeNoSession)) {
     const list = D.players.length ? `<div class="ja-card"><div class="ja-card-head"><h3 class="ja-h3">${D.self ? 'Your profile' : 'Your players'}</h3><button type="button" class="ja-link ja-small" data-go="info">${D.self ? 'My profile' : 'Player information'}</button></div><ul class="ja-list">
       ${D.players.map((p) => `<li class="ja-row">${face(p.name, p.photo)}<div><b>${esc(p.name)}</b><small>Not booked into a session yet</small></div><div class="ja-flags">${p.waiver.onFile ? '<span class="ja-dot ok">Waiver</span>' : `<button type="button" class="ja-dot bad" data-waiver-player="${esc(p.key)}">Sign waiver</button>`}</div></li>`).join('')}</ul></div>` : ''
-    el.innerHTML = `${head}${guideCard()}
-      <div class="ja-ticket ja-ticket-slim" data-no-session><img src="${IMG}/photos/ntra-field-900x1100.webp" alt=""><div class="ja-ticket-top"><span class="ja-live"><i></i>${esc(D.term)}</span></div>
-        <div class="ja-ticket-body"><h2 class="ja-ticket-date"><span>You're not booked</span><span class="t">into a session yet</span></h2>
-        <p class="ja-meta">Pick a session on the timetable. ${D.players.length ? 'Your player details are saved, so booking is quick.' : 'Add your players first and booking is quick.'}</p>
-        <div class="ja-actions"><a class="ja-btn ja-btn-red" href="${esc(D.bookUrl || '/jfp-booking/')}">Book a session</a><button type="button" class="ja-btn ja-btn-glass" data-add-player>${D.players.length ? 'Add another player' : 'Add a player'}</button></div>
-        <p class="ja-small" style="margin-top:14px;color:rgba(255,255,255,.75)">Booked with another email? Sign out and use that one. Already train with us? <button type="button" class="ja-link" data-go="contact" style="color:#fff">Contact us</button></p></div></div>
-      ${tilesHtml()}<div class="ja-stack" style="margin-top:14px">${bookedExtrasBlock(D)}${newsBlock()}${todoCards()}${list}${requestsBlock()}</div>`
+    // Tiles first (Lee, 10 Nov 2026: "where do you want to go should be at the
+    // top"), then one plain line about not being booked. No big photo.
+    el.innerHTML = `${head}${tilesHtml()}
+      <div class="ja-card ja-nobook" data-no-session><div><p class="ja-kicker"><i></i>${esc(D.term)}</p><h3 class="ja-h3">You're not booked into a session yet</h3>
+        <p class="ja-small ja-muted">${D.players.length ? 'Your player details are saved, so booking is quick.' : 'Add your players first and booking is quick.'} Booked with another email? Sign out and use that one. Already train with us? <button type="button" class="ja-link" data-go="contact">Contact us</button></p></div>
+        <div class="ja-actions"><a class="ja-btn ja-btn-red" href="${esc(D.bookUrl || '/jfp-booking/')}">Book a session</a><button type="button" class="ja-btn ja-btn-line" data-add-player>${D.players.length ? 'Add another player' : 'Add a player'}</button></div></div>
+      ${guideCard()}<div class="ja-stack" style="margin-top:14px">${bookedExtrasBlock(D)}${newsBlock()}${todoCards()}${list}${requestsBlock()}</div>`
     return
   }
   const ups = upcoming().filter((x) => x.next)
@@ -694,13 +695,12 @@ function renderHome() {
   const finished = upcoming().filter((x) => !x.next)
   const doneBlock = finished.length ? `<div class="ja-card ja-nlist">${finished.map((x) => `<button type="button" class="ja-nrow" data-go="sessions" data-kid="${esc(x.p.key)}"><span class="ja-avatar">${esc(initials(x.p.name))}</span><span class="ja-mr-tx"><b>${esc(x.p.name)}</b><small>${esc(x.e.day)}s ${esc(x.e.time)}, ${esc(x.e.location)} · No more sessions this term</small></span>${ic('right', 'ja-mr-go')}</button>`).join('')}</div>` : ''
   const strip = todoStrip()
-  el.innerHTML = `${head}${guideCard()}
+  el.innerHTML = `${head}${tilesHtml()}${guideCard()}
     <div class="ja-home">
       <div class="ja-stack"><p class="ja-label">Next up</p>${nextBlock}${doneBlock}</div>
       <div class="ja-stack">${D.playerLogin ? playerWaiverStep() : strip ? `<p class="ja-label">To do</p>${strip}` : `<div class="ja-strip is-done">${ic('check')}<span class="ja-mr-tx"><b>All sorted</b><small>Nothing to sign or pay right now.</small></span></div>`}${feedbackHomeBlock(D)}${reportsHomeBlock(D)}${bookedExtrasBlock(D)}${makeupsHomeBlock(D)}${notesHomeBlock(D)}${newsBlock()}
         ${jjHomeCard()}${notBooked.length ? `<div class="ja-card"><p class="ja-small ja-muted">${notBooked.map((p) => p.placeNoSession ? `<b class="ja-ink">${esc(p.name)}</b> has a place. We will confirm the day and time.` : `<b class="ja-ink">${esc(p.name)}</b> is not booked this term. <a class="ja-link" href="${links.booking}">See the timetable</a>`).join('<br>')}</p></div>` : ''}${requestsBlock()}</div>
-    </div>
-    ${tilesHtml()}`
+    </div>`
 }
 
 // An agent's player, signed in with their own login: their waiver (Lee, 20 Oct 2026).
@@ -1252,7 +1252,7 @@ function renderHolidays() {
         <div class="ja-grid ja-grid-2">${byDay.map((d) => `<article class="ja-card"><p class="ja-kicker"><i></i>${esc(d.label)}</p><ul class="ja-list" style="margin-top:8px">${d.items.map(row).join('')}</ul></article>`).join('')}</div></section>`
     : ''
   // A hero photo, few words, one request form and a way to Camps (Lee, 10 Nov 2026).
-  el.innerHTML = `${hero({ img: `${IMG}/photos/lee-one-on-one-1200x900.webp`, kicker: 'School holidays', title: 'Holiday training', lede: `1 on 1 and small group training at ${esc(hq.name)}, Belrose.`, actions: `${open ? book : '<button type="button" class="ja-btn ja-btn-red" data-hol-jump>Request a session</button>'}<button type="button" class="ja-btn ja-btn-glass" data-go="camps">Camps</button>` })}
+  el.innerHTML = `${hero({ img: `${IMG}/photos/indoor-huddle-1600x1069.webp`, kicker: 'School holidays', title: 'Holiday training', lede: `1 on 1 and small group training at ${esc(hq.name)}, Belrose.`, actions: `${open ? book : '<button type="button" class="ja-btn ja-btn-red" data-hol-jump>Request a session</button>'}<button type="button" class="ja-btn ja-btn-glass" data-go="camps">Camps</button>` })}
     <p class="j-err" data-hol-err hidden></p>
     ${sessions}
     <div class="ja-grid ja-grid-2 ja-hol-grid" style="margin-top:14px">${holidayRequest(D)}${campsCard()}</div>`
