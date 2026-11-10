@@ -10,12 +10,12 @@ import { hqVideos, pitchVideos, reels, socials, contacts, hq, holidays } from '.
 import { ic } from './jfp-account-icons.js'
 import { first, initials, money, pageHead, hero, secHead } from './jfp-account-ui.js'
 import { oweList, jjOweList, oweCard, aheadBlock, packBlock, depositCards, placeCards, historyCard } from './jfp-account-pay.js'
-import { renderExtra, renderAnalysis, extraClick, setExtraLink } from './jfp-account-extras.js'
+import { renderExtra, renderAnalysis, extraClick, setExtraLink, holidayExtras, holidayBookableHtml } from './jfp-account-extras.js'
 // Fees: save a card or bank account for session payments (claude/card-on-file).
 import { mountSavedPay, savedReturn, forgetSaved } from './jfp-account-saved.js'
 import { renderReports, reportsHomeBlock, unreadReports } from './jfp-account-reports.js'
 import { feedbackHomeBlock, feedbackClick } from './jfp-account-feedback.js'
-import { newSessions, markSeen, newSessionsPopup } from './jfp-account-new.js'
+import { newSessions, markSeen, newSessionsPopup, newSessionsTold } from './jfp-account-new.js'
 import { askWhere } from './jfp-account-where.js'
 import { renderCamps, loadCamp, holidayRequest, campsCard, holidayClick, homeTiles, campPopup } from './jfp-account-camps.js'
 import { askTerms, cancelExtraSheet, makeupLine } from './jfp-account-terms.js'
@@ -174,8 +174,13 @@ async function start() {
     // A waiver not signed or player details missing: the To sort sheet opens
     // by itself, once per visit (Lee, 10 Nov 2026: "that window should pop up
     // straight away"). Otherwise the new sessions pop up, as before.
-    if (!todoPop()) newSessionsPopup(D, (k) => show(k))
-    loadCamp().then(() => { if (current === 'home' && !D.playerLogin && !document.querySelector('.j-sheet')) campPopup((k) => show(k)) })
+    // One window on sign in: things to sort first, else the open camp (with
+    // any holiday training), else new sessions to book.
+    if (!todoPop()) loadCamp().then(() => {
+      if (current !== 'home' || document.querySelector('.j-sheet')) return
+      if (!D.playerLogin && campPopup((k) => show(k), holidayExtras(D).filter((s) => s.placesLeft > 0))) newSessionsTold(D)
+      else newSessionsPopup(D, (k) => show(k))
+    })
   } else if (h !== 'extra' && h !== 'holidays' && h !== 'camps') newSessionsPopup(D, (k) => show(k))
   // Player details arrive a moment later: the same pop up if any are missing.
   loadProfiles().then(() => { if (current === 'home' && !document.querySelector('.j-sheet')) todoPop() })
@@ -1242,6 +1247,7 @@ function renderHolidays() {
   const h = D.extras?.holiday || { sessions: [] }
   const list = h.sessions || []
   const open = list.filter((x) => !x.full).length
+  const xs = holidayExtras(D)
   const byDay = []
   for (const x of list) { const last = byDay.at(-1); if (last && last.date === x.date) last.items.push(x); else byDay.push({ date: x.date, label: x.dateLabel, items: [x] }) }
   const row = (x) => `<li class="ja-row ${x.full ? 'is-off' : ''}"><span class="ja-num">${ic('clock')}</span><div><b>${esc(x.time)}</b><small>${esc(x.typeLabel)}${x.durationMin ? ` · ${esc(String(x.durationMin))} min` : ''}${x.fromLabel && !x.full ? ` · from ${esc(x.fromLabel)}` : ''}</small></div><span class="ja-small ${x.full ? 'ja-muted' : ''}">${x.full ? 'Taken' : x.placesLeft != null ? `${x.placesLeft} place${x.placesLeft === 1 ? '' : 's'} left` : 'Open'}</span></li>`
@@ -1252,10 +1258,11 @@ function renderHolidays() {
         <div class="ja-grid ja-grid-2">${byDay.map((d) => `<article class="ja-card"><p class="ja-kicker"><i></i>${esc(d.label)}</p><ul class="ja-list" style="margin-top:8px">${d.items.map(row).join('')}</ul></article>`).join('')}</div></section>`
     : ''
   // A hero photo, few words, one request form and a way to Camps (Lee, 10 Nov 2026).
-  el.innerHTML = `${hero({ img: `${IMG}/photos/indoor-huddle-1600x1069.webp`, kicker: 'School holidays', title: 'Holiday training', lede: `1 on 1 and small group training at ${esc(hq.name)}, Belrose.`, actions: `${open ? book : '<button type="button" class="ja-btn ja-btn-red" data-hol-jump>Request a session</button>'}<button type="button" class="ja-btn ja-btn-glass" data-go="camps">Camps</button>` })}
+  el.innerHTML = `${hero({ img: `${IMG}/photos/indoor-huddle-1600x1069.webp`, kicker: 'School holidays', title: 'Holiday training', lede: `1 on 1 and small group training at ${esc(hq.name)}, Belrose.`, actions: `${open ? book : xs.length ? '<button type="button" class="ja-btn ja-btn-red" data-hol-see>See sessions to book</button>' : '<button type="button" class="ja-btn ja-btn-red" data-hol-jump>Request a session</button>'}<button type="button" class="ja-btn ja-btn-glass" data-go="camps">Camps</button>` })}
     <p class="j-err" data-hol-err hidden></p>
-    ${sessions}
+    ${sessions}${list.length ? holidayBookableHtml(D).replace('id="hol-sessions"', '') : holidayBookableHtml(D)}
     <div class="ja-grid ja-grid-2 ja-hol-grid" style="margin-top:14px">${holidayRequest(D)}${campsCard()}</div>`
+  el.querySelector('[data-hol-see]')?.addEventListener('click', () => el.querySelector('#hol-sessions')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
   el.querySelector('[data-hol-jump]')?.addEventListener('click', () => el.querySelector('#hol-request')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
   el.querySelectorAll('[data-hol-book]').forEach((bk) => bk.addEventListener('click', async (e) => {
     const btn = e.currentTarget

@@ -165,6 +165,13 @@ export function staffView(config, s, payreqs = []) {
     }),
   }
 }
+// Holiday training (Lee, 10 Nov 2026): a session dated in the school holidays
+// shows on the family's Holiday training page, not under Extra sessions. The
+// same session, price and payment; only where it is listed changes. A slot
+// can say so itself (holiday true or false), otherwise the date decides.
+// NSW school holidays, first day to last day. Add each break as it is known.
+export const SCHOOL_HOLIDAYS = [['2026-12-19', '2027-01-31']]
+export const isHolidaySlot = (s) => (typeof s.holiday === 'boolean' ? s.holiday : SCHOOL_HOLIDAYS.some(([a, b]) => s.date >= a && s.date <= b))
 // Families (the Revenue session's #extra page): no other family's details.
 export function familyView(config, s, paid) {
   const loc = locationFor(config, s.location)
@@ -173,7 +180,7 @@ export function familyView(config, s, paid) {
     time: s.time, durationMin: s.durationMin, location: loc.name, address: loc.address || '', capacity: s.capacity, placesLeft: placesLeft(s, paid),
     priceCents: s.priceCents, priceLabel: formatAud(s.priceCents), label: s.title || s.priceLabel, visibility: s.visibility, note: s.publicNote || '',
     weekly: kindOf(s) === 'weekly', dayName: new Date(`${s.date}T12:00:00Z`).toLocaleDateString('en-AU', { weekday: 'long', timeZone: 'UTC' }),
-    createdAt: s.createdAt || '',
+    createdAt: s.createdAt || '', holiday: isHolidaySlot(s),
     ...(isWhole(s) ? { whole: true, options: s.options.map(({ id, type, label, minPlayers, maxPlayers, priceCents, pairCents, priceLabel }) => ({ id, type, label, minPlayers, maxPlayers, priceCents, ...(pairCents ? { pairCents } : {}), priceLabel })), optionsLabel: optionsSummary(s.options) } : {}),
   }
 }

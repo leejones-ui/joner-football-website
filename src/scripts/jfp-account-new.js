@@ -12,8 +12,10 @@ export function newSessions(D) {
   const x = D?.extras
   if (!x || D.playerLogin) return { extra: [], holiday: [], n: 0 }
   const seen = x.seen || {}
-  const extra = (x.bookable || []).filter((s) => s.placesLeft > 0 && after(s, seen.extra))
-  const holiday = (x.holiday?.sessions || []).filter((s) => !s.full && after(s, seen.holiday))
+  const open = (x.bookable || []).filter((s) => s.placesLeft > 0)
+  const extra = open.filter((s) => !s.holiday && after(s, seen.extra))
+  // Holiday training: the holiday booking page's sessions and extra sessions dated in the holidays.
+  const holiday = [...(x.holiday?.sessions || []).filter((s) => !s.full), ...open.filter((s) => s.holiday)].filter((s) => after(s, seen.holiday))
   return { extra, holiday, n: extra.length + holiday.length }
 }
 
@@ -28,12 +30,15 @@ export function markSeen(D, kind) {
 
 // Once per new set of sessions on this device, not on every visit.
 const SHOWN = 'ja-new-sessions'
+const sigOf = (n) => [...n.extra, ...n.holiday].map((s) => s.id).sort().join(',')
+// Another window already told them about these sessions.
+export function newSessionsTold(D) { try { localStorage.setItem(SHOWN, sigOf(newSessions(D))) } catch {} }
 export function newSessionsPopup(D, go) {
   const n = newSessions(D)
   if (!n.n) return
-  const sig = [...n.extra, ...n.holiday].map((s) => s.id).sort().join(',')
+  const sig = sigOf(n)
   try { if (localStorage.getItem(SHOWN) === sig) return; localStorage.setItem(SHOWN, sig) } catch {}
-  const line = (s, extra) => `<li class="ja-row"><span class="ja-num">${ic(extra ? 'calplus' : 'sun')}</span><div><b>${esc(s.dateLabel)} · ${esc(s.time)}</b><small>${extra ? `${esc(s.location || '')}${s.durationMin ? ` · ${esc(String(s.durationMin))} min` : ''}` : esc(s.typeLabel || 'Holiday session')}</small></div></li>`
+  const line = (s, extra) => `<li class="ja-row"><span class="ja-num">${ic(extra ? 'calplus' : 'sun')}</span><div><b>${esc(s.dateLabel)} · ${esc(s.time)}</b><small>${extra ? `${esc(s.location || '')}${s.durationMin ? ` · ${esc(String(s.durationMin))} min` : ''}` : esc(s.typeLabel || s.kind || 'Holiday session')}</small></div></li>`
   const block = (kind, list) => list.length ? `<p class="ja-kicker" style="margin-top:6px"><i></i>${esc(KINDS[kind])}</p><ul class="ja-list" style="margin:6px 0 12px">${list.slice(0, 4).map((s) => line(s, kind === 'extra')).join('')}</ul>${list.length > 4 ? `<p class="ja-small ja-muted" style="margin:-6px 0 12px">and ${list.length - 4} more</p>` : ''}` : ''
   const sheet = openSheet({ title: n.n === 1 ? 'A new session to book' : 'New sessions to book', subtitle: 'Just added by Joner Football' })
   sheet.body.innerHTML = `${block('extra', n.extra)}${block('holiday', n.holiday)}`

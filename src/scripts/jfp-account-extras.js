@@ -63,10 +63,18 @@ function slotSheet(D, s) {
     <p class="j-err" data-xslot-err hidden></p></div>`
   bookPicker(sheet.body.querySelector('[data-xslot]'), D, s.id)
 }
+// Sessions dated in the school holidays are listed on Holiday training, the
+// rest here (Lee, 10 Nov 2026). Booking and paying are the same for both.
+export const holidayExtras = (D) => (X(D).bookable || []).filter((s) => s.holiday)
+export function holidayBookableHtml(D) {
+  const list = holidayExtras(D)
+  if (!list.length) return ''
+  return `<section class="ja-sec" id="hol-sessions">${secHead('Sessions you can book', 'Joner Football HQ, Belrose. Pick a time, choose the player and pay.')}<div class="ja-grid ja-grid-3">${list.map((s) => slotCard(s, D)).join('')}</div></section>`
+}
 function bookableHtml(D) {
   const x = X(D)
   const mine = LINK?.data ? [LINK.data] : []
-  const pub = (x.bookable || []).filter((s) => !mine.some((m) => m.id === s.id))
+  const pub = (x.bookable || []).filter((s) => !s.holiday && !mine.some((m) => m.id === s.id))
   const notice = LINK?.state === 'missing' ? '<div class="ja-card"><p class="ja-small">That session link is not open any more. Ask Ligia for a new one, or book a time below.</p></div>' : ''
   if (!mine.length && !pub.length) return notice
   return `<section class="ja-sec" id="x-bookable">${secHead('Sessions you can book now')}${notice}<div class="ja-grid ja-grid-3">${[...mine.map((s) => slotCard(s, D, { mine: true })), ...pub.map((s) => slotCard(s, D))].join('')}</div></section>`
@@ -90,10 +98,10 @@ export function renderExtra(el, D) {
     ${slots}
     <div class="ja-grid ja-grid-3" style="margin-top:24px">
       <div class="ja-card ja-info-card">${ic('clock')}<h3 class="ja-h3">1 on 1 in term time</h3><p class="ja-small ja-muted">During the school term, 1 on 1 sessions run in school hours only, from about 7:30am to 2pm.</p></div>
-      <div class="ja-card ja-info-card">${ic('sun')}<h3 class="ja-h3">School holidays</h3><p class="ja-small ja-muted">1 on 1 and small group sessions run through the school holidays at Joner Football HQ, Belrose.</p>${x.holidaySlots ? '<p style="margin-top:12px"><a class="ja-btn ja-btn-red ja-btn-sm" href="#holidays">Book holiday training</a></p>' : ''}</div>
+      <div class="ja-card ja-info-card">${ic('sun')}<h3 class="ja-h3">School holidays</h3><p class="ja-small ja-muted">1 on 1 and small group sessions run through the school holidays at Joner Football HQ, Belrose.</p>${x.holidaySlots || holidayExtras(D).length ? '<p style="margin-top:12px"><a class="ja-btn ja-btn-red ja-btn-sm" href="#holidays">Book holiday training</a></p>' : ''}</div>
       <div class="ja-card ja-info-card">${ic('chat')}<h3 class="ja-h3">Other times</h3><p class="ja-small ja-muted">Need a different time? Ask below. Other times are on request, depending on the coaches.</p></div>
     </div>
-    ${x.holidaySlots ? `<div class="ja-band" style="margin-top:14px"><div><p class="ja-kicker"><i></i>School holidays</p><h2 style="margin-top:10px">Holiday sessions are open</h2><p style="margin-top:8px">Book a holiday session straight away on the holiday booking page.</p></div><a class="ja-btn ja-btn-light" href="#holidays">Book holiday training ${ic('arrow')}</a></div>` : ''}
+    ${x.holidaySlots || holidayExtras(D).length ? `<div class="ja-band" style="margin-top:14px"><div><p class="ja-kicker"><i></i>School holidays</p><h2 style="margin-top:10px">Holiday sessions are open</h2><p style="margin-top:8px">Book a holiday session straight away on the Holiday training page.</p></div><a class="ja-btn ja-btn-light" href="#holidays">Book holiday training ${ic('arrow')}</a></div>` : ''}
     <section class="ja-sec"><div class="ja-card ja-form-card" id="x-extra">
       <p class="ja-kicker"><i></i>Request</p><h2 class="ja-h2" style="margin-top:10px">Ask for an extra session</h2>
       ${playerField(D, 'x-player')}

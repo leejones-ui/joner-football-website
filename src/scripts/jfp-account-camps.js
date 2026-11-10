@@ -143,21 +143,25 @@ export function homeTiles(D, { booked, bookUrl, owing, gaps, unsigned, reports, 
 
 // The camp is open: tell each family once on this device (Lee, 10 Nov 2026:
 // "a message pop up in peoples portals"). Never on top of another window.
-export function campPopup(go) {
+export function campPopup(go, holiday = []) {
   const c = CAMP
   if (!campOpen(c)) return false
-  const key = `ja-camp-pop:${c.id}`
+  // A new key when holiday training joins it, so everyone sees that once too.
+  const key = `ja-camp-pop:${c.id}${holiday.length ? ':hol' : ''}`
   try { if (localStorage.getItem(key)) return false; localStorage.setItem(key, '1') } catch { return false }
   const p = c.prices || {}
-  const sheet = openSheet({ title: c.title || 'Camp', subtitle: 'Joner Football Camps · Booking now' })
+  const days = [...new Set(holiday.map((s) => s.dateLabel))]
+  const sheet = openSheet({ title: holiday.length ? 'Christmas holidays: booking now' : c.title || 'Camp', subtitle: holiday.length ? 'Our camp and holiday training are open to book' : 'Joner Football Camps · Booking now' })
   sheet.sheet.classList.add('ja-camp-pop')
   sheet.body.innerHTML = `<img class="ja-camp-pop-img" src="${CAMP_IMG}/lee-coaching-group.jpg" alt="">
     <ul class="ja-list" style="margin-top:12px">
       <li class="ja-row"><span class="ja-num">${ic('calendar')}</span><div><b>${esc(datesLine(c))}</b><small>${esc(c.timesLabel || '')}${c.ages ? ` · ${esc(c.ages)}` : ''}</small></div></li>
       <li class="ja-row"><span class="ja-num">${ic('pin')}</span><div><b>${esc(c.location || '')}</b><small>${esc(c.address || '')}</small></div></li>
       ${p.oneDay ? `<li class="ja-row"><span class="ja-num">${ic('card')}</span><div><b>${esc(aud(p.oneDay))} for one day${p.allDays ? `, ${esc(aud(p.allDays))} for both` : ''}</b><small>Limited places</small></div></li>` : ''}
-    </ul>`
-  sheet.foot.innerHTML = `<button type="button" class="ja-btn ja-btn-line" data-cpx="later">Not now</button><button type="button" class="ja-btn ja-btn-red" data-cpx="go">See the camp</button>`
+    </ul>${holiday.length ? `<div class="ja-camp-pop-hol"><p class="ja-kicker"><i></i>Holiday training at HQ</p><p class="ja-small" style="margin-top:6px"><b>1 on 1 and small group sessions</b> at Joner Football HQ, Belrose: ${esc(days.slice(0, 4).join(', '))}${days.length > 4 ? ' and more' : ''}.</p></div>` : ''}`
+  sheet.body.insertAdjacentHTML('afterbegin', holiday.length ? `<p class="ja-kicker" style="margin-bottom:10px"><i></i>${esc(c.title || 'Camp')}</p>` : '')
+  sheet.foot.innerHTML = `<button type="button" class="ja-btn ja-btn-line" data-cpx="later">Not now</button>${holiday.length ? '<button type="button" class="ja-btn ja-btn-line" data-cpx="hol">Holiday training</button>' : ''}<button type="button" class="ja-btn ja-btn-red" data-cpx="go">See the camp</button>`
+  sheet.foot.querySelector('[data-cpx="hol"]')?.addEventListener('click', () => { closeSheet(); go('holidays') })
   sheet.foot.querySelector('[data-cpx="later"]').addEventListener('click', () => closeSheet())
   sheet.foot.querySelector('[data-cpx="go"]').addEventListener('click', () => { closeSheet(); go('camps') })
   return true

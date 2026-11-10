@@ -1119,3 +1119,5 @@ body:has(.ja[data-theme="light"]) { background: #F5F5F3 !important; }
 .ja-tiles-sec + .ja-guide { margin-top: 14px; }
 .ja-camp-pop-img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 16px; }
 [data-pane="holidays"] .ja-hero > img { object-position: 50% 12%; }
+.ja-camp-pop-hol { margin-top: 14px; padding: 14px 16px; border-radius: 16px; background: var(--ja-panel-2, rgba(0,0,0,.04)); border: 1px solid var(--ja-line); }
+.ja-camp-pop .ja-camp-pop-img { aspect-ratio: 5 / 2; object-position: 50% 30%; }
