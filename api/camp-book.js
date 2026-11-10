@@ -10,7 +10,7 @@ import { clean, stripeFetch, siteUrl, expireCheckoutSession } from './_holiday-s
 import {
   getCampBySlug, publicCamp, validateBookingInput, holdPlaces, releasePlaces, newCampId, pricePerPlayer, createCheckout,
   saveBooking, indexBooking, getBooking, ckeys, CAMP_HOLD_MINUTES, finaliseCampBooking, campBookingIdFromSession,
-  bookableDays, addWaitlist, daysText, audLabel,
+  bookableDays, addWaitlist, daysText, audLabel, CAMP_TERMS_VERSION,
 } from './_camp-store.js'
 import { kvCommand } from './_holiday-store.js'
 
@@ -90,7 +90,7 @@ async function book(req, res, body) {
   }
   const booking = {
     id, campId: camp.id, status: 'held', source: 'online', createdAt: new Date().toISOString(), holdExpiresMs: holdUntil,
-    releaseToken: newCampId('T').slice(-12), ...v, priceEachCents: each, priceCents: each * v.players.length, checkins: {}, effects: {},
+    releaseToken: newCampId('T').slice(-12), ...v, agreedAt: new Date().toISOString(), termsVersion: CAMP_TERMS_VERSION, priceEachCents: each, priceCents: each * v.players.length, checkins: {}, effects: {},
   }
   try {
     const session = await createCheckout({ camp, booking, baseUrl: siteUrl(req) })

@@ -60,11 +60,12 @@ ${h2('Good to know')}
 ${list([
   'Only severe weather will affect the camp. We will email you if anything changes.',
   'If anything changes with medical notes, reply to this email before the day.',
-  'Need to cancel? Reply to this email. Cancel 14 days or more before camp for a refund (less the card fee). Inside 14 days we cannot refund.',
+  'Need to cancel? Reply to this email. 14 days or more before camp is a full refund, 48 hours or more is a full refund less a A$5 card fee, 24 to 48 hours is half, and inside 24 hours there is no refund. You can pass the place to another player at any time.',
 ])}
 ${p(`Want ${esc(b.players[0]?.firstName || 'them')} to arrive sharper? The Joner Football App has free sessions to start with: <a href="${SITE}/app" style="color:#E8000D;font-weight:800;">jonerfootball.com/app</a>`)}
 ${p(`Know a teammate who would love it? Send them this before places go: <a href="${SITE}/camps/${camp.slug}/" style="color:#E8000D;font-weight:800;">jonerfootball.com/camps/${camp.slug}</a>`)}
-${p('Any questions, just reply. See you on the pitch.')}`,
+${p('Any questions, just reply. See you on the pitch.')}
+${p(`<span style="font-size:13px;color:#777;">You booked under our <a href="${SITE}/camps/terms/" style="color:#777;">camp terms</a>.</span>`)}`,
   })
   return { subject: `Booked in: ${camp.short}, ${daysText(camp, b.dayIds)}`, html }
 }

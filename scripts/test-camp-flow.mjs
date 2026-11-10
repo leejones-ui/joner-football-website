@@ -185,6 +185,8 @@ await test('portal Camps tab: every sign-up, add by hand, check in, change, canc
   const before = (await taken('tue'))
   const cx2 = await portal(lee, 'campCancel', { id: paidId, reason: 'Refunded' })
   assert.ok(cx2.data.refund?.url.includes('dashboard.stripe.com'), 'a link to refund in Stripe')
+  assert.equal(cx2.data.refund.amountCents, 50000, 'more than 14 days out: the camp terms say a full refund')
+  assert.match(cx2.data.refund.rule, /14 days or more/)
   assert.equal((await taken('tue')), before - 2)
   const again = await client().call(paidQuery)
   assert.equal(again.data.booking.status, 'cancelled')
@@ -223,6 +225,20 @@ await test('started and not paid: listed in the portal, reminded like the USA ca
   await fetch(`${B}/__refund?cs=${paid.stripeSessionId}&amount=5000`)
   const after = (await portal(lee, 'campList')).data.bookings.find((x) => x.id === paid.id)
   assert.equal(after.refundedCents, 5000)
+})
+
+await test('camp terms: 14 days full, 48 hours less A$5, 24 hours half, then nothing, and the tick is recorded', async () => {
+  const { campRefundFor, XMAS_2026, CAMP_TERMS_VERSION } = await import('../api/_camp-store.js')
+  const b = { dayIds: ['mon', 'tue'], amountPaidCents: 25000 }
+  const start = Date.parse('2026-12-21T09:00:00+11:00')
+  const at = (hoursBefore) => campRefundFor(b, XMAS_2026, start - hoursBefore * 3_600_000).amountCents
+  assert.deepEqual([at(15 * 24), at(14 * 24), at(14 * 24 - 1), at(48), at(47), at(24), at(23), at(-1)], [25000, 25000, 24500, 24500, 12500, 12500, 0, 0])
+  assert.equal(campRefundFor({ dayIds: ['tue'], amountPaidCents: 15000 }, XMAS_2026, start).amountCents, 7500, 'a Tuesday only booking counts back from Tuesday')
+  assert.equal(campRefundFor({ ...b, refundedCents: 25000 }, XMAS_2026, start - 400 * 3_600_000).amountCents, 0, 'already refunded: nothing more')
+  const list = (await portal(lee, 'campList')).data
+  const online = list.bookings.find((x) => x.source === 'online' && x.status === 'paid')
+  assert.equal(online.termsVersion, CAMP_TERMS_VERSION)
+  assert.ok(online.agreedAt && online.refundDue.amountCents > 0)
 })
 
 console.log(`\n${passed} camp flow checks passed`)

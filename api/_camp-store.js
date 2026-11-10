@@ -13,7 +13,7 @@
 // the old camp webhook would try to confirm). The Sydney webhook
 // (holiday-payment-webhook.js) sends them here.
 import crypto from 'node:crypto'
-import { kvCommand, kvPipeline, kvGetJson, kvSetJson, claimOnce, clean, stripeFetch, CONFIRMED_SCORE } from './_holiday-store.js'
+import { kvCommand, kvPipeline, kvGetJson, kvSetJson, claimOnce, clean, stripeFetch, CONFIRMED_SCORE, sydneyIso } from './_holiday-store.js'
 
 export const CAMP_HOLD_MINUTES = 31
 export const CAMP_CHECKOUT_MINUTES = 30
@@ -469,6 +469,29 @@ export async function recordCampRefund(charge, piId) {
   b.refundedAt = new Date().toISOString()
   await saveBooking(b)
   return id
+}
+
+// ---------- camp terms: what a cancellation gets back ----------
+
+// The terms a family agrees to at /camps/terms/ (Lee, 10 Nov 2026). Saved on
+// each sign-up so we know which wording they ticked.
+export const CAMP_TERMS_VERSION = '2026-11-10'
+export const CANCEL_FEE_CENTS = 500
+
+// Lee's rule: 14 days or more before the camp day, a full refund; then 48
+// hours (full, less the A$5 card fee); then 24 hours (half); after that,
+// nothing. Counted back from the start of the first day booked. Refunds are
+// made by hand in Stripe; this only works out what is owed.
+export function campRefundFor(b, camp, nowMs = Date.now()) {
+  const paid = Math.max(0, Number(b.amountPaidCents || 0) - Number(b.refundedCents || 0))
+  const starts = camp.days.filter((d) => b.dayIds.includes(d.id) && d.date).map((d) => Date.parse(sydneyIso(d.date, camp.startTime))).filter(Number.isFinite)
+  const hours = starts.length ? (Math.min(...starts) - nowMs) / 3_600_000 : -1
+  const tier = hours >= 14 * 24 ? { percent: 100, fee: 0, rule: '14 days or more before camp: full refund' }
+    : hours >= 48 ? { percent: 100, fee: CANCEL_FEE_CENTS, rule: `48 hours or more before camp: full refund less the ${audLabel(CANCEL_FEE_CENTS)} card fee` }
+    : hours >= 24 ? { percent: 50, fee: 0, rule: 'Between 24 and 48 hours before camp: half refunded' }
+    : { percent: 0, fee: 0, rule: 'Less than 24 hours before camp: no refund' }
+  const amountCents = Math.max(0, Math.round((paid * tier.percent) / 100) - (paid ? tier.fee : 0))
+  return { amountCents, percent: tier.percent, rule: tier.rule, paidCents: paid }
 }
 
 // ---------- waitlist ----------

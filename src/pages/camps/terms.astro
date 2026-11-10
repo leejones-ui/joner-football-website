@@ -1,0 +1,110 @@
+---
+// Camp terms (Lee, 10 Nov 2026). The camp sign-up tick box points here, not at
+// the general website terms (those are about the app and JFP term fees).
+// Lee's rules: full refund 14 days or more before, then 48 hours, then 24
+// hours; if we cancel we refund; photos and video are on.
+// The same rules are worked out for staff in api/_camp-store.js (campRefundFor)
+// and the version below is saved on each sign-up (CAMP_TERMS_VERSION).
+import BaseLayout from '../../layouts/BaseLayout.astro'
+
+const sections = [
+  {
+    h: '1. Taking part',
+    p: [
+      'Football is a physical sport and carries a risk of injury. By booking, you accept that risk for each player you book and confirm they are fit and well enough to take part.',
+      'Joner Football is not liable for injury, loss or damage at camp, except where the law does not let us exclude it. Nothing in these terms takes away rights you have under the Australian Consumer Law.',
+    ],
+  },
+  {
+    h: '2. Medical',
+    p: [
+      'Tell us on the booking form about any medical condition, allergy or injury, and email us if anything changes before camp.',
+      'If a player is hurt or unwell, you give our coaches permission to give first aid and to call an ambulance if they think it is needed. We will call you straight away. Any ambulance or treatment cost is yours.',
+    ],
+  },
+  {
+    h: '3. Photos and video',
+    p: [
+      'We film and photograph our camps. By booking, you give Joner Football permission to use photos and video of the player on our website, social media and advertising.',
+      'If you do not want your child filmed or photographed, email us before camp and we will keep them out of it.',
+    ],
+  },
+  {
+    h: '4. If you cancel',
+    list: [
+      '14 days or more before the camp day: full refund.',
+      'Less than 14 days, but 48 hours or more before: full refund less a A$5 card processing fee.',
+      'Between 24 and 48 hours before: we refund half.',
+      'Less than 24 hours before, or the player does not come: no refund.',
+    ],
+    p: [
+      'Times count back from the start of the camp day you are cancelling. To cancel, email ligia@jonerfootball.com. Refunds go back to the card you paid with.',
+      'You can pass your place to another player at any time. Just email us their details.',
+    ],
+  },
+  {
+    h: '5. If we cancel',
+    p: [
+      'Only severe weather or a problem with the venue would stop a camp day. If we have to cancel a day, we email you and refund that day in full.',
+    ],
+  },
+  {
+    h: '6. Times',
+    p: [
+      'Our coaches look after players from 15 minutes before the start time until the finish time. Please drop off and collect on time.',
+    ],
+  },
+  {
+    h: '7. Behaviour',
+    p: [
+      'We want every player to have a great camp. A player who is unsafe, or who keeps disrupting the group after a warning, can be sent home with no refund.',
+    ],
+  },
+  {
+    h: '8. Belongings',
+    p: [
+      'Please name drink bottles and clothing. We are not responsible for lost or damaged belongings.',
+    ],
+  },
+  {
+    h: '9. Your details',
+    p: [
+      'We use the details on the booking form to run the camp and to contact you about it. See our privacy policy for how we look after them.',
+    ],
+  },
+]
+---
+
+<BaseLayout
+  title="Camp Terms | Joner Football"
+  description="Terms for Joner Football camps: taking part, medical, photos and video, cancelling and refunds."
+  canonical="https://jonerfootball.com/camps/terms/"
+>
+  <section class="min-h-screen bg-joner-black py-24">
+    <div class="max-w-3xl mx-auto px-4">
+      <h1 class="font-heading text-4xl md:text-5xl font-bold text-white uppercase mb-4">Camp Terms</h1>
+      <p class="text-gray-400 font-body text-sm mb-4">Last updated: 10 November 2026</p>
+      <p class="text-gray-300 font-body leading-relaxed mb-12">These terms cover Joner Football camps. When you book a place, you agree to them for each player you book, as their parent or guardian.</p>
+
+      <div class="space-y-10">
+        {sections.map((s) => (
+          <div>
+            <h2 class="font-heading text-2xl font-bold text-white uppercase mb-4">{s.h}</h2>
+            {s.list && (
+              <ul class="text-gray-300 font-body leading-relaxed list-disc pl-5 space-y-2 mb-4">
+                {s.list.map((li) => <li>{li}</li>)}
+              </ul>
+            )}
+            {s.p.map((text) => <p class="text-gray-300 font-body leading-relaxed mb-3">{text}</p>)}
+          </div>
+        ))}
+
+        <div>
+          <h2 class="font-heading text-2xl font-bold text-white uppercase mb-4">10. The law and contact</h2>
+          <p class="text-gray-300 font-body leading-relaxed mb-3">These terms are governed by the laws of New South Wales, Australia. Our general <a class="text-white underline" href="/terms">website terms</a> and <a class="text-white underline" href="/privacy">privacy policy</a> also apply.</p>
+          <p class="text-gray-300 font-body leading-relaxed">Questions: <a class="text-white underline" href="mailto:ligia@jonerfootball.com">ligia@jonerfootball.com</a></p>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

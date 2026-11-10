@@ -25,7 +25,7 @@ const faqs = [
   { q: 'What should players expect?', a: 'Energy, intensity, technical detail and new drills in a proper learning environment: ball mastery, first touch, 1v1s and finishing.' },
   { q: 'What do they need to bring?', a: 'Football boots, shin guards, a full drink bottle, a hat and sunscreen. Black shorts and white socks if you have them. Everything is in the confirmation email.' },
   { q: 'Will bad weather cancel the camp?', a: 'Only severe weather will affect the camp. We will email you if anything changes.' },
-  { q: 'What if we need to cancel?', a: 'Email us. Cancel 14 days or more before camp for a refund, less the card fee. Inside 14 days we cannot refund.' },
+  { q: 'What if we need to cancel?', a: 'Email us. Cancel 14 days or more before camp for a full refund. From then until 48 hours before, it is a full refund less a A$5 card fee. Between 24 and 48 hours before, we refund half. Inside 24 hours there is no refund. You can pass your place to another player at any time, and if we have to cancel a day, we refund it.' },
 ]
 const schema = [
   {
@@ -154,7 +154,7 @@ const schema = [
             <label class="xc-f xc-f-wide"><span>Where did you hear about the camp? <em>optional</em></span><select name="heardAbout"><option value="">Select</option>{heardAbout.map((h) => <option>{h}</option>)}</select></label>
           </div>
 
-          <label class="xc-agree"><input type="checkbox" name="agreement" required /> <span>I agree to the <a href="/terms" target="_blank" rel="noopener">terms</a> and give permission for my child to take part.</span></label>
+          <label class="xc-agree"><input type="checkbox" name="agreement" required /> <span>I agree to the <a href="/camps/terms/" target="_blank" rel="noopener">camp terms</a> and give permission for my child to take part.</span></label>
           <div class="xc-total"><span id="xc-sum">1 player · both days</span><b id="xc-total">A$250</b></div>
           <p class="xc-err" id="xc-err" role="alert"></p>
           <button type="submit" class="xc-btn xc-btn-block" id="xc-submit">Pay A$250</button>

@@ -7,7 +7,7 @@ import { audit } from './_jfp-store.js'
 import {
   listCamps, getCamp, saveCamp, listBookings, getBooking, saveBooking, indexBooking, dayCounts, publicCamp,
   validateBookingInput, holdPlaces, releasePlaces, newCampId, pricePerPlayer, listWaitlist, removeWaitlist,
-  daysText, audLabel, runEffects, HEARD_ABOUT, unfinishedFamilies,
+  daysText, audLabel, runEffects, HEARD_ABOUT, unfinishedFamilies, campRefundFor,
 } from './_camp-store.js'
 import { CONFIRMED_SCORE } from './_holiday-store.js'
 
@@ -28,7 +28,8 @@ async function listData(campId) {
   return {
     camps: camps.map((c) => ({ id: c.id, title: c.title, status: c.status })),
     camp, counts, publicUrl: `/camps/${camp.slug}/`, days: pub.days,
-    bookings: bookings.filter(SHOWN).map((b) => ({ ...b, releaseToken: undefined })),
+    // refundDue: what the camp terms say a paid sign-up gets back if it is cancelled now.
+    bookings: bookings.filter(SHOWN).map((b) => ({ ...b, releaseToken: undefined, ...(b.status === 'paid' ? { refundDue: campRefundFor(b, camp) } : {}) })),
     // Started on the website and never paid: one line per family, newest first.
     unfinished: unfinishedFamilies(bookings).map((b) => ({ ...b, releaseToken: undefined })),
     waitlist, options: { heardAbout: HEARD_ABOUT, methods: METHODS },
@@ -116,13 +117,15 @@ export async function campAction(res, principal, body, action) {
     if (b.status === 'cancelled') return ok(res, await listData(campId))
     await releasePlaces(camp.id, b.dayIds, b.id)
     const wasPaid = b.status === 'paid'
+    const due = wasPaid ? campRefundFor(b, camp) : null
     b.status = 'cancelled'
     b.cancelledAt = new Date().toISOString()
     b.cancelReason = clean(body.reason, 200) || 'Cancelled in the portal'
     b.cancelledBy = by
     await saveBooking(b)
-    await audit({ by, action: 'camp.cancel', target: b.id, after: { reason: b.cancelReason, paid: wasPaid ? b.amountPaidCents : 0 } })
-    return ok(res, { ...(await listData(campId)), refund: wasPaid && b.paymentIntent ? { amount: audLabel(b.amountPaidCents), url: `https://dashboard.stripe.com/payments/${b.paymentIntent}` } : null })
+    if (due) { b.refundDueCents = due.amountCents; b.refundRule = due.rule; await saveBooking(b) }
+    await audit({ by, action: 'camp.cancel', target: b.id, after: { reason: b.cancelReason, paid: wasPaid ? b.amountPaidCents : 0, refundDue: due?.amountCents ?? 0 } })
+    return ok(res, { ...(await listData(campId)), refund: due ? { amount: audLabel(due.amountCents), amountCents: due.amountCents, rule: due.rule, url: b.paymentIntent ? `https://dashboard.stripe.com/payments/${b.paymentIntent}` : '' } : null })
   }
 
   // Stop the reminder emails for a family who started and did not pay.
