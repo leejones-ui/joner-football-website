@@ -30,7 +30,6 @@ export const ckeys = {
   waitlist: (campId) => `camp:waitlist:${campId}`,
 }
 
-export const JERSEY_SIZES = ['Youth XS (4 to 6)', 'Youth S (6 to 8)', 'Youth M (8 to 10)', 'Youth L (10 to 12)', 'Youth XL (12 to 14)', 'Adult S', 'Adult M', 'Adult L', 'Adult XL']
 export const HEARD_ABOUT = ['Instagram', 'Facebook', 'Google', 'YouTube', 'Email', 'Friend / word of mouth', 'Previous Joner player', 'JFP family', 'Coach / club', 'Other']
 
 // The first camp of the new system. Everything here can be changed in the
@@ -251,7 +250,6 @@ export function validateBookingInput(body, camp, { staff = false } = {}) {
   const players = (Array.isArray(body.players) ? body.players : []).slice(0, MAX_PLAYERS).map((p) => ({
     firstName: clean(p?.firstName, 60), surname: clean(p?.surname, 60), age: clean(p?.age, 3).replace(/\D/g, ''),
     clubLevel: clean(p?.clubLevel, 120), previousCamp: yesNo(p?.previousCamp), medical: clean(p?.medical, 600),
-    ...(clean(p?.jerseySize, 40) ? { jerseySize: clean(p.jerseySize, 40) } : {}),
   }))
   if (!players.length) return { error: 'Add at least one player.' }
   for (const [i, p] of players.entries()) {
