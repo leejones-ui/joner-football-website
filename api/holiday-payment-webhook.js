@@ -14,7 +14,7 @@ import { jfpIdForCharge, applyJfpRefunds } from './_jfp-refunds.js'
 // Saved card or bank account, auto-charge after each session (claude/card-on-file).
 import { savedPayIntentEvent, savedPaySetupEvent } from './_jfp-saved-pay.js'
 // Camp sign-ups (Lee, 10 Nov 2026): metadata campBookingId, managed in the portal Camps tab.
-import { finaliseCampBooking, expireCampBooking, campBookingIdFromSession } from './_camp-store.js'
+import { finaliseCampBooking, expireCampBooking, campBookingIdFromSession, recordCampRefund } from './_camp-store.js'
 
 export const config = { api: { bodyParser: false } }
 
@@ -54,7 +54,11 @@ export default async function handler(req, res) {
     if (!/^(ch|py)_[A-Za-z0-9_]+$/.test(chargeId)) return res.status(200).json({ success: true, ignored: 'no-charge' })
     try {
       const { charge, id, piId } = await jfpIdForCharge(chargeId)
-      if (!id) return res.status(200).json({ success: true, ignored: 'not-jfp' })
+      if (!id) {
+        // A camp sign-up refunded in Stripe: show it on the sign-up in the portal.
+        const campRefund = await recordCampRefund(charge, piId).catch((error) => { console.error('camp refund failed', error); return '' })
+        return res.status(200).json(campRefund ? { success: true, campId: campRefund, refund: true } : { success: true, ignored: 'not-jfp' })
+      }
       const r = await applyJfpRefunds(id, charge, piId)
       return res.status(200).json({ success: true, jfpId: id, refunds: r.applied || 0, verified })
     } catch (error) {

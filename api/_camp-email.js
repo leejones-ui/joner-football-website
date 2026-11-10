@@ -30,40 +30,62 @@ const names = (b) => b.players.map((x) => x.firstName).join(' and ')
 export function renderCampConfirmation(b, camp) {
   const first = String(b.parentName || '').split(' ')[0] || 'there'
   const kids = names(b)
+  const start = camp.timesLabel.split(' to ')[0]
+  const end = camp.timesLabel.split(' to ')[1] || '12pm'
   const html = shell({
-    preheader: `${kids} is booked in. Drop off from 8:45am, collect at 12. Here is what to bring.`,
+    preheader: `${kids} ${b.players.length > 1 ? 'are' : 'is'} booked in. Here is where to be, when, and what to bring.`,
     eyebrow: camp.title,
     heading: `${kids}${b.players.length > 1 ? ' are' : ' is'} booked in`,
     body: `
 ${p(`Hi ${esc(first)},`)}
-${p(`Payment received, so the place${b.players.length > 1 || b.dayIds.length > 1 ? 's are' : ' is'} yours. Drop ${esc(kids)} with us, go and get the Christmas shopping done, and collect a tired, happy footballer at the end of the morning.`)}
+${p(`Payment received, so the place${b.players.length > 1 || b.dayIds.length > 1 ? 's are' : ' is'} confirmed. We cannot wait to get to work with ${esc(kids)}.`)}
 ${table([
   ['Booking', b.id],
   ['Player' + (b.players.length > 1 ? 's' : ''), b.players.map((x) => `${x.firstName} ${x.surname}`).join(', ')],
   ['Day' + (b.dayIds.length > 1 ? 's' : ''), daysText(camp, b.dayIds)],
-  ['Times', `${camp.timesLabel} (${camp.arriveLabel})`],
+  ['Times', camp.timesLabel],
   ['Where', camp.location ? `${camp.location}${camp.address ? `, ${camp.address}` : ''}` : 'Sydney. We email you the venue before camp.'],
   ['Paid', audLabel(b.amountPaidCents)],
 ])}
 ${h2('On the day')}
 ${list([
-  `${camp.arriveLabel}. Sign in with a coach at the gate, we start at ${camp.timesLabel.split(' to ')[0]} sharp.`,
-  `Collect at ${camp.timesLabel.split(' to ')[1] || '12pm'} from the same spot. We only hand players to you or the people you named on the form.`,
-  'Running late at pick up? Call or text us and we will keep them busy.',
+  `${camp.arriveLabel} to sign in. We start at ${start} sharp.`,
+  `Finish is ${end}.`,
+  'Players are grouped by age and ability, so everyone is challenged at the right level.',
 ])}
-${camp.location ? p(`<a href="${mapsUrl(camp)}" style="color:#E8000D;font-weight:800;">Open the address in Maps</a>`) : ''}
+${camp.location ? p(`<a href="${mapsUrl(camp)}" style="color:#E8000D;font-weight:800;">Open ${esc(camp.location)} in Maps</a>`) : ''}
 ${h2('What to bring')}
 ${list(camp.bring)}
 ${h2('Good to know')}
 ${list([
-  'Players are grouped by age and ability, so everyone is challenged and nobody is lost.',
-  'If anything changes with medical notes or who is collecting, reply to this email before the day.',
+  'Only severe weather will affect the camp. We will email you if anything changes.',
+  'If anything changes with medical notes, reply to this email before the day.',
   'Need to cancel? Reply to this email. Cancel 14 days or more before camp for a refund (less the card fee). Inside 14 days we cannot refund.',
 ])}
 ${p(`Want ${esc(b.players[0]?.firstName || 'them')} to arrive sharper? The Joner Football App has free sessions to start with: <a href="${SITE}/app" style="color:#E8000D;font-weight:800;">jonerfootball.com/app</a>`)}
+${p(`Know a teammate who would love it? Send them this before places go: <a href="${SITE}/camps/${camp.slug}/" style="color:#E8000D;font-weight:800;">jonerfootball.com/camps/${camp.slug}</a>`)}
 ${p('Any questions, just reply. See you on the pitch.')}`,
   })
   return { subject: `Booked in: ${camp.short}, ${daysText(camp, b.dayIds)}`, html }
+}
+
+// Started the form, did not pay (the USA and Sydney camps sent the same nudge).
+export function renderCampReminder(b, camp) {
+  const first = String(b.parentName || '').split(' ')[0] || 'there'
+  const kids = names(b)
+  const link = `${SITE}/camps/${camp.slug}/?utm_source=email&utm_medium=reminder&utm_campaign=camp_not_finished#book`
+  const html = shell({
+    preheader: `${kids}'s place is not confirmed until payment is complete.`,
+    eyebrow: camp.title,
+    heading: 'Your camp place is not confirmed yet',
+    body: `
+${p(`Hi ${esc(first)},`)}
+${p(`We saw you start a booking for ${esc(kids)} at the ${esc(camp.title)} (${esc(daysText(camp, b.dayIds))}), but the payment did not go through.`)}
+${p('<strong style="color:#000;">The place is not held until payment is complete,</strong> and places are limited.')}
+<tr><td style="padding:6px 26px 22px;"><a href="${link}" style="background:#E8000D;color:#ffffff;text-decoration:none;font-weight:900;font-size:15px;padding:16px 24px;border-radius:8px;display:inline-block;text-transform:uppercase;letter-spacing:.04em;">Finish booking</a></td></tr>
+${p('If you have decided not to come, no problem, just ignore this. If you already paid and this crossed over, reply and we will check it.')}`,
+  })
+  return { subject: `${kids}'s camp place is not confirmed yet`, html }
 }
 
 export function renderCampStaffAlert(b, camp) {
@@ -71,9 +93,9 @@ export function renderCampStaffAlert(b, camp) {
     ['Booking', b.id], ['Status', b.status === 'paid' ? `PAID ${audLabel(b.amountPaidCents)} (${b.method || 'Stripe'})` : b.status],
     ['Days', daysText(camp, b.dayIds)], ['Parent', b.parentName], ['Email', b.email], ['Mobile', b.mobile],
     ['Emergency contact', [b.emergencyName, b.emergencyMobile].filter(Boolean).join(' · ')], ['Collecting', b.pickup],
-    ['Heard about camp', b.heardAbout], ['Extra info', b.extraInfo], ['Needs a look', b.attention],
+    ['Heard about camp', b.heardAbout], ['Came from', b.cameFrom], ['Extra info', b.extraInfo], ['Needs a look', b.attention],
   ]
-  const players = b.players.map((x, i) => [`Player ${i + 1}`, `${x.firstName} ${x.surname}, age ${x.age || '?'}, jersey ${x.jerseySize || '?'}, camp before ${x.previousCamp || '?'}${x.clubLevel ? `, ${x.clubLevel}` : ''}${x.medical ? `. Medical: ${x.medical}` : ''}`])
+  const players = b.players.map((x, i) => [`Player ${i + 1}`, `${x.firstName} ${x.surname}, age ${x.age || '?'}${x.clubLevel ? `, plays for ${x.clubLevel}` : ''}${x.previousCamp ? `, camp before: ${x.previousCamp}` : ''}${x.medical ? `. Medical: ${x.medical}` : ''}`])
   const html = shell({
     preheader: `${names(b)} for ${daysText(camp, b.dayIds)}`,
     eyebrow: 'New camp sign-up',
@@ -98,6 +120,10 @@ async function brevoSend({ to, subject, html, replyTo }) {
 
 export async function sendCampConfirmation(b, camp) {
   const { subject, html } = renderCampConfirmation(b, camp)
+  return brevoSend({ to: [{ email: b.email, name: b.parentName || b.email }], subject, html })
+}
+export async function sendCampReminder(b, camp) {
+  const { subject, html } = renderCampReminder(b, camp)
   return brevoSend({ to: [{ email: b.email, name: b.parentName || b.email }], subject, html })
 }
 export async function sendCampStaffAlert(b, camp) {

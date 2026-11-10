@@ -1,0 +1,575 @@
+---
+// Christmas Holiday Camp, Rydalmere Park (Lee, 10 Nov 2026). Families book a
+// place per day, pay with Stripe, get every detail by email, and Lee and
+// Ligia manage it all in the Joner Football Portal (Camps).
+// Lee's notes on the first version: call it Christmas Holiday Camp, a camp
+// video in the hero with few words, ONE short form (player, who they play
+// for, parent), and never show the total places: "Limited places" until a
+// day is nearly full, then "Only N places left".
+// The live parts (which days are low or full, prices, venue) come from
+// /api/camp-book. The server's copy is XMAS_2026 in api/_camp-store.js.
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import { faqSchema, breadcrumbSchema } from '../../lib/seoSchema'
+
+const SLUG = 'christmas-holiday-camp'
+const url = `https://jonerfootball.com/camps/${SLUG}/`
+const days = [
+  { id: 'mon', label: 'Monday 21 December' },
+  { id: 'tue', label: 'Tuesday 22 December' },
+]
+const heardAbout = ['Instagram', 'Facebook', 'Google', 'YouTube', 'Email', 'Friend / word of mouth', 'Previous Joner player', 'JFP family', 'Coach / club', 'Other']
+
+const faqs = [
+  { q: 'Can we book one day or both?', a: 'Either. Booking both days costs less per day than booking one.' },
+  { q: 'How are groups selected?', a: 'Players are grouped by age and ability, each group with its own coach. If a player needs a stronger challenge, the coaches move them up.' },
+  { q: 'What should players expect?', a: 'Energy, intensity, technical detail and new drills in a proper learning environment: ball mastery, first touch, 1v1s and finishing.' },
+  { q: 'What do they need to bring?', a: 'Football boots, shin guards, a full drink bottle, a hat and sunscreen. Black shorts and white socks if you have them. Everything is in the confirmation email.' },
+  { q: 'Will bad weather cancel the camp?', a: 'Only severe weather will affect the camp. We will email you if anything changes.' },
+  { q: 'What if we need to cancel?', a: 'Email us. Cancel 14 days or more before camp for a refund, less the card fee. Inside 14 days we cannot refund.' },
+]
+const schema = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Event',
+    name: 'Joner Football Christmas Holiday Camp',
+    description: 'Two football mornings for players aged 7 to 16 at Rydalmere Park, Sydney, 21 and 22 December 2026, 9am to 12pm. Book one day or both.',
+    startDate: '2026-12-21T09:00:00+11:00',
+    endDate: '2026-12-22T12:00:00+11:00',
+    eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+    eventStatus: 'https://schema.org/EventScheduled',
+    location: { '@type': 'Place', name: 'Rydalmere Park', address: { '@type': 'PostalAddress', streetAddress: 'South Street', addressLocality: 'Rydalmere', addressRegion: 'NSW', postalCode: '2116', addressCountry: 'AU' } },
+    image: ['https://jonerfootball.com/images/camps/christmas-2026/camp-hero-og.jpg'],
+    organizer: { '@type': 'Organization', name: 'Joner Football', url: 'https://jonerfootball.com' },
+    offers: [
+      { '@type': 'Offer', name: 'One day', price: '150', priceCurrency: 'AUD', availability: 'https://schema.org/LimitedAvailability', url, validFrom: '2026-11-10' },
+      { '@type': 'Offer', name: 'Both days', price: '250', priceCurrency: 'AUD', availability: 'https://schema.org/LimitedAvailability', url, validFrom: '2026-11-10' },
+    ],
+  },
+  breadcrumbSchema([
+    { name: 'Home', url: 'https://jonerfootball.com/' },
+    { name: 'Football Camps', url: 'https://jonerfootball.com/camps/' },
+    { name: 'Christmas Holiday Camp', url },
+  ]),
+  faqSchema(faqs),
+]
+---
+
+<BaseLayout
+  title="Christmas Holiday Football Camp, Sydney | Joner Football"
+  description="Joner Football Christmas Holiday Camp at Rydalmere Park. Monday 21 and Tuesday 22 December, 9am to 12pm. Ages 7 to 16. Limited places."
+  canonical={url}
+  ogImage="https://jonerfootball.com/images/camps/christmas-2026/camp-hero-og.jpg"
+  schema={schema}
+  hideFooterSignup
+>
+  <Fragment slot="head">
+    <link rel="preload" as="image" href="/images/camps/christmas-2026/camp-hero-poster.webp" type="image/webp" fetchpriority="high" />
+  </Fragment>
+
+  <main class="xc" id="xc" data-slug={SLUG}>
+    <!-- Paid: shown when Stripe sends the family back -->
+    <section class="xc-done" id="xc-done" hidden aria-live="polite">
+      <div class="xc-wrap">
+        <p class="xc-kick">Christmas Holiday Camp</p>
+        <h1 class="xc-h2" id="xc-done-h">Checking your payment.</h1>
+        <p class="xc-p" id="xc-done-p">One moment while Stripe confirms it.</p>
+        <div class="xc-done-card" id="xc-done-card" hidden></div>
+        <a class="xc-btn xc-btn-line" href={`/camps/${SLUG}/#book`} id="xc-again" hidden>Book another player</a>
+      </div>
+    </section>
+
+    <section class="xc-hero">
+      <video class="xc-hero-media" id="xc-video" muted loop playsinline preload="none" poster="/images/camps/christmas-2026/camp-hero-poster.webp" aria-hidden="true" tabindex="-1">
+        <source src="/images/camps/christmas-2026/camp-hero.mp4" type="video/mp4" />
+      </video>
+      <div class="xc-hero-shade" aria-hidden="true"></div>
+      <div class="xc-wrap xc-hero-in">
+        <p class="xc-eyebrow">Sydney · 21 and 22 December</p>
+        <h1 class="xc-h1">Christmas <span>holiday camp.</span></h1>
+        <p class="xc-hero-sub">Two mornings of proper coaching. <span class="xc-nb">Ages 7 to 16.</span></p>
+        <div class="xc-hero-cta">
+          <a href="#book" class="xc-btn">Book a place</a>
+          <span class="xc-scarce"><i aria-hidden="true"></i><span id="xc-scarce">Limited places</span></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="xc-facts" aria-label="Camp details">
+      <div class="xc-wrap xc-facts-grid">
+        <div><span>Dates</span><b>Mon 21, Tue 22 Dec</b></div>
+        <div><span>Times</span><b>9am to 12pm</b></div>
+        <div><span>Ages</span><b data-camp="ages">7 to 16</b></div>
+        <div><span>Where</span><b data-camp="where">Rydalmere Park</b></div>
+      </div>
+    </section>
+
+    <section class="xc-sec">
+      <div class="xc-wrap xc-split-grid">
+        <img class="xc-photo" src="/images/camps/christmas-2026/lee-coaching.webp" alt="Lee Jones coaching a group of players at a Joner Football camp" width="1200" height="801" loading="lazy" />
+        <div>
+          <p class="xc-kick">The camp</p>
+          <h2 class="xc-h2">Not a babysitting camp.</h2>
+          <p class="xc-p">Energy, standards and detail, with coaches who teach. Three hours each morning, so you can get the Christmas shopping done.</p>
+          <ul class="xc-ticks">
+            <li>Coached by Lee Jones and the Joner Football team</li>
+            <li>Groups by age and ability</li>
+            <li>Ball mastery, first touch, 1v1s and finishing</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="xc-sec xc-book" id="book">
+      <div class="xc-wrap xc-book-wrap">
+        <p class="xc-kick">Book a place</p>
+        <h2 class="xc-h2">Lock in your spot.</h2>
+        <div class="xc-banner" id="xc-banner" role="status" hidden></div>
+
+        <form id="xc-form" class="xc-card" novalidate>
+          <p class="xc-label">Which days?</p>
+          <div class="xc-days" role="radiogroup" aria-label="Days">
+            {days.map((d) => (
+              <label class="xc-day" data-dayopt={d.id}>
+                <input type="radio" name="days" value={d.id} />
+                <span class="xc-day-name">{d.label}</span>
+                <span class="xc-day-price" data-p1>A$150</span>
+                <span class="xc-day-left" data-dleft>Limited places</span>
+              </label>
+            ))}
+            <label class="xc-day is-best" data-dayopt="all">
+              <input type="radio" name="days" value="all" checked />
+              <span class="xc-day-name">Both days</span>
+              <span class="xc-day-price" data-pall>A$250</span>
+              <span class="xc-day-left" data-dleft-all>Best value, save A$50</span>
+            </label>
+          </div>
+
+          <div id="xc-players"></div>
+          <button type="button" class="xc-link" id="xc-add">+ Add another player</button>
+
+          <div class="xc-grid xc-parent">
+            <label class="xc-f xc-f-wide"><span>Parent or guardian name</span><input name="parentName" autocomplete="name" required /></label>
+            <label class="xc-f"><span>Email</span><input name="email" type="email" autocomplete="email" inputmode="email" required id="xc-email" /></label>
+            <label class="xc-f"><span>Mobile</span><input name="mobile" type="tel" autocomplete="tel" inputmode="tel" required /></label>
+            <label class="xc-f xc-f-wide"><span>Where did you hear about the camp? <em>optional</em></span><select name="heardAbout"><option value="">Select</option>{heardAbout.map((h) => <option>{h}</option>)}</select></label>
+          </div>
+
+          <label class="xc-agree"><input type="checkbox" name="agreement" required /> <span>I agree to the <a href="/terms" target="_blank" rel="noopener">terms</a> and give permission for my child to take part.</span></label>
+          <div class="xc-total"><span id="xc-sum">1 player · both days</span><b id="xc-total">A$250</b></div>
+          <p class="xc-err" id="xc-err" role="alert"></p>
+          <button type="submit" class="xc-btn xc-btn-block" id="xc-submit">Pay A$250</button>
+          <p class="xc-small">Secure payment by Stripe. Your confirmation email has everything for the day.</p>
+        </form>
+
+        <div class="xc-card xc-wait" id="xc-wait" hidden>
+          <h3>That day is full.</h3>
+          <p class="xc-p">Leave your details and we will call you first if a place opens.</p>
+          <form id="xc-wait-form" novalidate class="xc-grid">
+            <label class="xc-f"><span>Your name</span><input name="parentName" required /></label>
+            <label class="xc-f"><span>Mobile</span><input name="mobile" type="tel" required /></label>
+            <label class="xc-f"><span>Email</span><input name="email" type="email" required /></label>
+            <label class="xc-f"><span>Players and ages</span><input name="players" placeholder="Sam (9), Ella (11)" /></label>
+            <button type="submit" class="xc-btn xc-f-wide">Join the waitlist</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <section class="xc-sec xc-info">
+      <div class="xc-wrap xc-split-grid xc-split-top">
+        <div>
+          <p class="xc-kick">What to bring</p>
+          <ul class="xc-ticks" id="xc-bring">
+            <li>Football boots</li>
+            <li>Shin guards</li>
+            <li>A full drink bottle</li>
+            <li>Hat and sunscreen</li>
+            <li>Black shorts and white socks if you have them</li>
+          </ul>
+          <p class="xc-where"><b data-camp="venue">Rydalmere Park</b><span data-camp="address">South Street, Rydalmere NSW 2116</span><a id="xc-map" href="https://www.google.com/maps/search/?api=1&query=Rydalmere%20Park%20South%20Street%20Rydalmere%20NSW%202116" target="_blank" rel="noopener noreferrer">Open in Maps</a></p>
+        </div>
+        <div class="xc-faq">
+          <p class="xc-kick">Questions</p>
+          {faqs.map((f) => (
+            <details><summary>{f.q}</summary><p>{f.a}</p></details>
+          ))}
+          <p class="xc-small">Anything else: <a href="mailto:ligia@jonerfootball.com">ligia@jonerfootball.com</a></p>
+        </div>
+      </div>
+    </section>
+
+    <div class="xc-sticky" id="xc-sticky" hidden>
+      <span id="xc-sticky-t">Limited places</span>
+      <a href="#book" class="xc-btn xc-btn-sm">Book a place</a>
+    </div>
+  </main>
+
+  <template id="xc-player-tpl">
+    <div class="xc-player">
+      <div class="xc-player-head"><b>Player <span data-n>1</span></b><button type="button" class="xc-link" data-remove>Remove</button></div>
+      <div class="xc-grid">
+        <label class="xc-f"><span>Player first name</span><input data-f="firstName" autocomplete="off" required /></label>
+        <label class="xc-f"><span>Surname</span><input data-f="surname" autocomplete="off" required /></label>
+        <label class="xc-f"><span>Age</span><input data-f="age" inputmode="numeric" maxlength="2" required /></label>
+        <label class="xc-f"><span>Who do they play for?</span><input data-f="clubLevel" placeholder="Club or school team" required /></label>
+        <label class="xc-f xc-f-wide"><span>Medical notes <em>optional</em></span><input data-f="medical" placeholder="Allergies, asthma, injuries" /></label>
+      </div>
+    </div>
+  </template>
+
+  <style is:global>
+    .xc { --red: #E8000D; --ink: #0a0a0a; --mute: #5c5c5c; --line: #e2e2e2; --soft: #f5f5f5; --display: var(--font-heading, Anton, Impact, sans-serif); background: #fff; color: var(--ink); overflow-x: clip; }
+    .xc-wrap { width: min(1120px, calc(100% - 40px)); margin: 0 auto; }
+    .xc-kick, .xc-eyebrow { margin: 0 0 12px; font-family: var(--display); font-style: italic; font-size: 13px; letter-spacing: .18em; text-transform: uppercase; color: var(--red); }
+    .xc-eyebrow { color: #fff; }
+    .xc-h1 { margin: 0; font-family: var(--display); font-style: italic; text-transform: uppercase; font-size: clamp(2.9rem, 10.5vw, 6.5rem); line-height: .92; }
+    .xc-h1 span { display: block; color: var(--red); }
+    .xc-h2 { margin: 0 0 16px; font-family: var(--display); font-style: italic; text-transform: uppercase; font-size: clamp(2rem, 6vw, 3.2rem); line-height: 1; }
+    .xc-p { margin: 0 0 20px; font-size: 17px; line-height: 1.6; color: var(--mute); max-width: 560px; }
+    .xc-small { margin: 12px 0 0; font-size: 13px; line-height: 1.5; color: var(--mute); }
+    .xc-small a, .xc-faq a { color: var(--red); font-weight: 700; }
+    .xc-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 54px; padding: 0 30px; border-radius: 10px; border: 2px solid var(--red); background: var(--red); color: #fff !important; font-weight: 800; font-size: 16px; text-decoration: none; cursor: pointer; transition: transform .15s, background .15s; }
+    .xc-btn:hover { background: #c4000b; border-color: #c4000b; }
+    .xc-btn:active { transform: scale(.98); }
+    .xc-btn:disabled { opacity: .55; cursor: not-allowed; }
+    .xc-btn-line { background: transparent; color: var(--ink) !important; border-color: var(--ink); }
+    .xc-btn-line:hover { background: var(--ink); color: #fff !important; border-color: var(--ink); }
+    .xc-btn-sm { min-height: 44px; padding: 0 18px; font-size: 15px; }
+    .xc-btn-block { width: 100%; }
+    .xc-nb { white-space: nowrap; }
+    .xc-link { background: none; border: 0; color: var(--red); font: inherit; font-weight: 700; cursor: pointer; padding: 0; min-height: 44px; font-size: 15px; }
+
+    /* Hero: the camp video, one line, one button. */
+    .xc-hero { position: relative; min-height: min(86dvh, 780px); display: flex; align-items: flex-end; padding: 120px 0 56px; color: #fff; background: #000 url('/images/camps/christmas-2026/camp-hero-poster.webp') center / cover no-repeat; }
+    .xc-hero-media { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 52% 50%; }
+    .xc-hero-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.35) 0%, rgba(0,0,0,.1) 35%, rgba(0,0,0,.9) 100%), linear-gradient(90deg, rgba(0,0,0,.7) 0%, rgba(0,0,0,0) 62%); }
+    .xc-hero-in { position: relative; }
+    .xc-hero-sub { margin: 18px 0 0; font-size: 19px; line-height: 1.5; font-weight: 500; color: rgba(255,255,255,.92); }
+    .xc-hero-cta { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; margin-top: 28px; }
+    .xc-scarce { display: inline-flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 700; }
+    .xc-scarce i { width: 9px; height: 9px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 0 rgba(232,0,13,.7); animation: xc-pulse 2s infinite; }
+    @keyframes xc-pulse { 70% { box-shadow: 0 0 0 9px rgba(232,0,13,0); } 100% { box-shadow: 0 0 0 0 rgba(232,0,13,0); } }
+
+    .xc-facts { background: var(--ink); color: #fff; padding: 22px 0; }
+    .xc-facts-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+    .xc-facts-grid div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .xc-facts-grid span { font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--red); }
+    .xc-facts-grid b { font-size: 17px; line-height: 1.25; }
+
+    .xc-sec { padding: 72px 0; }
+    .xc-split-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 56px; align-items: center; }
+    .xc-split-top { align-items: start; }
+    .xc-photo { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 16px; }
+    .xc-ticks { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+    .xc-ticks li { position: relative; padding-left: 32px; font-weight: 600; line-height: 1.45; }
+    .xc-ticks li::before { content: ''; position: absolute; left: 0; top: 2px; width: 20px; height: 20px; border-radius: 50%; background: var(--red) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5'%3E%3Cpath d='M5 12l5 5 9-10'/%3E%3C/svg%3E") center / 12px no-repeat; }
+
+    /* One form, one card. */
+    .xc-book { background: var(--soft); }
+    .xc-book-wrap { max-width: 720px; }
+    .xc-card { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 28px; box-shadow: 0 10px 30px rgba(0,0,0,.05); }
+    .xc-banner { margin: 0 0 16px; padding: 14px 16px; border-radius: 12px; background: #fff4e5; border: 1px solid #ffd59e; font-weight: 600; }
+    .xc-label { margin: 0 0 10px; font-size: 14px; font-weight: 800; }
+    .xc-days { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 24px; }
+    .xc-day { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 16px; border: 2px solid var(--line); border-radius: 14px; cursor: pointer; background: #fff; transition: border-color .15s, box-shadow .15s; }
+    .xc-day input { position: absolute; opacity: 0; pointer-events: none; }
+    .xc-day:has(input:checked) { border-color: var(--red); box-shadow: 0 0 0 3px rgba(232,0,13,.12); }
+    .xc-day:has(input:focus-visible) { outline: 3px solid #6da7ec; outline-offset: 2px; }
+    .xc-day.is-full { opacity: .55; }
+    .xc-day-name { font-weight: 800; font-size: 15px; line-height: 1.25; }
+    .xc-day-price { font-family: var(--display); font-style: italic; font-size: 30px; line-height: 1; }
+    .xc-day-left { margin-top: auto; font-size: 13px; color: var(--mute); font-weight: 600; }
+    .xc-day.is-low .xc-day-left, .xc-day.is-full .xc-day-left, .xc-day.is-best .xc-day-left { color: var(--red); }
+    .xc-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .xc-f { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+    .xc-f-wide { grid-column: 1 / -1; }
+    .xc-f > span { font-size: 14px; font-weight: 700; color: var(--ink); }
+    .xc-f > span em { font-style: normal; font-weight: 500; color: var(--mute); }
+    .xc-f input, .xc-f select { width: 100%; height: 52px; padding: 0 14px; border: 1.5px solid #cfcfcf; border-radius: 10px; background: #fff; font: inherit; font-size: 16px; color: var(--ink); }
+    .xc-f input:focus, .xc-f select:focus { outline: none; border-color: var(--ink); box-shadow: 0 0 0 3px rgba(0,0,0,.08); }
+    .xc-f input[aria-invalid="true"], .xc-f select[aria-invalid="true"] { border-color: var(--red); box-shadow: 0 0 0 3px rgba(232,0,13,.1); }
+    .xc-player { margin: 0 0 14px; }
+    .xc-player-head { display: none; align-items: center; justify-content: space-between; margin: 0 0 8px; padding-top: 14px; border-top: 1px solid var(--line); }
+    #xc-players.is-many .xc-player-head { display: flex; }
+    #xc-players.is-many .xc-player:first-child [data-remove] { visibility: hidden; }
+    #xc-add { margin: -4px 0 14px; }
+    .xc-parent { padding-top: 20px; border-top: 1px solid var(--line); }
+    .xc-agree { display: flex; gap: 12px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--mute); margin: 22px 0 18px; }
+    .xc-agree input { width: 22px; height: 22px; flex: none; margin: 0; accent-color: var(--red); }
+    .xc-agree a { color: var(--red); font-weight: 700; }
+    .xc-total { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 0 0; border-top: 2px solid var(--ink); margin-bottom: 10px; }
+    .xc-total span { color: var(--mute); font-weight: 600; }
+    .xc-total b { font-family: var(--display); font-style: italic; font-size: 40px; line-height: 1; }
+    .xc-err { min-height: 22px; margin: 0 0 6px; color: var(--red); font-weight: 700; font-size: 15px; }
+    .xc-wait { margin-top: 20px; }
+    .xc-wait h3 { margin: 0 0 6px; font-family: var(--display); font-style: italic; text-transform: uppercase; font-size: 26px; }
+
+    .xc-where { display: flex; flex-direction: column; gap: 4px; margin: 28px 0 0; padding: 18px 20px; border-radius: 14px; background: var(--soft); }
+    .xc-where span { color: var(--mute); }
+    .xc-where a { color: var(--red); font-weight: 700; margin-top: 4px; min-height: 28px; }
+    .xc-faq details { border-bottom: 1px solid var(--line); }
+    .xc-faq summary { cursor: pointer; padding: 15px 0; font-weight: 800; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 44px; }
+    .xc-faq summary::-webkit-details-marker { display: none; }
+    .xc-faq summary::after { content: '+'; color: var(--red); font-size: 22px; line-height: 1; flex: none; }
+    .xc-faq details[open] summary::after { content: '−'; }
+    .xc-faq details p { margin: 0 0 16px; color: var(--mute); line-height: 1.55; }
+
+    .xc-done { padding: 130px 0 56px; background: var(--soft); }
+    .xc-done-card { margin: 18px 0; padding: 6px 18px; border-radius: 14px; background: #fff; border: 1px solid var(--line); max-width: 560px; }
+    .xc-done-card div { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+    .xc-done-card div:last-child { border: 0; }
+    .xc-done-card span { color: var(--mute); }
+
+    .xc-sticky { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 20px calc(10px + env(safe-area-inset-bottom)); background: rgba(10,10,10,.96); color: #fff; font-weight: 700; font-size: 15px; }
+    .xc-sticky[hidden] { display: none; }
+
+    @media (max-width: 900px) {
+      .xc-split-grid { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+    }
+    @media (max-width: 640px) {
+      .xc-hero { min-height: 88dvh; padding: 100px 0 36px; }
+      .xc-hero-sub { font-size: 17px; }
+      .xc-hero-cta { flex-direction: column; align-items: stretch; gap: 16px; }
+      .xc-facts-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 16px; }
+      .xc-sec { padding: 52px 0; }
+      .xc-card { padding: 20px 16px; border-radius: 16px; }
+      .xc-days { grid-template-columns: minmax(0, 1fr); }
+      .xc-day { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 12px; }
+      .xc-day-name { grid-column: 1; }
+      .xc-day-price { grid-column: 2; grid-row: 1 / span 2; font-size: 28px; }
+      .xc-day-left { grid-column: 1; margin-top: 0; }
+      .xc-grid { grid-template-columns: minmax(0, 1fr); }
+      .xc-player .xc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 10px; }
+      .xc-f > span { font-size: 13.5px; }
+    }
+    @media (min-width: 641px) { .xc-sticky { display: none !important; } }
+    @media (prefers-reduced-motion: reduce) { .xc-btn { transition: none; } .xc-scarce i { animation: none; } }
+  </style>
+
+  <script>
+    const root = document.getElementById('xc') as HTMLElement
+    const SLUG = root.dataset.slug as string
+    const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T
+    const aud = (c: number) => `A$${(c / 100) % 1 ? (c / 100).toFixed(2) : c / 100}`
+    const safe = (v: unknown) => String(v ?? '').replace(/[<>&"]/g, '')
+    let camp: any = null
+    const track = (name: string, data: Record<string, unknown>) => { try { (window as any).JonerTracking?.trackEvent?.(name, { custom_data: data }) } catch {} }
+    const form = $('xc-form') as HTMLFormElement
+
+    // Where the family came from (an ad, an email, Instagram): kept with the booking.
+    const qs = new URLSearchParams(location.search)
+    let source = ''
+    try {
+      const fromUrl = [qs.get('utm_source'), qs.get('utm_medium'), qs.get('utm_campaign')].filter(Boolean).join(' / ')
+      const ref = document.referrer && !document.referrer.includes(location.host) && !document.referrer.includes('stripe.com') ? new URL(document.referrer).host : ''
+      source = fromUrl || sessionStorage.getItem('xc-src') || ref
+      if (source) sessionStorage.setItem('xc-src', source)
+    } catch {}
+
+    // The hero video plays by itself, unless the visitor asked for less motion or to save data.
+    const video = $('xc-video') as HTMLVideoElement
+    const saveData = (navigator as any).connection?.saveData === true
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches && !saveData) { video.preload = 'auto'; video.play().catch(() => {}) }
+
+    // ---------- players ----------
+    const list = $('xc-players')
+    const tpl = $('xc-player-tpl') as HTMLTemplateElement
+    function addPlayer(surname = '') {
+      if (list.children.length >= 6) return
+      const node = tpl.content.firstElementChild!.cloneNode(true) as HTMLElement
+      list.appendChild(node)
+      if (surname) (node.querySelector('[data-f="surname"]') as HTMLInputElement).value = surname
+      node.querySelector('[data-remove]')!.addEventListener('click', () => { node.remove(); number(); total() })
+      number(); total()
+    }
+    function number() {
+      [...list.children].forEach((n, i) => { (n.querySelector('[data-n]') as HTMLElement).textContent = String(i + 1) })
+      list.classList.toggle('is-many', list.children.length > 1)
+      $('xc-add').hidden = list.children.length >= 6
+    }
+    $('xc-add').addEventListener('click', () => { const first = list.querySelector('[data-f="surname"]') as HTMLInputElement; addPlayer(first?.value || ''); (list.lastElementChild!.querySelector('input') as HTMLInputElement).focus() })
+
+    // ---------- days and total ----------
+    const chosen = () => (form.querySelector('input[name="days"]:checked') as HTMLInputElement)?.value || ''
+    const dayIds = () => { const v = chosen(); return v === 'all' ? (camp?.days || [{ id: 'mon' }, { id: 'tue' }]).map((d: any) => d.id) : v ? [v] : [] }
+    function eachPrice() {
+      const p = camp?.prices || { oneDay: 15000, allDays: 25000 }
+      return chosen() === 'all' ? p.allDays : p.oneDay
+    }
+    function total() {
+      const n = list.children.length
+      const t = eachPrice() * n
+      const what = chosen() === 'all' ? 'both days' : (camp?.days || []).find((d: any) => d.id === chosen())?.short || 'one day'
+      $('xc-sum').textContent = `${n} player${n === 1 ? '' : 's'} · ${what}`
+      $('xc-total').textContent = aud(t)
+      $('xc-submit').textContent = `Pay ${aud(t)}`
+      showWait()
+    }
+    form.querySelectorAll('input[name="days"]').forEach((r) => r.addEventListener('change', total))
+    addPlayer()
+
+    // ---------- live: limited, only N left, or full ----------
+    const leftText = (d: any) => (d.full ? 'Full · join the waitlist' : d.low ? `Only ${d.left} place${d.left === 1 ? '' : 's'} left` : 'Limited places')
+    function paint(c: any) {
+      camp = c
+      for (const d of c.days) {
+        const opt = root.querySelector(`[data-dayopt="${d.id}"]`) as HTMLElement
+        if (!opt) continue
+        opt.querySelector('[data-p1]')!.textContent = aud(c.prices.oneDay)
+        opt.querySelector('[data-dleft]')!.textContent = d.past ? 'Finished' : leftText(d)
+        opt.classList.toggle('is-low', d.low)
+        opt.classList.toggle('is-full', !d.bookable)
+      }
+      const all = root.querySelector('[data-dayopt="all"]') as HTMLElement
+      all.querySelector('[data-pall]')!.textContent = aud(c.prices.allDays)
+      all.querySelector('[data-dleft-all]')!.textContent = c.days.some((d: any) => !d.bookable) ? 'One day is full' : c.prices.save ? `Best value, save ${aud(c.prices.save)}` : 'Every day'
+      all.classList.toggle('is-full', c.days.some((d: any) => !d.bookable))
+      const open = c.days.filter((d: any) => !d.past)
+      const low = open.filter((d: any) => d.low)
+      const scarce = !open.length ? 'Camp finished' : open.every((d: any) => d.full) ? 'Full · waitlist open' : low.length ? `Only ${Math.min(...low.map((d: any) => d.left))} places left ${low.length === open.length ? 'a day' : `on ${low[0].label.split(' ')[0]}`}` : open.some((d: any) => d.full) ? 'One day full · limited places' : 'Limited places'
+      $('xc-scarce').textContent = scarce
+      $('xc-sticky-t').textContent = scarce
+      if (c.ages) root.querySelector('[data-camp="ages"]')!.textContent = c.ages.replace(/^Ages\s*/i, '')
+      if (c.location) {
+        root.querySelector('[data-camp="where"]')!.textContent = c.location
+        root.querySelector('[data-camp="venue"]')!.textContent = c.location
+        root.querySelector('[data-camp="address"]')!.textContent = c.address || ''
+        ;($('xc-map') as HTMLAnchorElement).href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${c.location} ${c.address || ''}`)}`
+      }
+      if (Array.isArray(c.bring) && c.bring.length) $('xc-bring').innerHTML = c.bring.map((b: string) => `<li>${safe(b)}</li>`).join('')
+      if (c.status !== 'open') { form.hidden = true; banner(c.status === 'closed' ? 'Bookings for this camp are closed.' : 'This camp is not taking bookings.') }
+      total()
+    }
+    function showWait() {
+      if (!camp) return
+      const full = dayIds().some((id: string) => !camp.days.find((d: any) => d.id === id)?.bookable)
+      $('xc-wait').hidden = !full
+      ;($('xc-submit') as HTMLButtonElement).disabled = full
+    }
+    function banner(text: string) { const b = $('xc-banner'); b.textContent = text; b.hidden = !text }
+
+    async function load(extra = '') {
+      try {
+        const r = await fetch(`/api/camp-book?camp=${SLUG}${extra}`, { cache: 'no-store' })
+        const d = await r.json()
+        if (d?.camp) paint(d.camp)
+        return d
+      } catch { return null }
+    }
+
+    // ---------- back from Stripe ----------
+    async function paidFlow() {
+      const id = qs.get('booked') || '', sid = qs.get('session_id') || ''
+      $('xc-done').hidden = false
+      window.scrollTo(0, 0)
+      for (let i = 0; i < 12; i++) {
+        const d = await load(`&booked=${encodeURIComponent(id)}&session_id=${encodeURIComponent(sid)}`)
+        const b = d?.booking
+        if (b?.status === 'paid') {
+          $('xc-done-h').textContent = "You're booked in."
+          $('xc-done-p').textContent = `Check your inbox: everything for the day is on its way. Booking ${b.id}.`
+          const card = $('xc-done-card')
+          card.innerHTML = `<div><span>Player${b.players.length > 1 ? 's' : ''}</span><b>${safe(b.players.join(', '))}</b></div><div><span>Days</span><b>${safe(b.days)}</b></div><div><span>Paid</span><b>${safe(b.paid)}</b></div>`
+          card.hidden = false
+          $('xc-again').hidden = false
+          const k = `xc-purchase-${b.id}`
+          try { if (!sessionStorage.getItem(k)) { sessionStorage.setItem(k, '1'); track('Purchase', { value: b.amount, currency: 'AUD', content_name: 'Christmas Holiday Camp', content_ids: [b.id] }) } } catch {}
+          history.replaceState(null, '', location.pathname)
+          return
+        }
+        if (b?.status === 'unpaid' || b?.status === 'unknown' || b?.status === 'cancelled') break
+        await new Promise((r) => setTimeout(r, 2500))
+      }
+      $('xc-done-h').textContent = 'Nearly there.'
+      $('xc-done-p').textContent = 'We could not confirm the payment yet. If you paid, the confirmation email will arrive shortly. If not, book again below or email ligia@jonerfootball.com.'
+    }
+    async function cancelledFlow() {
+      try {
+        const r = await fetch('/api/camp-book', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'release', id: qs.get('cancelled'), t: qs.get('t') }) })
+        const d = await r.json()
+        if (d.state === 'paid' || d.state === 'confirming') banner('Your payment went through, you are booked in. Check your email.')
+        else banner('Payment not finished, so your place is not booked yet. You can book again below.')
+      } catch {}
+      history.replaceState(null, '', location.pathname + '#book')
+      load()
+    }
+    if (qs.get('booked') && qs.get('session_id')) paidFlow()
+    else if (qs.get('cancelled')) cancelledFlow()
+    else load()
+    track('ViewContent', { content_name: 'Christmas Holiday Camp', content_category: 'camp' })
+
+    // ---------- submit ----------
+    const email = $('xc-email') as HTMLInputElement
+    try { (window as any).JonerEmailGuard?.protectEmailInput?.(email) } catch {}
+    function bad(msg: string, el?: Element | null) {
+      $('xc-err').textContent = msg
+      if (el) { (el as HTMLElement).setAttribute('aria-invalid', 'true'); (el as HTMLElement).focus(); (el as HTMLElement).scrollIntoView({ block: 'center', behavior: 'smooth' }) }
+      return false
+    }
+    form.addEventListener('input', (e) => { (e.target as HTMLElement).removeAttribute('aria-invalid'); if ($('xc-err').textContent) $('xc-err').textContent = '' })
+    function check() {
+      if (!dayIds().length) return bad('Choose which days.', form.querySelector('input[name="days"]'))
+      for (const f of form.querySelectorAll('input[required]:not([type="checkbox"]):not([type="radio"])')) if (!(f as HTMLInputElement).value.trim()) return bad('Please fill in this one.', f)
+      for (const p of list.children) { const a = Number((p.querySelector('[data-f="age"]') as HTMLInputElement).value); if (!a || a < 4 || a > 18) return bad("Enter the player's age.", p.querySelector('[data-f="age"]')) }
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.value.trim())) return bad('Check the email address.', email)
+      const agree = form.querySelector('input[name="agreement"]') as HTMLInputElement
+      if (!agree.checked) return bad('Please tick to accept the terms.', agree)
+      return true
+    }
+    let busy = false
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      if (busy || !check()) return
+      busy = true
+      const btn = $('xc-submit') as HTMLButtonElement
+      btn.disabled = true
+      btn.textContent = 'Holding your place…'
+      const fd = new FormData(form)
+      const players = [...list.children].map((p) => Object.fromEntries([...p.querySelectorAll('[data-f]')].map((f) => [(f as HTMLElement).dataset.f, (f as HTMLInputElement).value.trim()])))
+      const body: Record<string, unknown> = { action: 'book', camp: SLUG, days: dayIds(), players, agreement: fd.get('agreement') === 'on', source }
+      for (const k of ['parentName', 'email', 'mobile', 'heardAbout']) body[k] = String(fd.get(k) || '').trim()
+      try { body.recaptchaToken = (window as any).JonerRecaptcha ? await (window as any).JonerRecaptcha.getToken('camp_book') : '' } catch {}
+      try {
+        const r = await fetch('/api/camp-book', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+        const d = await r.json().catch(() => ({}))
+        if (r.ok && d.url) {
+          track('InitiateCheckout', { value: (d.totalCents || 0) / 100, currency: 'AUD', content_name: 'Christmas Holiday Camp', num_items: players.length })
+          btn.textContent = 'Opening secure payment…'
+          location.href = d.url
+          return
+        }
+        if (d.camp) paint(d.camp)
+        bad(d.error || 'Something went wrong. Please try again.')
+      } catch { bad('No connection. Check your internet and try again.') }
+      busy = false
+      btn.disabled = false
+      total()
+    })
+
+    // ---------- waitlist ----------
+    const wf = $('xc-wait-form') as HTMLFormElement
+    wf.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const fd = new FormData(wf)
+      const body: Record<string, unknown> = { action: 'waitlist', camp: SLUG, days: dayIds() }
+      for (const k of ['parentName', 'email', 'mobile', 'players']) body[k] = String(fd.get(k) || '').trim()
+      try { body.recaptchaToken = (window as any).JonerRecaptcha ? await (window as any).JonerRecaptcha.getToken('camp_waitlist') : '' } catch {}
+      const btn = wf.querySelector('button') as HTMLButtonElement
+      btn.disabled = true
+      const r = await fetch('/api/camp-book', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).catch(() => null)
+      const d = r ? await r.json().catch(() => ({})) : {}
+      btn.disabled = false
+      if (r?.ok) { wf.innerHTML = '<p class="xc-p xc-f-wide"><b>You are on the waitlist.</b> We will call you first if a place opens.</p>'; track('Lead', { content_name: 'Christmas camp waitlist' }) } else alert(d.error || 'Could not save. Please try again.')
+    })
+
+    // ---------- phone: sticky Book bar until the form is on screen ----------
+    const sticky = $('xc-sticky')
+    if ('IntersectionObserver' in window) {
+      const hero = root.querySelector('.xc-hero') as HTMLElement
+      let heroIn = true, bookIn = false
+      const upd = () => { sticky.hidden = heroIn || bookIn || !$('xc-done').hidden }
+      new IntersectionObserver(([e]) => { heroIn = e.isIntersecting; upd() }, { threshold: 0.15 }).observe(hero)
+      new IntersectionObserver(([e]) => { bookIn = e.isIntersecting; upd() }, { threshold: 0 }).observe($('book'))
+    }
+  </script>
+</BaseLayout>

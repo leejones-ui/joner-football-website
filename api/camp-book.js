@@ -1,5 +1,6 @@
 // Camp bookings on the website (Lee, 10 Nov 2026).
-//   GET  ?camp=<slug>                     places left per day (no names)
+//   GET  ?camp=<slug>                     which days are open, low or full (no names, no totals)
+//   GET  ?tick=1                          hourly cron: reminders for bookings not paid
 //   GET  ?camp=<slug>&session_id=&booked= the success page: finish a paid booking
 //   POST { action:'book', ... }           hold the places, open Stripe Checkout
 //   POST { action:'release', id, t }      the family came back from Stripe without paying
@@ -31,6 +32,13 @@ export default async function handler(req, res) {
 }
 
 async function get(req, res) {
+  // Hourly cron: reminders for bookings that were started and not paid.
+  if (req.query.tick) {
+    const secret = process.env.CRON_SECRET
+    if (!secret || req.headers.authorization !== `Bearer ${secret}`) return fail(res, 401, 'Not allowed.')
+    const { campReminderTick } = await import('./_camp-store.js')
+    return res.status(200).json({ success: true, ...(await campReminderTick()) })
+  }
   const camp = await getCampBySlug(clean(req.query.camp, 80))
   if (!camp || camp.status === 'hidden') return fail(res, 404, 'Camp not found.')
   const out = { success: true, camp: await publicCamp(camp) }
@@ -77,8 +85,8 @@ async function book(req, res, body) {
   if (!held.ok) {
     const day = camp.days.find((d) => d.id === held.fullDay)
     const c = await publicCamp(camp)
-    const left = c.days.find((d) => d.id === held.fullDay)?.left || 0
-    return fail(res, 409, left ? `Only ${left} place${left === 1 ? '' : 's'} left on ${day?.label || 'that day'}.` : `${day?.label || 'That day'} is full. Join the waitlist and we will be in touch if a place opens.`, { full: held.fullDay, camp: c })
+    const d = c.days.find((x) => x.id === held.fullDay)
+    return fail(res, 409, d && !d.full && d.left != null ? `Only ${d.left} place${d.left === 1 ? '' : 's'} left on ${day?.label || 'that day'}.` : `${day?.label || 'That day'} is full. Join the waitlist and we will be in touch if a place opens.`, { full: held.fullDay, camp: c })
   }
   const booking = {
     id, campId: camp.id, status: 'held', source: 'online', createdAt: new Date().toISOString(), holdExpiresMs: holdUntil,

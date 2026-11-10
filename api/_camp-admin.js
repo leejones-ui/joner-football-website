@@ -7,11 +7,11 @@ import { audit } from './_jfp-store.js'
 import {
   listCamps, getCamp, saveCamp, listBookings, getBooking, saveBooking, indexBooking, dayCounts, publicCamp,
   validateBookingInput, holdPlaces, releasePlaces, newCampId, pricePerPlayer, listWaitlist, removeWaitlist,
-  daysText, audLabel, runEffects, JERSEY_SIZES, HEARD_ABOUT,
+  daysText, audLabel, runEffects, HEARD_ABOUT, unfinishedFamilies,
 } from './_camp-store.js'
 import { CONFIRMED_SCORE } from './_holiday-store.js'
 
-export const CAMP_ACTIONS = new Set(['campList', 'campSave', 'campAdd', 'campEdit', 'campCancel', 'campCheckin', 'campMarkPaid', 'campResend', 'campWaitlistRemove'])
+export const CAMP_ACTIONS = new Set(['campList', 'campSave', 'campAdd', 'campEdit', 'campCancel', 'campCheckin', 'campMarkPaid', 'campResend', 'campWaitlistRemove', 'campReminderStop'])
 const METHODS = ['Cash', 'Bank transfer', 'Stripe', 'Free place', 'Not paid yet']
 const ok = (res, data) => res.status(200).json({ success: true, ...data })
 const bad = (res, status, error) => res.status(status).json({ success: false, error })
@@ -29,7 +29,9 @@ async function listData(campId) {
     camps: camps.map((c) => ({ id: c.id, title: c.title, status: c.status })),
     camp, counts, publicUrl: `/camps/${camp.slug}/`, days: pub.days,
     bookings: bookings.filter(SHOWN).map((b) => ({ ...b, releaseToken: undefined })),
-    waitlist, options: { jerseySizes: JERSEY_SIZES, heardAbout: HEARD_ABOUT, methods: METHODS },
+    // Started on the website and never paid: one line per family, newest first.
+    unfinished: unfinishedFamilies(bookings).map((b) => ({ ...b, releaseToken: undefined })),
+    waitlist, options: { heardAbout: HEARD_ABOUT, methods: METHODS },
   }
 }
 
@@ -52,6 +54,7 @@ export async function campAction(res, principal, body, action) {
     if (one != null || all != null) next.prices = { oneDay: one ?? camp.prices.oneDay, allDays: all ?? camp.prices.allDays }
     if (s.bring != null) next.bring = s.bring
     if (s.staffEmails != null) next.staffEmails = s.staffEmails
+    if (typeof s.reminders === 'boolean') next.reminders = s.reminders
     if (Array.isArray(s.days)) next.days = camp.days.map((d) => { const x = s.days.find((y) => y.id === d.id) || {}; return { ...d, label: x.label ?? d.label, short: x.short ?? d.short, date: x.date ?? d.date } })
     const saved = await saveCamp(next)
     await audit({ by, action: 'camp.settings', target: camp.id, before: { status: camp.status, prices: camp.prices, capacityPerDay: camp.capacityPerDay }, after: { status: saved.status, prices: saved.prices, capacityPerDay: saved.capacityPerDay } })
@@ -120,6 +123,14 @@ export async function campAction(res, principal, body, action) {
     await saveBooking(b)
     await audit({ by, action: 'camp.cancel', target: b.id, after: { reason: b.cancelReason, paid: wasPaid ? b.amountPaidCents : 0 } })
     return ok(res, { ...(await listData(campId)), refund: wasPaid && b.paymentIntent ? { amount: audLabel(b.amountPaidCents), url: `https://dashboard.stripe.com/payments/${b.paymentIntent}` } : null })
+  }
+
+  // Stop the reminder emails for a family who started and did not pay.
+  if (action === 'campReminderStop') {
+    b.noReminders = true
+    await saveBooking(b)
+    await audit({ by, action: 'camp.reminderStop', target: b.id, after: { email: b.email } })
+    return ok(res, await listData(campId))
   }
 
   if (action === 'campCheckin') {

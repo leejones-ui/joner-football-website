@@ -7,7 +7,7 @@ import { esc, api, toast, money } from './jfp-common.js'
 import { psHead, psSearch, psSelect, psBadge, psHelp } from './jfp-portal-ps.js'
 
 const call = (action, body = {}) => api('/api/jfp-portal-data', { action, ...body })
-const S = { view: 'list', q: '', day: '', status: '', listDay: '', campId: '' }
+const S = { view: 'list', q: '', day: '', status: '', listDay: '', campId: '', sort: 'age' }
 try { Object.assign(S, JSON.parse(sessionStorage.getItem('jfp-camps') || '{}')) } catch {}
 const keep = () => { try { sessionStorage.setItem('jfp-camps', JSON.stringify(S)) } catch {} }
 
@@ -29,9 +29,10 @@ export async function renderCampSignups(ui) {
     const paid = rows.filter((b) => b.status === 'paid')
     const players = rows.filter(live).reduce((t, b) => t + b.players.length, 0)
     const taken = paid.reduce((t, b) => t + (b.amountPaidCents || 0), 0)
+    const refunded = rows.reduce((t, b) => t + (b.refundedCents || 0), 0)
     const counts = camp.days.map((x) => `${x.short} ${d.counts[x.id].taken} of ${camp.capacityPerDay}`).join(' · ')
     const statusBadge = camp.status === 'open' ? psBadge('green', 'Bookings open') : camp.status === 'closed' ? psBadge('red', 'Bookings closed') : psBadge('grey', 'Hidden')
-    view().innerHTML = `${psHead({ title: 'Camps', count: counts, primary: '<button type="button" class="j-btn j-btn-dark" id="cs-add">+ Add a sign-up</button>' }).replace('</h1>', `</h1>${psHelp('Every camp sign-up lands here, paid through Stripe on the website. Places count per day and include families paying right now, so the last place cannot be sold twice. Use the day list on the day to tick players in at drop off and out at pick up. Refunds are done by hand in Stripe: cancel here first so the place opens again.', 'About camps')}`)}
+    view().innerHTML = `${psHead({ title: 'Camps', count: counts, primary: '<button type="button" class="j-btn j-btn-dark" id="cs-add">+ Add a sign-up</button>' }).replace('</h1>', `</h1>${psHelp('Every camp sign-up lands here the moment a family pays on the website. Places count per day and include families paying right now, so the last place cannot be sold twice. The website only says Limited places until a day is nearly full. Day list is your register, sorted by age for grouping. Not finished is families who started and did not pay: they get reminder emails. Refunds are done by hand in Stripe: cancel here first so the place opens again.', 'About camps')}`)}
       <div class="cs-bar">
         ${d.camps.length > 1 ? `<select class="j-select" id="cs-camp" aria-label="Camp">${d.camps.map((c) => `<option value="${esc(c.id)}" ${c.id === camp.id ? 'selected' : ''}>${esc(c.title)}</option>`).join('')}</select>` : `<b class="cs-name">${esc(camp.title)}</b>`}
         ${statusBadge}
@@ -39,9 +40,9 @@ export async function renderCampSignups(ui) {
       </div>
       <div class="cs-days">
         ${d.days.map((x) => { const c = d.counts[x.id]; const pct = Math.min(100, Math.round((c.taken / camp.capacityPerDay) * 100)); return `<section class="cs-day"><p class="cs-lbl">${esc(x.label)}</p><p class="cs-big">${c.taken}<small> of ${camp.capacityPerDay}</small></p><div class="cs-meter" aria-hidden="true"><i style="width:${pct}%"></i></div><p class="cs-note">${c.left ? `${c.left} place${c.left === 1 ? '' : 's'} left` : 'Full'}${x.past ? ' · day has been' : ''}</p></section>` }).join('')}
-        <section class="cs-day"><p class="cs-lbl">Paid so far</p><p class="cs-big">${esc(money(taken))}</p><p class="cs-note">${paid.length} sign-up${paid.length === 1 ? '' : 's'} · ${players} player${players === 1 ? '' : 's'}</p></section>
+        <section class="cs-day"><p class="cs-lbl">Paid so far</p><p class="cs-big">${esc(money(taken))}</p><p class="cs-note">${paid.length} sign-up${paid.length === 1 ? '' : 's'} · ${players} player${players === 1 ? '' : 's'}${refunded ? ` · ${esc(money(refunded))} refunded` : ''}</p></section>
       </div>
-      <div class="ps-seg cs-seg" role="group" aria-label="Show">${[['list', 'Sign-ups'], ['day', 'Day list'], ['wait', `Waitlist${d.waitlist.length ? ` (${d.waitlist.length})` : ''}`]].map(([k, l]) => `<button type="button" data-cs-view="${k}" aria-pressed="${S.view === k}">${esc(l)}</button>`).join('')}</div>
+      <div class="ps-seg cs-seg" role="group" aria-label="Show">${[['list', 'Sign-ups'], ['day', 'Day list'], ['unfinished', `Not finished${d.unfinished.length ? ` (${d.unfinished.length})` : ''}`], ['wait', `Waitlist${d.waitlist.length ? ` (${d.waitlist.length})` : ''}`]].map(([k, l]) => `<button type="button" data-cs-view="${k}" aria-pressed="${S.view === k}">${esc(l)}</button>`).join('')}</div>
       <div id="cs-body"></div>`
     const $ = (s) => view().querySelector(s)
     $('#cs-add').addEventListener('click', () => editBooking(null))
@@ -49,7 +50,7 @@ export async function renderCampSignups(ui) {
     $('#cs-csv').addEventListener('click', () => ui.saveFile(`camp-${camp.id}-signups.csv`, csv()))
     $('#cs-camp')?.addEventListener('change', async (e) => { S.campId = e.target.value; set(await need(await call('campList', { campId: S.campId }))) })
     view().querySelectorAll('[data-cs-view]').forEach((b) => b.addEventListener('click', () => { S.view = b.dataset.csView; keep(); draw() }))
-    if (S.view === 'day') drawDay(); else if (S.view === 'wait') drawWait(); else drawList()
+    if (S.view === 'day') drawDay(); else if (S.view === 'wait') drawWait(); else if (S.view === 'unfinished') drawUnfinished(); else drawList()
   }
 
   function drawList(typing = false) {
@@ -58,7 +59,7 @@ export async function renderCampSignups(ui) {
     const q = S.q.trim().toLowerCase()
     const list = d.bookings.filter((b) => (!S.day || b.dayIds.includes(S.day)) && (!S.status || b.status === S.status) && (!q || `${b.id} ${b.parentName} ${b.email} ${b.mobile} ${b.players.map(fullName).join(' ')}`.toLowerCase().includes(q)))
     const table = `<div class="ps-table-wrap"><table class="ps-table ps-flat"><thead><tr><th>Player</th><th>Days</th><th>Parent</th><th>Status</th><th class="ps-end"><span class="sr-only">Open</span></th></tr></thead><tbody>
-      ${list.map((b) => `<tr data-cs-open="${esc(b.id)}"><td data-col="who"><b>${esc(b.players.map(fullName).join(', '))}</b><span class="ps-sub">${esc(b.players.map((p) => `age ${p.age || '?'}`).join(', '))}${b.players.some((p) => p.medical) ? ' · <span class="cs-flag">medical note</span>' : ''}${b.attention ? ' · <span class="cs-flag">needs a look</span>' : ''}</span></td><td data-col="group">${esc(dayShort(camp, b.dayIds))}</td><td data-col="flags">${esc(b.parentName)}<span class="ps-sub">${esc(b.mobile)}</span></td><td data-col="pay">${psBadge(...STATUS[b.status])}<span class="ps-sub">${b.status === 'paid' ? esc(`${money(b.amountPaidCents || 0)} · ${b.method || 'Stripe'}`) : b.status === 'held' ? 'On the Stripe page' : ''}</span></td><td class="ps-end"><button type="button" class="j-btn j-btn-line j-btn-sm">Open</button></td></tr>`).join('') || `<tr><td colspan="5"><div class="ps-empty">${d.bookings.length ? 'Nothing matches those filters.' : 'No sign-ups yet. They appear here the moment a family pays.'}</div></td></tr>`}
+      ${list.map((b) => `<tr data-cs-open="${esc(b.id)}"><td data-col="who"><b>${esc(b.players.map(fullName).join(', '))}</b><span class="ps-sub">${esc(b.players.map((p) => `age ${p.age || '?'}${p.clubLevel ? `, ${p.clubLevel}` : ''}`).join(' · '))}${b.players.some((p) => p.medical) ? ' · <span class="cs-flag">medical note</span>' : ''}${b.attention ? ' · <span class="cs-flag">needs a look</span>' : ''}</span></td><td data-col="group">${esc(dayShort(camp, b.dayIds))}</td><td data-col="flags">${esc(b.parentName)}<span class="ps-sub">${esc(b.mobile)}</span></td><td data-col="pay">${psBadge(...STATUS[b.status])}<span class="ps-sub">${b.status === 'paid' ? esc(`${money(b.amountPaidCents || 0)} · ${b.method || 'Stripe'}${b.refundedCents ? ` · ${money(b.refundedCents)} refunded` : ''}`) : b.status === 'held' ? 'On the Stripe page' : b.refundedCents ? esc(`${money(b.refundedCents)} refunded`) : ''}</span></td><td class="ps-end"><button type="button" class="j-btn j-btn-line j-btn-sm">Open</button></td></tr>`).join('') || `<tr><td colspan="5"><div class="ps-empty">${d.bookings.length ? 'Nothing matches those filters.' : 'No sign-ups yet. They appear here the moment a family pays.'}</div></td></tr>`}
       </tbody></table></div>`
     if (typing) { body.querySelector('.ps-table-wrap').outerHTML = table; bindRows(); return }
     body.innerHTML = `<div class="ps-tools" role="search">${psSearch('cs-q', 'Search players, parents, email, mobile…', S.q, 'Search camp sign-ups')}${psSelect('cs-day', camp.days.map((x) => ({ id: x.id, label: x.label })), S.day, 'Every day', 'Day')}${psSelect('cs-status', Object.entries(STATUS).map(([id, [, label]]) => ({ id, label })), S.status, 'Any status', 'Status')}</div>${table}`
@@ -69,17 +70,22 @@ export async function renderCampSignups(ui) {
   }
   const bindRows = () => view().querySelectorAll('[data-cs-open]').forEach((r) => r.addEventListener('click', () => openBooking(d.bookings.find((b) => b.id === r.dataset.csOpen))))
 
-  // The day list: one line per player, ticked in at drop off and out at pick up.
+  // The day list: the register. One line per player, by age (for grouping)
+  // or by name, ticked in on arrival and out when they leave.
   function drawDay() {
     const camp = d.camp
     if (!camp.days.some((x) => x.id === S.listDay)) S.listDay = (camp.days.find((x) => x.date >= new Date().toISOString().slice(0, 10)) || camp.days[0]).id
-    const kids = d.bookings.filter((b) => live(b) && b.dayIds.includes(S.listDay)).flatMap((b) => b.players.map((p, i) => ({ b, p, i, c: b.checkins?.[`${S.listDay}|${i}`]?.state || '' }))).sort((x, y) => fullName(x.p).localeCompare(fullName(y.p)))
+    const kids = d.bookings.filter((b) => live(b) && b.dayIds.includes(S.listDay)).flatMap((b) => b.players.map((p, i) => ({ b, p, i, c: b.checkins?.[`${S.listDay}|${i}`]?.state || '' })))
+      .sort((x, y) => (S.sort === 'age' ? (Number(x.p.age) || 99) - (Number(y.p.age) || 99) : 0) || fullName(x.p).localeCompare(fullName(y.p)))
     const n = (s) => kids.filter((k) => k.c === s).length
-    view().querySelector('#cs-body').innerHTML = `<div class="ps-tools"><div class="ps-seg" role="group" aria-label="Day">${camp.days.map((x) => `<button type="button" data-cs-ld="${esc(x.id)}" aria-pressed="${S.listDay === x.id}">${esc(x.short)}</button>`).join('')}</div><span class="ps-meta">${kids.length} players · ${n('in')} here · ${n('out')} picked up</span><button type="button" class="j-btn j-btn-line j-btn-sm" id="cs-print">Print</button></div>
-      <div class="ps-table-wrap"><table class="ps-table ps-flat cs-daylist"><thead><tr><th>Player</th><th>Collecting and contacts</th><th>Notes</th><th class="ps-end">Here</th></tr></thead><tbody>
-      ${kids.map((k) => `<tr><td data-col="who"><b>${esc(fullName(k.p))}</b><span class="ps-sub">Age ${esc(k.p.age || '?')} · Jersey ${esc(k.p.jerseySize || '?')}${k.b.status === 'unpaid' ? ' · <span class="cs-flag">not paid yet</span>' : ''}</span></td><td data-col="group">${esc(k.b.parentName)} <a href="tel:${esc(k.b.mobile)}">${esc(k.b.mobile)}</a>${k.b.pickup ? `<span class="ps-sub">Collecting: ${esc(k.b.pickup)}</span>` : ''}${k.b.emergencyName ? `<span class="ps-sub">Emergency: ${esc(k.b.emergencyName)} <a href="tel:${esc(k.b.emergencyMobile)}">${esc(k.b.emergencyMobile)}</a></span>` : ''}</td><td data-col="flags">${k.p.medical ? `<span class="cs-flag">${esc(k.p.medical)}</span>` : '<span class="ps-sub">None</span>'}</td><td class="ps-end ps-keep"><div class="cs-check" role="group" aria-label="${esc(fullName(k.p))}">${[['in', 'In'], ['out', 'Picked up']].map(([s, l]) => `<button type="button" class="j-btn j-btn-sm ${k.c === s ? 'j-btn-dark' : 'j-btn-line'}" data-cs-ck="${esc(k.b.id)}|${k.i}|${s}" aria-pressed="${k.c === s}">${l}</button>`).join('')}</div></td></tr>`).join('') || '<tr><td colspan="4"><div class="ps-empty">Nobody booked on this day yet.</div></td></tr>'}
+    const ages = [...new Set(kids.map((k) => Number(k.p.age) || 0))].filter(Boolean).sort((a, b) => a - b)
+    view().querySelector('#cs-body').innerHTML = `<div class="ps-tools"><div class="ps-seg" role="group" aria-label="Day">${camp.days.map((x) => `<button type="button" data-cs-ld="${esc(x.id)}" aria-pressed="${S.listDay === x.id}">${esc(x.short)}</button>`).join('')}</div><div class="ps-seg" role="group" aria-label="Sort">${[['age', 'By age'], ['name', 'By name']].map(([k, l]) => `<button type="button" data-cs-sort="${k}" aria-pressed="${S.sort === k}">${l}</button>`).join('')}</div><span class="ps-meta">${kids.length} players · ${n('in')} here · ${n('out')} gone home</span><button type="button" class="j-btn j-btn-line j-btn-sm" id="cs-print">Print</button></div>
+      ${ages.length ? `<p class="ps-sub-line">Ages: ${ages.map((a) => `${a} (${kids.filter((k) => Number(k.p.age) === a).length})`).join(' · ')}</p>` : ''}
+      <div class="ps-table-wrap"><table class="ps-table ps-flat cs-daylist"><thead><tr><th>Player</th><th>Parent</th><th>Notes</th><th class="ps-end">Here</th></tr></thead><tbody>
+      ${kids.map((k) => `<tr><td data-col="who"><b>${esc(fullName(k.p))}</b><span class="ps-sub">Age ${esc(k.p.age || '?')}${k.p.clubLevel ? ` · ${esc(k.p.clubLevel)}` : ''}${k.b.status === 'unpaid' ? ' · <span class="cs-flag">not paid yet</span>' : ''}</span></td><td data-col="group">${esc(k.b.parentName)} <a href="tel:${esc(k.b.mobile)}">${esc(k.b.mobile)}</a>${k.b.pickup ? `<span class="ps-sub">Collecting: ${esc(k.b.pickup)}</span>` : ''}${k.b.emergencyName ? `<span class="ps-sub">Emergency: ${esc(k.b.emergencyName)} <a href="tel:${esc(k.b.emergencyMobile)}">${esc(k.b.emergencyMobile)}</a></span>` : ''}</td><td data-col="flags">${k.p.medical ? `<span class="cs-flag">${esc(k.p.medical)}</span>` : '<span class="ps-sub">None</span>'}</td><td class="ps-end ps-keep"><div class="cs-check" role="group" aria-label="${esc(fullName(k.p))}">${[['in', 'In'], ['out', 'Gone home']].map(([s, l]) => `<button type="button" class="j-btn j-btn-sm ${k.c === s ? 'j-btn-dark' : 'j-btn-line'}" data-cs-ck="${esc(k.b.id)}|${k.i}|${s}" aria-pressed="${k.c === s}">${l}</button>`).join('')}</div></td></tr>`).join('') || '<tr><td colspan="4"><div class="ps-empty">Nobody booked on this day yet.</div></td></tr>'}
       </tbody></table></div>`
     view().querySelectorAll('[data-cs-ld]').forEach((b) => b.addEventListener('click', () => { S.listDay = b.dataset.csLd; keep(); drawDay() }))
+    view().querySelectorAll('[data-cs-sort]').forEach((b) => b.addEventListener('click', () => { S.sort = b.dataset.csSort; keep(); drawDay() }))
     view().querySelector('#cs-print').addEventListener('click', () => window.print())
     view().querySelectorAll('[data-cs-ck]').forEach((btn) => btn.addEventListener('click', async () => {
       const [id, i, s] = btn.dataset.csCk.split('|')
@@ -90,6 +96,23 @@ export async function renderCampSignups(ui) {
       if (!r.ok) { btn.disabled = false; return toast(r.data.error || 'Could not save.') }
       Object.assign(b, r.data.booking)
       drawDay()
+    }))
+  }
+
+  // Started on the website, never paid. Reminder emails go by themselves
+  // (1 hour, 24 hours, 7 days) unless switched off in Settings or stopped here.
+  function drawUnfinished() {
+    const camp = d.camp
+    const state = (b) => { const n = Object.keys(b.reminders || {}).length; return b.noReminders ? 'Reminders stopped' : !camp.reminders ? 'Reminders are off' : n ? `${n} reminder${n === 1 ? '' : 's'} sent` : 'First reminder goes after 1 hour' }
+    view().querySelector('#cs-body').innerHTML = `<p class="ps-sub-line">Families who filled in the form and did not pay. They hold no place. ${camp.reminders ? 'They get a reminder email after 1 hour, 24 hours and 7 days, and drop off this list when they book.' : 'Reminder emails are switched off in Settings.'}</p>
+      <div class="ps-table-wrap"><table class="ps-table ps-flat"><thead><tr><th>Family</th><th>Wanted</th><th>Started</th><th class="ps-end"><span class="sr-only">Actions</span></th></tr></thead><tbody>
+      ${d.unfinished.map((b) => `<tr><td data-col="who"><b>${esc(b.parentName)}</b><span class="ps-sub"><a href="mailto:${esc(b.email)}">${esc(b.email)}</a> · <a href="tel:${esc(b.mobile)}">${esc(b.mobile)}</a></span></td><td data-col="group">${esc(b.players.map((p) => `${fullName(p)} (${p.age || '?'})`).join(', '))}<span class="ps-sub">${esc(dayShort(camp, b.dayIds))} · ${esc(money(b.priceCents || 0))}</span></td><td data-col="flags">${esc(when(b.createdAt))}<span class="ps-sub">${esc(state(b))}</span></td><td class="ps-end ps-keep">${b.noReminders || !camp.reminders ? '' : `<button type="button" class="j-btn j-btn-line j-btn-sm" data-cs-stop="${esc(b.id)}">Stop reminders</button>`}</td></tr>`).join('') || '<tr><td colspan="4"><div class="ps-empty">Nobody has started a booking without paying.</div></td></tr>'}
+      </tbody></table></div>`
+    view().querySelectorAll('[data-cs-stop]').forEach((btn) => btn.addEventListener('click', async () => {
+      btn.disabled = true
+      const r = await call('campReminderStop', { campId: camp.id, id: btn.dataset.csStop })
+      if (!r.ok) { btn.disabled = false; return toast(r.data.error || 'Could not save.') }
+      toast('No more reminders for this family.'); set(r.data)
     }))
   }
 
@@ -114,9 +137,9 @@ export async function renderCampSignups(ui) {
     const box = ui.modal(`<h2 style="margin-bottom:4px">${esc(b.players.map(fullName).join(', '))}</h2>
       <p class="muted small" style="margin:0 0 12px">${psBadge(...STATUS[b.status])} · ${esc(dayShort(camp, b.dayIds))} · ${esc(b.id)}</p>
       ${b.attention ? `<div class="j-box j-box-amber" style="margin-bottom:12px">${esc(b.attention)}</div>` : ''}
-      ${b.players.map((p, i) => `<div class="cs-player"><p class="cs-lbl">Player ${b.players.length > 1 ? i + 1 : ''}</p>${line('Name', esc(fullName(p)))}${line('Age', esc(p.age))}${line('Jersey size', esc(p.jerseySize))}${line('Camp before', esc(p.previousCamp))}${line('Club / level', esc(p.clubLevel))}${line('Medical', p.medical ? `<span class="cs-flag">${esc(p.medical)}</span>` : '')}</div>`).join('')}
-      <div class="cs-player"><p class="cs-lbl">Family</p>${line('Parent', esc(b.parentName))}${line('Email', `<a href="mailto:${esc(b.email)}">${esc(b.email)}</a>`)}${line('Mobile', `<a href="tel:${esc(b.mobile)}">${esc(b.mobile)}</a>`)}${line('Emergency', b.emergencyName ? `${esc(b.emergencyName)} <a href="tel:${esc(b.emergencyMobile)}">${esc(b.emergencyMobile)}</a>` : '')}${line('Collecting', esc(b.pickup))}${line('Heard about it', esc(b.heardAbout))}${line('Anything else', esc(b.extraInfo))}${line('Staff note', esc(b.note))}</div>
-      <div class="cs-player"><p class="cs-lbl">Payment</p>${line('Price', esc(money(b.priceCents || 0)))}${line('Paid', b.status === 'paid' ? esc(`${money(b.amountPaidCents || 0)} by ${b.method || 'Stripe'}${b.paidAt ? `, ${when(b.paidAt)}` : ''}`) : '')}${b.paymentIntent ? line('Stripe', `<a href="https://dashboard.stripe.com/payments/${esc(b.paymentIntent)}" target="_blank" rel="noopener">Open in Stripe</a>`) : ''}${line('Signed up', esc(`${when(b.createdAt)}${b.source === 'portal' ? ` (added by ${b.addedBy || 'staff'})` : ''}`))}${b.status === 'cancelled' ? line('Cancelled', esc(`${when(b.cancelledAt)}: ${b.cancelReason || ''}`)) : ''}${line('Email', b.effects?.parentEmail === 'done' ? `Sent${b.resentAt ? ` (again ${esc(when(b.resentAt))})` : ''}` : b.effects?.parentEmail === 'failed' ? '<span class="cs-flag">Did not send</span>' : '')}</div>
+      ${b.players.map((p, i) => `<div class="cs-player"><p class="cs-lbl">Player ${b.players.length > 1 ? i + 1 : ''}</p>${line('Name', esc(fullName(p)))}${line('Age', esc(p.age))}${line('Plays for', esc(p.clubLevel))}${line('Camp before', esc(p.previousCamp))}${line('Jersey size', esc(p.jerseySize))}${line('Medical', p.medical ? `<span class="cs-flag">${esc(p.medical)}</span>` : '')}</div>`).join('')}
+      <div class="cs-player"><p class="cs-lbl">Family</p>${line('Parent', esc(b.parentName))}${line('Email', `<a href="mailto:${esc(b.email)}">${esc(b.email)}</a>`)}${line('Mobile', `<a href="tel:${esc(b.mobile)}">${esc(b.mobile)}</a>`)}${line('Emergency', b.emergencyName ? `${esc(b.emergencyName)} <a href="tel:${esc(b.emergencyMobile)}">${esc(b.emergencyMobile)}</a>` : '')}${line('Collecting', esc(b.pickup))}${line('Heard about it', esc(b.heardAbout))}${line('Came from', esc(b.cameFrom))}${line('Anything else', esc(b.extraInfo))}${line('Staff note', esc(b.note))}</div>
+      <div class="cs-player"><p class="cs-lbl">Payment</p>${line('Price', esc(money(b.priceCents || 0)))}${line('Paid', b.status === 'paid' ? esc(`${money(b.amountPaidCents || 0)} by ${b.method || 'Stripe'}${b.paidAt ? `, ${when(b.paidAt)}` : ''}`) : '')}${b.paymentIntent ? line('Stripe', `<a href="https://dashboard.stripe.com/payments/${esc(b.paymentIntent)}" target="_blank" rel="noopener">Open in Stripe</a>`) : ''}${line('Signed up', esc(`${when(b.createdAt)}${b.source === 'portal' ? ` (added by ${b.addedBy || 'staff'})` : ''}`))}${b.refundedCents ? line('Refunded', esc(`${money(b.refundedCents)} in Stripe${b.refundedAt ? `, ${when(b.refundedAt)}` : ''}`)) : ''}${b.status === 'cancelled' ? line('Cancelled', esc(`${when(b.cancelledAt)}: ${b.cancelReason || ''}`)) : ''}${line('Email', b.effects?.parentEmail === 'done' ? `Sent${b.resentAt ? ` (again ${esc(when(b.resentAt))})` : ''}` : b.effects?.parentEmail === 'failed' ? '<span class="cs-flag">Did not send</span>' : '')}</div>
       <div class="cs-actions">${b.status !== 'cancelled' && b.status !== 'held' ? '<button type="button" class="j-btn j-btn-line" id="cs-edit">Edit</button>' : ''}${b.status === 'unpaid' ? '<button type="button" class="j-btn j-btn-dark" id="cs-paid">Mark paid</button>' : ''}${b.status === 'paid' ? '<button type="button" class="j-btn j-btn-line" id="cs-resend">Send the email again</button>' : ''}${live(b) ? '<button type="button" class="j-btn j-btn-line cs-danger" id="cs-cancel">Cancel sign-up</button>' : ''}<button type="button" class="j-btn j-btn-line" data-close>Close</button></div>`, { wide: true })
     const q = (s) => box.querySelector(s)
     q('#cs-edit')?.addEventListener('click', () => editBooking(b))
@@ -162,10 +185,9 @@ export async function renderCampSignups(ui) {
       <label><span class="j-label">First name</span><input class="j-input" data-f="firstName" value="${esc(p.firstName || '')}"></label>
       <label><span class="j-label">Surname</span><input class="j-input" data-f="surname" value="${esc(p.surname || '')}"></label>
       <label><span class="j-label">Age</span><input class="j-input" data-f="age" inputmode="numeric" value="${esc(p.age || '')}"></label>
-      <label><span class="j-label">Jersey size</span>${sel('jerseySize', o.jerseySizes, p.jerseySize, 'Choose')}</label>
+      <label><span class="j-label">Who they play for</span><input class="j-input" data-f="clubLevel" value="${esc(p.clubLevel || '')}"></label>
       <label><span class="j-label">Joner camp before?</span>${sel('previousCamp', ['Yes', 'No'], p.previousCamp, 'Choose')}</label>
-      <label><span class="j-label">Club / level</span><input class="j-input" data-f="clubLevel" value="${esc(p.clubLevel || '')}"></label></div>
-      <label><span class="j-label">Medical notes</span><input class="j-input" data-f="medical" value="${esc(p.medical || '')}"></label></fieldset>`
+      <label><span class="j-label">Medical notes</span><input class="j-input" data-f="medical" value="${esc(p.medical || '')}"></label></div></fieldset>`
     const box = ui.modal(`<h2 style="margin-bottom:10px">${b ? 'Change sign-up' : 'Add a sign-up'}</h2>
       <p class="j-label">Days</p><div class="cs-daypick">${camp.days.map((x) => `<label class="cs-tick"><input type="checkbox" value="${esc(x.id)}" ${!b || b.dayIds.includes(x.id) ? 'checked' : ''}> ${esc(x.label)} <small>${d.counts[x.id].left} left</small></label>`).join('')}</div>
       <div id="cs-pls">${ps.map(playerHtml).join('')}</div>
@@ -174,9 +196,6 @@ export async function renderCampSignups(ui) {
         <label><span class="j-label">Parent name</span><input class="j-input" id="cs-pn" value="${esc(b?.parentName || '')}"></label>
         <label><span class="j-label">Email</span><input class="j-input" id="cs-em" type="email" value="${esc(b?.email || '')}"></label>
         <label><span class="j-label">Mobile</span><input class="j-input" id="cs-mo" inputmode="tel" value="${esc(b?.mobile || '')}"></label>
-        <label><span class="j-label">Emergency contact name</span><input class="j-input" id="cs-en" value="${esc(b?.emergencyName || '')}"></label>
-        <label><span class="j-label">Emergency mobile</span><input class="j-input" id="cs-ex" inputmode="tel" value="${esc(b?.emergencyMobile || '')}"></label>
-        <label><span class="j-label">Who is collecting</span><input class="j-input" id="cs-pk" value="${esc(b?.pickup || '')}"></label>
         <label><span class="j-label">Heard about it</span><select class="j-select" id="cs-hd"><option value="">Choose</option>${o.heardAbout.map((x) => `<option ${x === b?.heardAbout ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
         <label><span class="j-label">Staff note</span><input class="j-input" id="cs-nt" value="${esc(b?.note || '')}"></label>
       </div>
@@ -193,7 +212,7 @@ export async function renderCampSignups(ui) {
     bindRm()
     q('#cs-addpl').addEventListener('click', () => { const l = read(); if (l.length < 6) redraw([...l, { surname: l[0]?.surname || '' }]) })
     q('#cs-save').addEventListener('click', async (e) => {
-      const booking = { days: [...box.querySelectorAll('.cs-daypick input:checked')].map((x) => x.value), players: read(), parentName: q('#cs-pn').value, email: q('#cs-em').value, mobile: q('#cs-mo').value, emergencyName: q('#cs-en').value, emergencyMobile: q('#cs-ex').value, pickup: q('#cs-pk').value, heardAbout: q('#cs-hd').value, extraInfo: q('#cs-xi').value }
+      const booking = { days: [...box.querySelectorAll('.cs-daypick input:checked')].map((x) => x.value), players: read(), parentName: q('#cs-pn').value, email: q('#cs-em').value, mobile: q('#cs-mo').value, heardAbout: q('#cs-hd').value, extraInfo: q('#cs-xi').value }
       e.target.disabled = true
       const r = b
         ? await call('campEdit', { campId: camp.id, id: b.id, booking, note: q('#cs-nt').value, force: q('#cs-fo').checked })
@@ -212,7 +231,7 @@ export async function renderCampSignups(ui) {
         <label><span class="j-label">Places per day</span><input class="j-input" id="st-cap" inputmode="numeric" value="${c.capacityPerDay}"></label>
         <label><span class="j-label">One day, per player (A$)</span><input class="j-input" id="st-one" inputmode="decimal" value="${dollars(c.prices.oneDay)}"></label>
         <label><span class="j-label">Every day, per player (A$)</span><input class="j-input" id="st-all" inputmode="decimal" value="${dollars(c.prices.allDays)}"></label>
-        <label><span class="j-label">Show "N places left" from</span><input class="j-input" id="st-low" inputmode="numeric" value="${c.lowAt}"></label>
+        <label><span class="j-label">Website says "Only N left" from</span><input class="j-input" id="st-low" inputmode="numeric" value="${c.lowAt}"></label>
         <label><span class="j-label">Ages</span><input class="j-input" id="st-ages" value="${esc(c.ages)}"></label>
         <label><span class="j-label">Times</span><input class="j-input" id="st-times" value="${esc(c.timesLabel)}"></label>
         <label><span class="j-label">Drop off line</span><input class="j-input" id="st-arr" value="${esc(c.arriveLabel)}"></label>
@@ -222,12 +241,13 @@ export async function renderCampSignups(ui) {
       ${c.days.map((x) => `<div class="cs-grid"><label><span class="j-label">Day name</span><input class="j-input" data-dl="${esc(x.id)}" value="${esc(x.label)}"></label><label><span class="j-label">Date</span><input class="j-input" type="date" data-dd="${esc(x.id)}" value="${esc(x.date)}"></label></div>`).join('')}
       <label><span class="j-label">What to bring (one per line, goes in the email)</span><textarea class="j-input" id="st-bring" rows="5">${esc(c.bring.join('\n'))}</textarea></label>
       <label><span class="j-label">Who gets the sign-up alert (emails)</span><input class="j-input" id="st-staff" value="${esc(c.staffEmails.join(', '))}"></label>
-      <p class="small muted" style="margin-top:8px">Price changes apply to new bookings only. Families already booked keep what they paid.</p>
+      <label class="cs-tick"><input type="checkbox" id="st-rem" ${c.reminders ? 'checked' : ''}> Email families who start a booking and do not pay (after 1 hour, 24 hours and 7 days)</label>
+      <p class="small muted" style="margin-top:8px">Price changes apply to new bookings only. The website says Limited places until a day is down to the number above, then shows how many are left.</p>
       <div class="cs-actions"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="st-save">Save</button></div>`, { wide: true })
     const v = (id) => box.querySelector(`#${id}`).value
     box.querySelector('#st-save').addEventListener('click', async (e) => {
       e.target.disabled = true
-      const r = await call('campSave', { campId: c.id, settings: { status: v('st-status'), capacityPerDay: v('st-cap'), oneDay: v('st-one'), allDays: v('st-all'), lowAt: v('st-low'), ages: v('st-ages'), timesLabel: v('st-times'), arriveLabel: v('st-arr'), location: v('st-loc'), address: v('st-addr'), bring: v('st-bring'), staffEmails: v('st-staff'), days: c.days.map((x) => ({ id: x.id, label: box.querySelector(`[data-dl="${x.id}"]`).value, date: box.querySelector(`[data-dd="${x.id}"]`).value })) } })
+      const r = await call('campSave', { campId: c.id, settings: { status: v('st-status'), capacityPerDay: v('st-cap'), oneDay: v('st-one'), allDays: v('st-all'), lowAt: v('st-low'), ages: v('st-ages'), timesLabel: v('st-times'), arriveLabel: v('st-arr'), location: v('st-loc'), address: v('st-addr'), bring: v('st-bring'), staffEmails: v('st-staff'), reminders: box.querySelector('#st-rem').checked, days: c.days.map((x) => ({ id: x.id, label: box.querySelector(`[data-dl="${x.id}"]`).value, date: box.querySelector(`[data-dd="${x.id}"]`).value })) } })
       e.target.disabled = false
       if (!r.ok) return toast(r.data.error || 'Could not save.')
       ui.closeModal(); toast('Saved. The camp page shows it straight away.'); set(r.data)
@@ -237,8 +257,8 @@ export async function renderCampSignups(ui) {
   function csv() {
     const camp = d.camp
     const cell = (v) => { const s = String(v ?? ''); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s }
-    const out = [['Booking', 'Status', ...camp.days.map((x) => x.short), 'Player first name', 'Surname', 'Age', 'Jersey size', 'Camp before', 'Club / level', 'Medical', 'Parent', 'Email', 'Mobile', 'Emergency contact', 'Emergency mobile', 'Collecting', 'Heard about', 'Anything else', 'Paid A$', 'Method', 'Signed up'].map(cell).join(',')]
-    for (const b of d.bookings.filter(live)) for (const [j, p] of b.players.entries()) out.push([b.id, STATUS[b.status][1], ...camp.days.map((x) => (b.dayIds.includes(x.id) ? 'Yes' : '')), p.firstName, p.surname, p.age, p.jerseySize, p.previousCamp, p.clubLevel, p.medical, b.parentName, b.email, b.mobile, b.emergencyName, b.emergencyMobile, b.pickup, b.heardAbout, b.extraInfo, b.status === 'paid' && !j ? dollars(b.amountPaidCents || 0) : '', b.method || '', when(b.createdAt)].map(cell).join(','))
+    const out = [['Booking', 'Status', ...camp.days.map((x) => x.short), 'Player first name', 'Surname', 'Age', 'Plays for', 'Camp before', 'Medical', 'Parent', 'Email', 'Mobile', 'Heard about', 'Came from', 'Anything else', 'Paid A$', 'Refunded A$', 'Method', 'Signed up'].map(cell).join(',')]
+    for (const b of d.bookings.filter(live)) for (const [j, p] of b.players.entries()) out.push([b.id, STATUS[b.status][1], ...camp.days.map((x) => (b.dayIds.includes(x.id) ? 'Yes' : '')), p.firstName, p.surname, p.age, p.clubLevel, p.previousCamp, p.medical, b.parentName, b.email, b.mobile, b.heardAbout, b.cameFrom, b.extraInfo, b.status === 'paid' && !j ? dollars(b.amountPaidCents || 0) : '', b.refundedCents && !j ? dollars(b.refundedCents) : '', b.method || '', when(b.createdAt)].map(cell).join(','))
     return out.join('\r\n')
   }
 

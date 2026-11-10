@@ -35,21 +35,23 @@ export const HEARD_ABOUT = ['Instagram', 'Facebook', 'Google', 'YouTube', 'Email
 
 // The first camp of the new system. Everything here can be changed in the
 // portal (Camps > Settings); this is only what a fresh KV starts with.
+export const XMAS_SLUG = 'christmas-holiday-camp'
+// Old addresses of the same camp page (it launched as "Drop and Shop").
+export const SLUG_ALIASES = { 'christmas-drop-and-shop': XMAS_SLUG }
 export const XMAS_2026 = {
   id: 'xmas-2026',
-  slug: 'christmas-drop-and-shop',
-  title: 'Christmas Drop and Shop Camp',
-  short: 'Christmas Drop and Shop',
+  slug: XMAS_SLUG,
+  title: 'Christmas Holiday Camp',
+  short: 'Christmas Holiday Camp',
   status: 'open',
-  // Venue not given yet (10 Nov 2026): set it in the portal (Camps > Settings)
-  // and the page and emails show it. Until then they say it comes by email.
-  location: '',
-  address: '',
+  // Lee, 10 Nov 2026: Rydalmere Park, ages 7 to 16, grouped by age and ability.
+  location: 'Rydalmere Park',
+  address: 'South Street, Rydalmere NSW 2116',
   startTime: '09:00',
   endTime: '12:00',
   timesLabel: '9am to 12pm',
-  arriveLabel: 'Drop off from 8:45am',
-  ages: 'Ages 5 to 14',
+  arriveLabel: 'Arrive from 8:45am',
+  ages: 'Ages 7 to 16',
   capacityPerDay: 72,
   days: [
     { id: 'mon', date: '2026-12-21', label: 'Monday 21 December', short: 'Mon 21 Dec' },
@@ -58,10 +60,14 @@ export const XMAS_2026 = {
   // Per player. One day, or both days for less per day (Lee, 10 Nov 2026:
   // "if they book 2 days it's cheaper"). Same as the July Sydney camp.
   prices: { oneDay: 15000, allDays: 25000 },
-  // Shown as "N places left" once a day has this many or fewer.
+  // The website says "Limited places" until a day has this many or fewer
+  // left, then "Only N places left" (Lee, 10 Nov 2026: never show 72).
   lowAt: 20,
+  // Families who start a booking and do not pay get a reminder after 1 hour,
+  // 24 hours and 7 days, as the USA and Sydney camps did. Off = none sent.
+  reminders: true,
   staffEmails: ['leejones@jonerfootball.com', 'ligia@jonerfootball.com'],
-  bring: ['Football boots and runners', 'Shin pads', 'A full water bottle', 'Hat and sunscreen on before drop off', 'A small snack for the break', 'A rain jacket if the forecast says so'],
+  bring: ['Football boots', 'Shin guards', 'A full drink bottle', 'Hat and sunscreen', 'Black shorts and white socks if you have them', 'A waterproof jacket if rain is forecast'],
   updatedAt: '',
 }
 
@@ -79,6 +85,7 @@ export function audLabel(cents) {
 
 // ---------- camps ----------
 
+const OLD_NAMES = new Set(['Christmas Drop and Shop Camp', 'Christmas Drop and Shop'])
 export function normaliseCamp(input = {}, base = XMAS_2026) {
   const c = { ...base, ...input }
   const days = (Array.isArray(c.days) && c.days.length ? c.days : base.days).slice(0, 7).map((d, i) => ({
@@ -88,8 +95,8 @@ export function normaliseCamp(input = {}, base = XMAS_2026) {
   }))
   const prices = { oneDay: Math.max(0, int(c.prices?.oneDay, base.prices.oneDay)), allDays: Math.max(0, int(c.prices?.allDays, base.prices.allDays)) }
   return {
-    id: clean(c.id, 40) || base.id, slug: clean(c.slug, 80) || base.slug,
-    title: clean(c.title, 90) || base.title, short: clean(c.short, 60) || clean(c.title, 60),
+    id: clean(c.id, 40) || base.id, slug: c.id === XMAS_2026.id || !c.id ? XMAS_SLUG : clean(c.slug, 80) || base.slug,
+    title: OLD_NAMES.has(clean(c.title, 90)) ? base.title : clean(c.title, 90) || base.title, short: OLD_NAMES.has(clean(c.short, 60)) ? base.short : clean(c.short, 60) || clean(c.title, 60),
     status: ['open', 'closed', 'hidden'].includes(c.status) ? c.status : 'open',
     location: clean(c.location, 120), address: clean(c.address, 160),
     startTime: /^\d{2}:\d{2}$/.test(c.startTime || '') ? c.startTime : base.startTime,
@@ -97,6 +104,7 @@ export function normaliseCamp(input = {}, base = XMAS_2026) {
     timesLabel: clean(c.timesLabel, 40), arriveLabel: clean(c.arriveLabel, 60), ages: clean(c.ages, 40),
     capacityPerDay: Math.min(500, Math.max(1, int(c.capacityPerDay, base.capacityPerDay))),
     days, prices, lowAt: Math.max(0, int(c.lowAt, base.lowAt)),
+    reminders: c.reminders !== false,
     staffEmails: (Array.isArray(c.staffEmails) ? c.staffEmails : String(c.staffEmails || '').split(/[\s,;]+/)).map((e) => clean(e, 120).toLowerCase()).filter((e) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)).slice(0, 6),
     bring: (Array.isArray(c.bring) ? c.bring : String(c.bring || '').split('\n')).map((b) => clean(b, 120)).filter(Boolean).slice(0, 12),
     updatedAt: clean(c.updatedAt, 40),
@@ -110,7 +118,8 @@ export async function getCamp(id = XMAS_2026.id) {
 }
 export async function getCampBySlug(slug) {
   const all = await listCamps()
-  return all.find((c) => c.slug === slug) || null
+  const want = SLUG_ALIASES[slug] || slug
+  return all.find((c) => c.slug === want) || null
 }
 export async function listCamps() {
   const raw = (await kvCommand(['HGETALL', ckeys.camps()])) || []
@@ -194,15 +203,21 @@ export async function dayCounts(camp, nowMs = Date.now()) {
   return out
 }
 
-// What the public page shows: never names, emails or money taken.
+// What the public page shows: never names, emails, money taken or how many
+// are booked. A day says "limited" until it is down to lowAt places, then the
+// real number left (Lee, 10 Nov 2026).
 export async function publicCamp(camp, today = sydneyToday()) {
   const counts = await dayCounts(camp)
   const open = new Set(bookableDays(camp, today).map((d) => d.id))
   return {
     id: camp.id, slug: camp.slug, title: camp.title, status: camp.status, location: camp.location, address: camp.address,
-    timesLabel: camp.timesLabel, arriveLabel: camp.arriveLabel, ages: camp.ages, capacityPerDay: camp.capacityPerDay, lowAt: camp.lowAt,
+    timesLabel: camp.timesLabel, arriveLabel: camp.arriveLabel, ages: camp.ages,
     prices: priceSummary(camp), bring: camp.bring,
-    days: camp.days.map((d) => ({ ...d, ...counts[d.id], bookable: camp.status === 'open' && open.has(d.id) && counts[d.id].left > 0, past: !open.has(d.id) })),
+    days: camp.days.map((d) => {
+      const left = counts[d.id].left
+      const low = left > 0 && left <= camp.lowAt
+      return { id: d.id, date: d.date, label: d.label, short: d.short, full: left === 0, low, left: low ? left : null, bookable: camp.status === 'open' && open.has(d.id) && left > 0, past: !open.has(d.id) }
+    }),
   }
 }
 
@@ -228,38 +243,38 @@ export async function bookingForSession(sid) { return kvCommand(['GET', ckeys.se
 const yesNo = (v) => (/^y/i.test(String(v || '')) ? 'Yes' : /^n/i.test(String(v || '')) ? 'No' : '')
 const phoneOk = (v) => String(v || '').replace(/\D/g, '').length >= 8
 
-// One family's form, checked. Returns { error } or { value }.
+// One family's form, checked. Returns { error } or { value }. The form is
+// short on purpose (Lee, 10 Nov 2026): player, who they play for, parent.
 export function validateBookingInput(body, camp, { staff = false } = {}) {
   const dayIds = [...new Set((Array.isArray(body.days) ? body.days : [body.days]).map((d) => clean(d, 20)))].filter((d) => camp.days.some((x) => x.id === d))
   if (!dayIds.length) return { error: 'Choose which day or days.' }
   const players = (Array.isArray(body.players) ? body.players : []).slice(0, MAX_PLAYERS).map((p) => ({
     firstName: clean(p?.firstName, 60), surname: clean(p?.surname, 60), age: clean(p?.age, 3).replace(/\D/g, ''),
-    jerseySize: clean(p?.jerseySize, 40), previousCamp: yesNo(p?.previousCamp), clubLevel: clean(p?.clubLevel, 120), medical: clean(p?.medical, 600),
+    clubLevel: clean(p?.clubLevel, 120), previousCamp: yesNo(p?.previousCamp), medical: clean(p?.medical, 600),
+    ...(clean(p?.jerseySize, 40) ? { jerseySize: clean(p.jerseySize, 40) } : {}),
   }))
   if (!players.length) return { error: 'Add at least one player.' }
   for (const [i, p] of players.entries()) {
     const who = players.length > 1 ? `Player ${i + 1}: ` : ''
     if (!p.firstName || !p.surname) return { error: `${who}enter the player's first name and surname.` }
     const age = Number(p.age)
-    if (!staff && (!age || age < 3 || age > 18)) return { error: `${who}enter the player's age (3 to 18).` }
-    if (!staff && !p.jerseySize) return { error: `${who}choose a jersey size.` }
-    if (!staff && !p.previousCamp) return { error: `${who}tell us if they have done a Joner camp before.` }
+    if (!staff && (!age || age < 4 || age > 18)) return { error: `${who}enter the player's age.` }
   }
   const v = {
     dayIds: camp.days.filter((d) => dayIds.includes(d.id)).map((d) => d.id), players,
     parentName: clean(body.parentName, 100), email: clean(body.email, 160).toLowerCase(), mobile: clean(body.mobile, 30),
-    emergencyName: clean(body.emergencyName, 100), emergencyMobile: clean(body.emergencyMobile, 30), pickup: clean(body.pickup, 200),
     heardAbout: clean(body.heardAbout, 60), extraInfo: clean(body.extraInfo, 800),
+    // Where the family came from (utm or referrer). Not `source`: that is online or portal.
+    cameFrom: clean(body.cameFrom || (['online', 'portal'].includes(body.source) ? '' : body.source), 120),
     agreement: body.agreement === true || body.agreement === 'true' || body.agreement === 'on',
+    // Kept when a sign-up already has them (the first version of the form asked).
+    ...(clean(body.emergencyName, 100) ? { emergencyName: clean(body.emergencyName, 100), emergencyMobile: clean(body.emergencyMobile, 30) } : {}),
+    ...(clean(body.pickup, 200) ? { pickup: clean(body.pickup, 200) } : {}),
   }
   if (!v.parentName) return { error: 'Enter the parent or guardian name.' }
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.email)) return { error: 'Enter a valid email address.' }
-  if (!phoneOk(v.mobile) && !staff) return { error: 'Enter a mobile number we can call on the day.' }
-  if (!staff) {
-    if (!v.emergencyName || !phoneOk(v.emergencyMobile)) return { error: 'Add an emergency contact (name and mobile), someone other than you if you can.' }
-    if (!v.heardAbout) return { error: 'Tell us where you heard about the camp.' }
-    if (!v.agreement) return { error: 'Please accept the camp terms.' }
-  }
+  if (!phoneOk(v.mobile) && !staff) return { error: 'Enter a mobile number we can reach you on.' }
+  if (!staff && !v.agreement) return { error: 'Please accept the camp terms.' }
   return { value: v }
 }
 
@@ -279,6 +294,7 @@ export async function createCheckout({ camp, booking, baseUrl }) {
   const pageUrl = `${baseUrl}/camps/${camp.slug}/`
   const body = {
     mode: 'payment',
+    allow_promotion_codes: 'true',
     customer_email: booking.email,
     expires_at: String(Math.floor(Date.now() / 1000) + CAMP_CHECKOUT_MINUTES * 60),
     success_url: `${pageUrl}?booked=${encodeURIComponent(booking.id)}&session_id={CHECKOUT_SESSION_ID}`,
@@ -287,7 +303,7 @@ export async function createCheckout({ camp, booking, baseUrl }) {
     'line_items[0][price_data][currency]': 'aud',
     'line_items[0][price_data][unit_amount]': String(each),
     'line_items[0][price_data][product_data][name]': `${camp.title}: ${both ? 'both days' : daysText(camp, booking.dayIds)}`,
-    'line_items[0][price_data][product_data][description]': `${booking.players.map((p) => `${p.firstName} ${p.surname}`).join(', ')} · ${camp.timesLabel}${camp.location ? ` · ${camp.location}` : ' · Sydney'}`.slice(0, 300),
+    'line_items[0][price_data][product_data][description]': `${booking.players.map((p) => `${p.firstName} ${p.surname}`).join(', ')} · ${camp.timesLabel}${camp.location ? ` · ${camp.location}` : ''}`.slice(0, 300),
     'metadata[campBookingId]': booking.id,
     'metadata[campId]': camp.id,
     'metadata[camp]': camp.title,
@@ -373,6 +389,88 @@ export async function expireCampBooking(id) {
   b.status = 'expired'
   await saveBooking(b)
   return { changed: true }
+}
+
+// ---------- started but not paid ----------
+
+// A website booking that never got paid: left the Stripe page, let it time
+// out, or closed the tab. Shown in the portal (Camps > Not finished) and
+// reminded by email, as the USA and Sydney camps did.
+export function isUnfinished(b, nowMs = Date.now()) {
+  if (b.source !== 'online' || b.paidAt || b.cancelledBy) return false
+  // Staff trying the form out are not families to chase.
+  if (/@jonerfootball\.com$/i.test(b.email || '')) return false
+  return b.status === 'expired' || b.status === 'cancelled' || (b.status === 'held' && Number(b.holdExpiresMs) < nowMs)
+}
+// The newest unfinished booking per family, leaving out families who have a
+// live booking for this camp (they came back and paid, or staff added them).
+export function unfinishedFamilies(bookings, nowMs = Date.now()) {
+  const done = new Set(bookings.filter((b) => b.status === 'paid' || b.status === 'unpaid' || (b.status === 'held' && Number(b.holdExpiresMs) >= nowMs)).map((b) => b.email))
+  const seen = new Set()
+  return bookings.filter((b) => isUnfinished(b, nowMs)).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).filter((b) => { if (done.has(b.email) || seen.has(b.email)) return false; seen.add(b.email); return true })
+}
+
+export const REMINDER_STAGES = [['r1', 60], ['r2', 24 * 60], ['r3', 7 * 24 * 60]]
+const REMINDER_GAP_MS = 20 * 3600_000
+const REMINDER_MAX_AGE_MS = 10 * 86400_000
+
+// Hourly (cron /api/camp-book?tick=1). One reminder per family per run, the
+// next stage that is due, never two within 20 hours, none once the family has
+// booked, the days are full or gone, staff said stop, or the camp is closed.
+export async function campReminderTick({ nowMs = Date.now(), deps = {} } = {}) {
+  const email = deps.email || (await import('./_camp-email.js'))
+  const out = { sent: 0, camps: 0 }
+  for (const camp of await listCamps()) {
+    if (camp.status !== 'open' || !camp.reminders) continue
+    out.camps += 1
+    const open = new Set(bookableDays(camp).map((d) => d.id))
+    if (!open.size) continue
+    const counts = await dayCounts(camp, nowMs)
+    for (const b of unfinishedFamilies(await listBookings(camp.id), nowMs)) {
+      if (b.noReminders || /@jonerfootball\.com$/i.test(b.email)) continue
+      const age = nowMs - Date.parse(b.createdAt)
+      if (!(age > 0) || age > REMINDER_MAX_AGE_MS) continue
+      if (!b.dayIds.some((d) => open.has(d) && counts[d].left >= b.players.length)) continue
+      const sent = b.reminders || {}
+      const last = Math.max(0, ...Object.values(sent).map((at) => Date.parse(at) || 0))
+      if (last && nowMs - last < REMINDER_GAP_MS) continue
+      const next = REMINDER_STAGES.find(([k]) => !sent[k])
+      if (!next || age < next[1] * 60_000) continue
+      if (!(await claimOnce(ckeys.effect(b.id, `remind-${next[0]}`), 30 * 86400))) continue
+      try {
+        await email.sendCampReminder(b, camp)
+        const fresh = (await getBooking(b.id)) || b
+        fresh.reminders = { ...(fresh.reminders || {}), [next[0]]: new Date(nowMs).toISOString() }
+        await saveBooking(fresh)
+        out.sent += 1
+        if (next[0] === 'r1') {
+          const { telegramAlert } = await import('./_jfp-notify.js')
+          await telegramAlert(`Camp booking not finished: ${b.parentName} started booking ${b.players.map((p) => p.firstName).join(', ')} for ${camp.short} (${daysText(camp, b.dayIds)}) and did not pay. A reminder email has gone. Portal > Camps > Not finished.`).catch(() => {})
+        }
+      } catch (error) {
+        console.error('camp reminder failed', b.id, error?.message || error)
+        await kvCommand(['DEL', ckeys.effect(b.id, `remind-${next[0]}`)]).catch(() => {})
+      }
+    }
+  }
+  return out
+}
+
+// ---------- refunds made in Stripe ----------
+
+// A refund in the Stripe dashboard shows on the sign-up. Returns the booking
+// id, or '' when the payment was not a camp booking.
+export async function recordCampRefund(charge, piId) {
+  if (!piId) return ''
+  const pi = await stripeFetch(`/payment_intents/${encodeURIComponent(piId)}`)
+  const id = campBookingIdFromSession({ metadata: pi?.metadata })
+  if (!id) return ''
+  const b = await getBooking(id)
+  if (!b) return id
+  b.refundedCents = Number(charge?.amount_refunded) || 0
+  b.refundedAt = new Date().toISOString()
+  await saveBooking(b)
+  return id
 }
 
 // ---------- waitlist ----------

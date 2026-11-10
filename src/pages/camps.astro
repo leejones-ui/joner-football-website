@@ -7,7 +7,7 @@ import { faqSchema, webPageSchema, breadcrumbSchema } from '../lib/seoSchema'
 
 
 const campSEOFAQs = [
-  { q: 'Are any Joner Football camps currently available?', a: 'Yes. The Christmas Drop and Shop Camp runs in Sydney on Monday 21 and Tuesday 22 December 2026, 9am to 12pm, for ages 5 to 14. Book one day or both, with 72 places a day.' },
+  { q: 'Are any Joner Football camps currently available?', a: 'Yes. The Christmas Holiday Camp runs at Rydalmere Park in Sydney on Monday 21 and Tuesday 22 December 2026, 9am to 12pm, for ages 7 to 16. Book one day or both. Places are limited.' },
   { q: 'When will new Joner Football camps be announced?', a: 'Camps for 2027 will be published here when they are confirmed.' },
   { q: 'What age are the camps for?', a: 'Most Joner Football camps are built for motivated young players who want to improve technique, confidence and game impact in a high-energy coaching environment.' },
   { q: 'What do players work on at camp?', a: 'Players work on technical detail, ball mastery, attacking skills, confidence, decision-making and the standards Lee Jones expects in high-level football training.' },
@@ -17,7 +17,7 @@ const campSEOFAQs = [
 const campsPageSchemas = [
   webPageSchema({
     name: 'Football Camps | Joner Football',
-    description: 'Joner Football camps. Now booking: the Christmas Drop and Shop Camp in Sydney, 21 and 22 December 2026, 9am to 12pm.',
+    description: 'Joner Football camps. Now booking: the Christmas Holiday Camp at Rydalmere Park, Sydney, 21 and 22 December 2026, 9am to 12pm.',
     url: 'https://jonerfootball.com/camps/',
   }),
   breadcrumbSchema([
@@ -58,7 +58,7 @@ const sanityPage = await fetchSanityPage('camps')
 ) : (
 <BaseLayout
   title="Football Camps | Joner Football"
-  description="Joner Football camps. Now booking: the Christmas Drop and Shop Camp in Sydney, 21 and 22 December 2026, 9am to 12pm. 72 places a day."
+  description="Joner Football camps. Now booking: the Christmas Holiday Camp at Rydalmere Park, Sydney, 21 and 22 December 2026, 9am to 12pm. Ages 7 to 16."
   schema={campsPageSchemas}
 >
   <Fragment slot="head">
@@ -71,12 +71,12 @@ const sanityPage = await fetchSanityPage('camps')
       <div class="cp-hero-shade" aria-hidden="true"></div>
       <div class="cp-wrap cp-hero-content">
         <p class="cp-eyebrow">Now booking · Sydney</p>
-        <h1 class="cp-h1">Christmas drop <span class="cp-hook">and shop.</span></h1>
-        <p class="cp-hero-sub">Two football mornings, Monday 21 and Tuesday 22 December, 9am to 12pm. Drop them with our coaches and get the Christmas shopping done. Ages 5 to 14.</p>
+        <h1 class="cp-h1">Christmas <span class="cp-hook">holiday camp.</span></h1>
+        <p class="cp-hero-sub">Monday 21 and Tuesday 22 December, 9am to 12pm, at Rydalmere Park. Ages 7 to 16.</p>
         <div class="cp-hero-cta">
-          <a href="/camps/christmas-drop-and-shop/" class="btn-red">Book a place</a>
+          <a href="/camps/christmas-holiday-camp/" class="btn-red">Book a place</a>
         </div>
-        <p class="cp-hero-note"><span class="cp-dot" aria-hidden="true"></span><span id="cp-left">72 places a day. One day A$150, both days A$250.</span></p>
+        <p class="cp-hero-note"><span class="cp-dot" aria-hidden="true"></span><span id="cp-left">Limited places</span></p>
       </div>
     </section>
 
@@ -85,11 +85,11 @@ const sanityPage = await fetchSanityPage('camps')
         <div>
           <p class="cp-kicker">Camp calendar</p>
           <h2 class="cp-h2">Christmas camp is open.</h2>
-          <p class="cp-lead">Our USA and Sydney camps for 2026 are done. One more before Christmas: two mornings in Sydney, book one day or both. Camps for 2027 will be announced here.</p>
+          <p class="cp-lead">One more camp before Christmas: two mornings at Rydalmere Park, book one day or both. Camps for 2027 will be announced here.</p>
         </div>
-        <a class="cp-keep cp-xmas" href="/camps/christmas-drop-and-shop/">
-          <h3>Christmas Drop and Shop</h3>
-          <p>Mon 21 and Tue 22 December · 9am to 12pm · Sydney · Ages 5 to 14. One day A$150, both days A$250.</p>
+        <a class="cp-keep cp-xmas" href="/camps/christmas-holiday-camp/">
+          <h3>Christmas Holiday Camp</h3>
+          <p>Mon 21 and Tue 22 December · 9am to 12pm · Rydalmere Park · Ages 7 to 16. Groups by age and ability.</p>
           <span class="btn-red">Book a place</span>
         </a>
       </div>
@@ -129,7 +129,7 @@ const sanityPage = await fetchSanityPage('camps')
       },
       {
         heading: 'Best next step',
-        body: 'Book the Christmas Drop and Shop Camp in Sydney (21 and 22 December). Between camps, players can keep improving with structured Joner Football App sessions.',
+        body: 'Book the Christmas Holiday Camp at Rydalmere Park, Sydney (21 and 22 December). Between camps, players can keep improving with structured Joner Football App sessions.',
       },
     ]}
     links={[
@@ -144,12 +144,13 @@ const sanityPage = await fetchSanityPage('camps')
   />
 
   <script>
-    // Live places left for the Christmas camp (falls back to the static line).
-    fetch('/api/camp-book?camp=christmas-drop-and-shop', { cache: 'no-store' }).then((r) => r.json()).then((d) => {
+    // Christmas camp: "Limited places" until a day is nearly full, then the number left.
+    fetch('/api/camp-book?camp=christmas-holiday-camp', { cache: 'no-store' }).then((r) => r.json()).then((d) => {
       const days = d?.camp?.days?.filter((x) => !x.past) || []
       const el = document.getElementById('cp-left')
       if (!el || !days.length) return
-      el.textContent = days.map((x) => `${x.short}: ${x.left ? `${x.left} of ${x.capacity} places left` : 'full'}`).join(' · ')
+      const low = days.filter((x) => x.low)
+      el.textContent = days.every((x) => x.full) ? 'Full. Waitlist open.' : low.length ? low.map((x) => `${x.short}: only ${x.left} places left`).join(' · ') : 'Limited places'
     }).catch(() => {})
   </script>
 
