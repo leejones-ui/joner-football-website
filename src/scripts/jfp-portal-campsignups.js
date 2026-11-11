@@ -59,7 +59,7 @@ export async function renderCampSignups(ui) {
     const q = S.q.trim().toLowerCase()
     const list = d.bookings.filter((b) => (!S.day || b.dayIds.includes(S.day)) && (!S.status || b.status === S.status) && (!q || `${b.id} ${b.parentName} ${b.email} ${b.mobile} ${b.players.map(fullName).join(' ')}`.toLowerCase().includes(q)))
     const table = `<div class="ps-table-wrap"><table class="ps-table ps-flat"><thead><tr><th>Player</th><th>Days</th><th>Parent</th><th>Status</th><th class="ps-end"><span class="sr-only">Open</span></th></tr></thead><tbody>
-      ${list.map((b) => `<tr data-cs-open="${esc(b.id)}"><td data-col="who"><b>${esc(b.players.map(fullName).join(', '))}</b><span class="ps-sub">${esc(b.players.map((p) => `age ${p.age || '?'}${p.clubLevel ? `, ${p.clubLevel}` : ''}`).join(' · '))}${b.players.some((p) => p.medical) ? ' · <span class="cs-flag">medical note</span>' : ''}${b.attention ? ' · <span class="cs-flag">needs a look</span>' : ''}</span></td><td data-col="group">${esc(dayShort(camp, b.dayIds))}</td><td data-col="flags">${esc(b.parentName)}<span class="ps-sub">${esc(b.mobile)}</span></td><td data-col="pay">${psBadge(...STATUS[b.status])}<span class="ps-sub">${b.status === 'paid' ? esc(`${money(b.amountPaidCents || 0)} · ${b.method || 'Stripe'}${b.refundedCents ? ` · ${money(b.refundedCents)} refunded` : ''}`) : b.status === 'held' ? 'On the Stripe page' : b.refundedCents ? esc(`${money(b.refundedCents)} refunded`) : ''}</span></td><td class="ps-end"><button type="button" class="j-btn j-btn-line j-btn-sm">Open</button></td></tr>`).join('') || `<tr><td colspan="5"><div class="ps-empty">${d.bookings.length ? 'Nothing matches those filters.' : 'No sign-ups yet. They appear here the moment a family pays.'}</div></td></tr>`}
+      ${list.map((b) => `<tr data-cs-open="${esc(b.id)}"><td data-col="who"><b>${esc(b.players.map(fullName).join(', '))}</b><span class="ps-sub">${esc(b.players.map((p) => `age ${p.age || '?'}${p.clubLevel ? `, ${p.clubLevel}` : ''}`).join(' · '))}${b.players.some((p) => p.medical) ? ' · <span class="cs-flag">medical note</span>' : ''}${b.attention ? ' · <span class="cs-flag">needs a look</span>' : ''}${upFlag(b)}</span></td><td data-col="group">${esc(dayShort(camp, b.dayIds))}</td><td data-col="flags">${esc(b.parentName)}<span class="ps-sub">${esc(b.mobile)}</span></td><td data-col="pay">${psBadge(...STATUS[b.status])}<span class="ps-sub">${b.status === 'paid' ? esc(`${money(b.amountPaidCents || 0)} · ${b.method || 'Stripe'}${b.refundedCents ? ` · ${money(b.refundedCents)} refunded` : ''}`) : b.status === 'held' ? 'On the Stripe page' : b.refundedCents ? esc(`${money(b.refundedCents)} refunded`) : ''}</span></td><td class="ps-end"><button type="button" class="j-btn j-btn-line j-btn-sm">Open</button></td></tr>`).join('') || `<tr><td colspan="5"><div class="ps-empty">${d.bookings.length ? 'Nothing matches those filters.' : 'No sign-ups yet. They appear here the moment a family pays.'}</div></td></tr>`}
       </tbody></table></div>`
     if (typing) { body.querySelector('.ps-table-wrap').outerHTML = table; bindRows(); return }
     body.innerHTML = `<div class="ps-tools" role="search">${psSearch('cs-q', 'Search players, parents, email, mobile…', S.q, 'Search camp sign-ups')}${psSelect('cs-day', camp.days.map((x) => ({ id: x.id, label: x.label })), S.day, 'Every day', 'Day')}${psSelect('cs-status', Object.entries(STATUS).map(([id, [, label]]) => ({ id, label })), S.status, 'Any status', 'Status')}</div>${table}`
@@ -68,6 +68,9 @@ export async function renderCampSignups(ui) {
     body.querySelector('#cs-status').addEventListener('change', (e) => { S.status = e.target.value; keep(); drawList() })
     bindRows()
   }
+  // An upgrade (extra days, pay the difference) open or needing a look.
+  const upsFor = (b) => (d.upgrades || []).filter((u) => u.baseBookingId === b.id)
+  const upFlag = (b) => { const u = upsFor(b).find((x) => ['pending', 'creating', 'applying', 'recovery'].includes(x.state)); return !u ? '' : u.state === 'recovery' ? ' · <span class="cs-flag">upgrade paid, needs a look</span>' : ' · <span class="cs-flag">upgrade link out</span>' }
   const bindRows = () => view().querySelectorAll('[data-cs-open]').forEach((r) => r.addEventListener('click', () => openBooking(d.bookings.find((b) => b.id === r.dataset.csOpen))))
 
   // The day list: the register. One line per player, by age (for grouping)
@@ -139,9 +142,12 @@ export async function renderCampSignups(ui) {
       ${b.attention ? `<div class="j-box j-box-amber" style="margin-bottom:12px">${esc(b.attention)}</div>` : ''}
       ${b.players.map((p, i) => `<div class="cs-player"><p class="cs-lbl">Player ${b.players.length > 1 ? i + 1 : ''}</p>${line('Name', esc(fullName(p)))}${line('Age', esc(p.age))}${line('Plays for', esc(p.clubLevel))}${line('Camp before', esc(p.previousCamp))}${line('Medical', p.medical ? `<span class="cs-flag">${esc(p.medical)}</span>` : '')}</div>`).join('')}
       <div class="cs-player"><p class="cs-lbl">Family</p>${line('Parent', esc(b.parentName))}${line('Email', `<a href="mailto:${esc(b.email)}">${esc(b.email)}</a>`)}${line('Mobile', `<a href="tel:${esc(b.mobile)}">${esc(b.mobile)}</a>`)}${line('Emergency', b.emergencyName ? `${esc(b.emergencyName)} <a href="tel:${esc(b.emergencyMobile)}">${esc(b.emergencyMobile)}</a>` : '')}${line('Collecting', esc(b.pickup))}${line('Heard about it', esc(b.heardAbout))}${line('Came from', esc(b.cameFrom))}${line('Anything else', esc(b.extraInfo))}${line('Staff note', esc(b.note))}</div>
-      <div class="cs-player"><p class="cs-lbl">Payment</p>${line('Price', esc(money(b.priceCents || 0)))}${line('Paid', b.status === 'paid' ? esc(`${money(b.amountPaidCents || 0)} by ${b.method || 'Stripe'}${b.paidAt ? `, ${when(b.paidAt)}` : ''}`) : '')}${b.paymentIntent ? line('Stripe', `<a href="https://dashboard.stripe.com/payments/${esc(b.paymentIntent)}" target="_blank" rel="noopener">Open in Stripe</a>`) : ''}${line('Signed up', esc(`${when(b.createdAt)}${b.source === 'portal' ? ` (added by ${b.addedBy || 'staff'})` : ''}`))}${b.agreedAt ? line('Camp terms', esc(`Agreed ${when(b.agreedAt)}`)) : ''}${b.refundedCents ? line('Refunded', esc(`${money(b.refundedCents)} in Stripe${b.refundedAt ? `, ${when(b.refundedAt)}` : ''}`)) : ''}${b.status === 'cancelled' ? line('Cancelled', esc(`${when(b.cancelledAt)}: ${b.cancelReason || ''}`)) : ''}${line('Email', b.effects?.parentEmail === 'done' ? `Sent${b.resentAt ? ` (again ${esc(when(b.resentAt))})` : ''}` : b.effects?.parentEmail === 'failed' ? '<span class="cs-flag">Did not send</span>' : '')}</div>
-      <div class="cs-actions">${b.status !== 'cancelled' && b.status !== 'held' ? '<button type="button" class="j-btn j-btn-line" id="cs-edit">Edit</button>' : ''}${b.status === 'unpaid' ? '<button type="button" class="j-btn j-btn-dark" id="cs-paid">Mark paid</button>' : ''}${b.status === 'paid' ? '<button type="button" class="j-btn j-btn-line" id="cs-resend">Send the email again</button>' : ''}${live(b) ? '<button type="button" class="j-btn j-btn-line cs-danger" id="cs-cancel">Cancel sign-up</button>' : ''}<button type="button" class="j-btn j-btn-line" data-close>Close</button></div>`, { wide: true })
+      <div class="cs-player"><p class="cs-lbl">Payment</p>${line('Price', esc(money(b.priceCents || 0)))}${line('Paid', b.status === 'paid' ? esc(`${money(b.amountPaidCents || 0)} by ${b.method || 'Stripe'}${b.paidAt ? `, ${when(b.paidAt)}` : ''}`) : '')}${b.payments?.length ? b.payments.map((x) => line(x.kind === 'upgrade' ? 'Top-up' : 'First payment', `${esc(money(x.amountCents || 0))}${x.paidAt ? `, ${esc(when(x.paidAt))}` : ''}${x.refundedCents ? ` · ${esc(money(x.refundedCents))} refunded` : ''}${x.paymentIntent ? ` · <a href="https://dashboard.stripe.com/payments/${esc(x.paymentIntent)}" target="_blank" rel="noopener">Stripe</a>` : ''}`)).join('') : b.paymentIntent ? line('Stripe', `<a href="https://dashboard.stripe.com/payments/${esc(b.paymentIntent)}" target="_blank" rel="noopener">Open in Stripe</a>`) : ''}${line('Signed up', esc(`${when(b.createdAt)}${b.source === 'portal' ? ` (added by ${b.addedBy || 'staff'})` : ''}`))}${b.agreedAt ? line('Camp terms', esc(`Agreed ${when(b.agreedAt)}`)) : ''}${b.refundedCents ? line('Refunded', esc(`${money(b.refundedCents)} in Stripe${b.refundedAt ? `, ${when(b.refundedAt)}` : ''}`)) : ''}${b.status === 'cancelled' ? line('Cancelled', esc(`${when(b.cancelledAt)}: ${b.cancelReason || ''}`)) : ''}${line('Email', b.effects?.parentEmail === 'done' ? `Sent${b.resentAt ? ` (again ${esc(when(b.resentAt))})` : ''}` : b.effects?.parentEmail === 'failed' ? '<span class="cs-flag">Did not send</span>' : '')}</div>
+      ${upgradesHtml(b)}
+      <div class="cs-actions">${b.status === 'paid' && b.dayIds.length < camp.days.length ? '<button type="button" class="j-btn j-btn-dark" id="cs-up">Upgrade booking</button>' : ''}${b.status !== 'cancelled' && b.status !== 'held' ? '<button type="button" class="j-btn j-btn-line" id="cs-edit">Edit</button>' : ''}${b.status === 'unpaid' ? '<button type="button" class="j-btn j-btn-dark" id="cs-paid">Mark paid</button>' : ''}${b.status === 'paid' ? '<button type="button" class="j-btn j-btn-line" id="cs-resend">Send the email again</button>' : ''}${live(b) ? '<button type="button" class="j-btn j-btn-line cs-danger" id="cs-cancel">Cancel sign-up</button>' : ''}<button type="button" class="j-btn j-btn-line" data-close>Close</button></div>`, { wide: true })
     const q = (s) => box.querySelector(s)
+    q('#cs-up')?.addEventListener('click', () => upgradeBooking(b))
+    bindUpgrades(box, b)
     q('#cs-edit')?.addEventListener('click', () => editBooking(b))
     q('#cs-resend')?.addEventListener('click', async (e) => {
       e.target.disabled = true
@@ -172,6 +178,108 @@ export async function renderCampSignups(ui) {
         ui.closeModal(); set(r.data)
         if (r.data.refund && r.data.refund.amountCents > 0 && r.data.refund.url) { const z = ui.modal(`<h2>Cancelled</h2><p>The camp terms say refund <b>${esc(r.data.refund.amount)}</b> (${esc(r.data.refund.rule)}). Open the payment in Stripe, press Refund and type that amount.</p><div class="cs-actions"><button type="button" class="j-btn j-btn-line" data-close>Close</button><a class="j-btn j-btn-dark" href="${esc(r.data.refund.url)}" target="_blank" rel="noopener">Open in Stripe</a></div>`); z.querySelector('a').addEventListener('click', () => ui.closeModal()) } else toast(r.data.refund ? `Cancelled. Refund due: ${r.data.refund.amount}.` : 'Cancelled. The places are free again.')
       })
+    })
+  }
+
+  // ---------- upgrade: add days to a paid sign-up, pay only the difference ----------
+  const UP_STATE = { creating: ['orange', 'Making the link'], pending: ['orange', 'Link out, not paid'], applying: ['orange', 'Paid, applying'], applied: ['green', 'Paid and added'], expired: ['grey', 'Link expired'], cancelled: ['grey', 'Cancelled'], failed: ['grey', 'Link failed'], recovery: ['red', 'Paid, needs a look'] }
+  const EMAIL_STATE = { done: 'Sent', waiting: 'Not sent yet (wording needs Lee or Ligia to approve)', failed: 'Did not send', unclear: 'Not sure it sent: check the inbox before sending again' }
+  function upgradesHtml(b) {
+    const ups = upsFor(b)
+    if (!ups.length) return ''
+    return `<div class="cs-player"><p class="cs-lbl">Upgrades</p>${ups.map((u) => `<div class="cs-up" data-up="${esc(u.id)}">
+      <p style="margin:0 0 6px">${psBadge(...(UP_STATE[u.state] || ['grey', u.state]))} <b>Add ${esc(u.text?.adding || '')}</b> · ${esc(u.text?.topUp || '')} <span class="muted small">(${esc(u.id)})</span></p>
+      ${u.reason ? `<div class="j-box j-box-amber" style="margin:0 0 8px">${esc(u.reason)}</div>` : ''}
+      ${u.state === 'pending' && u.url ? `<label class="j-label" for="up-url-${esc(u.id)}">Payment link (private: send it to this family only)</label><div class="cs-copy"><input class="j-input" id="up-url-${esc(u.id)}" readonly value="${esc(u.url)}"><button type="button" class="j-btn j-btn-dark j-btn-sm" data-up-copy="${esc(u.id)}">Copy</button></div><p class="small muted" style="margin:4px 0 0">Open until ${esc(when(new Date(u.linkExpiresMs).toISOString()))}. Their ${esc(u.text?.adding || '')} place${u.players === 1 ? ' is' : 's are'} held until then.</p>` : ''}
+      ${u.state === 'applied' ? `<p class="small" style="margin:0">Paid ${esc(when(u.paidAt))}. Confirmation email: ${esc(EMAIL_STATE[u.effects?.parentEmail] || 'Not sent')}</p>` : ''}
+      <div class="cs-actions" style="justify-content:flex-start;margin-top:8px">
+        ${['creating', 'pending'].includes(u.state) ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-up-cancel="${esc(u.id)}">Cancel link</button>` : ''}
+        ${['pending', 'recovery', 'applying'].includes(u.state) ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-up-retry="${esc(u.id)}">Check payment</button>` : ''}
+        ${u.state === 'applied' ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-up-preview="${esc(u.id)}">See the email</button>` : ''}
+        ${u.state === 'applied' && !['done', 'unclear'].includes(u.effects?.parentEmail) ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-up-send="${esc(u.id)}">Send the email</button>` : ''}
+        ${u.paymentIntent ? `<a class="j-btn j-btn-line j-btn-sm" href="https://dashboard.stripe.com/payments/${esc(u.paymentIntent)}" target="_blank" rel="noopener">Stripe</a>` : ''}
+      </div></div>`).join('')}</div>`
+  }
+  function bindUpgrades(box, b) {
+    const camp = d.camp
+    const run = async (btn, action, upgradeId, done) => {
+      btn.disabled = true
+      const r = await call(action, { campId: camp.id, id: b.id, upgradeId })
+      btn.disabled = false
+      if (!r.ok) return toast(r.data.error || 'Could not do that.')
+      if (r.data.camp) set(r.data)
+      ui.closeModal(); done?.(r.data)
+      openBooking(d.bookings.find((x) => x.id === b.id))
+    }
+    box.querySelectorAll('[data-up-copy]').forEach((btn) => btn.addEventListener('click', async () => {
+      const input = box.querySelector(`#up-url-${btn.dataset.upCopy}`)
+      try { await navigator.clipboard.writeText(input.value); toast('Link copied.') } catch { input.select(); toast('Selected: copy it now.') }
+    }))
+    box.querySelectorAll('[data-up-cancel]').forEach((btn) => btn.addEventListener('click', async () => {
+      if (!(await ui.confirmBox('Cancel this payment link? The family will not be able to pay it, and the extra places go back on sale.', { ok: 'Cancel link' }))) return
+      run(btn, 'campUpgradeCancel', btn.dataset.upCancel, () => toast('Link cancelled. The original booking is unchanged.'))
+    }))
+    box.querySelectorAll('[data-up-retry]').forEach((btn) => btn.addEventListener('click', () => run(btn, 'campUpgradeRetry', btn.dataset.upRetry, () => toast('Checked with Stripe.'))))
+    box.querySelectorAll('[data-up-send]').forEach((btn) => btn.addEventListener('click', async () => {
+      if (!(await ui.confirmBox(`Send the updated confirmation to ${b.email}? Replies go to Ligia.`, { ok: 'Send' }))) return
+      run(btn, 'campUpgradeEmail', btn.dataset.upSend, (x) => toast(x.sent || 'Sent.'))
+    }))
+    box.querySelectorAll('[data-up-preview]').forEach((btn) => btn.addEventListener('click', async () => {
+      const r = await call('campUpgradePreview', { campId: camp.id, id: b.id, upgradeId: btn.dataset.upPreview })
+      if (!r.ok) return toast(r.data.error || 'Could not load it.')
+      const m = ui.modal(`<h2 style="margin-bottom:4px">${esc(r.data.preview.subject)}</h2><p class="muted small" style="margin:0 0 10px">To ${esc(r.data.to)} · replies to ${esc(r.data.replyTo)} · nothing is sent from here</p><iframe class="cs-preview" title="Email preview" sandbox=""></iframe><div class="cs-actions"><button type="button" class="j-btn j-btn-line" data-close>Close</button></div>`, { wide: true })
+      m.querySelector('iframe').srcdoc = r.data.preview.html
+    }))
+  }
+
+  function upgradeBooking(b) {
+    const camp = d.camp
+    let quote = null
+    const box = ui.modal(`<h2 style="margin-bottom:4px">Upgrade booking</h2>
+      <p class="muted small" style="margin:0 0 12px">Add days for every player on this sign-up. The family pays only the difference to the package price, by a private Stripe link you send them. Nothing changes until they pay.</p>
+      <div class="cs-player"><p class="cs-lbl">Players (stay the same)</p><p style="margin:0">${esc(b.players.map(fullName).join(', '))}</p></div>
+      <p class="j-label">Days</p><div class="cs-daypick">${camp.days.map((x) => { const have = b.dayIds.includes(x.id); return `<label class="cs-tick"><input type="checkbox" value="${esc(x.id)}" ${have ? 'checked disabled' : ''}> ${esc(x.label)} <small>${have ? 'already paid' : `${d.counts[x.id].left} left`}</small></label>` }).join('')}</div>
+      <div id="up-quote" aria-live="polite"></div>
+      <div class="cs-actions"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-dark" id="up-create" disabled>Create payment link</button></div>`, { wide: true })
+    const q = (s) => box.querySelector(s)
+    const days = () => [...box.querySelectorAll('.cs-daypick input:checked')].map((x) => x.value)
+    const paint = (html) => { q('#up-quote').innerHTML = html }
+    async function look() {
+      quote = null
+      q('#up-create').disabled = true
+      if (days().length === b.dayIds.length) return paint('<p class="small muted">Tick the day or days to add.</p>')
+      paint('<p class="small muted">Working out the price…</p>')
+      const r = await call('campUpgradeQuote', { campId: camp.id, id: b.id, days: days() })
+      if (!r.ok) return paint(`<div class="j-box ${r.data.manual ? 'j-box-amber' : 'j-box-grey'}">${esc(r.data.error || 'Cannot upgrade this one.')}</div>`)
+      if (r.data.open) return paint(`<div class="j-box j-box-amber">There is already an upgrade for this sign-up (${esc(r.data.open.text?.adding || '')}, ${esc(UP_STATE[r.data.open.state]?.[1] || r.data.open.state)}). Close this and use it, or cancel it first.</div>`)
+      quote = r.data.quote
+      const short = quote.newDayIds.filter((x) => quote.places[x].left < quote.players)
+      paint(`<div class="cs-player"><p class="cs-lbl">The money</p>
+        <div class="cs-kv"><span>Booked now</span><b>${esc(quote.text.have)}</b></div>
+        <div class="cs-kv"><span>Adding</span><b>${esc(quote.text.adding)}</b></div>
+        <div class="cs-kv"><span>After</span><b>${esc(quote.text.target)}</b></div>
+        <div class="cs-kv"><span>Package, ${quote.players} player${quote.players === 1 ? '' : 's'}</span><b>${esc(quote.text.package)}</b></div>
+        <div class="cs-kv"><span>Already paid</span><b>${esc(quote.text.paid)}</b></div>
+        <div class="cs-kv cs-kv-total"><span>Family pays now (AUD, one payment)</span><b>${esc(quote.text.topUp)}</b></div>
+        ${quote.newDayIds.map((x) => `<div class="cs-kv"><span>Places needed on ${esc(camp.days.find((y) => y.id === x)?.short || x)}</span><b>${quote.players} of ${quote.places[x].left} left</b></div>`).join('')}</div>
+        ${short.length ? '<div class="j-box j-box-amber">Not enough places on that day for every player on this sign-up.</div>' : ''}`)
+      q('#up-create').disabled = Boolean(short.length)
+    }
+    box.querySelectorAll('.cs-daypick input:not([disabled])').forEach((x) => x.addEventListener('change', look))
+    look()
+    q('#up-create').addEventListener('click', async (e) => {
+      if (!quote) return
+      e.target.disabled = true
+      const r = await call('campUpgradeCreate', { campId: camp.id, id: b.id, days: days(), quoteKey: quote.quoteKey })
+      if (!r.ok) {
+        e.target.disabled = false
+        if (r.data.stale) { await look(); return toast(r.data.error) }
+        return paint(`${q('#up-quote').innerHTML}<div class="j-box j-box-amber">${esc(r.data.error || 'Could not make the link.')}</div>`)
+      }
+      set(r.data)
+      ui.closeModal()
+      toast('Payment link ready. Copy it and send it to the family.')
+      openBooking(d.bookings.find((x) => x.id === b.id))
     })
   }
 

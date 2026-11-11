@@ -121,11 +121,30 @@ function redis(cmd) {
     case 'EXPIRE': { const e = live(args[0]); if (!e) return 0; e.expiresAt = Date.now() + Number(args[1]) * 1000; return 1 }
     case 'ZREM': { const z = zset(args[0]); let n = 0; for (const m of args.slice(1)) if (z.delete(m)) n++; return n }
     case 'ZCARD': return zset(args[0]).size
+    case 'ZSCORE': { const z = zset(args[0]); return z.has(args[1]) ? String(z.get(args[1])) : null }
     case 'ZREMRANGEBYSCORE': { const z = zset(args[0]); const max = Number(args[2]); let n = 0; for (const [m, s] of z) if (s <= max) { z.delete(m); n++ } return n }
     case 'ZREVRANGE': { const z = zset(args[0]); return [...z.entries()].sort((a, b) => b[1] - a[1]).slice(Number(args[1]), Number(args[2]) + 1).map(([m]) => m) }
     case 'ZRANGE': { const z = zset(args[0]); const end = Number(args[2]); return [...z.entries()].sort((a, b) => a[1] - b[1]).slice(Number(args[1]), end === -1 ? undefined : end + 1).map(([m]) => m) }
     case 'EVAL': {
       const script = args[0]
+      if (script.includes('camp-upgrade-apply')) {
+        // Camp upgrade (api/_camp-upgrades.js): move the upgrade's new-day hold to the booking, or take it fresh.
+        const n = Number(args[1]); const keys = args.slice(2, 2 + n)
+        const [now, up, base, want, cap, score] = args.slice(2 + n)
+        for (const [k, key] of keys.entries()) {
+          const z = zset(key)
+          for (const [m, sc] of z) if (sc <= Number(now)) z.delete(m)
+          const b = [...z.keys()].filter((m) => m.startsWith(`${base}#`)).length
+          const u = [...z.keys()].filter((m) => m.startsWith(`${up}#`)).length
+          if (b < Number(want) && z.size - b - u + Number(want) > Number(cap)) return k + 1
+        }
+        for (const key of keys) {
+          const z = zset(key)
+          for (const m of [...z.keys()]) if (m.startsWith(`${up}#`)) z.delete(m)
+          for (let i = 1; i <= Number(want); i++) z.set(`${base}#${i}`, Number(score))
+        }
+        return 0
+      }
       if (script.includes('INCR')) {
         // JFP sign-in throttle
         const [, , key, ttl] = args
@@ -471,6 +490,7 @@ const shopOrders = [
   shopOrder(1104, 10, 'UNFULFILLED', [['Joner Football Shorts', 1, 47]], { cancelledAt: new Date().toISOString() }),
 ]
 
+const checkoutIdem = new Map()
 function stripeSession(body) {
   const id = `cs_test_${crypto.randomBytes(12).toString('hex')}`
   const params = new URLSearchParams(body)
@@ -482,7 +502,7 @@ function stripeSession(body) {
     line_count: [...params.keys()].filter((k) => /^line_items\[\d+\]\[quantity\]$/.test(k)).length,
     currency: 'aud', customer_email: params.get('customer_email'),
     success_url: params.get('success_url'), cancel_url: params.get('cancel_url'),
-    expires_at: Number(params.get('expires_at')), payment_intent: null,
+    expires_at: Number(params.get('expires_at')), payment_intent: null, allow_promotion_codes: params.get('allow_promotion_codes'),
     url: `http://localhost:${PORT}/mock-stripe/?cs=${id}`,
     product_name: params.get('line_items[0][price_data][product_data][name]'),
     // Setup mode (saved card or bank account, claude/card-on-file).
@@ -696,7 +716,16 @@ const innerFetch = async (url, init = {}) => {
       if (!s || s.status !== 'open') return json({ error: { message: 'Only open sessions can be expired' } }, 400)
       s.status = 'expired'; log('stripe', `expired ${s.id}`); return json(s)
     }
-    if (init.method === 'POST') return json(stripeSession(init.body))
+    if (init.method === 'POST') {
+      // Same idempotency key, same session (as Stripe does for 24 hours).
+      const key = init.headers?.['idempotency-key']
+      if (key && checkoutIdem.has(key)) { log('stripe', `idempotent replay ${key}`); return json(sessions.get(checkoutIdem.get(key))) }
+      if (faults.has('checkout-timeout')) { faults.delete('checkout-timeout'); const made = stripeSession(init.body); if (key) checkoutIdem.set(key, made.id); throw new Error('socket hang up (test fault)') }
+      if (faults.has('checkout-refuse')) { faults.delete('checkout-refuse'); return json({ error: { message: 'Invalid request (test fault)' } }, 400) }
+      const made = stripeSession(init.body)
+      if (key) checkoutIdem.set(key, made.id)
+      return json(made)
+    }
     const id = decodeURIComponent(u.split('/').pop().split('?')[0])
     const j = juniorsSessions.find((x) => x.id === id)
     if (j) return json({ ...j, payment_intent: { id: j.payment_intent, latest_charge: mockCharge(j, { expandBalance: new URL(u).searchParams.getAll('expand[]').includes('payment_intent.latest_charge.balance_transaction') }) } })
@@ -988,6 +1017,9 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/__stripe-saved') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ customers: [...customers.values()], paymentMethods: [...paymentMethods.values()], setupIntents: [...setupIntents.values()] })) }
   if (url.pathname === '/__pushes') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(pushes)) }
   if (url.pathname === '/__uscreen') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(uscreen)) }
+  if (url.pathname === '/__session') { const x = sessions.get(url.searchParams.get('cs')); res.writeHead(x ? 200 : 404, { 'content-type': 'application/json' }); return res.end(JSON.stringify(x || null)) }
+  if (url.pathname === '/__session-set') { const x = sessions.get(url.searchParams.get('cs')); if (x) Object.assign(x, JSON.parse(url.searchParams.get('set') || '{}')); res.writeHead(x ? 200 : 404, { 'content-type': 'application/json' }); return res.end(JSON.stringify(x || null)) }
+  if (url.pathname === '/__webhook') { const x = sessions.get(url.searchParams.get('cs')); if (x) await fireWebhook(url.searchParams.get('type'), x); res.writeHead(x ? 200 : 404); return res.end('ok') }
   if (url.pathname === '/__emails') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(emails)) }
   if (url.pathname === '/__telegram') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(telegrams)) }
   if (url.pathname === '/__airtable') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(airtable)) }

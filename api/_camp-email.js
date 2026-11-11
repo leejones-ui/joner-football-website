@@ -147,3 +147,72 @@ export async function addCampContact(b, camp) {
   if (!res.ok && res.status !== 204) throw new Error(`Brevo contact ${res.status}`)
   return 'added'
 }
+
+// ---------- upgrades: extra days paid for (Lee, 11 Nov 2026) ----------
+
+// The updated confirmation after a family pays to add days. Sent once per
+// upgrade, and only after Lee or Ligia approve this wording (until then staff
+// send it from the portal). Replies go to Ligia.
+export function renderCampUpgradeConfirmation(b, camp, u) {
+  const first = String(b.parentName || '').split(' ')[0] || 'there'
+  const f = b.players.map((x) => x.firstName)
+  const kids = f.length > 1 ? `${f.slice(0, -1).join(', ')} and ${f.at(-1)}` : f[0] || ''
+  const many = b.players.length > 1
+  const start = camp.timesLabel.split(' to ')[0]
+  const end = camp.timesLabel.split(' to ')[1] || '12pm'
+  const html = shell({
+    preheader: `${daysText(camp, u.newDayIds)} is added. ${kids} ${many ? 'are' : 'is'} now booked for ${daysText(camp, b.dayIds)}.`,
+    eyebrow: camp.title,
+    heading: `${daysText(camp, u.newDayIds)} added`,
+    body: `
+${p(`Hi ${esc(first)},`)}
+${p(`Thanks for the extra payment. ${esc(kids)} ${many ? 'are' : 'is'} now booked for ${esc(daysText(camp, b.dayIds))}. Nothing else about the booking has changed.`)}
+${table([
+  ['Booking', b.id],
+  ['Player' + (many ? 's' : ''), b.players.map((x) => `${x.firstName} ${x.surname}`).join(', ')],
+  ['Days now', daysText(camp, b.dayIds)],
+  ['Added', daysText(camp, u.newDayIds)],
+  ['Times', camp.timesLabel],
+  ['Where', camp.location ? `${camp.location}${camp.address ? `, ${camp.address}` : ''}` : 'Sydney. We email you the venue before camp.'],
+  ['Paid today', audLabel(u.topUpCents)],
+  ['Paid in total', audLabel(b.amountPaidCents)],
+])}
+${h2('On the day')}
+${list([
+  `${camp.arriveLabel} to sign in. We start at ${start} sharp.`,
+  `Finish is ${end}.`,
+])}
+${camp.location ? p(`<a href="${mapsUrl(camp)}" style="color:#E8000D;font-weight:800;">Open ${esc(camp.location)} in Maps</a>`) : ''}
+${h2('What to bring each day')}
+${list(camp.bring)}
+${p('Any questions, just reply. See you on the pitch.')}
+${p(`<span style="font-size:13px;color:#777;">Your booking is under our <a href="${SITE}/camps/terms/" style="color:#777;">camp terms</a>.</span>`)}`,
+  })
+  return { subject: `${daysText(camp, u.newDayIds)} added: ${camp.short}`, html }
+}
+
+export function renderCampUpgradeStaffAlert(b, camp, u) {
+  const html = shell({
+    preheader: `${names(b)} now ${daysText(camp, b.dayIds)}`,
+    eyebrow: 'Camp upgrade paid',
+    heading: `${names(b)}: ${daysText(camp, u.newDayIds)} added`,
+    body: `${table([
+      ['Booking', b.id], ['Upgrade', u.id], ['Parent', b.parentName], ['Email', b.email],
+      ['Days now', daysText(camp, b.dayIds)], ['Added', daysText(camp, u.newDayIds)],
+      ['Top-up', audLabel(u.topUpCents)], ['Paid in total', audLabel(b.amountPaidCents)],
+      ['Parent email', u.effects?.parentEmail === 'done' ? 'Sent' : 'Not sent yet: send it from the portal once the wording is approved'],
+    ])}${p(`Open the sign-up in the Joner Football Portal under <a href="${SITE}/jfp-portal/#camps" style="color:#E8000D;font-weight:800;">Camps</a>.`)}`,
+  })
+  return { subject: `Camp upgrade paid: ${names(b)} now ${daysText(camp, b.dayIds)} (${camp.short})`, html }
+}
+
+export async function sendCampUpgradeConfirmation(b, camp, u) {
+  const { subject, html } = renderCampUpgradeConfirmation(b, camp, u)
+  return brevoSend({ to: [{ email: b.email, name: b.parentName || b.email }], subject, html, replyTo: { email: 'ligia@jonerfootball.com', name: 'Joner Football' } })
+}
+export async function sendCampUpgradeStaffAlert(b, camp, u) {
+  const to = [...new Set([...(camp.staffEmails || []), process.env.CAMP_SIGNUP_EMAIL].filter(Boolean).map((e) => e.toLowerCase()))].map((email) => ({ email }))
+  if (!to.length) return 'no-staff'
+  const { subject, html } = renderCampUpgradeStaffAlert(b, camp, u)
+  return brevoSend({ to, subject, html, replyTo: { email: b.email, name: b.parentName || b.email } })
+}

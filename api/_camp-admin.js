@@ -9,9 +9,11 @@ import {
   validateBookingInput, holdPlaces, releasePlaces, newCampId, pricePerPlayer, listWaitlist, removeWaitlist,
   daysText, audLabel, runEffects, HEARD_ABOUT, unfinishedFamilies, campRefundFor,
 } from './_camp-store.js'
-import { CONFIRMED_SCORE } from './_holiday-store.js'
+import { CONFIRMED_SCORE, siteUrl } from './_holiday-store.js'
+// Adding days to a paid sign-up and paying only the difference (Lee, 11 Nov 2026).
+import { upgradeQuote, upgradeCreate, upgradeCancel, upgradeRetry, upgradeSendEmail, listUpgrades, openUpgradeFor, getUpgrade, parentEmailLive } from './_camp-upgrades.js'
 
-export const CAMP_ACTIONS = new Set(['campList', 'campSave', 'campAdd', 'campEdit', 'campCancel', 'campCheckin', 'campMarkPaid', 'campResend', 'campWaitlistRemove', 'campReminderStop'])
+export const CAMP_ACTIONS = new Set(['campList', 'campSave', 'campAdd', 'campEdit', 'campCancel', 'campCheckin', 'campMarkPaid', 'campResend', 'campWaitlistRemove', 'campReminderStop', 'campUpgradeQuote', 'campUpgradeCreate', 'campUpgradeCancel', 'campUpgradeRetry', 'campUpgradeEmail', 'campUpgradePreview'])
 const METHODS = ['Cash', 'Bank transfer', 'Stripe', 'Free place', 'Not paid yet']
 const ok = (res, data) => res.status(200).json({ success: true, ...data })
 const bad = (res, status, error) => res.status(status).json({ success: false, error })
@@ -24,6 +26,8 @@ const SHOWN = (b) => b.status === 'paid' || b.status === 'unpaid' || (b.status =
 async function listData(campId) {
   const camps = await listCamps()
   const camp = camps.find((c) => c.id === campId) || camps[0]
+  // Upgrades first: a lapsed link that turns out paid is applied before the list is read.
+  const upgrades = await listUpgrades(camp)
   const [bookings, counts, waitlist, pub] = await Promise.all([listBookings(camp.id), dayCounts(camp), listWaitlist(camp.id), publicCamp(camp)])
   return {
     camps: camps.map((c) => ({ id: c.id, title: c.title, status: c.status })),
@@ -33,10 +37,11 @@ async function listData(campId) {
     // Started on the website and never paid: one line per family, newest first.
     unfinished: unfinishedFamilies(bookings).map((b) => ({ ...b, releaseToken: undefined })),
     waitlist, options: { heardAbout: HEARD_ABOUT, methods: METHODS },
+    upgrades, upgradeEmailLive: parentEmailLive(),
   }
 }
 
-export async function campAction(res, principal, body, action) {
+export async function campAction(res, principal, body, action, req) {
   const by = principal.email
   const campId = clean(body.campId, 40) || 'xmas-2026'
 
@@ -96,6 +101,37 @@ export async function campAction(res, principal, body, action) {
 
   const b = await getBooking(clean(body.id, 60))
   if (!b || b.campId !== camp.id) return bad(res, 404, 'Sign-up not found.')
+
+  // ---------- upgrade: add days, pay the difference ----------
+  if (action === 'campUpgradeQuote') {
+    const r = await upgradeQuote(b, camp, body.days)
+    if (r.quote.error) return res.status(r.quote.manual ? 422 : 400).json({ success: false, error: r.quote.error, manual: r.quote.manual === true, open: r.open })
+    return ok(res, r)
+  }
+  if (action === 'campUpgradeCreate') {
+    const r = await upgradeCreate({ b, camp, target: body.days, quoteKey: clean(body.quoteKey, 40), by, baseUrl: siteUrl(req) })
+    if (r.status === 200 && !r.body.again) await audit({ by, action: 'camp.upgradeLink', target: b.id, after: { upgrade: r.body.upgrade.id, adding: r.body.upgrade.newDayIds, topUpCents: r.body.upgrade.topUpCents } })
+    return res.status(r.status).json({ success: r.status === 200, ...r.body, ...(r.status === 200 ? await listData(campId) : {}) })
+  }
+  if (['campUpgradeCancel', 'campUpgradeRetry', 'campUpgradeEmail'].includes(action)) {
+    const upId = clean(body.upgradeId, 40)
+    const r = action === 'campUpgradeCancel' ? await upgradeCancel(b, camp, upId, by) : action === 'campUpgradeRetry' ? await upgradeRetry(b, camp, upId) : await upgradeSendEmail(b, camp, upId, by)
+    if (r.status === 200 && action !== 'campUpgradeRetry') await audit({ by, action: action === 'campUpgradeCancel' ? 'camp.upgradeCancel' : 'camp.upgradeEmail', target: b.id, after: { upgrade: upId } })
+    return res.status(r.status).json({ success: r.status === 200, ...r.body, ...(r.status === 200 ? await listData(campId) : {}) })
+  }
+  // The parent's upgrade confirmation exactly as it would go (nothing is sent).
+  if (action === 'campUpgradePreview') {
+    const u = await getUpgrade(clean(body.upgradeId, 40))
+    if (!u || u.baseBookingId !== b.id) return bad(res, 404, 'Upgrade not found.')
+    const { renderCampUpgradeConfirmation } = await import('./_camp-email.js')
+    return ok(res, { preview: renderCampUpgradeConfirmation(b, camp, u), to: b.email, replyTo: 'ligia@jonerfootball.com' })
+  }
+  // While a payment link is out, the sign-up stays as it is: no edit or cancel
+  // that could leave the link charging for the wrong thing.
+  if (['campEdit', 'campCancel'].includes(action)) {
+    const open = await openUpgradeFor(b.id)
+    if (open && ['creating', 'pending', 'applying'].includes(open.state)) return bad(res, 409, 'An upgrade payment link is out for this sign-up. Cancel the link first (open the sign-up, Upgrade booking).')
+  }
 
   if (action === 'campEdit') {
     const checked = validateBookingInput({ ...b, ...body.booking, days: body.booking?.days || b.dayIds, agreement: true }, camp, { staff: true })

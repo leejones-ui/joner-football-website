@@ -461,12 +461,20 @@ export async function campReminderTick({ nowMs = Date.now(), deps = {} } = {}) {
 export async function recordCampRefund(charge, piId) {
   if (!piId) return ''
   const pi = await stripeFetch(`/payment_intents/${encodeURIComponent(piId)}`)
+  // An upgrade top-up (11 Nov 2026): recorded on that payment only.
+  const { isUpgradeId, recordUpgradeRefund } = await import('./_camp-upgrades.js')
+  if (isUpgradeId(pi?.metadata?.campUpgradeId)) return recordUpgradeRefund(charge, piId, pi.metadata.campUpgradeId)
   const id = campBookingIdFromSession({ metadata: pi?.metadata })
   if (!id) return ''
   const b = await getBooking(id)
   if (!b) return id
-  b.refundedCents = Number(charge?.amount_refunded) || 0
+  const amount = Number(charge?.amount_refunded) || 0
   b.refundedAt = new Date().toISOString()
+  if (Array.isArray(b.payments) && b.payments.length) {
+    // Upgraded: each payment keeps its own refund, the total is the sum.
+    b.payments = b.payments.map((p) => (p.paymentIntent === piId ? { ...p, refundedCents: amount, refundedAt: b.refundedAt } : p))
+    b.refundedCents = b.payments.reduce((t, p) => t + (Number(p.refundedCents) || 0), 0)
+  } else b.refundedCents = amount
   await saveBooking(b)
   return id
 }

@@ -1414,6 +1414,13 @@ a.sr-only[href="#main-content"]:focus { position: fixed !important; top: 16px; l
 .cs-kv { display: grid; grid-template-columns: minmax(110px, 34%) minmax(0, 1fr); gap: 10px; padding: 4px 0; font-size: 14px; }
 .cs-kv span { color: var(--ps-text-2); }
 .cs-kv b { font-weight: 600; overflow-wrap: anywhere; }
+.cs-kv-total { border-top: 1px solid var(--j-line); margin-top: 4px; padding-top: 8px; font-size: 16px; }
+.cs-kv-total b { font-weight: 800; }
+.cs-up { padding: 8px 0; }
+.cs-up + .cs-up { border-top: 1px dashed var(--j-line); }
+.cs-copy { display: flex; gap: 8px; align-items: center; }
+.cs-copy .j-input { min-width: 0; flex: 1; font-size: 13px; }
+.cs-preview { width: 100%; height: min(70vh, 640px); border: 1px solid var(--j-line); border-radius: 10px; background: #fff; }
 .cs-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 14px; }
 .cs-danger { color: var(--j-red, #E8000D) !important; }
 .cs-fs { border: 1px solid var(--j-line); border-radius: 10px; padding: 8px 12px 12px; margin: 0 0 10px; }

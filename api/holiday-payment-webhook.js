@@ -15,6 +15,7 @@ import { jfpIdForCharge, applyJfpRefunds } from './_jfp-refunds.js'
 import { savedPayIntentEvent, savedPaySetupEvent } from './_jfp-saved-pay.js'
 // Camp sign-ups (Lee, 10 Nov 2026): metadata campBookingId, managed in the portal Camps tab.
 import { finaliseCampBooking, expireCampBooking, campBookingIdFromSession, recordCampRefund } from './_camp-store.js'
+import { finaliseCampUpgrade, expireCampUpgrade, upgradeIdFromSession } from './_camp-upgrades.js'
 
 export const config = { api: { bodyParser: false } }
 
@@ -111,6 +112,33 @@ export default async function handler(req, res) {
     } catch (error) {
       console.error('jfp saved pay webhook failed', error)
       return res.status(500).json({ success: false, error: 'Saved payment processing failed' })
+    }
+  }
+
+  // Camp upgrades (adding days to a paid sign-up, 11 Nov 2026): before the
+  // booking route, so a top-up can never run the new-booking finaliser.
+  const upgradeId = upgradeIdFromSession(session)
+  if (upgradeId) {
+    try {
+      if (type === 'checkout.session.completed' || type === 'checkout.session.async_payment_succeeded') {
+        if (session.payment_status !== 'paid') return res.status(200).json({ success: true, skipped: 'not-paid', upgradeId })
+        const r = await finaliseCampUpgrade(upgradeId, session, { via: 'webhook' })
+        if (r.busy) return res.status(500).json({ success: false, upgradeId, busy: true })
+        return res.status(200).json({ success: true, upgradeId, state: r.state || '', missing: r.missing === true, verified })
+      }
+      if (type === 'checkout.session.expired' || type === 'checkout.session.async_payment_failed') {
+        // Stripe's own word now, never the event type alone.
+        if (session.payment_status === 'paid') return res.status(200).json({ success: true, skipped: 'paid', upgradeId })
+        const over = session.status === 'expired' || type === 'checkout.session.async_payment_failed'
+        if (!over) return res.status(200).json({ success: true, skipped: 'session-not-expired', upgradeId })
+        const r = await expireCampUpgrade(upgradeId, session)
+        if (r.busy) return res.status(500).json({ success: false, upgradeId, busy: true })
+        return res.status(200).json({ success: true, upgradeId, released: r.changed === true, verified })
+      }
+      return res.status(200).json({ success: true, ignored: type })
+    } catch (error) {
+      console.error('camp upgrade webhook failed', error)
+      return res.status(500).json({ success: false, error: 'Webhook processing failed' })
     }
   }
 

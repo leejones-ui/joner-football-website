@@ -483,6 +483,31 @@ const schema = [
       $('xc-done-h').textContent = 'Nearly there.'
       $('xc-done-p').textContent = 'We could not confirm the payment yet. If you paid, the confirmation email will arrive shortly. If not, book again below or email ligia@jonerfootball.com.'
     }
+    // Back from paying for extra days (an upgrade link staff sent). Only the
+    // server's check counts, never the redirect on its own.
+    async function upgradeFlow() {
+      const id = qs.get('upgraded') || '', sid = qs.get('session_id') || ''
+      $('xc-done').hidden = false
+      window.scrollTo(0, 0)
+      const show = (h: string, p: string) => { $('xc-done-h').textContent = h; $('xc-done-p').textContent = p }
+      for (let i = 0; i < 12; i++) {
+        const d = await load(`&upgraded=${encodeURIComponent(id)}&session_id=${encodeURIComponent(sid)}`)
+        const u = d?.upgrade
+        if (u?.status === 'confirmed') {
+          show(`${u.adding} added.`, `Check your inbox. Booking now ${u.days}.`)
+          const card = $('xc-done-card')
+          card.innerHTML = `<div><span>Player${u.players.length > 1 ? 's' : ''}</span><b>${safe(u.players.join(', '))}</b></div><div><span>Days now</span><b>${safe(u.days)}</b></div><div><span>Paid today</span><b>${safe(u.topUp)}</b></div><div><span>Paid in total</span><b>${safe(u.total)}</b></div>`
+          card.hidden = false
+          history.replaceState(null, '', location.pathname)
+          return
+        }
+        if (u?.status === 'checking') { show('Payment received.', `We are checking the extra place${u.players.length > 1 ? 's' : ''} for ${u.adding} and will be in touch. Your booking for ${u.days} is unchanged. Questions: ligia@jonerfootball.com`); history.replaceState(null, '', location.pathname); return }
+        if (u?.status === 'expired') { show('This payment link has expired.', `Nothing was charged and your booking for ${u.days} is unchanged. Email ligia@jonerfootball.com for a new link.`); return }
+        if (u?.status === 'unpaid' || u?.status === 'unknown') break
+        await new Promise((r) => setTimeout(r, 2500))
+      }
+      show('Still confirming.', 'We could not confirm the payment yet. If you paid, the extra day will show on your booking shortly and we will email you. If not, your original booking is unchanged. Questions: ligia@jonerfootball.com')
+    }
     async function cancelledFlow() {
       try {
         const r = await fetch('/api/camp-book', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'release', id: qs.get('cancelled'), t: qs.get('t') }) })
@@ -493,7 +518,9 @@ const schema = [
       history.replaceState(null, '', location.pathname + '#book')
       load()
     }
-    if (qs.get('booked') && qs.get('session_id')) paidFlow()
+    if (qs.get('upgraded') && qs.get('session_id')) upgradeFlow()
+    else if (qs.get('upgrade_open')) { banner('Payment not finished, so the extra day is not added yet. Your original booking is unchanged, and the link we sent still works until it expires.'); history.replaceState(null, '', location.pathname); load() }
+    else if (qs.get('booked') && qs.get('session_id')) paidFlow()
     else if (qs.get('cancelled')) cancelledFlow()
     else load()
     track('ViewContent', { content_name: 'Christmas Holiday Camp', content_category: 'camp' })

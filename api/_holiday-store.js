@@ -604,7 +604,7 @@ export async function stripeFetch(path, { method = 'GET', body, idempotencyKey =
     body: body ? new URLSearchParams(body) : undefined,
   })
   const data = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(data?.error?.message || `Stripe request failed: ${response.status}`)
+  if (!response.ok) { const error = new Error(data?.error?.message || `Stripe request failed: ${response.status}`); error.status = response.status; throw error }
   return data
 }
 

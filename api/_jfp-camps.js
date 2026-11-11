@@ -116,7 +116,7 @@ export function groupCampSessions(sessions) {
   for (const s of sessions) {
     const k = s.camp.toLowerCase()
     const g = by.get(k) || { camp: s.camp, currency: s.currency, count: 0, takenCents: 0, refundedCents: 0, feeCents: 0, feesPending: 0, first: s.day, last: s.day }
-    g.count += 1
+    if (!s.topUp) g.count += 1
     g.takenCents += s.amountCents
     g.refundedCents += s.refundedCents
     if (s.feeCents == null) g.feesPending += 1; else g.feeCents += s.feeCents
@@ -145,10 +145,11 @@ export async function campsStripe({ year, fresh = false, quick = false } = {}, d
     const d = await fetchStripe(`/checkout/sessions?${q}`)
     for (const s of d.data || []) {
       // New portal camp sign-ups carry campBookingId (10 Nov 2026), the old camps registrationId.
-      if (s.payment_status !== 'paid' || !(s.metadata?.registrationId || s.metadata?.campBookingId) || !s.metadata?.camp) continue
+      // Upgrade top-ups (campUpgradeId, 11 Nov 2026) count as money, not as another sign-up.
+      if (s.payment_status !== 'paid' || !(s.metadata?.registrationId || s.metadata?.campBookingId || s.metadata?.campUpgradeId) || !s.metadata?.camp) continue
       const charge = s.payment_intent?.latest_charge && typeof s.payment_intent.latest_charge === 'object' ? s.payment_intent.latest_charge : null
       const fee = !s.amount_total ? { fee: 0 } : feeFrom(charge)
-      sessions.push({ camp: String(s.metadata.camp).slice(0, 120), currency: String(s.currency || 'aud').toUpperCase(), day: new Date(((s.created || 0) + 36000) * 1000).toISOString().slice(0, 10), amountCents: s.amount_total || 0, refundedCents: charge?.amount_refunded || 0, feeCents: fee ? fee.fee : null })
+      sessions.push({ camp: String(s.metadata.camp).slice(0, 120), currency: String(s.currency || 'aud').toUpperCase(), day: new Date(((s.created || 0) + 36000) * 1000).toISOString().slice(0, 10), amountCents: s.amount_total || 0, refundedCents: charge?.amount_refunded || 0, feeCents: fee ? fee.fee : null, ...(s.metadata?.campUpgradeId ? { topUp: true } : {}) })
     }
     if (!d.has_more || !(d.data || []).length) break
     after = d.data.at(-1).id

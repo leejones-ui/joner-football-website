@@ -43,6 +43,14 @@ async function get(req, res) {
   if (!camp || camp.status === 'hidden') return fail(res, 404, 'Camp not found.')
   const out = { success: true, camp: await publicCamp(camp) }
   const sid = clean(req.query.session_id, 200)
+  // Back from paying for extra days (11 Nov 2026): the upgrade id and its own
+  // Stripe session, or nothing.
+  if (sid && req.query.upgraded) {
+    const { upgradeResult } = await import('./_camp-upgrades.js')
+    out.upgrade = await upgradeResult(clean(req.query.upgraded, 60), sid, camp)
+    out.camp = await publicCamp(camp)
+    return res.status(200).json(out)
+  }
   if (sid) {
     // The success page: Stripe's own word on the session, then finish it here
     // too, so the family is confirmed even if the webhook is slow.

@@ -4092,7 +4092,7 @@ async function handle(req, res) {
     // Announcements: coaches write their own, Lee or Ligia approves (29 Oct 2026; _jfp-announce.js).
     if (!isAdmin && ANNOUNCE_COACH_ACTIONS.has(action)) return await announceAction(req, res, principal, config, body, action, await listGroups())
     if (!isAdmin) return fail(res, 403, 'Not allowed.')
-    if (CAMP_ACTIONS.has(action)) return await campAction(res, principal, body, action)
+    if (CAMP_ACTIONS.has(action)) return await campAction(res, principal, body, action, req)
     if (action === 'shopOrders') {
       try { return res.status(200).json({ success: true, shop: await shopOrdersData({ fresh: body.fresh === true }) }) } catch (error) { return fail(res, 503, `Shopify could not be read just now (${String(error.message).slice(0, 120)}).`) }
     }
