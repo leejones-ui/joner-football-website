@@ -200,7 +200,7 @@ export function renderCampUpgradeStaffAlert(b, camp, u) {
       ['Booking', b.id], ['Upgrade', u.id], ['Parent', b.parentName], ['Email', b.email],
       ['Days now', daysText(camp, b.dayIds)], ['Added', daysText(camp, u.newDayIds)],
       ['Top-up', audLabel(u.topUpCents)], ['Paid in total', audLabel(b.amountPaidCents)],
-      ['Parent email', u.effects?.parentEmail === 'done' ? 'Sent' : 'Not sent yet: send it from the portal once the wording is approved'],
+      ['Parent email', u.effects?.parentEmail === 'done' ? 'Updated confirmation sent' : 'Did not send: open the sign-up in the portal and press Send the email'],
     ])}${p(`Open the sign-up in the Joner Football Portal under <a href="${SITE}/jfp-portal/#camps" style="color:#E8000D;font-weight:800;">Camps</a>.`)}`,
   })
   return { subject: `Camp upgrade paid: ${names(b)} now ${daysText(camp, b.dayIds)} (${camp.short})`, html }

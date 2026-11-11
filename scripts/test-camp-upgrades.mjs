@@ -190,9 +190,12 @@ await test('AC-07 verified payment: same booking, both days, A$450 + A$300 = A$7
   assert.equal(score, CONFIRMED, 'Monday places never expire now')
   const u = after.upgrades.find((x) => x.id === up.id)
   assert.equal(u.state, 'applied')
-  assert.equal(u.effects.parentEmail, 'waiting', 'the parent email waits for Lee or Ligia to approve the wording')
+  assert.equal(u.effects.parentEmail, 'done', 'the parent email goes by itself (wording approved by Lee, 11 Nov 2026)')
   const mail = (await emails()).slice(mailBefore)
-  assert.ok(!mail.some((e) => e.to.includes(fam.email)), 'nothing to the family yet')
+  const toParent = mail.filter((e) => e.to.includes(fam.email))
+  assert.equal(toParent.length, 1, 'one updated confirmation to the family')
+  assert.match(toParent[0].subject, /^Monday 21 December added/)
+  assert.equal(toParent[0].replyTo, 'ligia@jonerfootball.com')
   assert.equal(mail.filter((e) => /Camp upgrade paid/.test(e.subject)).length, 1, 'Lee and Ligia told once')
   assert.ok((await telegrams()).some((t) => /Camp upgrade paid/.test(JSON.stringify(t))))
   // The family's page after Stripe.
@@ -209,6 +212,7 @@ await test('AC-07 verified payment: same booking, both days, A$450 + A$300 = A$7
 
 await test('AC-09 duplicate webhook, success page and staff retry: applied once, one payment, one staff email', async () => {
   const mailBefore = (await emails()).filter((e) => /Camp upgrade paid/.test(e.subject)).length
+  const parentBefore = (await emails()).filter((e) => e.to.includes(fam.email) && /added/.test(e.subject)).length
   const cs = csOf(up.url)
   await Promise.all([
     fetch(`${B}/__webhook?cs=${cs}&type=checkout.session.completed`),
@@ -222,6 +226,7 @@ await test('AC-09 duplicate webhook, success page and staff retry: applied once,
   assert.equal(b.upgrades.length, 1)
   assert.equal((await seats('mon')).filter((m) => m.startsWith(`${fam.id}#`)).length, 3)
   assert.equal((await emails()).filter((e) => /Camp upgrade paid/.test(e.subject)).length, mailBefore)
+  assert.equal((await emails()).filter((e) => e.to.includes(fam.email) && /added/.test(e.subject)).length, parentBefore, 'the family is not emailed twice')
   // A late "expired" or "failed" event cannot undo it.
   await fetch(`${B}/__webhook?cs=${cs}&type=checkout.session.expired`)
   await fetch(`${B}/__webhook?cs=${cs}&type=checkout.session.async_payment_failed`)
@@ -238,11 +243,9 @@ await test('AC-13 the updated confirmation: preview, send once by hand, replies 
   assert.match(text, /Paid today\s+A\$300/)
   assert.match(text, /Paid in total\s+A\$750/)
   assert.ok(!/[–—]/.test(text), 'no long dashes')
-  assert.ok(!(await emails()).some((e) => e.to.includes(fam.email) && /added/.test(e.subject)), 'preview sends nothing')
-  const s1 = await P('campUpgradeEmail', { id: fam.id, upgradeId: up.id })
-  assert.equal(s1.status, 200, JSON.stringify(s1.data))
+  assert.equal((await emails()).filter((e) => e.to.includes(fam.email) && /added/.test(e.subject)).length, 1, 'preview sends nothing more')
   const s2 = await P('campUpgradeEmail', { id: fam.id, upgradeId: up.id })
-  assert.equal(s2.status, 409, 'never twice')
+  assert.equal(s2.status, 409, 'already sent: the button cannot send it twice')
   const sent = (await emails()).filter((e) => e.to.includes(fam.email) && /added/.test(e.subject))
   assert.equal(sent.length, 1)
   assert.equal(sent[0].replyTo, 'ligia@jonerfootball.com')

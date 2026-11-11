@@ -476,10 +476,11 @@ export async function expireCampUpgrade(upgradeId, session) {
 
 // ---------- after it is applied: each once ----------
 
-// The parent's confirmation waits until Lee or Ligia have approved the
-// wording (CAMP_UPGRADE_PARENT_EMAIL=on). Until then it is "waiting" and
-// staff send it from the portal. Staff alert and Telegram go straight away.
-export const parentEmailLive = () => String(process.env.CAMP_UPGRADE_PARENT_EMAIL || '').toLowerCase() === 'on'
+// The parent's confirmation goes by itself once the upgrade is applied: Lee
+// approved the wording on 11 Nov 2026. CAMP_UPGRADE_PARENT_EMAIL=off holds it
+// again ("waiting", staff send it from the portal). Staff alert and Telegram
+// always go straight away.
+export const parentEmailLive = () => String(process.env.CAMP_UPGRADE_PARENT_EMAIL || 'on').toLowerCase() !== 'off'
 
 export async function runUpgradeEffects(upgradeId, deps = {}) {
   const email = deps.email || (await import('./_camp-email.js'))
@@ -500,7 +501,7 @@ export async function runUpgradeEffects(upgradeId, deps = {}) {
   }
   if (parentEmailLive()) await step('parentEmail', () => email.sendCampUpgradeConfirmation(b, camp, u))
   else if (!effects.parentEmail) effects.parentEmail = 'waiting'
-  await step('staffEmail', () => email.sendCampUpgradeStaffAlert(b, camp, u))
+  await step('staffEmail', () => email.sendCampUpgradeStaffAlert(b, camp, { ...u, effects }))
   await step('telegram', async () => {
     const { telegramAlert } = await import('./_jfp-notify.js')
     const counts = await dayCounts(camp)

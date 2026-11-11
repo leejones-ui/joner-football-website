@@ -183,7 +183,7 @@ export async function renderCampSignups(ui) {
 
   // ---------- upgrade: add days to a paid sign-up, pay only the difference ----------
   const UP_STATE = { creating: ['orange', 'Making the link'], pending: ['orange', 'Link out, not paid'], applying: ['orange', 'Paid, applying'], applied: ['green', 'Paid and added'], expired: ['grey', 'Link expired'], cancelled: ['grey', 'Cancelled'], failed: ['grey', 'Link failed'], recovery: ['red', 'Paid, needs a look'] }
-  const EMAIL_STATE = { done: 'Sent', waiting: 'Not sent yet (wording needs Lee or Ligia to approve)', failed: 'Did not send', unclear: 'Not sure it sent: check the inbox before sending again' }
+  const EMAIL_STATE = { done: 'Sent', waiting: 'Held (switched off): send it by hand', failed: 'Did not send', unclear: 'Not sure it sent: check the inbox before sending again' }
   function upgradesHtml(b) {
     const ups = upsFor(b)
     if (!ups.length) return ''
