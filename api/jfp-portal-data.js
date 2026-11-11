@@ -72,6 +72,8 @@ import { removedPlayers, removedMatches, removedPrefill, reasonCounts, removedSo
 import { campsMoneyData, campsStripe } from './_jfp-camps.js'
 // Camp sign-ups (Lee, 10 Nov 2026): the Camps tab, admin only.
 import { CAMP_ACTIONS, campAction } from './_camp-admin.js'
+// Shop orders from Shopify (Lee, 11 Nov 2026): read only, admin only.
+import { shopOrdersData, shopToPostCount } from './_shop-orders.js'
 import { isPeriodId, periodOf as holidayPeriodOf, periodLabel, pickablePeriods, rangeLabel, OTHER, OTHER_LABEL } from './_holiday-periods.js'
 import { allocateTermMoney, collectedOf, venuesForTerm, venuesFromLedger, venuesFromHistory, venueTerms, juniorsByVenue, previousTerm, totalOf, emptyVenue, costsOfTerm, withCosts, costTotals, checkCostLines, costTermOk } from './_jfp-venues.js'
 import { registerChecks, yearsOf, termsOfYear, termFromLive, termFromLedger, termFromRegister, yearSummary } from './_jfp-years.js'
@@ -4091,6 +4093,10 @@ async function handle(req, res) {
     if (!isAdmin && ANNOUNCE_COACH_ACTIONS.has(action)) return await announceAction(req, res, principal, config, body, action, await listGroups())
     if (!isAdmin) return fail(res, 403, 'Not allowed.')
     if (CAMP_ACTIONS.has(action)) return await campAction(res, principal, body, action)
+    if (action === 'shopOrders') {
+      try { return res.status(200).json({ success: true, shop: await shopOrdersData({ fresh: body.fresh === true }) }) } catch (error) { return fail(res, 503, `Shopify could not be read just now (${String(error.message).slice(0, 120)}).`) }
+    }
+    if (action === 'shopAlerts') return res.status(200).json({ success: true, ...(await shopToPostCount()) })
     if (MAKEUP_ADMIN_ACTIONS.has(action)) {
       const out = action === 'emergencyCancel' ? await emergencyCancel({ principal, config, body }) : action === 'emergencyUncancel' ? await emergencyUncancel({ principal, body }) : action === 'emergencyEmail' ? await emergencyEmail({ principal, config, body }) : action === 'makeupUpdate' ? await makeupUpdate({ principal, config, body }) : { status: 200, ...(await makeupsList({ config })) }
       const { status, error, ...rest } = out

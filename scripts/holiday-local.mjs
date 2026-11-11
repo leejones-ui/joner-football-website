@@ -41,6 +41,9 @@ process.env.JFP_TEST_CLOCK = '1'
 process.env.JFP_SETTLE_SECONDS = process.env.JFP_SETTLE_SECONDS ?? '0'
 process.env.JFP_PORTAL_ORIGIN = `http://localhost:${PORT}`
 process.env.JFP_BOOTSTRAP_SECRET = 'boot'
+// A pretend Shopify Admin API (Shop orders tab): client credentials + orders.
+process.env.SHOPIFY_CLIENT_ID = 'local-shop-id'
+process.env.SHOPIFY_CLIENT_SECRET = 'local-shop-secret'
 process.env.AIRTABLE_API_TOKEN = 'local'
 process.env.AIRTABLE_BASE_ID = 'apphU4R0BtVIu5YqT'
 delete process.env.RECAPTCHA_SECRET_KEY
@@ -458,6 +461,16 @@ const brevoContacts = []
 // Row 1 is the live 15 column header of the Joners Juniors tab.
 const juniorsSheet = [['Paid At', 'Registration ID', 'Payment Status', 'Player Full Name', 'Date of Birth', 'Parent Name', 'Parent Email', 'Parent Mobile', 'Medical History / Allergies', 'Heard About Us', 'Class', 'Amount Paid', 'Stripe Checkout Session ID', 'Stripe PaymentIntent ID / Refund Link', 'Confirmation Email Status']]
 const SHEET_HEADERS = ['Updated At', 'Status', 'Date', 'Start', 'End', 'Coach', 'Session Type', 'Players', 'Player Ages', 'Parent Name', 'Mobile', 'Email', 'Notes', 'Location', 'Booking ID', 'Needs Attention']
+// Pretend Shopify orders: one late to post, one new to post, one posted, one cancelled.
+let shopTokens = 0
+const shopOrder = (n, hoursAgo, status, items, extra = {}) => ({ id: `gid://shopify/Order/${n}`, legacyResourceId: String(n), name: `#${n}`, createdAt: new Date(Date.now() - hoursAgo * 3600_000).toISOString(), cancelledAt: null, test: false, displayFinancialStatus: 'PAID', displayFulfillmentStatus: status, currentTotalPriceSet: { shopMoney: { amount: String(items.reduce((t, i) => t + i[2], 0)) } }, totalRefundedSet: { shopMoney: { amount: '0.0' } }, customer: { displayName: `Customer ${n}` }, shippingAddress: { countryCodeV2: 'AU', city: 'Belrose', provinceCode: 'NSW' }, lineItems: { nodes: items.map(([title, qty, amount]) => ({ title, variantTitle: 'M', quantity: qty, requiresShipping: true, unfulfilledQuantity: status === 'FULFILLED' ? 0 : qty, originalTotalSet: { shopMoney: { amount: String(amount) } }, product: { handle: title.toLowerCase().replace(/\W+/g, '-') } })) }, fulfillments: status === 'FULFILLED' ? [{ createdAt: new Date().toISOString(), trackingInfo: [{ number: 'AP123', company: 'Australia Post', url: 'https://auspost.com.au/mypost/track/AP123' }] }] : [], ...extra })
+const shopOrders = [
+  shopOrder(1101, 80, 'UNFULFILLED', [['Joner Football Hoodie', 1, 89]]),
+  shopOrder(1102, 3, 'UNFULFILLED', [['Joner Football Cap', 2, 70]]),
+  shopOrder(1103, 30, 'FULFILLED', [['Joner Football Tee', 1, 45]]),
+  shopOrder(1104, 10, 'UNFULFILLED', [['Joner Football Shorts', 1, 47]], { cancelledAt: new Date().toISOString() }),
+]
+
 function stripeSession(body) {
   const id = `cs_test_${crypto.randomBytes(12).toString('hex')}`
   const params = new URLSearchParams(body)
@@ -690,6 +703,18 @@ const innerFetch = async (url, init = {}) => {
     const s = sessions.get(id) || stripeSeeded.find((x) => x.id === id)
     if (s?.mode === 'setup' && s.setup_intent && new URL(u).searchParams.getAll('expand[]').includes('setup_intent.payment_method')) { const si = setupIntents.get(s.setup_intent); return json({ ...s, setup_intent: { ...si, payment_method: paymentMethods.get(si.payment_method) } }) }
     return s ? json(s) : json({ error: { message: 'No such checkout session' } }, 404)
+  }
+  if (/^https:\/\/[a-z0-9-]+\.myshopify\.com\/admin\/oauth\/access_token/.test(u)) {
+    const p = new URLSearchParams(init.body)
+    if (p.get('grant_type') !== 'client_credentials' || p.get('client_secret') !== 'local-shop-secret') return json({ error: 'invalid_client' }, 400)
+    shopTokens += 1
+    return json({ access_token: `shpat_local_${shopTokens}`, scope: 'read_orders,read_products', expires_in: 86399 })
+  }
+  if (/^https:\/\/[a-z0-9-]+\.myshopify\.com\/admin\/api\/[0-9-]+\/graphql\.json/.test(u)) {
+    if (!String(init.headers?.['x-shopify-access-token'] || '').startsWith('shpat_local_')) return json({ errors: [{ message: 'Invalid API key or access token' }] }, 401)
+    const { variables } = JSON.parse(init.body)
+    const list = shopOrders.filter((o) => (variables.q.includes('unshipped') ? o.displayFulfillmentStatus !== 'FULFILLED' && !o.cancelledAt : Date.parse(o.createdAt) >= Date.parse(variables.q.split('>=')[1])))
+    return json({ data: { shop: { currencyCode: 'AUD' }, orders: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: list } } })
   }
   if (u.startsWith('https://api.brevo.com/v3/contacts')) {
     const payload = JSON.parse(init.body)

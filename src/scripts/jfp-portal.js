@@ -7,6 +7,8 @@ import { renderMessages } from './jfp-portal-messages.js'
 import { renderAnnouncements } from './jfp-portal-announce.js'
 // Camp sign-ups (Lee, 10 Nov 2026): the Camps tab, not the Google Sheet.
 import { renderCampSignups } from './jfp-portal-campsignups.js'
+// Shop orders from Shopify (Lee, 11 Nov 2026): all things Joner in one place.
+import { renderShopOrders } from './jfp-portal-shop.js'
 import { familyNotesModal, renderFamilyNotesPage, coachNotesModal } from './jfp-portal-fnotes.js'
 import { renderMakeups } from './jfp-portal-makeups.js'
 import { renderExtra } from './jfp-portal-extra.js'
@@ -89,6 +91,7 @@ const NAV = {
     ['Program', [['board', 'Timetable'], ['families', 'Players'], ['absence', 'Missing players'], ['messages', 'Messages'], ['announce', 'Announcements'], ['fnotes', 'Coach notes'], ['makeups', 'Make-ups and credits'], ['requests', 'Requests'], ['accounts', 'New accounts'], ['followups', 'Follow ups'], ['trials', 'Trial feedback'], ['feedback', 'Feedback'], ['groups', 'Groups and rules'], ['next', 'Next term'], ['holiday', 'Holiday training']]],
     // Camps (Lee, 10 Nov 2026): every camp sign-up in the portal.
     ['Camps', [['camps', 'Camp sign-ups']]],
+    ['Shop', [['shop', 'Shop orders']]],
     // Joners Juniors (Lee, 13 Oct 2026): its own section, the same pages as JFP.
     JJ_NAV,
     // Bank payments (Lee, 16 Oct 2026): Money with the bank list open, its count on the badge.
@@ -98,6 +101,7 @@ const NAV = {
   ],
 }
 const ICON = {
+  shop: '<path d="M5 8h14l-1.2 12H6.2z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/>',
   camps: '<path d="M3 20 12 4l9 16z"/><path d="M12 4v16M9 20l3-6 3 6"/>',
   reports: '<path d="M6 3.5h9l3.5 3.5v13.5H6z"/><path d="M14.5 3.5V7.5h4M9 17v-3M12 17v-5.5M15 17v-2"/>',
   extra: '<circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/>',
@@ -181,7 +185,7 @@ function renderNav() {
     const here = list.some(([k]) => k === P.tab)
     // Coaches: every group open until they close one. Lee and Ligia: closed until opened.
     const shut = sections.length > 1 && !here && (P.user.role === 'admin' ? open[title] !== true : open[title] === false)
-    return `<div class="jp-navgrp${shut ? ' shut' : ''}"><button type="button" class="jp-nav-sec" data-navsec="${esc(title)}" aria-expanded="${shut ? 'false' : 'true'}"><span>${esc(title)}</span>${list.some(([k]) => k === 'bank') ? bankBadge() : ''}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></button><div class="jp-navlist">${list.map(([k, label]) => `<button type="button" data-tab="${k}" data-label="${esc(label)}" aria-current="${P.tab === k ? 'page' : 'false'}">${icon(k)}<span class="jp-lbl">${esc(label)}</span>${k === 'requests' && P.pendingCount ? `<span class="count">${P.pendingCount}</span>` : ''}${k === 'accounts' && P.acctNew?.count ? `<span class="count" title="New accounts since you last looked">${P.acctNew.count}</span>` : ''}${k === 'absence' && P.absNew ? `<span class="count" title="Missed 2 sessions in a row, to follow up">${P.absNew}</span>` : ''}${k === 'trials' && P.trialNew ? `<span class="count" title="New trial feedback">${P.trialNew}</span>` : ''}${k === 'cancellations' && P.cxNew?.count ? `<span class="count" title="New since you last looked">${P.cxNew.count}</span>` : ''}${k === 'bank' ? bankBadge() : ''}${k === 'staff' && P.staffNew?.count ? `<span class="count" title="Cover and time off to see">${P.staffNew.count}</span>` : ''}${k === 'extra' && P.user.role !== 'admin' && P.askNew ? `<span class="count" title="Requests from families">${P.askNew}</span>` : ''}</button>`).join('')}</div></div>`
+    return `<div class="jp-navgrp${shut ? ' shut' : ''}"><button type="button" class="jp-nav-sec" data-navsec="${esc(title)}" aria-expanded="${shut ? 'false' : 'true'}"><span>${esc(title)}</span>${list.some(([k]) => k === 'bank') ? bankBadge() : ''}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></button><div class="jp-navlist">${list.map(([k, label]) => `<button type="button" data-tab="${k}" data-label="${esc(label)}" aria-current="${P.tab === k ? 'page' : 'false'}">${icon(k)}<span class="jp-lbl">${esc(label)}</span>${k === 'requests' && P.pendingCount ? `<span class="count">${P.pendingCount}</span>` : ''}${k === 'accounts' && P.acctNew?.count ? `<span class="count" title="New accounts since you last looked">${P.acctNew.count}</span>` : ''}${k === 'absence' && P.absNew ? `<span class="count" title="Missed 2 sessions in a row, to follow up">${P.absNew}</span>` : ''}${k === 'trials' && P.trialNew ? `<span class="count" title="New trial feedback">${P.trialNew}</span>` : ''}${k === 'cancellations' && P.cxNew?.count ? `<span class="count" title="New since you last looked">${P.cxNew.count}</span>` : ''}${k === 'bank' ? bankBadge() : ''}${k === 'shop' && P.shopNew?.count ? `<span class="count" title="${P.shopNew.late ? `${P.shopNew.late} waiting more than 2 days` : 'Orders to post'}">${P.shopNew.count}</span>` : ''}${k === 'staff' && P.staffNew?.count ? `<span class="count" title="Cover and time off to see">${P.staffNew.count}</span>` : ''}${k === 'extra' && P.user.role !== 'admin' && P.askNew ? `<span class="count" title="Requests from families">${P.askNew}</span>` : ''}</button>`).join('')}</div></div>`
   }).join('')
 }
 
@@ -253,10 +257,10 @@ async function go(tab, { quiet = false, instant = false } = {}) {
   if (!quiet && !instant) view().innerHTML = '<p class="muted">Loading</p>'
   closeSide()
   setDrawer(false)
-  const fn = JJ_TABS.has(tab) ? () => renderJJ(tab, jjUi()) : { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, accounts: renderNewAccounts, followups: () => renderFollowUps({ view, post, need, toast, confirmBox }), feedback: () => renderFeedback({ view, post, need, toast, confirmBox }), absence: () => renderAbsence({ view, post, need, modal, closeModal, toast, openPlayer: openPlayerRecord, onCount: setAbsCount }),sessionvalue: () => renderSessionValue({ view, post, need }), trials: renderTrials, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, register: () => renderCoach(), cancellations: renderCancellations, coaches: () => { P.tab = 'team'; return renderTeam(teamUi()) }, profile: renderProfile, staff: renderStaff, plans: renderPlans, help: renderHelp, families: renderPlayers, messages: () => renderMessages({ view, need, modal, closeModal, confirmBox }), announce: () => renderAnnouncements({ view, need, modal, closeModal, confirmBox }), camps: () => renderCampSignups({ view, need, modal, closeModal, confirmBox, saveFile }), hours: () => renderHours({ view, post, need, modal, closeModal, confirmBox, user: P.user }), makeups: () => renderMakeups({ view, post, need, modal, closeModal, confirmBox }), fnotes: () => renderFamilyNotesPage({ view, post, need, modal, closeModal, confirmBox }), extra: () => renderExtra({ view, post, need, modal, closeModal, confirmBox, toast, copy, user: P.user, refreshAsks: checkAskAlerts }), reports: () => renderReports(reportsUi()), cinvoices: () => renderCoachInvoices({ view, post, need, modal, closeModal, confirmBox, user: P.user }), ideas: () => renderIdeas({ view, post, need, toast }), team: () => renderTeam(teamUi()), removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
+  const fn = JJ_TABS.has(tab) ? () => renderJJ(tab, jjUi()) : { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, accounts: renderNewAccounts, followups: () => renderFollowUps({ view, post, need, toast, confirmBox }), feedback: () => renderFeedback({ view, post, need, toast, confirmBox }), absence: () => renderAbsence({ view, post, need, modal, closeModal, toast, openPlayer: openPlayerRecord, onCount: setAbsCount }),sessionvalue: () => renderSessionValue({ view, post, need }), trials: renderTrials, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, register: () => renderCoach(), cancellations: renderCancellations, coaches: () => { P.tab = 'team'; return renderTeam(teamUi()) }, profile: renderProfile, staff: renderStaff, plans: renderPlans, help: renderHelp, families: renderPlayers, messages: () => renderMessages({ view, need, modal, closeModal, confirmBox }), announce: () => renderAnnouncements({ view, need, modal, closeModal, confirmBox }), camps: () => renderCampSignups({ view, need, modal, closeModal, confirmBox, saveFile }), shop: () => renderShopOrders({ view, need, onCount: setShopCount }), hours: () => renderHours({ view, post, need, modal, closeModal, confirmBox, user: P.user }), makeups: () => renderMakeups({ view, post, need, modal, closeModal, confirmBox }), fnotes: () => renderFamilyNotesPage({ view, post, need, modal, closeModal, confirmBox }), extra: () => renderExtra({ view, post, need, modal, closeModal, confirmBox, toast, copy, user: P.user, refreshAsks: checkAskAlerts }), reports: () => renderReports(reportsUi()), cinvoices: () => renderCoachInvoices({ view, post, need, modal, closeModal, confirmBox, user: P.user }), ideas: () => renderIdeas({ view, post, need, toast }), team: () => renderTeam(teamUi()), removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
   try { await fn() } catch (e) { console.error(e); if (!quiet) view().innerHTML = `<div class="j-box j-box-red">Something went wrong loading this page. ${esc(e.message || '')}</div>` }
   if (P.user?.role === 'admin' && (tab === 'money' || tab === 'jj-money')) prefetchOthers(tab === 'jj-money' ? 'juniors' : P.jf.programme, moneyReaders())
-  if (!P.cxChecked) { P.cxChecked = true; checkCancelAlerts(); checkTrialAlerts(); checkAccountAlerts(); checkAbsenceAlerts(); checkRequestAlerts(); checkAskAlerts(); checkStaffAlerts() } else cancelBanner()
+  if (!P.cxChecked) { P.cxChecked = true; checkCancelAlerts(); checkTrialAlerts(); checkAccountAlerts(); checkAbsenceAlerts(); checkRequestAlerts(); checkAskAlerts(); checkStaffAlerts(); checkShopAlerts() } else cancelBanner()
   if (!quiet) view().focus({ preventScroll: true })
 }
 // Bank payments (the sidebar and the Dashboard's link): Money for this
@@ -273,7 +277,7 @@ const bankUiBase = () => ({ post, toast })
 // How often the portal re-reads by itself (Lee, 18 Oct 2026: "every 30 mins").
 const REFRESH_MS = 30 * 60 * 1000
 // New cancellations, trials, accounts and requests show up within 30 minutes, whatever page is open.
-setInterval(() => { if (P.user && document.visibilityState === 'visible') { checkCancelAlerts(); checkTrialAlerts(); checkAccountAlerts(); checkAbsenceAlerts(); checkRequestAlerts(); checkAskAlerts(); checkStaffAlerts() } }, REFRESH_MS)
+setInterval(() => { if (P.user && document.visibilityState === 'visible') { checkCancelAlerts(); checkTrialAlerts(); checkAccountAlerts(); checkAbsenceAlerts(); checkRequestAlerts(); checkAskAlerts(); checkStaffAlerts(); checkShopAlerts() } }, REFRESH_MS)
 // A phone left on the portal overnight (Lee, 28 Oct 2026: Dean tapped Here on
 // the Register and nothing happened until he refreshed). The page still held
 // yesterday's date, so today's session read "not happened yet" and its buttons
@@ -369,6 +373,17 @@ async function checkAbsenceAlerts() {
   if (P.user?.role !== 'admin') return
   const r = await post('absenceAlerts')
   if (r.ok) setAbsCount(r.data.count)
+}
+// Shop orders to post (Lee, 11 Nov 2026): a red count on Shop orders for Ligia.
+async function checkShopAlerts() {
+  if (P.user?.role !== 'admin') return
+  const r = await post('shopAlerts')
+  if (r.ok) setShopCount(r.data.count, r.data.late)
+}
+function setShopCount(count, late) {
+  const before = `${P.shopNew?.count || 0}|${P.shopNew?.late || 0}`
+  P.shopNew = { count: Number(count) || 0, late: Number(late) || 0 }
+  if (before !== `${P.shopNew.count}|${P.shopNew.late}`) renderNav()
 }
 function setAbsCount(n) { const before = P.absNew || 0; P.absNew = Number(n) || 0; if (before !== P.absNew) renderNav() }
 
