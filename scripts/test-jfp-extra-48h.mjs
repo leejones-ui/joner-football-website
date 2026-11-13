@@ -58,7 +58,7 @@ function inHours(h) {
   const hr = Number(p.hour) % 24
   return { date: `${p.year}-${p.month}-${p.day}`, time: `${hr % 12 || 12}:00${hr < 12 ? 'am' : 'pm'}` }
 }
-const newSlot = async (h, extra = {}) => (await ok(L('extraSave', { slot: { coachId: 'dean', ...inHours(h), capacity: 1, location: 'Belrose HQ', priceCents: 12000, title: '1 on 1', visibility: 'public', ...extra } }))).slot
+const newSlot = async (h, extra = {}) => (await ok(L('extraSave', { slot: { coachId: 'dean', ...inHours(h), capacity: 1, location: 'Rydalmere Park', priceCents: 12000, title: '1 on 1', visibility: 'public', ...extra } }))).slot
 async function bookAndPay(f, slotId) {
   // bookExtra opens the Stripe page straight away.
   const b = await ok(f.A('bookExtra', { slotId, playerKey: f.kid.key, acceptTerms: true }))

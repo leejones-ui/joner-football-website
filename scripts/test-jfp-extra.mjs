@@ -125,5 +125,24 @@ await test('a session today can be marked, and the mark goes to Airtable Attenda
   assert.ok((await at()).attendance.some((x) => x.fields['Programme'] === 'JFP Extra session' && x.fields['Player Name'] === 'Mark Me'))
 })
 
+// Belrose HQ is one space (Lee, 13 Nov 2026): Sam's 9:30am ran into Dean's 10am.
+await test('HQ holds one session at a time: an overlap is refused, by any coach; back to back and parks are fine', async () => {
+  const day = plus(9)
+  const d = await D('extraSave', { slot: { date: day, time: '10:00am', capacity: 1, location: 'Belrose HQ', priceId, visibility: 'public', kind: 'oneoff' } })
+  assert.equal(d.status, 200, JSON.stringify(d.data))
+  const s1 = await S('extraSave', { slot: { date: day, time: '9:30am', capacity: 1, location: 'Belrose HQ', priceId, visibility: 'public', kind: 'oneoff' } })
+  assert.equal(s1.status, 400, 'Sam cannot open 9:30 to 10:30 over Dean')
+  assert.match(s1.data.error, /already booked .* from 10:00am to 11:00am \(Coach Dean/)
+  assert.equal((await S('extraSaveMany', { slot: { capacity: 1, location: 'Belrose HQ', priceId, visibility: 'public', kind: 'oneoff' }, dates: [day], times: ['8:00am', '10:30am'] })).status, 400, 'a batch stops at the overlap')
+  assert.equal((await D('extraSave', { slot: { date: day, time: '10:15am', capacity: 1, location: 'Belrose HQ', priceId, visibility: 'public', kind: 'oneoff' } })).status, 400, 'the same coach cannot double up HQ either')
+  assert.equal((await S('extraSave', { slot: { date: day, time: '11:00am', capacity: 1, location: 'Belrose HQ', priceId, visibility: 'public', kind: 'oneoff' } })).status, 200, 'back to back is fine')
+  assert.equal((await S('extraSave', { slot: { date: day, time: '10:00am', capacity: 1, location: 'Rydalmere Park', priceId, visibility: 'public', kind: 'oneoff' } })).status, 200, 'a park can hold two at once')
+  // Editing a session keeps its own time; a cancelled one frees the time.
+  const again = await D('extraSave', { slot: { ...d.data.slot, id: d.data.slot.id, priceId, durationMin: 60 } })
+  assert.equal(again.status, 200, JSON.stringify(again.data))
+  assert.equal((await D('extraCancel', { id: d.data.slot.id })).status, 200)
+  assert.equal((await S('extraSave', { slot: { date: day, time: '9:30am', capacity: 1, location: 'Belrose HQ', priceId, visibility: 'public', kind: 'oneoff' } })).status, 200, 'free once Dean cancels')
+})
+
 console.log(`\n${failed ? `${failed} FAILED, ` : ''}${passed} extra session checks passed`)
 process.exit(failed ? 1 : 0)

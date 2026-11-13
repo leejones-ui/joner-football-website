@@ -204,6 +204,22 @@ const sha = (v) => crypto.createHash('sha256').update(String(v)).digest('hex')
 
 // ---------- coaches and staff ----------
 
+// Belrose HQ is one space, so only one session can run there at a time (Lee,
+// 13 Nov 2026, after Sam's 9:30am and Dean's 10am overlapped on 23 Dec). The
+// first session opened keeps the time; a session that would overlap it, by any
+// coach, is refused with who has it and when. Parks hold several groups at once.
+export const isOneSpace = (location) => /belrose|\bhq\b/i.test(location || '')
+const clockLabel = (ms) => new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Sydney', hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(ms)).replace(/\s/g, '').toLowerCase()
+export async function hqClash(s, { config, slots } = {}) {
+  if (!isOneSpace(s.location)) return ''
+  const a0 = startMs(s), a1 = endMs(s)
+  if (!a0) return ''
+  const other = (slots || (await allSlots())).find((o) => o.id !== s.id && o.status === 'open' && o.date === s.date && isOneSpace(o.location) && startMs(o) < a1 && a0 < endMs(o))
+  if (!other) return ''
+  const who = config ? coachLabel(coachById(config, other.coachId)) : ''
+  return `Belrose HQ is already booked ${dateLabel(other.date)} from ${clockLabel(startMs(other))} to ${clockLabel(endMs(other))}${who ? ` (Coach ${who})` : ''}. Only one session can run at HQ at a time, so pick a time that does not overlap.`
+}
+
 // Create or edit a slot. A coach only ever touches their own.
 export async function saveSlot({ config, principal, isAdmin, input }) {
   const before = input.id ? await getSlot(input.id) : null
@@ -246,6 +262,8 @@ export async function saveSlot({ config, principal, isAdmin, input }) {
   // The kind decides who can see it. Anything not clearly public is private.
   const kind = ['oneoff', 'private', 'weekly'].includes(input.kind) ? input.kind : before ? kindOf(before) : input.visibility === 'public' ? 'oneoff' : 'private'
   const visibility = kind === 'private' ? 'private' : 'public'
+  const clash = await hqClash({ id: before?.id || '', date, time, durationMin, location }, { config })
+  if (clash) return { error: clash }
   const slot = {
     id: before?.id || newId('XS'), coachId, date, time, durationMin, location, capacity,
     priceId: options ? '' : picked?.id || before?.priceId || '', priceCents, priceLabel, ...(options ? { options } : {}),
