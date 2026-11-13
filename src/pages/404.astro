@@ -1,0 +1,19 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+---
+<BaseLayout title="That page has gone missing | Joner Football" description="That page has gone missing. Find your way back to Joner Football training, the app, camps, or contact." noindex>
+  <section class="flex min-h-[70vh] items-center bg-joner-black py-24">
+    <div class="mx-auto w-full max-w-5xl px-5 sm:px-8">
+      <p class="font-heading text-xs font-bold uppercase tracking-[0.3em] text-joner-red">404 / Joner Football</p>
+      <h1 class="mt-5 max-w-4xl font-heading text-6xl font-black uppercase leading-[0.88] tracking-tight text-white sm:text-8xl lg:text-[9rem]">That page has<br /><span class="text-joner-red">gone missing.</span></h1>
+      <p class="mt-8 max-w-xl font-body text-lg leading-relaxed text-gray-300">The link has moved or the page no longer exists. Get back to the football.</p>
+      <nav class="mt-10 flex flex-wrap gap-3" aria-label="404 navigation">
+        <a class="btn-red px-6 py-4" href="/">Home</a>
+        <a class="border border-gray-700 px-6 py-4 font-heading text-xs uppercase tracking-wide text-white hover:border-joner-red" href="/app">App</a>
+        <a class="border border-gray-700 px-6 py-4 font-heading text-xs uppercase tracking-wide text-white hover:border-joner-red" href="/training">Training</a>
+        <a class="border border-gray-700 px-6 py-4 font-heading text-xs uppercase tracking-wide text-white hover:border-joner-red" href="/camps">Camps</a>
+        <a class="border border-gray-700 px-6 py-4 font-heading text-xs uppercase tracking-wide text-white hover:border-joner-red" href="/contact">Contact</a>
+      </nav>
+    </div>
+  </section>
+</BaseLayout>

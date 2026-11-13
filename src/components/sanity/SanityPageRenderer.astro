@@ -24,7 +24,7 @@ const secondaryCtaUrl = getApprovedCtaUrl(page?.secondaryCta)
   <section class="relative overflow-hidden bg-joner-black pt-24">
     {heroImage && (
       <div class="absolute inset-0">
-        <img src={heroImage} alt={heroAlt} class="h-full w-full object-cover object-center opacity-30" />
+        <img src={heroImage} alt={heroAlt} class="h-full w-full object-cover object-center opacity-30" loading="eager" fetchpriority="high" decoding="async" />
         <div class="absolute inset-0 bg-black/70"></div>
       </div>
     )}

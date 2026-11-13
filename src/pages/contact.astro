@@ -61,11 +61,7 @@ const heroImage = getSanityImageUrl(sanityPage?.heroImage, '/images/contact/lee-
 >
   <section class="relative min-h-[54dvh] flex items-center justify-center overflow-hidden bg-joner-black pt-24">
     <div class="absolute inset-0">
-      <img
-        src={heroImage}
-        alt="Lee Jones coaching on the pitch at Joner Football"
-        class="h-full w-full object-cover object-center"
-      />
+      <img src={heroImage} alt="Lee Jones coaching on the pitch at Joner Football" class="h-full w-full object-cover object-center" loading="eager" fetchpriority="high" decoding="async" />
       <div class="absolute inset-0 bg-black/68"></div>
       <div class="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-joner-black to-transparent"></div>
     </div>
@@ -310,6 +306,11 @@ const heroImage = getSanityImageUrl(sanityPage?.heroImage, '/images/contact/lee-
         var file = fileInput && fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
         var filePromise = Promise.resolve();
         if (payload.enquiryType === 'coaching-role' && file) {
+          if (!/\.(pdf|doc|docx|pages)$/i.test(file.name)) {
+            setStatus('CV must be a PDF, Word, or Pages file.', false);
+            if (submit) { submit.disabled = false; submit.textContent = originalText; submit.classList.remove('opacity-70', 'cursor-not-allowed'); }
+            return;
+          }
           if (file.size > 5 * 1024 * 1024) {
             setStatus('CV file is too large. Max 5MB.', false);
             if (submit) {
@@ -353,6 +354,10 @@ const heroImage = getSanityImageUrl(sanityPage?.heroImage, '/images/contact/lee-
           form.reset();
           syncFields();
           setStatus('Done. Your enquiry has been sent.', true);
+          if (!form.dataset.conversionTracked && window.JonerTracking && typeof window.JonerTracking.trackEvent === 'function') {
+            form.dataset.conversionTracked = 'true';
+            window.JonerTracking.trackEvent('Lead', { user_data: payload.email ? { email: payload.email } : {}, custom_data: { form_name: 'contact-smart-form', enquiry_type: payload.enquiryType, confirmed: true } });
+          }
         })
         .catch(function (error) {
           setStatus(error && error.message ? error.message : 'Could not send enquiry. Please try again.', false);
