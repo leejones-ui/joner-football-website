@@ -7,10 +7,10 @@
 //   and again at 24 hours   gets a reminder with the pay link (email and text)
 //   at the start            Lee hears on Telegram (Barry bot) that it is unpaid
 //
-// The family email and text are OFF until Lee says yes to the exact words
-// (config.extraUnpaidFamily === true). While off, what would have gone is kept
-// in jfp:extra-unpaid-held so Lee and Ligia can read it. The coach and Lee
-// notices are on now.
+// Lee said yes to the family words on 16 Nov 2026 and they are switched on
+// (config.extraUnpaidFamily). Lee or Ligia can switch them off on the Extra
+// sessions page; while off, what would have gone is kept in
+// jfp:extra-unpaid-held. The coach and Lee notices are always on.
 //
 // A family whose saved card is charged after the session (auto charge) is
 // covered: nothing is sent about them.
@@ -42,7 +42,8 @@ export function familyEmail({ parentFirst, playerFirst, player, coach, when, url
   return {
     subject: `Extra session not paid yet: ${playerFirst}, ${when}`,
     heading: 'Your extra session is not paid yet',
-    paras: [`Hi ${parentFirst || 'there'}, ${playerFirst}'s extra session with Coach ${coach} on ${when} hasn't been paid yet.`, 'It needs to be paid before the session starts. Card or Apple Pay, with the button below.'],
+    // Lee said yes to these words on 16 Nov 2026 (the text's, plus the pay button).
+    paras: [`Hi ${parentFirst || 'there'}, ${playerFirst}'s extra session with Coach ${coach} on ${when} hasn't been paid yet. It needs to be paid before the session starts.`, 'Thanks, Joner Football'],
     list: [['Player', player], ['Session', when], ['Amount', formatAud(amountCents)]],
     cta: { label: `Pay ${formatAud(amountCents)}`, url },
   }
