@@ -190,7 +190,8 @@ function waiting(k) {
 }
 const countPill = (k) => { const [n, why] = waiting(k); return n ? `<span class="count" title="${esc(why)}">${n}</span>` : '' }
 const TODO_PAGES = ['requests', 'accounts', 'absence', 'trials', 'cancellations', 'bank', 'shop', 'staff']
-const todoTotal = () => TODO_PAGES.reduce((t, k) => t + waiting(k)[0], 0)
+// The same lines as the To do page (its money checks too), so the badge and the list always agree.
+const todoTotal = () => todoRows().reduce((t, r) => t + r.n, 0)
 
 function renderNav() {
   // A count changing redraws the menu: keep the keyboard where it was.
@@ -5097,7 +5098,7 @@ async function renderTodo() {
   const check = () => Promise.allSettled([checkCancelAlerts(), checkTrialAlerts(), checkAccountAlerts(), checkAbsenceAlerts(), checkRequestAlerts(), checkStaffAlerts(), checkShopAlerts()])
   $('todo-fresh').addEventListener('click', async () => { const b = $('todo-fresh'); b.disabled = true; b.textContent = 'Checking'; await check(); if ($('todo-fresh')) { b.disabled = false; b.textContent = 'Check again'; drawTodo(); toast('Up to date') } })
   // The money lines need the term's money: read it once, quietly, if Home has not yet.
-  if (!P.money) post('money', { quick: true }).then((r) => { if (r.ok && r.data?.money) { P.money = r.data.money; P.moneyAt = Date.now(); if (P.tab === 'todo' && $('todo-list')) drawTodo() } }).catch(() => {})
+  if (!P.money) post('money', { quick: true }).then((r) => { if (r.ok && r.data?.money) { P.money = r.data.money; P.moneyAt = Date.now(); renderNav() } }).catch(() => {})
 }
 
 // ---------- Find (Lee, 15 Nov 2026): any player, parent or page, from anywhere ----------
