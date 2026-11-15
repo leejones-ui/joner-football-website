@@ -37,8 +37,15 @@ async function adminToken({ fresh = false } = {}, deps = {}) {
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ grant_type: 'client_credentials', client_id: process.env.SHOPIFY_CLIENT_ID || '', client_secret: process.env.SHOPIFY_CLIENT_SECRET || '' }),
   })
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok || !data.access_token) throw new Error(`Shopify would not give a token (${res.status}${data.error ? `: ${String(data.error_description || data.error).slice(0, 80)}` : ''}). Check the app is installed on the store.`)
+  // Shopify answers a refused token with an HTML page whose title says why
+  // ("Oauth error invalid_request: Missing or invalid client secret").
+  const raw = await res.text().catch(() => '')
+  let data = {}
+  try { data = JSON.parse(raw) } catch {}
+  if (!res.ok || !data.access_token) {
+    const why = data.error ? String(data.error_description || data.error) : (raw.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').match(/Oauth error [^.?]{0,120}/)?.[0] || '')
+    throw new Error(`Shopify would not give a token (${res.status}${why ? `: ${why.slice(0, 140)}` : ''}). Check the app is installed on the store, and SHOPIFY_CLIENT_ID and SHOPIFY_CLIENT_SECRET in Vercel.`)
+  }
   const ttl = Math.max(60, Math.min(Number(data.expires_in) || 86399, 86399) - 3600)
   await (deps.kvSetJson || kvSetJson)(TOKEN_KEY, { token: data.access_token, expiresAt: Date.now() + ttl * 1000 }, ttl).catch(() => {})
   return data.access_token
