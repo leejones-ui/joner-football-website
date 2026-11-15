@@ -125,14 +125,18 @@ const answers = (extra = {}) => (b) => {
 }
 const open = (hash, extra) => openPortal({ money: structuredClone(MONEY), hash, onPost: answers(extra) })
 
-await test('the sidebar has a Joners Juniors section with all nine pages, in order', async () => {
+await test('the menu has one Joners Juniors link, and its nine pages are tabs along the top, in order', async () => {
   const p = await open('#jj-dashboard')
-  const grp = [...p.d.querySelectorAll('.jp-navgrp')].find((g) => g.querySelector('[data-navsec]').dataset.navsec === 'Joners Juniors')
-  assert.ok(grp, 'the section is there')
-  assert.deepEqual([...grp.querySelectorAll('[data-tab]')].map((b) => b.dataset.label), ['Dashboard', 'Players', 'Invites', 'Requests & waitlist', 'Classes', 'Registers', 'Messages', 'Money', 'Settings'])
-  assert.equal(grp.classList.contains('shut'), false, 'open: it holds the page on screen')
-  assert.equal(grp.querySelector('[aria-current="page"]').dataset.tab, 'jj-dashboard')
-  assert.ok(grp.querySelectorAll('svg path').length >= 9, 'every page has an icon')
+  const link = p.$('#nav [data-hub="juniors"]')
+  assert.ok(link, 'the link is there')
+  assert.equal(link.dataset.label, 'Joners Juniors')
+  assert.equal(link.getAttribute('aria-current'), 'page', 'lit: it holds the page on screen')
+  assert.ok(link.querySelector('svg path'), 'it has an icon')
+  const tabs = [...p.d.querySelectorAll('#hubtabs [data-tab]')]
+  assert.deepEqual(tabs.map((b) => b.textContent.trim()), ['Dashboard', 'Players', 'Invites', 'Requests & waitlist', 'Classes', 'Registers', 'Messages', 'Money', 'Settings'])
+  assert.equal(p.$('#hubtabs [aria-selected="true"]').dataset.tab, 'jj-dashboard')
+  // Lee, 15 Nov 2026: 45 links had become too busy. Register, Camps and Shop keep a link of their own.
+  assert.deepEqual([...p.d.querySelectorAll('#nav [data-tab]')].map((b) => b.dataset.label), ['Home', 'To do', 'Register', 'Players', 'Timetable', 'Joining', 'Messages', 'Money', 'Coaches', 'Joners Juniors', 'Camps', 'Shop', 'Settings'])
   assert.deepEqual(p.errors, [])
 })
 

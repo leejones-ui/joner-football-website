@@ -36,7 +36,7 @@ export async function clearToldAway({ config, group, rec }) {
   await kvCommand(['HDEL', key, rec.rowId])
   try {
     const week = sessionDates(config, group.day).indexOf(rec.date) + 1
-    await clearAttendance({ attendanceId: attendanceId(group, rec.date, rec.player, week), markedBy: rec.email })
+    await clearAttendance({ attendanceId: attendanceId(group, rec.date, rec.player, week), date: rec.date, markedBy: rec.email })
     return 'cleared'
   } catch (error) { console.error('jfp told-away clear failed', error); return 'airtable failed' }
 }

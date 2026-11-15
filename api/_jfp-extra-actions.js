@@ -2,7 +2,7 @@
 // change only their own sessions; Lee and Ligia see every coach's, and set the
 // prices coaches pick from.
 import { fillLateCancel } from './_jfp-extra-cancel.js'
-import { saveConfig, listPayreqs, coachById, coachLabel, clean, sydneyToday, dateLabel, formatAud, audit, normName } from './_jfp-store.js'
+import { saveConfig, listPayreqs, coachById, coachLabel, clean, sydneyToday, dateLabel, formatAud, audit, normName, kvCommand } from './_jfp-store.js'
 import { loadRoster } from './_jfp-airtable.js'
 import { telegramAlert } from './_jfp-notify.js'
 import { createPlayerCharge, cancelCharge, listCharges } from './_jfp-charges.js'
@@ -30,6 +30,7 @@ const priceForCoach = (p, isAdmin) => (isAdmin ? { ...p, priceLabel: formatAud(p
 const no = (res, status, error) => res.status(status).json({ success: false, error })
 
 const MANY_MAX = 24
+const COACH_ATTACH_DAY = 12
 
 // ---------- finding a player ----------
 const blank = (r) => /test/i.test(r.player || r.name || '')
@@ -180,6 +181,18 @@ export async function extraAction(req, res, principal, config, body, action, isA
     const s = await getSlot(clean(body.slotId, 60))
     if (!s) return no(res, 404, 'That session is gone.')
     if (!isAdmin && s.coachId !== principal.coachId) return no(res, 403, 'Not your session.')
+    // Putting a player on shows the coach that family's email and mobile and
+    // sends the family a payment email, so a coach gets a sensible number a
+    // day and Lee hears about anything past it (15 Nov 2026).
+    if (!isAdmin) {
+      const k = `jfp:extra-attach:${principal.coachId}:${sydneyToday()}`
+      const n = Number(await kvCommand(['INCR', k]))
+      if (n === 1) await kvCommand(['EXPIRE', k, '172800'])
+      if (n > COACH_ATTACH_DAY) {
+        if (n === COACH_ATTACH_DAY + 1) await telegramAlert(`JFP portal: ${principal.name || principal.email} has put more than ${COACH_ATTACH_DAY} players on extra sessions today. Worth a look.`).catch(() => {})
+        return no(res, 429, 'That is a lot of players for one day. Ask Ligia or Lee to add any more.')
+      }
+    }
     let name = clean(body.name, 80), email = clean(body.email, 120), mobile = clean(body.mobile, 30), rowId = ''
     if (body.pick && !body.rowId) {
       const who = await resolvePick(clean(body.pick, 120))

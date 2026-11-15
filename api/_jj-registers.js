@@ -87,7 +87,7 @@ export async function markOne(config, principal, { cls, gid, date, row, status }
     if (status) {
       await upsertAttendance({ attendanceId: attendanceId(cls, week, row.player), playerName: row.player, week, date, group: cls, coachName: coachById(config, rec?.head || cls.coachId)?.name || '', status, markedBy: principal.email, programme: 'Joners Juniors', term: termShort(config.juniors.term) })
       airtable = 'saved'
-    } else airtable = (await clearAttendance({ attendanceId: attendanceId(cls, week, row.player), markedBy: principal.email })) ? 'cleared' : 'skipped'
+    } else airtable = (await clearAttendance({ attendanceId: attendanceId(cls, week, row.player), date, markedBy: principal.email })) ? 'cleared' : 'skipped'
   } catch (error) { console.error('jj attendance airtable failed', error.message); airtable = 'failed' }
   return airtable
 }

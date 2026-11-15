@@ -14,10 +14,8 @@ import { renderJuniorsMoney, forgetJuniors } from './jfp-portal-juniors.js'
 import { renderClasses, renderRegisters } from './jfp-portal-jj-ops.js'
 import { renderJJMessages } from './jfp-portal-jj-messages.js'
 
-export const JJ_NAV = ['Joners Juniors', [['jj-dashboard', 'Dashboard'], ['jj-players', 'Players'], ['jj-invites', 'Invites'], ['jj-requests', 'Requests & waitlist'], ['jj-classes', 'Classes'], ['jj-registers', 'Registers'], ['jj-messages', 'Messages'], ['jj-money', 'Money'], ['jj-settings', 'Settings']]]
-export const JJ_TABS = new Set(JJ_NAV[1].map(([k]) => k))
-// The sidebar icon each Juniors page borrows from its JFP twin.
-export const JJ_ICON = { 'jj-dashboard': 'overview', 'jj-players': 'families', 'jj-invites': 'invites', 'jj-requests': 'requests', 'jj-classes': 'groups', 'jj-registers': 'coach', 'jj-messages': 'messages', 'jj-money': 'money', 'jj-settings': 'settings' }
+import { JJ_NAV, JJ_TABS, JJ_ICON } from './jfp-portal-jj-nav.js'
+export { JJ_NAV, JJ_TABS, JJ_ICON }
 
 // Players: what is loaded, the search, the chip and the term shown.
 const S = { data: null, at: 0, q: '', pay: '', waiver: '', cls: '', show: '', moreOpen: false, term: '' }
@@ -421,7 +419,8 @@ async function renderSettings(ui) {
   const row = (a, b) => { const el = document.createElement('div'); el.className = 'jj-trow'; el.innerHTML = `${a}${b}<button type="button" class="j-btn j-btn-ghost" data-tdel aria-label="Remove">×</button>`; return el }
   v.querySelector('#jj-table-add').addEventListener('click', () => v.querySelector('#jj-tables').append(row('<input class="j-input" data-tterm placeholder="Term 1 2027" aria-label="Term">', '<input class="j-input" data-tid placeholder="tbl..." aria-label="Airtable table id">')))
   v.querySelector('#jj-skip-add').addEventListener('click', () => v.querySelector('#jj-skips').append(row('<input class="j-input" type="date" data-sdate aria-label="Date">', '<input class="j-input" data-sreason placeholder="Why" aria-label="Why">')))
-  v.addEventListener('click', (e) => { const b = e.target.closest('[data-tdel]'); if (b) b.closest('.jj-trow').remove() })
+  // On the two lists, which are redrawn with the page, never on the lasting view (it piled up a listener a visit).
+  for (const id of ['#jj-tables', '#jj-skips']) v.querySelector(id)?.addEventListener('click', (e) => { const b = e.target.closest('[data-tdel]'); if (b) b.closest('.jj-trow').remove() })
   v.querySelector('#jj-sform').addEventListener('submit', async (e) => {
     e.preventDefault()
     const f = new FormData(e.currentTarget)

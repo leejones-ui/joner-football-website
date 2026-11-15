@@ -61,19 +61,19 @@ await test('Dashboard: an admin sees one line in the header, "3 bank payments to
 
 await test('the sidebar: Bank payments under Money, with the count on the usual badge', async () => {
   const p = await openPortal({ money: fresh(), hash: '#overview', onPost: (b) => (b.action === 'bankCheck' ? { success: true, bank: BANK() } : null) })
-  const money_ = [...p.d.querySelectorAll('.jp-navgrp')].find((g) => g.querySelector('[data-navsec]').dataset.navsec === 'Money')
-  assert.deepEqual([...money_.querySelectorAll('[data-tab]')].map((b) => b.dataset.label), ['Money', 'Bank payments', 'Payment links', 'Prices'])
-  const badge = p.$('#nav [data-tab="bank"] .count')
+  // Money is one link; its pages are tabs. On Home the count sits on the Money link and on To do.
+  assert.equal(p.$('#nav [data-hub="moneyhub"] .count')?.textContent, '3')
+  assert.equal(p.$('#nav [data-tab="todo"] .count')?.textContent, '3')
+  await p.click('#nav [data-hub="moneyhub"]')
+  assert.deepEqual([...p.d.querySelectorAll('#hubtabs [data-tab]')].map((b) => b.dataset.tab), ['money', 'bank', 'payments', 'prices', 'sessionvalue'])
+  const badge = p.$('#hubtabs [data-tab="bank"] .count')
   assert.ok(badge, 'the badge shows')
   assert.equal(badge.textContent, '3')
   assert.equal(badge.className, 'count', 'the same badge as Requests')
-  // On the Dashboard the Money section is folded: its heading carries the count too.
-  assert.ok(money_.classList.contains('shut'))
-  assert.equal(money_.querySelector('[data-navsec] .count')?.textContent, '3')
   p.close()
   // Nothing waiting: no badge.
   const q = await openPortal({ money: fresh(), hash: '#overview', onPost: (b) => (b.action === 'bankCheck' ? { success: true, bank: { ...BANK(), items: [] } } : null) })
-  assert.equal(q.$('#nav [data-tab="bank"] .count'), null)
+  assert.equal(q.$('#hubtabs [data-tab="bank"] .count'), null)
   assert.equal(q.$('#d-bank-review'), null, 'nothing waiting: no line on the Dashboard')
   q.close()
 })
@@ -81,7 +81,7 @@ await test('the sidebar: Bank payments under Money, with the count on the usual 
 await test('a coach: no line, no Bank payments in the sidebar, and the bank is never asked', async () => {
   const p = await openPortal({ money: fresh(), hash: '#overview', role: 'coach', onPost: (b) => (b.action === 'bankCheck' ? { success: true, bank: BANK() } : null) })
   assert.equal(p.$('#d-bank'), null)
-  assert.equal(p.$('#nav [data-tab="bank"]'), null)
+  assert.equal(p.$('#hubtabs [data-tab="bank"]'), null)
   assert.equal(p.$('#nav [data-tab="overview"]'), null, 'no dashboard for a coach')
   assert.equal(p.posts.filter((b) => /^bank/.test(b.action)).length, 0)
   p.close()
@@ -122,7 +122,7 @@ await test('Check bank now on Money: asks the Mac, waits, reads the bank again, 
   assert.equal(p.$('#m-bank-old'), null, 'fresh lines: the amber note goes')
   assert.equal(p.$('#m-bank-refresh').disabled, false)
   assert.equal(p.text('#m-bank-refresh'), 'Check bank now')
-  assert.equal(p.text('#nav [data-tab="bank"] .count'), '4', 'the badge follows')
+  assert.equal(p.text('#hubtabs [data-tab="bank"] .count'), '4', 'the badge follows')
   assert.equal(p.text('#m-kpi-bank .val'), '4', 'the To check number follows')
   assert.deepEqual(p.errors, [])
   p.close()
@@ -161,9 +161,10 @@ await test('Money: the bank is one folded row under the player list, "Bank payme
   p.close()
 })
 
-await test('the sidebar Bank payments opens Money with the list open', async () => {
+await test('the Bank payments tab under Money opens Money with the list open', async () => {
   const p = await openPortal({ money: fresh(), hash: '#overview', onPost: (b) => (b.action === 'bankCheck' ? { success: true, bank: BANK() } : null) })
-  await p.click('#nav [data-tab="bank"]')
+  await p.click('#nav [data-hub="moneyhub"]')
+  await p.click('#hubtabs [data-tab="bank"]')
   await until(p, () => p.$('#m-bank-box'))
   assert.equal(p.$('#m-bank-box').open, true)
   assert.equal(p.text('#m-bank-count'), '3')

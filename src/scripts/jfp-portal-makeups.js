@@ -57,7 +57,7 @@ export async function renderMakeups(ui) {
     if (op === 'book') return bookModal(ui, d, m, () => renderMakeups(ui))
     if (op === 'value') return valueModal(ui, m, 'value', () => renderMakeups(ui))
     if (op === 'convert') return valueModal(ui, m, 'convert', () => renderMakeups(ui))
-    if (op === 'cancel' && !(await confirmBox(`Remove what ${m.player} is owed? They stop seeing it.`, { ok: 'Remove', danger: true }))) return
+    if (op === 'cancel' && !(await confirmBox(`Remove what ${esc(m.player)} is owed? They stop seeing it.`, { ok: 'Remove', danger: true }))) return
     const r = await post('makeupUpdate', { id: m.id, op })
     toast(r.ok ? 'Updated' : r.data.error); renderMakeups(ui)
   }))

@@ -19,6 +19,10 @@ import '../styles/jfp-portal.css'
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>
       </button>
       <a class="jp-brand" href="/jfp-portal/"><img src="/images/joner-logo-white.png" alt="" width="28" height="28"><span>Joner Football Portal</span></a>
+      <button type="button" class="jp-findbtn" id="find-open" aria-label="Find a player, parent or page" title="Find (press /)">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="m20 20-3.6-3.6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+        <span>Find</span><kbd>/</kbd>
+      </button>
       <div class="jp-top-right">
         <a class="jp-toplink" href="/jfp-booking/" target="_blank" rel="noopener">Parent page</a>
         <button type="button" class="jp-iconbtn" id="theme-toggle" aria-label="Switch to light mode" title="Light or dark">
@@ -50,7 +54,10 @@ import '../styles/jfp-portal.css'
         </div>
       </aside>
       <div class="jp-scrim" id="nav-scrim" hidden></div>
-      <main class="jp-main" id="view" tabindex="-1"></main>
+      <div class="jp-col">
+        <div class="jp-hubtabs" id="hubtabs" hidden></div>
+        <main class="jp-main" id="view" tabindex="-1"></main>
+      </div>
     </div>
     <div class="jp-tip" id="chart-tip" role="tooltip" hidden></div>
   </div>

@@ -3,25 +3,16 @@
 // Every change goes to Airtable through /api/jfp-portal-data, which checks
 // the role again on the server.
 import { $, esc, api, toast, signIn, whoAmI, signOut, money, savePdf } from './jfp-common.js'
-import { renderMessages } from './jfp-portal-messages.js'
-import { renderAnnouncements } from './jfp-portal-announce.js'
 // Camp sign-ups (Lee, 10 Nov 2026): the Camps tab, not the Google Sheet.
-import { renderCampSignups } from './jfp-portal-campsignups.js'
 // Shop orders from Shopify (Lee, 11 Nov 2026): all things Joner in one place.
-import { renderShopOrders } from './jfp-portal-shop.js'
 import { familyNotesModal, renderFamilyNotesPage, coachNotesModal } from './jfp-portal-fnotes.js'
-import { renderMakeups } from './jfp-portal-makeups.js'
-import { renderExtra } from './jfp-portal-extra.js'
 import { renderReports, writeReportFor } from './jfp-portal-reports.js'
-import { renderHours } from './jfp-portal-hours.js'
 import { juniorsCardShell, fillJuniorsCard, juniorsData } from './jfp-portal-juniors.js'
-import { programmeSwitch, bindSwitch, moneyHead, bindTip, prefetchOthers, forget, markUpdated } from './jfp-portal-programmes.js'
+import { programmeSwitch, bindSwitch, moneyHead, bindTip, prefetchOthers, forget } from './jfp-portal-programmes.js'
 import { renderProMoney, proData } from './jfp-portal-pro.js'
 import { renderExtraMoney, extraData } from './jfp-portal-charges.js'
 import { wholeTerm, wholeTermHtml } from './jfp-portal-wholeterm.js'
 import { renderInvoices } from './jfp-portal-invoices.js'
-import { renderCoachInvoices } from './jfp-portal-coach-invoices.js'
-import { renderIdeas } from './jfp-portal-ideas.js'
 import { renderTeam, mountMyProfile } from './jfp-portal-cprofile.js'
 import { mountReportDue } from './jfp-portal-reportdue.js'
 import { renderCampsMoney, campsData } from './jfp-portal-camps.js'
@@ -35,10 +26,11 @@ import { stripeMore, stripeMarkedFold, onStripeClass } from './jfp-portal-stripe
 import { termRefundModal } from './jfp-term-refund.js'
 import { showingPicker, bindShowing, renderPastTerm, renderMoneyYear, redrawYearChart } from './jfp-portal-years.js'
 import { renderPricesPage, quickModal, progPill, WHERE as QUICK_WHERE } from './jfp-portal-quick.js'
-import { playerFormHtml, wirePlayerForm, filledValues, customOptions, customPrices, noGroupPaymentHtml, wireNoGroupPayment, PROFILE_LISTS } from './jfp-portal-player-form.js'
+import { playerFormHtml, wirePlayerForm, filledValues, customOptions, customPrices, noGroupPaymentHtml, wireNoGroupPayment } from './jfp-portal-player-form.js'
 import { contactWords } from '../../api/_jfp-contact.js'
 import { textComposer, payLinkText, trialText, helloText, inviteText, startText, requestOfferText, requestTrialText, requestDeclineText } from './jfp-portal-text.js'
-import { JJ_NAV, JJ_TABS, JJ_ICON, renderJJ } from './jfp-portal-jj.js'
+// The Juniors pages load when first opened; only their menu comes with the portal.
+import { JJ_NAV, JJ_TABS, JJ_ICON } from './jfp-portal-jj-nav.js'
 import { quoteHtml, wireQuote, commitmentHtml, sameTiers } from './jfp-portal-quote.js'
 import { childList, submitFamily, familyModal, familyGroups } from './jfp-portal-family-add.js'
 import { findExisting, removedView, wireRemoved, removedCount } from './jfp-portal-removed.js'
@@ -47,9 +39,6 @@ import { savedPayTag, savedPayDetail, mountAutoChargeEdit, mountSavedPaySettings
 import { mountHermesSettings } from './jfp-portal-hermes.js'
 import { mountCredits } from './jfp-portal-credits.js'
 import { mountLatest, loadLatest, forgetLatest, drawExtraPay } from './jfp-portal-latest.js'
-import { renderSessionValue } from './jfp-portal-session-value.js'
-import { renderAbsence } from './jfp-portal-absence.js'
-import { renderFollowUps, renderFeedback } from './jfp-portal-followups.js'
 
 // jf: the Money programme switch, the Joners Juniors filters and the holiday picked.
 const P = { jf: { programme: 'jfp', term: '', status: '', q: '', period: '' }, user: null, tab: '', board: null, loc: '', day: '', coachFilter: '', ttView: 'staff', sel: '', groups: null, coachId: '', coachDate: {}, reqFilter: 'pending', linkFilter: 'open', linkProg: 'all', pricing: null }
@@ -86,21 +75,30 @@ const NAV = {
     ['Time and pay', [['staff', 'Cover and time off'], ['hours', 'My hours'], ['cinvoices', 'My invoices']]],
     ['Ideas and plans', [['ideas', 'Session ideas'], ['plans', 'Session plans'], ['help', 'Who handles what'], ['team', 'Our coaches'], ['profile', 'My profile']]],
   ],
-  admin: [
-    ['Overview', [['overview', 'Dashboard']]],
-    ['Program', [['board', 'Timetable'], ['families', 'Players'], ['absence', 'Missing players'], ['messages', 'Messages'], ['announce', 'Announcements'], ['fnotes', 'Coach notes'], ['makeups', 'Make-ups and credits'], ['requests', 'Requests'], ['accounts', 'New accounts'], ['followups', 'Follow ups'], ['trials', 'Trial feedback'], ['feedback', 'Feedback'], ['groups', 'Groups and rules'], ['next', 'Next term'], ['holiday', 'Holiday training']]],
-    // Camps (Lee, 10 Nov 2026): every camp sign-up in the portal.
-    ['Camps', [['camps', 'Camp sign-ups']]],
-    ['Shop', [['shop', 'Shop orders']]],
-    // Joners Juniors (Lee, 13 Oct 2026): its own section, the same pages as JFP.
-    JJ_NAV,
-    // Bank payments (Lee, 16 Oct 2026): Money with the bank list open, its count on the badge.
-    ['Money', [['money', 'Money'], ['bank', 'Bank payments'], ['payments', 'Payment links'], ['prices', 'Prices'], ['sessionvalue', 'Session value']]],
-    ['Coaches', [['coach', 'Registers'], ['reports', 'Player reports'], ['extra', 'Extra sessions'], ['cancellations', 'Cancellations'], ['staff', 'Cover and time off'], ['hours', 'Coach hours'], ['cinvoices', 'Coach invoices'], ['ideas', 'Session ideas'], ['plans', 'Session plans'], ['team', 'Our coaches']]],
-    ['Admin', [['removed', 'Removed players'], ['audit', 'Audit log'], ['settings', 'Settings']]],
-  ],
+  // Lee and Ligia's menu is ADMIN_MENU below.
+  admin: [],
 }
+// Lee and Ligia's menu (Lee, 15 Nov 2026): 45 links had become too busy, so
+// related pages sit behind one link and show as tabs along the top of the page.
+// Every page keeps its own address (#families, #hours ...), so old links work.
+// Register, Camps and Shop keep a link of their own (Lee).
+const HUBS = {
+  players: ['Players', 'families', [['families', 'All players'], ['absence', 'Missing players'], ['makeups', 'Make-ups and credits'], ['fnotes', 'Coach notes'], ['removed', 'Removed players']]],
+  timetable: ['Timetable', 'board', [['board', 'Timetable'], ['groups', 'Groups and rules'], ['next', 'Next term'], ['holiday', 'Holiday training'], ['cancellations', 'Cancellations']]],
+  joining: ['Joining', 'accounts', [['requests', 'Requests'], ['accounts', 'New accounts'], ['trials', 'Trial feedback'], ['followups', 'Follow ups'], ['feedback', 'Feedback']]],
+  inbox: ['Messages', 'messages', [['messages', 'Messages'], ['announce', 'Announcements']]],
+  moneyhub: ['Money', 'money', [['money', 'Money'], ['bank', 'Bank payments'], ['payments', 'Payment links'], ['prices', 'Prices'], ['sessionvalue', 'Session value']]],
+  coaches: ['Coaches', 'coaches', [['team', 'Our coaches'], ['hours', 'Coach hours'], ['cinvoices', 'Coach invoices'], ['staff', 'Cover and time off'], ['reports', 'Player reports'], ['extra', 'Extra sessions'], ['ideas', 'Session ideas'], ['plans', 'Session plans']]],
+  juniors: ['Joners Juniors', 'juniors', JJ_NAV[1]],
+  admin: ['Settings', 'settings', [['settings', 'Settings'], ['audit', 'Audit log']]],
+}
+// A [key, label] is one page; a string is a hub above; null is a thin line.
+const ADMIN_MENU = [['overview', 'Home'], ['todo', 'To do'], null, ['coach', 'Register'], 'players', 'timetable', 'joining', 'inbox', 'moneyhub', 'coaches', null, 'juniors', ['camps', 'Camps'], ['shop', 'Shop'], null, 'admin']
+NAV.admin = ADMIN_MENU.filter(Boolean).map((m) => (typeof m === 'string' ? [HUBS[m][0], HUBS[m][2]] : ['', [m]]))
+const hubOf = (tab) => Object.keys(HUBS).find((h) => HUBS[h][2].some(([k]) => k === tab)) || ''
 const ICON = {
+  todo: '<path d="M4 6.5l1.6 1.6L8.5 5M4 12.5l1.6 1.6L8.5 11M4 18.5l1.6 1.6L8.5 17M12 7h8M12 13h8M12 19h8"/>',
+  juniors: '<path d="M12 3.5l2.5 5.2 5.7.8-4.1 4 1 5.6L12 16.4l-5.1 2.7 1-5.6-4.1-4 5.7-.8z"/>',
   shop: '<path d="M5 8h14l-1.2 12H6.2z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/>',
   camps: '<path d="M3 20 12 4l9 16z"/><path d="M12 4v16M9 20l3-6 3 6"/>',
   reports: '<path d="M6 3.5h9l3.5 3.5v13.5H6z"/><path d="M14.5 3.5V7.5h4M9 17v-3M12 17v-5.5M15 17v-2"/>',
@@ -177,14 +175,65 @@ function start() {
   go(tabs().some(([k]) => k === hash) ? hash : tabs()[0][0])
 }
 
+// What is waiting, by page. One place, so the menu, a hub's tabs and To do agree.
+function waiting(k) {
+  if (k === 'requests') return [P.pendingCount || 0, 'Requests waiting']
+  if (k === 'accounts') return [P.acctNew?.count || 0, 'New accounts since you last looked']
+  if (k === 'absence') return [P.absNew || 0, 'Missed 2 sessions in a row, to follow up']
+  if (k === 'trials') return [P.trialNew || 0, 'New trial feedback']
+  if (k === 'cancellations') return [P.cxNew?.count || 0, 'New since you last looked']
+  if (k === 'bank') { const b = bankSummary(); return [b.ready ? b.count || 0 : 0, 'Bank payments to check'] }
+  if (k === 'shop') return [P.shopNew?.count || 0, P.shopNew?.late ? `${P.shopNew.late} waiting more than 2 days` : 'Orders to post']
+  if (k === 'staff') return [P.staffNew?.count || 0, 'Cover and time off to see']
+  if (k === 'extra' && P.user.role !== 'admin') return [P.askNew || 0, 'Requests from families']
+  return [0, '']
+}
+const countPill = (k) => { const [n, why] = waiting(k); return n ? `<span class="count" title="${esc(why)}">${n}</span>` : '' }
+const TODO_PAGES = ['requests', 'accounts', 'absence', 'trials', 'cancellations', 'bank', 'shop', 'staff']
+const todoTotal = () => TODO_PAGES.reduce((t, k) => t + waiting(k)[0], 0)
+
 function renderNav() {
-  const sections = NAV[P.user.role === 'admin' ? 'admin' : 'coach']
+  // A count changing redraws the menu: keep the keyboard where it was.
+  const held = document.activeElement?.closest?.('#nav [data-tab]')?.dataset.tab
+  if (P.user.role === 'admin') renderAdminNav(); else renderCoachNav()
+  if (held) $('nav').querySelector(`[data-tab="${held}"]`)?.focus({ preventScroll: true })
+  renderHubTabs()
+  if (P.tab === 'todo' && $('todo-list')) drawTodo()
+}
+
+function renderAdminNav() {
+  const here = hubOf(P.tab)
+  $('nav').innerHTML = `<div class="jp-navlist jp-flat">${ADMIN_MENU.map((m) => {
+    if (!m) return '<div class="jp-nav-rule" role="separator"></div>'
+    if (typeof m === 'string') {
+      const [label, ic, list] = HUBS[m]
+      const n = list.reduce((t, [k]) => t + waiting(k)[0], 0)
+      return `<button type="button" data-tab="${list[0][0]}" data-hub="${m}" data-label="${esc(label)}" aria-current="${here === m ? 'page' : 'false'}">${icon(ic)}<span class="jp-lbl">${esc(label)}</span>${n ? `<span class="count quiet" title="Waiting in ${esc(label)}">${n}</span>` : ''}</button>`
+    }
+    const [k, label] = m
+    const n = k === 'todo' ? todoTotal() : 0
+    return `<button type="button" data-tab="${k}" data-label="${esc(label)}" aria-current="${P.tab === k ? 'page' : 'false'}">${icon(k)}<span class="jp-lbl">${esc(label)}</span>${k === 'todo' ? (n ? `<span class="count" title="Waiting on you">${n}</span>` : '') : countPill(k)}</button>`
+  }).join('')}</div>`
+}
+
+// The tabs along the top of a hub's pages (Players, Money, Coaches ...).
+function renderHubTabs() {
+  const el = $('hubtabs')
+  if (!el) return
+  const h = P.user?.role === 'admin' ? hubOf(P.tab) : ''
+  el.hidden = !h
+  el.innerHTML = h ? `<div class="jp-hubtabs-row" role="tablist" aria-label="${esc(HUBS[h][0])}">${HUBS[h][2].map(([k, label]) => `<button type="button" role="tab" data-tab="${k}" aria-selected="${P.tab === k ? 'true' : 'false'}">${esc(label)}${countPill(k)}</button>`).join('')}</div>` : ''
+  el.querySelector('[aria-selected="true"]')?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
+}
+
+function renderCoachNav() {
+  const sections = NAV.coach
   // Each heading opens and closes its group; the group holding the open tab stays open.
   const open = navOpen()
   $('nav').innerHTML = sections.map(([title, list]) => {
     const here = list.some(([k]) => k === P.tab)
     // Coaches: every group open until they close one. Lee and Ligia: closed until opened.
-    const shut = sections.length > 1 && !here && (P.user.role === 'admin' ? open[title] !== true : open[title] === false)
+    const shut = sections.length > 1 && !here && open[title] === false
     return `<div class="jp-navgrp${shut ? ' shut' : ''}"><button type="button" class="jp-nav-sec" data-navsec="${esc(title)}" aria-expanded="${shut ? 'false' : 'true'}"><span>${esc(title)}</span>${list.some(([k]) => k === 'bank') ? bankBadge() : ''}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></button><div class="jp-navlist">${list.map(([k, label]) => `<button type="button" data-tab="${k}" data-label="${esc(label)}" aria-current="${P.tab === k ? 'page' : 'false'}">${icon(k)}<span class="jp-lbl">${esc(label)}</span>${k === 'requests' && P.pendingCount ? `<span class="count">${P.pendingCount}</span>` : ''}${k === 'accounts' && P.acctNew?.count ? `<span class="count" title="New accounts since you last looked">${P.acctNew.count}</span>` : ''}${k === 'absence' && P.absNew ? `<span class="count" title="Missed 2 sessions in a row, to follow up">${P.absNew}</span>` : ''}${k === 'trials' && P.trialNew ? `<span class="count" title="New trial feedback">${P.trialNew}</span>` : ''}${k === 'cancellations' && P.cxNew?.count ? `<span class="count" title="New since you last looked">${P.cxNew.count}</span>` : ''}${k === 'bank' ? bankBadge() : ''}${k === 'shop' && P.shopNew?.count ? `<span class="count" title="${P.shopNew.late ? `${P.shopNew.late} waiting more than 2 days` : 'Orders to post'}">${P.shopNew.count}</span>` : ''}${k === 'staff' && P.staffNew?.count ? `<span class="count" title="Cover and time off to see">${P.staffNew.count}</span>` : ''}${k === 'extra' && P.user.role !== 'admin' && P.askNew ? `<span class="count" title="Requests from families">${P.askNew}</span>` : ''}</button>`).join('')}</div></div>`
   }).join('')
 }
@@ -245,20 +294,41 @@ function bindShell() {
   })
 }
 bindShell()
+window.addEventListener('popstate', () => {
+  if (!P.user) return
+  const k = location.hash.slice(1).split('?')[0]
+  if (k && k !== P.tab && tabs().some(([x]) => x === k)) go(k, { pop: true })
+})
 
 // instant: a Money programme switch. The view paints its last reading at
 // once, so there is no "Loading" flash in between.
-async function go(tab, { quiet = false, instant = false } = {}) {
+async function go(tab, { quiet = false, instant = false, pop = false } = {}) {
   if (tab === 'bank') return reviewBank({ quiet })
+  const from = P.tab
   P.tab = tab
   P.nav = !quiet
-  if (!quiet) history.replaceState(null, '', `#${tab}`)
+  // Each page opened is a step the browser's Back button can take (15 Nov 2026).
+  if (!quiet && !pop) history[from && from !== tab ? 'pushState' : 'replaceState'](null, '', `#${tab}`)
+  // The newest page asked for wins: a slow earlier page never lands on top of it.
+  const seq = P.seq = (P.seq || 0) + 1
   renderNav()
   if (!quiet && !instant) view().innerHTML = '<p class="muted">Loading</p>'
   closeSide()
   setDrawer(false)
-  const fn = JJ_TABS.has(tab) ? () => renderJJ(tab, jjUi()) : { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, accounts: renderNewAccounts, followups: () => renderFollowUps({ view, post, need, toast, confirmBox }), feedback: () => renderFeedback({ view, post, need, toast, confirmBox }), absence: () => renderAbsence({ view, post, need, modal, closeModal, toast, openPlayer: openPlayerRecord, onCount: setAbsCount }),sessionvalue: () => renderSessionValue({ view, post, need }), trials: renderTrials, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, register: () => renderCoach(), cancellations: renderCancellations, coaches: () => { P.tab = 'team'; return renderTeam(teamUi()) }, profile: renderProfile, staff: renderStaff, plans: renderPlans, help: renderHelp, families: renderPlayers, messages: () => renderMessages({ view, need, modal, closeModal, confirmBox }), announce: () => renderAnnouncements({ view, need, modal, closeModal, confirmBox }), camps: () => renderCampSignups({ view, need, modal, closeModal, confirmBox, saveFile }), shop: () => renderShopOrders({ view, need, onCount: setShopCount }), hours: () => renderHours({ view, post, need, modal, closeModal, confirmBox, user: P.user }), makeups: () => renderMakeups({ view, post, need, modal, closeModal, confirmBox }), fnotes: () => renderFamilyNotesPage({ view, post, need, modal, closeModal, confirmBox }), extra: () => renderExtra({ view, post, need, modal, closeModal, confirmBox, toast, copy, user: P.user, refreshAsks: checkAskAlerts }), reports: () => renderReports(reportsUi()), cinvoices: () => renderCoachInvoices({ view, post, need, modal, closeModal, confirmBox, user: P.user }), ideas: () => renderIdeas({ view, post, need, toast }), team: () => renderTeam(teamUi()), removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
-  try { await fn() } catch (e) { console.error(e); if (!quiet) view().innerHTML = `<div class="j-box j-box-red">Something went wrong loading this page. ${esc(e.message || '')}</div>` }
+  const fn = JJ_TABS.has(tab) ? async () => (await import('./jfp-portal-jj.js')).renderJJ(tab, jjUi()) : { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, accounts: renderNewAccounts, followups: async () => (await import('./jfp-portal-followups.js')).renderFollowUps({ view, post, need, toast, confirmBox }), feedback: async () => (await import('./jfp-portal-followups.js')).renderFeedback({ view, post, need, toast, confirmBox }), absence: async () => (await import('./jfp-portal-absence.js')).renderAbsence({ view, post, need, modal, closeModal, toast, openPlayer: openPlayerRecord, onCount: setAbsCount }), todo: renderTodo, sessionvalue: async () => (await import('./jfp-portal-session-value.js')).renderSessionValue({ view, post, need }), trials: renderTrials, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, register: () => renderCoach(), cancellations: renderCancellations, coaches: () => { P.tab = 'team'; return renderTeam(teamUi()) }, profile: renderProfile, staff: renderStaff, plans: renderPlans, help: renderHelp, families: renderPlayers, messages: async () => (await import('./jfp-portal-messages.js')).renderMessages({ view, need, modal, closeModal, confirmBox }), announce: async () => (await import('./jfp-portal-announce.js')).renderAnnouncements({ view, need, modal, closeModal, confirmBox }), camps: async () => (await import('./jfp-portal-campsignups.js')).renderCampSignups({ view, need, modal, closeModal, confirmBox, saveFile }), shop: async () => (await import('./jfp-portal-shop.js')).renderShopOrders({ view, need, onCount: setShopCount }), hours: async () => (await import('./jfp-portal-hours.js')).renderHours({ view, post, need, modal, closeModal, confirmBox, user: P.user }), makeups: async () => (await import('./jfp-portal-makeups.js')).renderMakeups({ view, post, need, modal, closeModal, confirmBox }), fnotes: () => renderFamilyNotesPage({ view, post, need, modal, closeModal, confirmBox }), extra: async () => (await import('./jfp-portal-extra.js')).renderExtra({ view, post, need, modal, closeModal, confirmBox, toast, copy, user: P.user, refreshAsks: checkAskAlerts }), reports: () => renderReports(reportsUi()), cinvoices: async () => (await import('./jfp-portal-coach-invoices.js')).renderCoachInvoices({ view, post, need, modal, closeModal, confirmBox, user: P.user }), ideas: async () => (await import('./jfp-portal-ideas.js')).renderIdeas({ view, post, need, toast }), team: () => renderTeam(teamUi()), removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
+  try { await fn() } catch (e) {
+    console.error(e)
+    // The portal was updated while this tab sat open: its old page files are gone.
+    if (/dynamically imported module|Importing a module script failed|error loading dynamically/i.test(e.message || '')) { if (seq === P.seq) { view().innerHTML = '<div class="j-box j-box-amber">The portal has been updated. <button type="button" class="j-btn j-btn-dark j-btn-sm" id="jp-reload" style="margin-left:8px">Load the new version</button></div>'; $('jp-reload')?.addEventListener('click', () => location.reload()) } }
+    else if (!quiet && seq === P.seq) view().innerHTML = `<div class="j-box j-box-red">Something went wrong loading this page. ${esc(e.message || '')}</div>`
+  }
+  if (seq !== P.seq) {
+    // This page finished after a newer one was asked for. If the newer one has
+    // already drawn, this one may have painted over it: draw the newer one again.
+    if (P.doneSeq === P.seq) go(P.tab, { quiet: true })
+    return
+  }
+  P.doneSeq = seq
   if (P.user?.role === 'admin' && (tab === 'money' || tab === 'jj-money')) prefetchOthers(tab === 'jj-money' ? 'juniors' : P.jf.programme, moneyReaders())
   if (!P.cxChecked) { P.cxChecked = true; checkCancelAlerts(); checkTrialAlerts(); checkAccountAlerts(); checkAbsenceAlerts(); checkRequestAlerts(); checkAskAlerts(); checkStaffAlerts(); checkShopAlerts() } else cancelBanner()
   if (!quiet) view().focus({ preventScroll: true })
@@ -293,7 +363,9 @@ function freshen() {
   if (sydToday() === shownDay && away < AWAY_MS && Date.now() - lastRead < REFRESH_MS) return
   shownDay = sydToday(); lastRead = Date.now()
   // Never under an open form: someone may be typing.
-  if (document.querySelector('.jp-modal, #jp-side') || document.activeElement?.closest?.('input, textarea, select, [contenteditable]')) return
+  if (document.querySelector('.jp-modal, #jp-side, #jp-find') || document.activeElement?.closest?.('input, textarea, select, [contenteditable]')) return
+  // Nor over Settings with changes not saved yet.
+  if (settingsDirty && $('ss-bar')) return
   const y = window.scrollY
   go(P.tab, { quiet: true }).then(() => window.scrollTo(0, y))
 }
@@ -1216,7 +1288,7 @@ function payHint(v, words = {}) {
 const famUI = () => ({
   post, modal, closeModal, toast, copy, confirmBox, textComposer, priceBlock, dateOptions, nextDate, customPrices, isJJ, pricing,
   board: async () => P.board || (P.board = await need(await post('board'))),
-  after: () => { P.board = null; PL.at = 0; if (P.tab === 'players') renderPlayers(); else renderBoard(true) },
+  after: () => { P.board = null; PL.at = 0; if (P.tab === 'families') renderPlayers(); else renderBoard(true) },
   addAgent: (agentId = '') => familyModal({ ...famUI(), agent: true, agentId }),
 })
 
@@ -4992,7 +5064,96 @@ async function renderSettings() {
   })
 }
 
+// ---------- To do (Lee, 15 Nov 2026): everything waiting, in one list ----------
+
+const TODO_WORDS = {
+  requests: ['Requests', (n) => `${n} request${n === 1 ? '' : 's'} waiting`, 'Applications, waitlist and extra sessions'],
+  accounts: ['New accounts', (n) => `${n} new account${n === 1 ? '' : 's'} since you last looked`, 'See who signed up and whether they booked'],
+  absence: ['Missing players', (n) => `${n} player${n === 1 ? '' : 's'} missed 2 sessions in a row`, 'A quick message keeps them coming'],
+  trials: ['Trial feedback', (n) => `${n} new trial feedback from coaches`, 'Read it, then offer a place or not'],
+  cancellations: ['Cancellations', (n) => `${n} new "can't make it" notice${n === 1 ? '' : 's'}`, 'Families who cannot come'],
+  bank: ['Bank payments', (n) => `${n} bank payment${n === 1 ? '' : 's'} to check`, 'Match each one to a player'],
+  shop: ['Shop', (n) => `${n} shop order${n === 1 ? '' : 's'} to post`, ''],
+  staff: ['Cover and time off', (n) => `${n} cover or time off request${n === 1 ? '' : 's'} to see`, ''],
+}
+function todoRows() {
+  const rows = TODO_PAGES.map((k) => { const [n, why] = waiting(k); return { k, n, where: TODO_WORDS[k][0], text: TODO_WORDS[k][1](n), note: k === 'shop' && P.shopNew?.late ? why : TODO_WORDS[k][2] } })
+  // The money checks the dashboard already knows about (read when Home was opened).
+  const st = P.money?.status
+  if (st?.stripe) rows.push({ k: 'money', filter: 'stripe', n: st.stripe, where: 'Money', text: `${st.stripe} Stripe payment${st.stripe === 1 ? '' : 's'} to record in Airtable`, note: 'One click each' })
+  if (st?.unpriced) rows.push({ k: 'money', filter: 'unpriced', n: st.unpriced, where: 'Money', text: `${st.unpriced} player${st.unpriced === 1 ? '' : 's'} with no price set`, note: '' })
+  if (P.money?.unmatched?.length) rows.push({ k: 'money', filter: '', n: P.money.unmatched.length, where: 'Money', text: `${P.money.unmatched.length} Stripe payment${P.money.unmatched.length === 1 ? '' : 's'} not matched to a player`, note: '' })
+  return rows
+}
+function drawTodo() {
+  const rows = todoRows(), open = rows.filter((r) => r.n), clear = rows.filter((r) => !r.n && !r.filter)
+  const li = (r) => `<li><button type="button" class="jt-row" ${r.filter != null ? `data-money-filter="${esc(r.filter)}"` : `data-tab="${r.k}"`}><span class="jt-n">${r.n}</span><span class="jt-txt"><b>${esc(r.text)}</b>${r.note ? `<small>${esc(r.note)}</small>` : ''}</span><span class="jt-go">${esc(r.where)}<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button></li>`
+  $('todo-list').innerHTML = `${open.length ? `<ul class="jt-list">${open.map(li).join('')}</ul>` : '<div class="jt-clear"><b>Nothing waiting. Nice.</b><span class="muted small">New things show here and on the menu as they come in.</span></div>'}
+    ${clear.length ? `<p class="jt-sub">All clear</p><ul class="jt-list jt-done">${clear.map((r) => `<li><button type="button" class="jt-row" data-tab="${r.k}"><span class="jt-n">0</span><span class="jt-txt"><b>${esc(r.where)}</b></span></button></li>`).join('')}</ul>` : ''}`
+}
+async function renderTodo() {
+  view().innerHTML = `<div class="jp-head"><div><h1>To do</h1><p class="muted small" style="flex-basis:100%">Everything waiting on you or Ligia, in one list. Tap a line to deal with it.</p></div><button type="button" class="j-btn j-btn-line" id="todo-fresh">Check again</button></div><div id="todo-list"></div>`
+  drawTodo()
+  const check = () => Promise.allSettled([checkCancelAlerts(), checkTrialAlerts(), checkAccountAlerts(), checkAbsenceAlerts(), checkRequestAlerts(), checkStaffAlerts(), checkShopAlerts()])
+  $('todo-fresh').addEventListener('click', async () => { const b = $('todo-fresh'); b.disabled = true; b.textContent = 'Checking'; await check(); if ($('todo-fresh')) { b.disabled = false; b.textContent = 'Check again'; drawTodo(); toast('Up to date') } })
+  // The money lines need the term's money: read it once, quietly, if Home has not yet.
+  if (!P.money) post('money', { quick: true }).then((r) => { if (r.ok && r.data?.money) { P.money = r.data.money; P.moneyAt = Date.now(); if (P.tab === 'todo' && $('todo-list')) drawTodo() } }).catch(() => {})
+}
+
+// ---------- Find (Lee, 15 Nov 2026): any player, parent or page, from anywhere ----------
+
+const FIND = { list: [], at: 0 }
+function findPages() {
+  const out = []
+  if (P.user.role === 'admin') for (const m of ADMIN_MENU.filter(Boolean)) {
+    if (typeof m === 'string') for (const [k, label] of HUBS[m][2]) out.push({ k, label, sub: HUBS[m][0] })
+    else out.push({ k: m[0], label: m[1], sub: '' })
+  } else for (const [title, list] of NAV.coach) for (const [k, label] of list) out.push({ k, label, sub: title })
+  return out
+}
+function closeFind() { $('jp-find')?.remove() }
+function openFind() {
+  if ($('jp-find') || !P.user) return
+  const admin = P.user.role === 'admin'
+  const wrap = document.createElement('div')
+  wrap.id = 'jp-find'
+  wrap.className = 'jp-find'
+  wrap.innerHTML = `<div class="jp-find-box" role="dialog" aria-modal="true" aria-label="Find"><input class="j-input" id="jp-find-q" type="search" autocomplete="off" spellcheck="false" placeholder="${admin ? 'Find a player, parent or page' : 'Find a page'}" aria-label="Find" aria-controls="jp-find-res"><div id="jp-find-res" class="jp-find-res" role="listbox"></div><p class="jp-find-foot"><span>Up and down to move, Enter to open, Esc to close</span></p></div>`
+  document.querySelector('.jfp').appendChild(wrap)
+  const q = $('jp-find-q'), res = $('jp-find-res')
+  let hits = [], at = 0
+  const draw = () => {
+    const words = q.value.trim().toLowerCase().split(/\s+/).filter(Boolean)
+    const has = (...vals) => words.every((w) => vals.some((v) => String(v || '').toLowerCase().includes(w)))
+    const pages = findPages().filter((x) => !words.length || has(x.label, x.sub)).slice(0, words.length ? 6 : 40).map((x) => ({ kind: 'page', ...x }))
+    const players = words.length && admin ? (PL.data?.players || []).filter((x) => has(x.name, x.parent, x.email, x.phone)).slice(0, 8).map((x) => ({ kind: 'player', rowId: x.rowId, label: x.name, sub: [x.parent, x.groupLabel].filter(Boolean).join(' · ') })) : []
+    hits = [...players, ...pages]
+    at = Math.min(at, Math.max(hits.length - 1, 0))
+    res.innerHTML = hits.length ? hits.map((h, i) => `<button type="button" role="option" class="jp-find-hit" data-i="${i}" aria-selected="${i === at ? 'true' : 'false'}"><span class="k">${h.kind === 'player' ? 'Player' : 'Page'}</span><b>${esc(h.label)}</b>${h.sub ? `<small>${esc(h.sub)}</small>` : ''}</button>`).join('') : `<p class="muted small" style="padding:14px">${admin && words.length && !PL.data ? 'Loading players' : 'Nothing found.'}</p>`
+    res.querySelector('[aria-selected="true"]')?.scrollIntoView?.({ block: 'nearest' })
+  }
+  const pick = (h) => { if (!h) return; closeFind(); if (h.kind === 'player') openPlayerRecord(h.rowId); else go(h.k) }
+  q.addEventListener('input', () => { at = 0; draw() })
+  q.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); at = (at + (e.key === 'ArrowDown' ? 1 : -1) + hits.length) % Math.max(hits.length, 1); draw() }
+    else if (e.key === 'Enter') { e.preventDefault(); pick(hits[at]) }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeFind() }
+  })
+  res.addEventListener('click', (e) => { const b = e.target.closest('[data-i]'); if (b) pick(hits[Number(b.dataset.i)]) })
+  wrap.addEventListener('click', (e) => { if (e.target === wrap) closeFind() })
+  draw()
+  q.focus()
+  // Players: what is already loaded shows at once; read them once if not yet.
+  if (admin && !PL.data) post('playersList', {}).then((r) => { if (r.ok && r.data?.players && !PL.data) { PL.data = r.data; PL.at = Date.now() } if ($('jp-find')) draw() }).catch(() => {})
+}
+document.addEventListener('keydown', (e) => {
+  if (!P.user) return
+  const typing = e.target.closest?.('input, textarea, select, [contenteditable]')
+  if ((e.key === 'k' && (e.metaKey || e.ctrlKey)) || (e.key === '/' && !typing && !e.metaKey && !e.ctrlKey && !e.altKey)) { e.preventDefault(); if ($('jp-find')) closeFind(); else openFind() }
+})
+
 document.addEventListener('click', async (e) => {
+  if (e.target.closest('#find-open')) { openFind(); return }
   const sec = e.target.closest('[data-navsec]')
   if (sec) { toggleNavGroup(sec.dataset.navsec); return }
   const t = e.target.closest('[data-tab]')

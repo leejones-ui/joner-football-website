@@ -221,7 +221,7 @@ export async function renderCampSignups(ui) {
     }))
     box.querySelectorAll('[data-up-retry]').forEach((btn) => btn.addEventListener('click', () => run(btn, 'campUpgradeRetry', btn.dataset.upRetry, () => toast('Checked with Stripe.'))))
     box.querySelectorAll('[data-up-send]').forEach((btn) => btn.addEventListener('click', async () => {
-      if (!(await ui.confirmBox(`Send the updated confirmation to ${b.email}? Replies go to Ligia.`, { ok: 'Send' }))) return
+      if (!(await ui.confirmBox(`Send the updated confirmation to ${esc(b.email)}? Replies go to Ligia.`, { ok: 'Send' }))) return
       run(btn, 'campUpgradeEmail', btn.dataset.upSend, (x) => toast(x.sent || 'Sent.'))
     }))
     box.querySelectorAll('[data-up-preview]').forEach((btn) => btn.addEventListener('click', async () => {

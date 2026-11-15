@@ -1279,7 +1279,8 @@ async function recordPaymentCore(principal, config, body) {
   // pressing Save together. A Stripe payment is guarded by its own id above.
   // Taken only once the payment has passed every check, so a refused try never blocks the right one.
   const lockOnce = async () => {
-    if (stripePay) return true
+    // A Stripe payment: two clicks together both pass the ledger read above, so lock on its id too.
+    if (stripePay) return (await kvCommand(['SET', `jfp:paylock:stripe:${stripePay.intentId || stripePay.id}`, '1', 'NX', 'EX', '20'])) === 'OK'
     const lock = `jfp:paylock:${rows.map((r) => r.id).sort().join(',')}:${amount}:${method}`
     return (await kvCommand(['SET', lock, '1', 'NX', 'EX', '20'])) === 'OK'
   }
@@ -1315,6 +1316,12 @@ async function recordPaymentCore(principal, config, body) {
   if (externalId && (await kvCommand(['SET', `jfp:paylock:${externalId}`, '1', 'NX', 'EX', '20'])) !== 'OK') return fail(res, 409, 'That bank transfer was just recorded. Refresh to check.')
   // Claimed for good before any row changes; given back only if the rows could not be written.
   if (bankLine && (await kvCommand(['SET', bankClaim(externalId), JSON.stringify(bankLine), 'NX'])) !== 'OK') return fail(res, 409, 'That bank transfer is already recorded.')
+  // A Stripe payment is claimed for good too (15 Nov 2026): if the ledger write
+  // fails after the rows change, the ledger read above would let the same
+  // payment be added to Amount Paid a second time. Given back only if the rows
+  // could not be written. "Already marked paid" (existing) still records the method.
+  const stripeClaim = stripePay ? `jfp:stripe-recorded:${stripePay.intentId || stripePay.id}` : ''
+  if (stripeClaim && (await kvCommand(['SET', stripeClaim, JSON.stringify({ rowIds: rows.map((r) => r.id), cents: amount, by: principal.email, at: new Date().toISOString() }), 'NX'])) !== 'OK') return fail(res, 409, 'That Stripe payment has already been added to a player. Refresh to check; if it is missing from the ledger, use "already marked paid" to record how it was paid.')
   // Fill each row up to what it owes, in order; anything over goes on the last row.
   let left = amount
   const updates = rows.map((r, i) => {
@@ -1335,6 +1342,7 @@ async function recordPaymentCore(principal, config, body) {
     await updateTerm4Rows(updates.map((u) => ({ id: u.r.id, fields: u.fields })))
   } catch (error) {
     if (bankLine) await kvCommand(['DEL', bankClaim(externalId)]).catch(() => {})
+    if (stripeClaim) await kvCommand(['DEL', stripeClaim]).catch(() => {})
     throw error
   }
   // The list the matcher reads; the claim above is what guards.
@@ -3695,10 +3703,14 @@ async function handle(req, res) {
     if (action === 'accountManage') {
       if (!isAdmin) return fail(res, 403, 'Only Lee or Ligia can manage accounts.')
       const op = clean(body.op, 40)
-      const profiles = await allProfiles().catch(() => [])
+      // Looking only: a failed read shows less. Anything that changes or deletes an
+      // account must see the real history, so a failed read stops it (15 Nov 2026).
+      const readOnly = ['list', 'view', 'mergePreview'].includes(op)
+      const softly = (p) => (readOnly ? p.catch(() => []) : p)
+      const profiles = await softly(allProfiles())
       const roster = await loadRoster()
       const [payments, waivers, sessions] = await Promise.all([
-        listPayreqs().catch(() => []),
+        softly(listPayreqs()),
         Promise.resolve(roster.waivers || []),
         Promise.resolve((roster.players || []).filter((r) => r.holdsPlace || r.groupId || r.sessionId)),
       ])
@@ -4056,7 +4068,7 @@ async function handle(req, res) {
       } else {
         try {
           const week = dates.indexOf(date) + 1
-          airtable = (await clearAttendance({ attendanceId: `${isJuniorsGroup(g) ? 'JJ' : 'T4'}-W${week}-${g.day.slice(0, 3)}-${g.time}-${row.player}`, markedBy: principal.email })) ? 'cleared' : 'skipped'
+          airtable = (await clearAttendance({ attendanceId: `${isJuniorsGroup(g) ? 'JJ' : 'T4'}-W${week}-${g.day.slice(0, 3)}-${g.time}-${row.player}`, date, markedBy: principal.email })) ? 'cleared' : 'skipped'
         } catch (error) { console.error('jfp attendance clear failed', error); airtable = 'failed' }
       }
       return res.status(200).json({ success: true, airtable })
@@ -4514,7 +4526,7 @@ async function handle(req, res) {
     }
   } catch (error) {
     console.error(`jfp-portal-data ${action} failed`, error)
-    return fail(res, 500, /Airtable/.test(error.message) ? `Airtable did not save that change (${error.message.slice(0, 120)}). Nothing was lost; try again.` : 'Something went wrong. Try again.')
+    return fail(res, 500, /Airtable/.test(error.message) ? 'Airtable did not save that change. Nothing was lost; try again.' : 'Something went wrong. Try again.')
   }
 }
 

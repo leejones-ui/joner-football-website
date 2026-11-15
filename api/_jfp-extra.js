@@ -427,7 +427,7 @@ export async function markBooking({ config, principal, isAdmin, slotId, bookingI
   let airtable = true
   try {
     if (status) await upsertAttendance({ attendanceId: `${s.id}|${b.id}`, playerName: b.name, week: 0, date: s.date, group: { day, time: s.time, location: s.location }, coachName: coachLabel(coachById(config, s.coachId)), status, markedBy: principal.email, programme: 'JFP Extra session' })
-    else await clearAttendance({ attendanceId: `${s.id}|${b.id}`, markedBy: principal.email })
+    else await clearAttendance({ attendanceId: `${s.id}|${b.id}`, date: s.date, markedBy: principal.email })
   } catch (error) { console.error('jfp extra attendance airtable failed', error); airtable = false }
   return { slot: s, booking: b, status, airtable }
 }

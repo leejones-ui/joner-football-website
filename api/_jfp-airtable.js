@@ -732,25 +732,31 @@ export async function findLedgerByPayment(paymentId, { exact = false } = {}) {
 // One Attendance row per player per session, keyed by Attendance ID so a
 // second tick updates rather than duplicates.
 // Joners Juniors (stage 3) passes its own programme and term.
+// The Attendance ID is week, day, time and name, with no term or year in it,
+// so week 1 of a new term has the same id as week 1 of the last one. The row
+// is matched on its session date as well, so each term keeps its own rows
+// (15 Nov 2026). Read here, not in the formula, so the field's type never matters.
+async function findAttendance(attendanceId, date) {
+  const q = new URLSearchParams({ filterByFormula: `{Attendance ID} = "${fq(attendanceId)}"`, pageSize: '20' })
+  const found = (await airtable(`${encodeURIComponent(TABLES.attendance)}?${q}`)).records || []
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) return found[0]?.id
+  return found.find((r) => String(r.fields?.['Session Date'] || '').slice(0, 10) === date)?.id
+}
 export async function upsertAttendance({ attendanceId, playerName, week, date, group, coachName, status, markedBy, programme = 'JFP', term = 'Term 4' }) {
   const fields = {
     'Attendance ID': attendanceId, 'Player Name': playerName, 'Term': term, 'Year': Number(date.slice(0, 4)), 'Week Number': week,
     'Session Date': date, 'Session Day': group.day, 'Session Time': group.time, 'Session Location': group.location,
     'Coach': coachName || '', 'Attendance Status': status, 'Marked By': markedBy, 'Marked At': new Date().toISOString(), 'Programme': programme,
   }
-  const q = new URLSearchParams({ filterByFormula: `{Attendance ID} = "${fq(attendanceId)}"`, pageSize: '1' })
-  const found = await airtable(`${encodeURIComponent(TABLES.attendance)}?${q}`)
-  const id = found.records?.[0]?.id
+  const id = await findAttendance(attendanceId, date)
   if (id) await airtable(encodeURIComponent(TABLES.attendance), { method: 'PATCH', body: { typecast: true, records: [{ id, fields }] } })
   else await airtable(encodeURIComponent(TABLES.attendance), { method: 'POST', body: { typecast: true, records: [{ fields }] } })
 }
 
 // A coach taps a mark off again: the row stays (so history shows it was
 // marked and cleared) but its status is emptied, never left saying Present.
-export async function clearAttendance({ attendanceId, markedBy }) {
-  const q = new URLSearchParams({ filterByFormula: `{Attendance ID} = "${fq(attendanceId)}"`, pageSize: '1' })
-  const found = await airtable(`${encodeURIComponent(TABLES.attendance)}?${q}`)
-  const id = found.records?.[0]?.id
+export async function clearAttendance({ attendanceId, markedBy, date = '' }) {
+  const id = await findAttendance(attendanceId, date)
   if (!id) return false
   await airtable(encodeURIComponent(TABLES.attendance), { method: 'PATCH', body: { typecast: true, records: [{ id, fields: { 'Attendance Status': null, 'Marked By': markedBy, 'Marked At': new Date().toISOString() } }] } })
   return true
