@@ -1509,3 +1509,25 @@ a.sr-only[href="#main-content"]:focus { position: fixed !important; top: 16px; l
 .jt-done .jt-txt b { font-weight: 600; font-size: 14px; }
 .jt-clear { display: flex; flex-direction: column; gap: 4px; background: var(--j-surface); border: 1px solid var(--j-line); border-radius: 16px; padding: 22px 18px; margin-bottom: 18px; }
 @media (max-width: 520px) { .jt-go { font-size: 0; } }
+
+/* ---- Button alignment (Lee, 16 Nov 2026) ----
+   A table's action cell is width:1%, so a row of buttons that is allowed to wrap
+   shrinks to its narrowest button and stacks at uneven widths. Two fixes:
+   .ps-acts = a block of equal-width buttons, two across, edges lined up;
+   existing action rows in a table stay on one line on a laptop. */
+.ps-acts { display: inline-grid; grid-template-columns: repeat(2, 1fr); gap: 6px; vertical-align: top; text-align: center; }
+.ps-acts > .j-btn { width: 100%; margin: 0; white-space: nowrap; }
+.ps-acts > .ps-acts-wide { grid-column: 1 / -1; }
+@media (max-width: 760px) { .ps-acts { display: grid; margin-top: 8px; } }
+@media (min-width: 761px) { .ps-table td.ps-end :is(.jj-row-acts, .cs-check, .jm-actions) { flex-wrap: nowrap; } }
+/* Phone: a row that holds only buttons shares the full width, so when it wraps
+   every button is the same width instead of each one hugging its words. */
+@media (max-width: 560px) {
+  .jp-theme div[style*="flex-wrap:wrap"]:not(:has(> :not(.j-btn))) > .j-btn { flex: 1 1 auto; }
+}
+/* Top bar: every control the same height. */
+.jp-top .jp-top-right > .jp-toplink, .jp-top .jp-top-right > button, .jp-top .jp-findbtn { min-height: 44px; }
+@media (max-width: 640px) { .jp-top .jp-findbtn { width: 44px; height: 44px; } }
+.jp-top .jp-top-right > .jp-toplink { display: inline-flex; align-items: center; }
+.jp-top .jp-top-right > .jp-toplink[hidden] { display: none; }
+@media (max-width: 640px) { .jp-top .jp-top-right > a.jp-toplink { display: none; } }
