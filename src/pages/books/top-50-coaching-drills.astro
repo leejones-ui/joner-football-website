@@ -95,7 +95,7 @@ const pad = (n: number) => String(n).padStart(2, '0')
         <div class="note__letter rv">
           <p class="label label--mono" id="note-title">A note from Lee</p>
           <p class="note__open">I have been working on this book for a long time.</p>
-          <p>20 years of coaching have gone into it. Young players, professionals and camps around the world.</p>
+          <p>I've been coaching for 20 years. Young players, professionals and camps around the world.</p>
           <p>I went through every drill I use and picked my top 50. These are the drills I love and use the most. They are proven, and they all put technique above everything.</p>
           <p>Every drill gets one page. The setup from above, the drill in play and the progression. My coaching points, the common mistakes, and how to make it easier or harder.</p>
           <p>Then you scan the QR code and watch the real session.</p>
@@ -236,7 +236,10 @@ const pad = (n: number) => String(n).padStart(2, '0')
     <!-- 8. Buy -->
     <section class="buy" id="buy" aria-labelledby="buy-title">
       <div class="shell buy__grid">
-        <img class="buy__cover rv" src={book.cover} alt="Top 50 Coaching Drills by Lee Jones" width="1100" height="1557" loading="lazy" decoding="async" />
+        <div class="buy__covers rv">
+          <img class="buy__back" src="/images/books/top-50-coaching-drills/back-cover.webp" alt="Back cover of Top 50 Coaching Drills" width="1000" height="1402" loading="lazy" decoding="async" />
+          <img class="buy__cover" src={book.cover} alt="Top 50 Coaching Drills by Lee Jones" width="1100" height="1557" loading="lazy" decoding="async" />
+        </div>
         <div class="rv">
           <h2 id="buy-title">Never turn up to training without a plan again.</h2>
 
@@ -545,8 +548,10 @@ const pad = (n: number) => String(n).padStart(2, '0')
 
   /* 8. Buy */
   .buy { padding: clamp(56px, 8vw, 120px) 0 clamp(72px, 9vw, 130px); background: var(--ink); }
-  .buy__grid { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: clamp(28px, 6vw, 90px); align-items: center; }
-  .buy__cover { display: block; width: 100%; height: auto; box-shadow: 0 30px 70px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08); }
+  .buy__grid { display: grid; grid-template-columns: minmax(0, 400px) minmax(0, 1fr); gap: clamp(28px, 6vw, 90px); align-items: center; }
+  .buy__covers { position: relative; padding: 4% 0 4% 16%; }
+  .buy__cover { position: relative; display: block; width: 100%; height: auto; transform: rotate(2deg); box-shadow: 0 30px 70px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08); }
+  .buy__back { position: absolute; left: 0; top: 4%; width: 84%; height: auto; transform: rotate(-6deg); transform-origin: 50% 60%; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.14); }
   .buy h2 { font-size: clamp(38px, 5.4vw, 76px); }
   .formats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: clamp(26px, 3.4vw, 44px); }
   .format { display: grid; align-content: start; gap: 6px; padding: 24px 22px; border: 1px solid rgba(255, 255, 255, 0.2); background: #131313; }
@@ -597,7 +602,7 @@ const pad = (n: number) => String(n).padStart(2, '0')
     .rules__list li { grid-template-columns: 50px minmax(0, 1fr); }
     .rules__n { font-size: 32px; }
     .about__photo { order: -1; }
-    .buy__cover { width: min(64%, 260px); margin: 0 auto; }
+    .buy__covers { width: min(78%, 300px); margin: 0 auto; }
     .formats { grid-template-columns: minmax(0, 1fr); }
 
     .viewer { grid-template-columns: minmax(0, 1fr); gap: 18px; }
