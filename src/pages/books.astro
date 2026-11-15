@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
+import { top50Book } from '../data/top50-book'
 
 const books = [
   {
@@ -30,7 +31,10 @@ const schema = {
   url: 'https://jonerfootball.com/books/',
   mainEntity: {
     '@type': 'ItemList',
-    itemListElement: books.map((book, index) => ({
+    itemListElement: [
+      { title: top50Book.title, detail: top50Book.page },
+      ...books,
+    ].map((book, index) => ({
       '@type': 'ListItem',
       position: index + 1,
       url: `https://jonerfootball.com${book.detail}`,
@@ -51,6 +55,20 @@ const schema = {
     <section class="books-collection" id="choose-your-book" aria-labelledby="books-title">
       <div class="books-shell">
         <h1 id="books-title" class="sr-only">Joner Football books by Lee Jones</h1>
+
+        <a class="book-feature" href={top50Book.page}>
+          <span class="book-feature__cover">
+            <span class="live-badge">New · Pre-order</span>
+            <img src={top50Book.cover} alt="Cover of Top 50 Coaching Drills by Lee Jones" width="800" height="1132" loading="eager" decoding="async" />
+          </span>
+          <span class="book-feature__body">
+            <span class="book-feature__kicker">For coaches and players</span>
+            <span class="book-feature__title">Top 50 Coaching Drills</span>
+            <span class="book-feature__text">The drills that build technical players. Every drill has a diagram, coaching points and a QR code to the video.</span>
+            <span class="book-feature__meta">Pre-order now, out {top50Book.releaseLabel}</span>
+            <span class="book-feature__cta">See the book <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7" /></svg></span>
+          </span>
+        </a>
 
         <div class="books-grid">
           {books.map((book) => (
@@ -180,6 +198,19 @@ const schema = {
   .books-heading > p { margin-bottom: 7px; }
   .books-heading h2 { margin: 0; font-size: clamp(36px, 5vw, 62px); line-height: 1; }
 
+  .book-feature { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); max-width: 840px; margin: 0 auto 28px; border: 1px solid rgba(255, 255, 255, 0.16); border-top: 4px solid var(--red); background: #111; color: #fff; text-decoration: none; }
+  .book-feature__cover { position: relative; display: grid; place-items: center; padding: 30px; background: #1b1b1b; }
+  .book-feature__cover img { width: min(100%, 220px); height: auto; box-shadow: 0 20px 34px rgba(0, 0, 0, 0.5); transition: transform 180ms ease; }
+  .book-feature:hover .book-feature__cover img { transform: translateY(-5px); }
+  .book-feature__body { display: grid; align-content: center; gap: 12px; padding: 28px 30px; }
+  .book-feature__kicker { color: var(--red); font-size: 12px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; }
+  .book-feature__title { font-family: 'Anton', Impact, sans-serif; font-size: clamp(32px, 4vw, 46px); line-height: 1; text-transform: uppercase; letter-spacing: 0.02em; }
+  .book-feature__text { color: var(--soft); font-size: 15px; line-height: 1.55; }
+  .book-feature__meta { font-size: 14px; font-weight: 700; }
+  .book-feature__cta { display: inline-flex; align-items: center; justify-self: start; gap: 8px; min-height: 48px; padding: 0 20px; margin-top: 4px; background: var(--red); font-weight: 800; font-size: 15px; }
+  .book-feature__cta svg { width: 18px; fill: none; stroke: currentColor; stroke-width: 2; }
+  .book-feature:hover .book-feature__cta, .book-feature:focus-visible .book-feature__cta { background: #fff; color: var(--black); }
+
   .books-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: start; max-width: 840px; margin: 0 auto; }
   .book-card { overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.16); background: #111; }
   .book-card__cover-link { position: relative; display: grid; place-items: center; min-height: 470px; padding: 34px; background: #f2f2f2; }
@@ -247,10 +278,15 @@ const schema = {
     .book-card__cover-link { min-height: 420px; padding: 30px; }
     .book-card__cover { width: min(100%, 230px); }
     .book-card__subtitle { min-height: 0; }
+    .book-feature { grid-template-columns: minmax(0, 1fr); }
+    .book-feature__cover { padding: 30px 30px 10px; }
+    .book-feature__body { padding: 20px 22px 26px; }
+    .book-feature__cta { justify-self: stretch; justify-content: center; }
   }
 
   @media (prefers-reduced-motion: reduce) {
     .book-card__cover,
+    .book-feature__cover img,
     .books-jump { transition: none; }
   }
 </style>
