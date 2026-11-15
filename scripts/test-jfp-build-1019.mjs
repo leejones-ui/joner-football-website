@@ -331,8 +331,8 @@ await test('the public booking page lists public extra sessions in the next 3 we
   assert.ok(!/coachId|price|A\$|private|token/i.test(JSON.stringify(g.data.extras)), JSON.stringify(g.data.extras[0]))
   assert.ok(g.data.extras.every((x) => x.kind && x.coach), 'kind of session and coach')
   const pid = (await ok(sam, 'extraList')).prices[0].id
-  const soon = await ok(sam, 'extraSave', { slot: { date: day(12), time: '4:00pm', capacity: 2, location: 'Belrose HQ', priceId: pid, visibility: 'public' } })
-  const later = await ok(sam, 'extraSave', { slot: { date: day(25), time: '4:00pm', capacity: 2, location: 'Belrose HQ', priceId: pid, visibility: 'public' } })
+  const soon = await ok(sam, 'extraSave', { slot: { date: day(12), time: '4:00pm', capacity: 1, location: 'Belrose HQ', priceId: pid, visibility: 'public' } })
+  const later = await ok(sam, 'extraSave', { slot: { date: day(25), time: '4:00pm', capacity: 1, location: 'Belrose HQ', priceId: pid, visibility: 'public' } })
   const g2 = await c.call('/api/jfp-groups')
   assert.ok(g2.data.extras.some((x) => x.id === soon.slot.id), '12 days away shows (Lee, 27 Oct)')
   assert.ok(!g2.data.extras.some((x) => x.id === later.slot.id), 'more than 3 weeks away is not shown yet')
@@ -399,7 +399,7 @@ await test('extra session kinds: private never public, one-off public, weekly sl
   // Anything not clearly public is private.
   const odd = (await ok(sam, 'extraSave', { slot: { ...base, time: '3:15pm', date: day(2), kind: 'banana', visibility: 'banana' } })).slot
   assert.equal(odd.visibility, 'private')
-  const wk = await ok(sam, 'extraSaveMany', { slot: { ...base, time: '6:00pm', kind: 'weekly', capacity: 2 }, dates: [day(1)], times: ['6:00pm'] })
+  const wk = await ok(sam, 'extraSaveMany', { slot: { ...base, time: '6:00pm', kind: 'weekly', capacity: 1 }, dates: [day(1)], times: ['6:00pm'] })
   assert.ok(wk.slots.length >= 1 && wk.slots.length <= 10, String(wk.slots.length))
   assert.ok(wk.slots.every((x) => x.kind === 'weekly' && x.visibility === 'public' && x.seriesId === wk.slots[0].seriesId))
   for (let i = 1; i < wk.slots.length; i += 1) assert.equal((Date.parse(wk.slots[i].date) - Date.parse(wk.slots[i - 1].date)) / 86400000, 7)

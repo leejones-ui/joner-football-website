@@ -1027,6 +1027,19 @@ export async function notifyNewCharge({ charge: c, payreq: q, siteUrl: base = ''
   return { emailed: true, auto }
 }
 
+// An extra session charge the family's saved card pays after the session (the
+// same test as notifyNewCharge). Read only. Used by the unpaid extra session
+// reminders (api/_jfp-extra-unpaid.js, 16 Nov 2026): such a family is not chased.
+export async function chargeAutoPays(c) {
+  if (!c || c.kind !== 'extra' || !c.rowId || !c.sessionDate) return false
+  const on = switches(await getConfig())
+  if (!on.cards || !on.autoCharge) return false
+  const q = c.payreqId ? await getPayreq(c.payreqId) : null
+  const { m } = await methodForPayreq(q || { chargeRowIds: [c.rowId], email: c.email }, c)
+  const sw = (await onRows()).get(c.rowId)
+  return Boolean(m) && Boolean(sw) && c.sessionDate >= sydneyToday(Date.parse(m.consent?.at || m.savedAt) || 0) && c.sessionDate >= sydneyToday(Date.parse(sw.at) || 0)
+}
+
 // ---------- staff ----------
 
 // Players list and Edit player: "Card on file" / "Direct debit on file" / none,

@@ -25,13 +25,14 @@
 //
 // Private: a coach only ever sees their own invoices, lines and amounts.
 // Hermes never sees any of it.
-import { isSessionType, kvCommand, clean, newId, audit, dateLabel, coachById, coachLabel, formatAud, listGroups, locationFor, sydneyToday } from './_jfp-store.js'
+import { isSessionType, kvCommand, clean, newId, audit, dateLabel, coachById, coachLabel, formatAud, listGroups, locationFor, sydneyToday, to24h } from './_jfp-store.js'
 import { allHours, HOUR_KINDS, shortNames } from './_jfp-hours.js'
 import { loadRoster } from './_jfp-airtable.js'
 import { getCard, allCards, checkCard, saveCard, getDetails, saveDetails, registerFor, pricePayable, isPathwayGroup, dueMonday, BAND_LABELS } from './_jfp-coach-pay.js'
 const fmtMoney = (c) => `A$${(c / 100).toFixed(2)}`
 import { coachInvoicePdf } from './_jfp-coach-invoice-pdf.js'
 import { sendCoachInvoiceToStaff } from './_jfp-email.js'
+import { allSlots, liveBookings, leadPayreq, lateCancelUnfilled } from './_jfp-extra.js'
 
 const KEY = 'jfp:coach-invoices'
 const HOURS = 'jfp:hours'
@@ -166,7 +167,65 @@ async function linesFor(config, coachId, from, to, { listCovers }) {
     if (unpaid.length) price.flags = [...price.flags, { code: 'unpaid', text: `Fees not paid: ${unpaid.map((u) => u.name.split(' ')[0]).join(', ')}. Chase the family` }]
     out.push({ ...base, unpaid, description: describe(base, g, price.payable || picked || register?.counted || []), playerNames: (price.payable || picked || register?.counted || []).map((p) => p.name), notCounted: price.skipped, players: price.players, calcCents: price.cents, cents: price.cents, basis: price.basis, flags: [...flagsFor(base, coachId, { covers, hours, name }), ...price.flags] })
   }
-  return out
+  out.push(...(await extraLinesFor(config, coachId, from, to, card)))
+  return out.sort((a, b) => a.date.localeCompare(b.date) || String(a.start).localeCompare(String(b.start)))
+}
+
+// Extra sessions on the invoice (Lee, 16 Nov 2026: Dean invoiced a Sunday 1 on
+// 1 the family never paid for). Each extra session the coach ran comes on by
+// itself, like a timetabled session: priced from their rate card on the PAID
+// players only (+ the weekend rate on Saturday and Sunday). A player not paid
+// for is left off the price and named. Sessions from this date on: older ones
+// were typed in by hand and are already paid.
+export const EXTRA_LINES_FROM = '2026-11-16'
+const extraClaim = (id) => `jfp:hours-invoiced:extra:${id}`
+const addMin = (hhmm, m) => { const [h, mm] = String(hhmm || '').split(':').map(Number); if (!Number.isFinite(h)) return ''; const t = h * 60 + mm + m; return `${String(Math.floor(t / 60) % 24).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}` }
+const isWeekendIso = (iso) => [0, 6].includes(new Date(`${iso}T00:00:00Z`).getUTCDay())
+// Pure: one extra session's line. paid: Set of paid payreq ids. card: the coach's rate card.
+export function extraLine(s, { paid, card, location = s.location }) {
+  const live = liveBookings(s)
+  const isPaid = (b) => paid.has(leadPayreq(s, b))
+  const payable = live.filter(isPaid), skipped = live.filter((b) => !isPaid(b))
+  const minutes = Number(s.durationMin) || 60
+  const start = to24h(s.time) || ''
+  const base = { players: null, hoursId: `extra:${s.id}`, extraId: s.id, date: s.date, dateLabel: dateLabel(s.date), start, end: start ? addMin(start, minutes) : '', minutes, kind: 'extra', kindLabel: 'Extra session', groupId: '', note: '', what: `Extra session ${s.time}, ${location}`, location, status: 'approved' }
+  const flags = skipped.length ? [{ code: 'not-counted', text: `Not paid for: ${skipped.map((b) => `${String(b.name).split(' ')[0]} (extra session not paid yet)`).join(', ')}` }] : []
+  const names = payable.map((b) => b.name)
+  const out = (cents, basis, more = []) => ({ ...base, unpaid: [], description: `${names.length ? `${names.length}on1` : 'Extra session'}${names.length ? `: ${names.join(', ')}` : ''}`, playerNames: names, notCounted: skipped.map((b) => ({ rowId: b.rowId || '', name: b.name, why: 'extra session not paid yet' })), calcCents: cents, cents, basis, flags: [...flags, ...more] })
+  if (!card) return out(null, 'No rate card yet: Lee sets the amount', [{ code: 'no-card', text: 'No rate card yet: Lee sets the amount' }])
+  const weekend = isWeekendIso(s.date) && card.weekendExtra ? card.weekendExtra : 0
+  const hourly = (rate) => Math.round((rate * minutes) / 60)
+  if (!live.length) {
+    const half = lateCancelUnfilled(s).length
+    if (!half) return out(0, 'Nobody on this session')
+    const r = card.bands[0] + weekend
+    return out(Math.round(hourly(r) / 2), `Late cancel, nobody took the place: half of ${fmtMoney(r)} an hour`, [{ code: 'half-pay', text: 'Late cancel: half pay' }])
+  }
+  if (!payable.length) return out(0, 'Not paid yet: an extra session is only paid once the family has paid')
+  const n = Math.min(payable.length, 7)
+  const band = card.bands[n - 1]
+  return out(hourly(band + weekend), `Extra session, ${BAND_LABELS[n - 1]}, ${fmtMoney(band)} an hour${weekend ? ` + ${fmtMoney(weekend)} weekend` : ''}`)
+}
+async function extraLinesFor(config, coachId, from, to, card, today = sydneyToday()) {
+  const lo = from > EXTRA_LINES_FROM ? from : EXTRA_LINES_FROM
+  const hi = to < today ? to : today
+  if (lo > hi) return []
+  const slots = (await allSlots()).filter((s) => s.coachId === coachId && s.status === 'open' && s.date >= lo && s.date <= hi && (liveBookings(s).length || lateCancelUnfilled(s).length))
+  if (!slots.length) return []
+  const taken = (await kvCommand(['MGET', ...slots.map((s) => extraClaim(s.id))])) || []
+  const todo = slots.filter((_, i) => !taken[i])
+  const ids = [...new Set(todo.flatMap((s) => liveBookings(s).map((b) => leadPayreq(s, b))).filter(Boolean))]
+  const raw = ids.length ? (await kvCommand(['MGET', ...ids.map((id) => `jfp:payreq:${id}`)])) || [] : []
+  const paid = new Set(ids.filter((id, i) => parse(raw[i] || 'null')?.status === 'paid'))
+  return todo.map((s) => extraLine(s, { paid, card, location: locationFor(config, s.location).name || s.location }))
+}
+// A line a coach typed by hand on a day they ran an extra session: Lee checks
+// it is not the same session twice (it comes on by itself now).
+export function typedExtraFlag(line, slots) {
+  if (line.kind !== 'other' || line.date < EXTRA_LINES_FROM) return line
+  const same = slots.filter((s) => s.date === line.date && liveBookings(s).length)
+  if (!same.length) return line
+  return { ...line, flags: [...(line.flags || []), { code: 'extra-typed', text: `Typed by hand on a day with an extra session (${same.map((s) => s.time).join(', ')}). Extra sessions come on by themselves, paid players only: check this is not the same session twice` }] }
 }
 
 function biz(config) {
@@ -275,10 +334,11 @@ export async function invoiceAction(res, principal, config, body, action, { isAd
       if (x.error) return refuse(400, x.error)
       lines.push(x)
     }
+    const mySlots = (Array.isArray(body.added) && body.added.length) ? (await allSlots()).filter((s) => s.coachId === coachId && s.status === 'open' && s.date >= from && s.date <= to) : []
     for (const a of (Array.isArray(body.added) ? body.added : []).slice(0, 30)) {
       const x = newLine(a || {}, { by: principal.email, role: 'coach', from, to })
       if (x.error) return refuse(400, x.error)
-      lines.push(x)
+      lines.push(typedExtraFlag(x, mySlots))
     }
     if (!lines.length) return refuse(400, 'No hours to invoice in those dates. Log them in My hours first.')
     // Claim each hours entry for this invoice, so it can never be on two.

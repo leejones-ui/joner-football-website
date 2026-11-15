@@ -43,6 +43,8 @@ export async function renderExtra(ui) {
   const admin = d.admin
   const hours = d.weekMinutes != null ? `${Math.round((d.weekMinutes / 60) * 10) / 10} h booked this week` : ''
   const pill = (b) => (b.paid ? '<span class="j-pill j-pill-green">Paid</span>' : b.payStatus === 'cancelled' ? '<span class="j-pill j-pill-grey">Charge cancelled</span>' : b.payreqId ? '<span class="j-pill j-pill-amber">Not paid yet</span>' : '<span class="j-pill j-pill-red">No payment yet</span>')
+  // Extra sessions are paid before they run (Lee, 16 Nov 2026). Group friends are paid on the first booking.
+  const unpaidNote = (s) => { const owing = s.bookings.filter((b) => !b.paid && !b.inGroupOf && b.payStatus !== 'cancelled'); return owing.length && !s.past ? `<p class="j-box j-box-amber small" style="margin-top:10px"><b>Not paid yet: ${esc(owing.map((b) => b.name).join(', '))}.</b> It must be paid before the session starts. We remind the family. Only paid players go on your invoice.</p>` : '' }
   const card = (s) => `<div class="j-card" style="padding:14px 16px;margin-bottom:12px" data-xs="${esc(s.id)}">
     <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start">
       <div><b>${esc(s.dateLabel.replace(/\s\d{4}$/, ''))}, ${esc(s.time)}</b> <span class="muted small">${esc(s.durationMin)} min</span><br>
@@ -57,6 +59,7 @@ export async function renderExtra(ui) {
         <button type="button" class="j-btn j-btn-ghost j-btn-sm" data-x-cancel="${esc(s.id)}">Cancel</button>
       </div>
     </div>
+    ${unpaidNote(s)}
     ${s.bookings.length ? `<ul class="jm-hist" style="margin-top:10px">${s.bookings.map((b) => `<li><span><b>${esc(b.name)}</b><small>${b.guest ? `friend of ${esc(b.inGroupOf || 'the family')} · no JFP waiver, check on the day` : `${esc(b.email || 'no email')}${b.from === 'family' ? ' · booked themselves' : ''}`}</small></span><span style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
       ${b.inGroupOf ? '' : pill(b)}
       ${s.date <= todayIso() ? ['Present', 'Absent'].map((st) => `<button type="button" class="j-btn j-btn-sm ${s.marks?.[b.id] === st ? 'j-btn-dark' : 'j-btn-line'}" data-x-mark="${esc(s.id)}|${esc(b.id)}|${st}">${st}</button>`).join('') : ''}
@@ -67,7 +70,7 @@ export async function renderExtra(ui) {
       <div style="display:flex;gap:8px;flex-wrap:wrap">${admin ? `<select class="j-select" id="xs-coach" style="width:auto"><option value="">Every coach</option>${d.coaches.map((c) => `<option value="${esc(c.id)}" ${S.coachId === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>` : ''}<button type="button" class="j-btn j-btn-dark" id="xs-new">+ New extra session</button></div></div>
     ${admin ? '' : '<div id="xs-asks"></div>'}
     ${admin ? pricesCard(d) : ''}
-    ${admin ? '<div id="xs-announce"></div>' : ''}
+    ${admin ? '<div id="xs-unpaid"></div><div id="xs-announce"></div>' : ''}
     ${d.prices.length ? '' : `<p class="j-box j-box-amber small" style="margin-bottom:12px">${admin ? 'Add a price below first: coaches pick from your prices.' : 'Lee and Ligia have not set extra session prices yet. Ask them, then you can open sessions.'}</p>`}
     ${d.slots.length ? d.slots.map(card).join('') : '<p class="muted">No extra sessions coming up.</p>'}`
 
@@ -93,7 +96,7 @@ export async function renderExtra(ui) {
     const cur = slotOf(slotId).marks?.[bookingId]
     const r = await post('extraMark', { slotId, bookingId, status: cur === st ? '' : st }); if (!r.ok) return toast(r.data.error); again()
   }))
-  if (admin) { bindPrices(ui, again); announceCard(ui) } else asksCard(ui)
+  if (admin) { bindPrices(ui, again); unpaidCard(ui); announceCard(ui) } else asksCard(ui)
 }
 
 // Families asking for an extra session (Lee, 19 Oct 2026): every coach sees
@@ -151,6 +154,28 @@ async function announceCard(ui, change) {
   el.querySelector('#xa-switch').addEventListener('click', async () => {
     if (!a.on && !(await confirmBox(`Switch on? From now on each new public extra session emails ${a.families ?? 'every'} JFP families.`, { ok: 'Switch on' }))) return
     announceCard(ui, { on: !a.on })
+  })
+}
+// Reminders to families who have not paid for an extra session (Lee, 16 Nov
+// 2026). Coaches and Lee are told already; the family email and text wait for
+// Lee's yes on the words.
+async function unpaidCard(ui, change) {
+  const { view, post, toast, confirmBox } = ui
+  const el = view().querySelector('#xs-unpaid')
+  if (!el) return
+  const r = await post('extraUnpaid', change || {})
+  if (!r.ok) { el.innerHTML = ''; return toast(r.data.error) }
+  const a = r.data
+  el.innerHTML = `<div class="j-card" style="padding:14px 16px;margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center"><div style="min-width:0;flex:1 1 260px"><h3 style="margin-bottom:4px">Remind families who have not paid</h3>
+      <p class="muted small">${a.on ? 'On.' : 'Off.'} 48 and 24 hours before an extra session, a family that has not paid gets an email and a text with the pay link. The coach is told too, and you hear on Telegram if it starts unpaid${a.on ? '' : ' (those two are on now)'}.</p></div>
+      <button type="button" class="j-btn ${a.on ? 'j-btn-line' : 'j-btn-dark'} j-btn-sm" id="xu-switch">${a.on ? 'Switch off' : 'Switch on'}</button></div>
+    <p class="small" style="margin-top:8px;white-space:pre-wrap;overflow-wrap:anywhere"><b>The text:</b> ${esc(a.sample)}</p>
+    ${a.held.length && !a.on ? `<p class="small" style="margin-top:8px">While it is off, ${a.held.length} reminder${a.held.length === 1 ? ' was' : 's were'} not sent: ${a.held.slice(0, 5).map((h) => `${esc(h.player)} (${esc(h.when)})`).join(', ')}.</p>` : ''}
+  </div>`
+  el.querySelector('#xu-switch').addEventListener('click', async () => {
+    if (!a.on && !(await confirmBox('Switch on? Families who have not paid for an extra session get this email and text 48 and 24 hours before.', { ok: 'Switch on' }))) return
+    unpaidCard(ui, { on: !a.on })
   })
 }
 const todayIso = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney' }).format(new Date())
@@ -248,13 +273,23 @@ function slotForm(ui, d, s, done) {
     box.querySelector('#xf-whole').hidden = as !== 'whole'
     box.querySelector('#xf-price-wrap').hidden = as === 'whole'
     box.querySelector('#xf-cap-wrap').hidden = as === 'whole'
+    capRule()
+  }
+  // A public group is booked whole by one family (Lee, 16 Nov 2026): a public
+  // session in places is 1 place. Sessions with players already on keep theirs.
+  const capRule = () => {
+    const cap = box.querySelector('#xf-cap')
+    const lock = as === 'places' && vis !== 'private' && !(s?.bookings?.length)
+    if (lock) cap.value = '1'
+    cap.disabled = lock
+    box.querySelector('#xf-as-help').textContent = lock ? 'A public session in places is 1 on 1, 1 place. For a group, choose "One family books the whole session": one family books all their players at once and pays for the whole session.' : AS_HELP[as]
   }
   box.querySelector('#xf-as').addEventListener('click', (e) => { const b = e.target.closest('[data-as]'); if (b) { as = b.dataset.as; showAs() } })
-  showAs()
   let vis = kind0
+  showAs()
   const whoBox = box.querySelector('#xf-who')
   const showWho = () => { if (whoBox) whoBox.hidden = vis !== 'private'; count() }
-  box.querySelector('#xf-vis').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (!b) return; vis = b.dataset.v; box.querySelectorAll('#xf-vis [data-v]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); box.querySelector('#xf-kind-help').textContent = KIND_HELP[vis]; showWho() })
+  box.querySelector('#xf-vis').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (!b) return; vis = b.dataset.v; box.querySelectorAll('#xf-vis [data-v]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); box.querySelector('#xf-kind-help').textContent = KIND_HELP[vis]; showWho(); capRule() })
   if (whoBox) {
     let t
     const pickHtml = () => (who ? `<div class="xf-picked"><span><b>${esc(who.name)}</b><br><span class="muted small">${esc(who.group)}${who.hasEmail ? '' : ' · no email on file, add it below'}</span></span><button type="button" class="j-btn j-btn-line j-btn-sm" id="xf-unpick">Change</button></div>` : '')

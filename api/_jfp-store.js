@@ -339,6 +339,8 @@ export function normaliseConfig(input = {}) {
     extraPrices: cleanExtraPrices(input.extraPrices),
     // Email JFP families on a new public extra session: off until Lee says yes (19 Oct 2026).
     extraAnnounce: input.extraAnnounce === true,
+    // Email and text a family who has not paid for an extra session, 48 and 24 hours before: off until Lee says yes to the words (16 Nov 2026).
+    extraUnpaidFamily: input.extraUnpaidFamily === true,
     // Families see their own coach's profile in My account: off until Lee turns it on (20 Oct 2026).
     coachProfilesFamilies: input.coachProfilesFamilies === true,
     // Player report reminders to coaches, Lee and Ligia in week 9: off until Lee says yes to the words (20 Oct 2026).

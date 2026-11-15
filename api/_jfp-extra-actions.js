@@ -14,7 +14,7 @@ import {
   allSlots, getSlot, saveSlot, weeklyDates, KIND_LABEL, kindOf, cancelSlot, reserveExtraPlace, setBookingCharge, liveBookings, removeBooking, markBooking, marksFor, staffView, extraMinutes, cleanExtraPrices, newExtraPrice,
 } from './_jfp-extra.js'
 
-export const EXTRA_ACTIONS = new Set(['extraList', 'extraSave', 'extraSaveMany', 'extraCancel', 'extraAttach', 'extraRemove', 'extraMark', 'extraSearch', 'extraPrices', 'extraAnnounce', 'extraAsks', 'extraAskReply'])
+export const EXTRA_ACTIONS = new Set(['extraList', 'extraSave', 'extraSaveMany', 'extraCancel', 'extraAttach', 'extraRemove', 'extraMark', 'extraSearch', 'extraPrices', 'extraAnnounce', 'extraAsks', 'extraAskReply', 'extraUnpaid'])
 const ok = (res, body) => res.status(200).json({ success: true, ...body })
 
 // Prices stay with Lee and Ligia (Lee, 19 Oct 2026): a coach sees the kind of
@@ -247,6 +247,19 @@ export async function extraAction(req, res, principal, config, body, action, isA
   if (action === 'extraAnnounce') {
     if (!isAdmin) return no(res, 403, 'Only Lee or Ligia can change this.')
     return ok(res, await announceSettings({ config, principal, body }))
+  }
+
+  // Reminders to families who have not paid for an extra session (Lee, 16 Nov
+  // 2026): the words, the held ones, and the switch. Off until Lee's yes.
+  if (action === 'extraUnpaid') {
+    if (!isAdmin) return no(res, 403, 'Only Lee or Ligia can change this.')
+    const { unpaidSettings } = await import('./_jfp-extra-unpaid.js')
+    if (typeof body.on === 'boolean') {
+      await saveConfig({ extraUnpaidFamily: body.on })
+      await audit({ by: principal.email, action: 'extra.unpaid.switch', target: 'config', after: { on: body.on } })
+      config = { ...config, extraUnpaidFamily: body.on }
+    }
+    return ok(res, await unpaidSettings({ config }))
   }
 
   // The prices coaches pick from: Lee and Ligia only.

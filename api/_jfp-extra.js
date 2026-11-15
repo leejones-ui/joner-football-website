@@ -88,6 +88,13 @@ export async function paidPayreqs(slots) {
   const raw = (await kvCommand(['MGET', ...ids.map((id) => `jfp:payreq:${id}`)])) || []
   return new Set(ids.filter((id, i) => { try { return JSON.parse(raw[i] || 'null')?.status === 'paid' } catch { return false } }))
 }
+// Every booking's payment (coach and staff bookings too), paid or not.
+export async function paidLeads(slots) {
+  const ids = [...new Set(slots.flatMap((s) => liveBookings(s).map((b) => leadPayreq(s, b))).filter(Boolean))]
+  if (!ids.length) return new Set()
+  const raw = (await kvCommand(['MGET', ...ids.map((id) => `jfp:payreq:${id}`)])) || []
+  return new Set(ids.filter((id, i) => { try { return JSON.parse(raw[i] || 'null')?.status === 'paid' } catch { return false } }))
+}
 const OPTION_LABEL = { one: '1 on 1', group: 'Group' }
 // "1 on 1", "Group of 3 to 4", "Group of up to 4", "Group of 4".
 export function optionLabel(o) {
@@ -192,7 +199,8 @@ export async function listExtraSlots({ config, publicOnly = true, coachId = '' }
   const now = Date.now()
   const open = (await allSlots()).filter((s) => s.status === 'open' && startMs(s) > now && (!coachId || s.coachId === coachId))
   const paid = await paidPayreqs(open)
-  return open.filter((s) => !publicOnly || (s.visibility === 'public' && placesLeft(s, paid) > 0)).map((s) => familyView(config, s, paid))
+  // A public per-place group can no longer be booked by a family (Lee, 16 Nov 2026), so it is not listed.
+  return open.filter((s) => !publicOnly || (s.visibility === 'public' && placesLeft(s, paid) > 0 && (isWhole(s) || s.capacity <= 1))).map((s) => familyView(config, s, paid))
 }
 export async function getExtraSlot({ config, id, token = '' }) {
   const s = await getSlot(id)
@@ -244,6 +252,12 @@ export async function saveSlot({ config, principal, isAdmin, input }) {
   if (before && options && liveBookings(before).length && JSON.stringify(options.map((x) => [x.type, x.priceCents, x.pairCents || 0])) !== JSON.stringify(before.options.map((x) => [x.type, x.priceCents, x.pairCents || 0]))) return { error: 'A family has already booked this session, so its options and prices cannot change. Make a new session instead.' }
   const capacity = options ? Math.max(...options.map((x) => x.maxPlayers)) : Number(input.capacity)
   if (!Number.isInteger(capacity) || capacity < 1 || capacity > 20) return { error: 'Places: 1 to 20.' }
+  // A public group is booked whole by one family (Lee, 16 Nov 2026: Rayan paid
+  // A$80 for a place on Dean's Sunday group, nobody else booked, and Dean coached
+  // a 1 on 1 at weekend rates; a 9 year old and a 16 year old can also land in
+  // one group). Sessions with players already on them keep how they were made.
+  const kindIn = ['oneoff', 'private', 'weekly'].includes(input.kind) ? input.kind : before ? kindOf(before) : input.visibility === 'public' ? 'oneoff' : 'private'
+  if (!options && capacity > 1 && kindIn !== 'private' && !(before && liveBookings(before).length)) return { error: 'A public group is booked by one family for the whole session, with all their players at once. Choose "One family books the whole session" and set the group size, or make it 1 place.' }
   if (before && !options && liveBookings(before).length > capacity) return { error: `${liveBookings(before).length} players are already booked. Remove one first, or keep more places.` }
   const location = clean(input.location, 80)
   if (!location) return { error: 'Where is it?' }
@@ -304,6 +318,8 @@ export async function reserveExtraPlace({ slotId, rowId = '', profileKey = '', n
     const same = liveBookings(s).find((b) => (rowId && b.rowId === rowId) || (em && b.email === em && b.name.toLowerCase() === nm.toLowerCase()))
     if (same) return { booking: same, already: true, slot: s }
     if (isWhole(s)) return { error: 'One family books this whole session. Book it from My account, or make a private session for this player.' }
+    // A family never takes a single place on a public group (Lee, 16 Nov 2026).
+    if (from === 'family' && s.visibility === 'public' && s.capacity > 1) return { error: 'This group is booked by one family for the whole session. Ask the coach, or book a 1 on 1.' }
     if (!placesLeft(s, await paidPayreqs([s]))) return { error: 'That session is full.' }
     const booking = { id: newId('XB'), name: nm, email: em, mobile: clean(mobile, 30), rowId: clean(rowId, 30), profileKey: clean(profileKey, 200), payreqId: clean(payreqId, 60), status: 'booked', at: new Date().toISOString(), by, from }
     s.bookings = [...(s.bookings || []), booking]
@@ -405,10 +421,12 @@ export async function registerExtras(config, { coachId = '', week = '', weekEnd 
   const slots = (await allSlots()).filter((s) => s.status === 'open' && (!coachId || s.coachId === coachId) && s.date >= from && s.date <= to && (liveBookings(s).length || lateCancelUnfilled(s).length))
   slots.sort((a, b) => `${a.date}${to24h(a.time) || ''}`.localeCompare(`${b.date}${to24h(b.time) || ''}`))
   const out = []
+  // Paid or not, on the register too (Lee, 16 Nov 2026: extra sessions are paid before they run).
+  const paid = await paidLeads(slots.slice(0, 100))
   for (const s of slots.slice(0, 100)) out.push({
     id: s.id, coachId: s.coachId, coachName: coachLabel(coachById(config, s.coachId)), date: s.date, dateLabel: dateLabel(s.date),
     time: s.time, durationMin: Number(s.durationMin) || 60, location: s.location, title: s.title || 'Extra session',
-    bookings: liveBookings(s).map((b) => ({ id: b.id, name: b.name })), marks: s.date <= today ? await marksFor(s) : {},
+    bookings: liveBookings(s).map((b) => ({ id: b.id, name: b.name, paid: paid.has(leadPayreq(s, b)) })), marks: s.date <= today ? await marksFor(s) : {},
     halfPay: liveBookings(s).length ? [] : lateCancelUnfilled(s).map((b) => b.name),
   })
   return out

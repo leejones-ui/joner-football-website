@@ -273,13 +273,20 @@ async function extraRegisterSweep({ config, now, since, today, yesterday }) {
 
 // The five-minute check (Vercel cron). One at a time.
 export async function coachTick(config, now = Date.now()) {
-  if (!alertsOn(config, 'newPlayer') && !alertsOn(config, 'register')) return { off: true }
+  // Unpaid extra sessions run whatever the coach alert switches say (Lee, 16 Nov 2026).
+  const off = !alertsOn(config, 'newPlayer') && !alertsOn(config, 'register')
   if ((await kvCommand(['SET', 'jfp:coach-tick-lock', '1', 'NX', 'EX', '120'])) !== 'OK') return { busy: true }
   try {
+    if (off) {
+      const unpaid = await import('./_jfp-extra-unpaid.js').then((m) => m.extraUnpaidSweep({ config, now })).catch((e) => { console.error('jfp extra unpaid failed', e); return { error: true } })
+      return { off: true, unpaid }
+    }
     const news = await flushCoachNews({ config, now }).catch((e) => { console.error('jfp coach news failed', e); return { error: true } })
     const reg = await registerSweep({ config, now }).catch((e) => { console.error('jfp register sweep failed', e); return { error: true } })
     const extra = await flushExtraNews({ config }).catch((e) => { console.error('jfp extra news failed', e); return { error: true } })
-    return { news, reg, extra }
+    // Extra sessions not paid yet (Lee, 16 Nov 2026): coach, family and Lee told before it runs.
+    const unpaid = await import('./_jfp-extra-unpaid.js').then((m) => m.extraUnpaidSweep({ config, now })).catch((e) => { console.error('jfp extra unpaid failed', e); return { error: true } })
+    return { news, reg, extra, unpaid }
   } finally { await kvCommand(['DEL', 'jfp:coach-tick-lock']) }
 }
 
