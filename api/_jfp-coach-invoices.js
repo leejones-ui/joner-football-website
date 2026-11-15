@@ -372,6 +372,9 @@ export async function invoiceAction(res, principal, config, body, action, { isAd
         list: [['Lines', String(claimed.length)], ...(chase.length ? [['Fees not paid, chase', chase.map((u) => u.name).join(', ')]] : []), ['Total', `${formatAud(inv.amountCents)}${pending ? ' + TBC' : ''}`], ['Due', dateLabel(inv.dueDate)]],
         cta: { label: 'Open Coach invoices', url: 'https://jonerfootball.com/jfp-portal/#cinvoices' },
         attachment: await pdfOf(inv, config), replyTo: details.email || '',
+        // The coach in CC: the email comes from Lee's own address, so Gmail's Reply all
+        // only reached Lee and Ligia (Lee, 16 Nov 2026: "hit reply all and say paid").
+        cc: details.email || coachById(config, coachId)?.email || principal.email || '',
       })
       emailed = true
     } catch (error) { console.error('jfp coach invoice email failed', inv.id, error.message) }

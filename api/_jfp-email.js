@@ -41,7 +41,7 @@ const pdfLine = (attachment) => (attachment?.length ? p('Your tax invoice is att
 
 // Every send is written to the email log (sent with Brevo's message id, or
 // failed with the reason), so staff can see what reached a family.
-async function send({ to, subject, html, replyTo, attachment, kind = '' }) {
+async function send({ to, subject, html, replyTo, attachment, kind = '', cc = [] }) {
   const apiKey = process.env.BREVO_API_KEY
   // Brevo refuses an empty name, and a player with no parent has none (13 Oct 2026).
   to = (Array.isArray(to) ? to : [to]).filter((t) => t?.email).map((t) => (String(t.name || '').trim() ? { email: t.email, name: String(t.name).trim() } : { email: t.email }))
@@ -49,6 +49,9 @@ async function send({ to, subject, html, replyTo, attachment, kind = '' }) {
   if (!apiKey) throw await failed(new Error('BREVO_API_KEY is not configured.'))
   const sender = process.env.BREVO_SENDER_EMAIL || 'leejones@jonerfootball.com'
   if (!to.length) throw await failed(new Error('No email address to send to.'))
+  // Copied in (Lee, 16 Nov 2026): the coach on their own invoice email, so Reply all reaches them.
+  const toSet = new Set(to.map((t) => t.email.toLowerCase()))
+  cc = (Array.isArray(cc) ? cc : [cc]).map((c) => (typeof c === 'string' ? { email: c } : c)).filter((c) => c?.email && /@/.test(c.email) && !toSet.has(c.email.toLowerCase())).map((c) => ({ email: c.email.trim() }))
   // Hermes asked for this without Lee's yes on it: held for Lee, not sent.
   const held = await holdIfAgent({ to, subject, html, replyTo, attachment, kind })
   if (held) { await logEmail({ to, subject, kind, status: 'held', error: 'Held for Lee: Hermes asked, not yet confirmed' }); return { ok: true, held: true, heldId: held.id, messageId: '' } }
@@ -57,7 +60,7 @@ async function send({ to, subject, html, replyTo, attachment, kind = '' }) {
     res = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: { accept: 'application/json', 'content-type': 'application/json', 'api-key': apiKey },
-      body: JSON.stringify({ sender: { name: 'Joner Football', email: sender }, to, replyTo: { email: replyTo || sender, name: 'Joner Football' }, subject, htmlContent: html, ...(attachment ? { attachment } : {}) }),
+      body: JSON.stringify({ sender: { name: 'Joner Football', email: sender }, to, ...(cc.length ? { cc } : {}), replyTo: { email: replyTo || sender, name: 'Joner Football' }, subject, htmlContent: html, ...(attachment ? { attachment } : {}) }),
     })
   } catch (error) { throw await failed(error) }
   const text = await res.text().catch(() => '')
@@ -822,9 +825,9 @@ export function accountGuideText(r, { sender = 'Lee' } = {}) {
 // staff list (wage details stay with them). The PDF is attached. The subject
 // carries no amounts, as the email log shows subjects.
 export const PAY_TEAM = [{ email: 'leejones@jonerfootball.com', name: 'Lee' }, { email: 'ligia@jonerfootball.com', name: 'Ligia' }]
-export async function sendCoachInvoiceToStaff({ subject, heading, paras = [], list = [], cta = null, attachment, replyTo = '', kind = 'coach invoice' }) {
+export async function sendCoachInvoiceToStaff({ subject, heading, paras = [], list = [], cta = null, attachment, replyTo = '', cc = [], kind = 'coach invoice' }) {
   const body = `${paras.map((x) => p(esc(x))).join('\n')}
 ${list.length ? rows(list.filter(([, v]) => v).map(([k, v]) => [k, esc(v)])) : ''}
 ${cta ? button(cta.label, cta.url) : ''}`
-  return send({ to: PAY_TEAM, subject, html: shell({ preheader: subject, heading, body }), replyTo: replyTo || 'ligia@jonerfootball.com', kind, ...(attachment ? { attachment: [attachment] } : {}) })
+  return send({ to: PAY_TEAM, subject, html: shell({ preheader: subject, heading, body }), replyTo: replyTo || 'ligia@jonerfootball.com', cc, kind, ...(attachment ? { attachment: [attachment] } : {}) })
 }
