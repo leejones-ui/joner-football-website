@@ -35,7 +35,8 @@ async function adminToken({ fresh = false } = {}, deps = {}) {
   const res = await (deps.fetch || fetch)(`https://${SHOP}.myshopify.com/admin/oauth/access_token`, {
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ grant_type: 'client_credentials', client_id: process.env.SHOPIFY_CLIENT_ID || '', client_secret: process.env.SHOPIFY_CLIENT_SECRET || '' }),
+    // Trimmed: a key pasted into Vercel with a space or new line on the end is refused.
+    body: new URLSearchParams({ grant_type: 'client_credentials', client_id: String(process.env.SHOPIFY_CLIENT_ID || '').trim(), client_secret: String(process.env.SHOPIFY_CLIENT_SECRET || '').trim() }),
   })
   // Shopify answers a refused token with an HTML page whose title says why
   // ("Oauth error invalid_request: Missing or invalid client secret").
@@ -43,7 +44,7 @@ async function adminToken({ fresh = false } = {}, deps = {}) {
   let data = {}
   try { data = JSON.parse(raw) } catch {}
   if (!res.ok || !data.access_token) {
-    const why = data.error ? String(data.error_description || data.error) : (raw.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').match(/Oauth error [^.?]{0,120}/)?.[0] || '')
+    const why = data.error ? String(data.error_description || data.error) : (raw.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').match(/Oauth error [^.?*{]{0,120}/)?.[0]?.trim() || '')
     throw new Error(`Shopify would not give a token (${res.status}${why ? `: ${why.slice(0, 140)}` : ''}). Check the app is installed on the store, and SHOPIFY_CLIENT_ID and SHOPIFY_CLIENT_SECRET in Vercel.`)
   }
   const ttl = Math.max(60, Math.min(Number(data.expires_in) || 86399, 86399) - 3600)
