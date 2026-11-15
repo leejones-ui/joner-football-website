@@ -1,0 +1,196 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import { top50Book as book, isShopUrl } from '../../data/top50-book'
+
+const pdfLive = isShopUrl(book.pdfUrl)
+const paperbackLive = isShopUrl(book.paperbackUrl)
+const pageUrl = `https://jonerfootball.com${book.page}`
+
+const schema = {
+  '@context': 'https://schema.org',
+  '@type': 'Book',
+  name: book.title,
+  alternativeHeadline: book.tagline,
+  author: { '@type': 'Person', name: 'Lee Jones', url: 'https://jonerfootball.com/about/' },
+  publisher: { '@type': 'Organization', name: 'Joner Football', url: 'https://jonerfootball.com/' },
+  image: `https://jonerfootball.com${book.coverJpg}`,
+  url: pageUrl,
+  datePublished: book.releaseDate,
+  inLanguage: 'en',
+  about: 'Football (soccer) coaching drills for technical players',
+  workExample: [
+    {
+      '@type': 'Book',
+      bookFormat: 'https://schema.org/EBook',
+      name: `${book.title} (PDF)`,
+      ...(pdfLive
+        ? {
+            offers: {
+              '@type': 'Offer',
+              price: '24.00',
+              priceCurrency: 'AUD',
+              availability: 'https://schema.org/PreOrder',
+              url: book.pdfUrl,
+            },
+          }
+        : {}),
+    },
+    { '@type': 'Book', bookFormat: 'https://schema.org/Paperback', name: `${book.title} (Paperback)` },
+  ],
+}
+
+const inside = [
+  ['50 drills', 'One drill on every page, from first touches to match speed.'],
+  ['Diagrams', 'Setup, in play and progression, drawn out so you can set it up in minutes.'],
+  ['Coaching points', 'What to say, the common mistakes, and how to make it harder or easier.'],
+  ['Scan and watch', 'A QR code on every page takes you to the video of the drill.'],
+]
+---
+
+<BaseLayout
+  title="Top 50 Coaching Drills | Lee Jones | Joner Football"
+  description="Lee Jones's 50 best drills. Every drill has a diagram, coaching points and a QR code to the video. Pre-order now, out 24 November."
+  canonical={pageUrl}
+  ogImage={`https://jonerfootball.com${book.og}`}
+  schema={schema}
+>
+  <div class="t50">
+    <section class="t50-hero" aria-labelledby="t50-title">
+      <div class="t50-shell t50-hero__grid">
+        <div class="t50-hero__covers">
+          <img class="t50-cover" src={book.cover} alt="Front cover of Top 50 Coaching Drills by Lee Jones" width="800" height="1132" loading="eager" fetchpriority="high" decoding="async" />
+        </div>
+
+        <div class="t50-hero__copy">
+          <p class="t50-kicker">New book · Pre-order now</p>
+          <h1 id="t50-title">Top 50 <span>Coaching Drills</span></h1>
+          <p class="t50-tag">{book.tagline}</p>
+          <p class="t50-lede">Every drill has a diagram, coaching points and a QR code to the video. Pre-order now, out {book.releaseLabel}.</p>
+
+          <div class="t50-buy" id="buy">
+            {pdfLive ? (
+              <a class="t50-btn t50-btn--red" href={book.pdfUrl} target="_blank" rel="noopener noreferrer" data-book-cta="pdf">
+                Pre-order the PDF <small>{book.pdfPrice}</small>
+              </a>
+            ) : (
+              <span class="t50-btn t50-btn--red is-soon" aria-disabled="true">Pre-order opens soon</span>
+            )}
+            {paperbackLive ? (
+              <a class="t50-btn t50-btn--line" href={book.paperbackUrl} target="_blank" rel="noopener noreferrer" data-book-cta="paperback">
+                Pre-order the paperback
+              </a>
+            ) : (
+              <span class="t50-btn t50-btn--line is-soon" aria-disabled="true">Paperback coming soon</span>
+            )}
+          </div>
+
+          <p class="t50-note">Out {book.releaseLabel}. Joner Football App members get the PDF early.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="t50-inside" aria-labelledby="t50-inside-title">
+      <div class="t50-shell">
+        <h2 id="t50-inside-title">What is on every page</h2>
+        <ul class="t50-points">
+          {inside.map(([head, text]) => (
+            <li><strong>{head}</strong><span>{text}</span></li>
+          ))}
+        </ul>
+      </div>
+    </section>
+
+    <section class="t50-pages" aria-labelledby="t50-pages-title">
+      <div class="t50-shell">
+        <h2 id="t50-pages-title">Look inside</h2>
+        <div class="t50-pages__row">
+          {book.samples.map((s) => (
+            <a class="t50-page" href={s.src} target="_blank" rel="noopener">
+              <img src={s.src} alt={`${s.label} page from Top 50 Coaching Drills`} width="900" height="1372" loading="lazy" decoding="async" />
+              <span>{s.label}</span>
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="t50-end">
+      <div class="t50-shell t50-end__grid">
+        <img class="t50-back" src={book.backCover} alt="Back cover of Top 50 Coaching Drills" width="800" height="1122" loading="lazy" decoding="async" />
+        <div>
+          <h2>Out {book.releaseLabel}</h2>
+          <p>Pre-order today and it lands on release day.</p>
+          <a class="t50-btn t50-btn--red" href="#buy">Pre-order</a>
+          <p class="t50-more"><a href="/books/">All books by Lee Jones</a></p>
+        </div>
+      </div>
+    </section>
+  </div>
+</BaseLayout>
+
+<style>
+  .t50 { --red: #e8000d; --black: #080808; --soft: #cccccc; background: var(--black); color: #fff; }
+  .t50 h1, .t50 h2 { font-family: 'Anton', Impact, sans-serif; text-transform: uppercase; letter-spacing: 0.015em; margin: 0; }
+  .t50-shell { width: min(1180px, calc(100% - 32px)); margin: 0 auto; }
+
+  .t50-hero { padding: clamp(28px, 6vw, 80px) 0 clamp(40px, 7vw, 90px); border-bottom: 1px solid rgba(255,255,255,0.12); }
+  .t50-hero__grid { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: clamp(28px, 5vw, 72px); align-items: center; }
+  .t50-hero__covers { display: grid; place-items: center; }
+  .t50-cover { width: min(100%, 420px); height: auto; box-shadow: 0 30px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.08); }
+
+  .t50-kicker { margin: 0 0 14px; color: var(--red); font-size: 12px; font-weight: 800; letter-spacing: 0.22em; text-transform: uppercase; }
+  .t50 h1 { font-size: clamp(48px, 7.5vw, 96px); line-height: 0.95; }
+  .t50 h1 span { display: block; color: var(--red); }
+  .t50-tag { margin: 18px 0 0; font-size: clamp(18px, 2.2vw, 24px); font-weight: 700; }
+  .t50-lede { max-width: 540px; margin: 12px 0 28px; color: var(--soft); font-size: clamp(16px, 1.8vw, 19px); line-height: 1.55; }
+
+  .t50-buy { display: flex; flex-wrap: wrap; gap: 12px; }
+  .t50-btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px; padding: 0 24px; border: 2px solid var(--red); font-family: 'Inter', 'DM Sans', sans-serif; font-weight: 800; font-size: 16px; text-decoration: none; transition: background 160ms ease, color 160ms ease, border-color 160ms ease; }
+  .t50-btn small { font-weight: 600; opacity: 0.85; font-size: 14px; }
+  .t50-btn--red { background: var(--red); color: #fff; }
+  .t50-btn--red:hover, .t50-btn--red:focus-visible { background: #fff; border-color: #fff; color: var(--black); }
+  .t50-btn--line { background: transparent; color: #fff; border-color: rgba(255,255,255,0.5); }
+  .t50-btn--line:hover, .t50-btn--line:focus-visible { border-color: #fff; background: rgba(255,255,255,0.08); }
+  .t50-btn.is-soon { opacity: 0.55; cursor: default; }
+  .t50-note { margin: 18px 0 0; color: var(--soft); font-size: 14px; }
+
+  .t50-inside { padding: clamp(48px, 7vw, 90px) 0 20px; }
+  .t50 h2 { font-size: clamp(32px, 4.5vw, 54px); line-height: 1; margin-bottom: 28px; }
+  .t50-points { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+  .t50-points li { padding: 22px 20px; border: 1px solid rgba(255,255,255,0.14); border-top: 4px solid var(--red); background: #111; display: grid; gap: 8px; align-content: start; }
+  .t50-points strong { font-family: 'Anton', Impact, sans-serif; font-weight: 400; font-size: 22px; text-transform: uppercase; letter-spacing: 0.03em; }
+  .t50-points span { color: var(--soft); font-size: 15px; line-height: 1.5; }
+
+  .t50-pages { padding: clamp(40px, 6vw, 80px) 0; }
+  .t50-pages__row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+  .t50-page { display: grid; gap: 10px; color: #fff; text-decoration: none; font-size: 13px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+  .t50-page img { width: 100%; height: auto; background: #fff; transition: transform 180ms ease; }
+  .t50-page:hover img { transform: translateY(-4px); }
+
+  .t50-end { padding: 0 0 clamp(60px, 8vw, 110px); }
+  .t50-end__grid { display: grid; grid-template-columns: minmax(0, 320px) minmax(0, 1fr); gap: clamp(24px, 5vw, 64px); align-items: center; padding-top: clamp(40px, 6vw, 70px); border-top: 1px solid rgba(255,255,255,0.12); }
+  .t50-back { width: 100%; height: auto; }
+  .t50-end h2 { margin-bottom: 12px; }
+  .t50-end p { color: var(--soft); margin: 0 0 22px; font-size: 17px; }
+  .t50-more { margin-top: 22px !important; font-size: 14px !important; }
+  .t50-more a { color: #fff; text-decoration: underline; text-decoration-color: var(--red); text-underline-offset: 4px; }
+
+  .t50 :global(a:focus-visible) { outline: 3px solid rgba(232,0,13,0.45); outline-offset: 3px; }
+
+  @media (max-width: 900px) {
+    .t50-points { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .t50-pages__row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 700px) {
+    .t50-hero__grid { grid-template-columns: minmax(0, 1fr); }
+    .t50-hero__covers { order: 2; }
+    .t50-cover { width: min(78%, 320px); }
+    .t50-btn { width: 100%; }
+    .t50-end__grid { grid-template-columns: minmax(0, 1fr); }
+    .t50-back { width: min(70%, 280px); margin: 0 auto; }
+  }
+  @media (max-width: 420px) {
+    .t50-points { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (prefers-reduced-motion: reduce) { .t50-btn, .t50-page img { transition: none; } }
+</style>
