@@ -226,7 +226,7 @@ export function depositCards(D, { compact = false, self = false } = {}) {
     if (x.offer || N.fullOnly) {
       const who = self ? 'You' : first(x.player)
       const title = x.offer && x.tier === 'loyal' ? `Thank you: ${self ? 'your' : `${esc(first(x.player))}'s`} first week is free` : x.offer ? `A$50 off ${self ? 'your' : `${esc(first(x.player))}'s`} ${esc(N.name)}` : `Keep your spot for ${esc(N.name)}`
-      const why = x.offer && x.tier === 'loyal' ? `${esc(who)} trained with us every single term in 2026, one of only 24 players. To say thank you, the first week of ${esc(N.name)} is free. ` : ''
+      const why = x.offer && x.tier === 'loyal' ? `${esc(who)} trained with us every single term in 2026. To say thank you, the first week of ${esc(N.name)} is free. ` : ''
       return `<article class="ja-card ja-deposit" data-deposit="${esc(x.rowId)}">
       <div class="ja-deposit-copy">
         <p class="ja-kicker"><i></i>${esc(N.name)} · ${x.offer ? 'early price' : 'current players first'}</p>
