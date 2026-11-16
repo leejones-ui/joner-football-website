@@ -37,7 +37,7 @@ const schema = {
       '@type': 'Book',
       bookFormat: 'https://schema.org/Paperback',
       name: `${book.title} (Paperback)`,
-      ...(paperbackLive ? { offers: offer('49.00', book.paperbackUrl) } : {}),
+      ...(paperbackLive ? { offers: offer('55.00', book.paperbackUrl) } : {}),
     },
   ],
 }

@@ -13,7 +13,7 @@ export const top50Book = {
   releaseDate: '2026-11-24',
   releaseLabel: '24 November',
   pdfPrice: 'A$24',
-  paperbackPrice: 'A$49',
+  paperbackPrice: 'A$55',
   pdfUrl: shop('top-50-coaching-drills-pdf-download'),
   paperbackUrl: shop('top-50-coaching-drills-paperback'),
   page: '/books/top-50-coaching-drills/',
