@@ -106,17 +106,30 @@ const choices = [
 ---
 
 <section class="mobile-story" data-mobile-story-rebuild aria-label="Joner Football mobile story">
-  <div class="mobile-story-track">
-    <div class="mobile-story-sticky">
+  <div class="mobile-story-track" data-mobile-track style={`--beats:${beats.length};`}>
+    <div class="mobile-story-sticky" data-mobile-sticky>
       {beats.map((beat, index) => (
-        <article class="mobile-story-beat" data-mobile-beat data-index={index} style={`opacity:${index === 0 ? 1 : 0};`}>
-          <div class="mobile-story-canvas" aria-hidden="true">
+        <article class:list={['mobile-story-beat', index === 0 && 'is-active']} data-mobile-beat data-index={index}>
+          <div class="mobile-story-canvas" data-mobile-canvas aria-hidden="true">
             {beat.video ? (
-              <video class="mobile-story-media mobile-story-video" muted loop playsinline preload="metadata" poster={beat.image} aria-label={beat.title}>
+              <video class="mobile-story-media mobile-story-video" muted loop playsinline preload="none" data-poster={beat.image} aria-label={beat.title}>
                 <source src={beat.video} type="video/mp4" />
               </video>
             ) : (
-              <img class="mobile-story-media" src={beat.image} alt="" loading={index === 0 ? 'eager' : 'lazy'} decoding="async" />
+              <picture>
+              {/* Laptops show the wide story instead, so this hidden photo must not download there. */}
+              <source media="(min-width: 768px) and (min-height: 601px) and (orientation: landscape), (min-width: 1025px) and (min-height: 601px)" srcset="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" />
+              <img
+                class="mobile-story-media"
+                src={beat.image}
+                alt=""
+                width="1080"
+                height="1920"
+                loading={index === 0 ? 'eager' : 'lazy'}
+                fetchpriority={index === 0 ? 'high' : 'auto'}
+                decoding="async"
+              />
+              </picture>
             )}
             <div class="mobile-story-shade"></div>
           </div>
@@ -147,10 +160,15 @@ const choices = [
                 {choices.map(([label, href]) => <a href={href}>{label}</a>)}
               </div>
             ) : beat.ctas && (
-              <div class="mobile-story-ctas">
-                {beat.ctas.map(([label, href, bookPlace]) => bookPlace
+              <div class:list={['mobile-story-ctas', beat.ctas.length > 2 && 'mobile-story-ctas--grid']}>
+                {beat.ctas.map(([label, href, bookPlace], ctaIndex) => bookPlace
                   ? <BookNowButton place={bookPlace} class="mobile-story-book" />
-                  : <a href={href}>{label}</a>)}
+                  : <a
+                      href={href}
+                      class:list={[ctaIndex === 0 && beat.ctas.length <= 2 && 'is-primary']}
+                      target={/^https?:/.test(href) ? '_blank' : undefined}
+                      rel={/^https?:/.test(href) ? 'noopener noreferrer' : undefined}
+                    >{label}</a>)}
               </div>
             )}
           </div>
@@ -176,17 +194,19 @@ const choices = [
 </section>
 
 <style>
-  .mobile-story { display: none; position: relative; background: #030303; color: #fff; }
+  /* ONE STORY, EVERY SCREEN (16 Nov 2026).
+     Phones and portrait tablets now get the same pinned story as the laptop:
+     the screen holds still and each photo dissolves into the next as you
+     scroll. Nothing is moved by script. The panel is pinned by the browser
+     (position: sticky) and script only writes opacity and scale, so iPhone
+     momentum scrolling cannot make it jitter.
+     Without script, with reduced motion, or on very short screens the story
+     falls back to plain stacked panels with everything visible. */
+  .mobile-story { display: none; position: relative; background: #050505; color: #fff; }
   .mobile-story-track { position: relative; }
   .mobile-story-sticky { position: relative; background: #050505; }
-  .mobile-story-beat { position: relative; min-height: 100svh; overflow: hidden; pointer-events: none; opacity: 1 !important; transform: none !important; isolation: isolate; }
-  /* Beats overlap so each photo's feathered edge dissolves over the one
-     before it. Native scroll does the blending, so it is smooth at any
-     thumb speed. Links re-enable their own pointer events below. */
+  .mobile-story-beat { position: relative; min-height: 100svh; overflow: hidden; isolation: isolate; }
   .mobile-story-beat + .mobile-story-beat { margin-top: -7svh; }
-  .mobile-story-copy a { pointer-events: auto; }
-  /* Photo and shade live in one masked canvas that feathers to transparent
-     at the top and bottom, so a hard seam between photos cannot exist. */
   .mobile-story-canvas {
     position: absolute;
     inset: 0;
@@ -194,12 +214,11 @@ const choices = [
     -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 15%, #000 85%, transparent 100%);
     mask-image: linear-gradient(180deg, transparent 0%, #000 15%, #000 85%, transparent 100%);
   }
-  /* The first photo stays solid at the top so the hero meets the nav clean. */
   .mobile-story-beat:first-child .mobile-story-canvas {
     -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 85%, transparent 100%);
     mask-image: linear-gradient(180deg, #000 0%, #000 85%, transparent 100%);
   }
-  .mobile-story-media { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; filter: saturate(1.02) contrast(1.08) brightness(0.86); transform: translateZ(0); }
+  .mobile-story-media { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; object-fit: cover; object-position: 50% 50%; transform: translateZ(0); transform-origin: 50% 45%; }
   .mobile-story-video { z-index: 0; background: #000; }
   .mobile-story-beat:nth-child(1) .mobile-story-media { object-position: 53% 44%; }
   .mobile-story-beat:nth-child(2) .mobile-story-media { object-position: 50% 45%; }
@@ -208,103 +227,130 @@ const choices = [
   .mobile-story-beat:nth-child(5) .mobile-story-media { object-position: 50% 48%; }
   .mobile-story-beat:nth-child(7) .mobile-story-media { object-position: 50% 44%; }
   .mobile-story-beat:nth-child(8) .mobile-story-media { object-position: 50% 38%; }
-  .mobile-story-shade { position: absolute; inset: 0; z-index: 1; background: linear-gradient(180deg, rgba(0,0,0,0.3), rgba(0,0,0,0.08) 42%, rgba(0,0,0,0.72)), linear-gradient(90deg, rgba(0,0,0,0.74), rgba(0,0,0,0.2) 58%, rgba(0,0,0,0.18)); }
-  /* Hidden initial states only exist under .is-motion, which JS adds when
-     motion is allowed. No JS or reduced motion = every beat fully visible. */
-  .mobile-story-copy { position: absolute; left: 3.85rem; right: 1.25rem; top: 18svh; z-index: 3; max-width: 22.5rem; transition: opacity 420ms cubic-bezier(.22,.61,.36,1), transform 460ms cubic-bezier(.22,.61,.36,1); }
-  .mobile-story.is-motion .mobile-story-beat:not(.is-active) .mobile-story-copy { opacity: 0.35; transform: translateY(0.5rem); }
-  /* Staggered scroll-in: kicker → h2 → body → CTAs. Calm and quick. */
-  .mobile-story-kicker, .mobile-story-copy h2, .mobile-story-copy p:not(.mobile-story-kicker) { transition: opacity 520ms cubic-bezier(.22,.61,.36,1), transform 600ms cubic-bezier(.22,.61,.36,1); }
-  .mobile-story.is-motion .mobile-story-beat:not(.is-active) .mobile-story-kicker,
-  .mobile-story.is-motion .mobile-story-beat:not(.is-active) .mobile-story-copy h2,
-  .mobile-story.is-motion .mobile-story-beat:not(.is-active) .mobile-story-copy p:not(.mobile-story-kicker) { opacity: 0; transform: translateY(1.1rem); }
-  .mobile-story-beat.is-active .mobile-story-kicker { transition-delay: 60ms; }
-  .mobile-story-beat.is-active .mobile-story-copy h2 { transition-delay: 150ms; }
-  .mobile-story-beat.is-active .mobile-story-copy p:not(.mobile-story-kicker) { transition-delay: 260ms; }
-  .mobile-story-beat.is-active .mobile-story-ctas, .mobile-story-beat.is-active .mobile-story-choices { transition-delay: 340ms; }
-  /* CTAs also flip visibility so invisible links in neighbouring beats can
-     never catch taps or keyboard focus. The 560ms visibility delay lets the
-     exit fade finish first. */
-  .mobile-story-ctas, .mobile-story-choices { transition: opacity 480ms cubic-bezier(.22,.61,.36,1), transform 560ms cubic-bezier(.22,.61,.36,1), visibility 0s linear 560ms; }
-  .mobile-story.is-motion .mobile-story-beat:not(.is-active) .mobile-story-ctas,
-  .mobile-story.is-motion .mobile-story-beat:not(.is-active) .mobile-story-choices { opacity: 0; transform: translateY(0.85rem); visibility: hidden; }
-  .mobile-story-beat:nth-child(1) .mobile-story-ctas { justify-content: center; }
-  .mobile-story-beat:nth-child(1) .mobile-story-copy { inset: 0 3.8rem 0 3.8rem; top: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; max-width: none; }
-  .mobile-story-beat:nth-child(2) .mobile-story-copy { inset: 0 1.4rem 0 3.8rem; top: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; max-width: none; }
-  .mobile-story-beat:nth-child(3) .mobile-story-copy { top: 12svh; }
-  .mobile-story-beat:nth-child(4) .mobile-story-copy { top: 36svh; left: 3.8rem; right: 1.4rem; text-align: center; }
-  .mobile-story-beat:nth-child(4) .mobile-story-ctas { justify-content: center; }
+  /* The shade does the darkening. A CSS filter on the photo would force the
+     phone to re-filter a full-screen image on every frame of the dissolve. */
+  .mobile-story-shade { position: absolute; inset: 0; z-index: 1; background: linear-gradient(180deg, rgba(0,0,0,0.42), rgba(0,0,0,0.2) 42%, rgba(0,0,0,0.78)), linear-gradient(90deg, rgba(0,0,0,0.76), rgba(0,0,0,0.26) 58%, rgba(0,0,0,0.24)); }
+
+  .mobile-story-copy { position: absolute; left: 3.85rem; right: 1.25rem; top: 18svh; z-index: 3; max-width: 22.5rem; }
+  .mobile-story-beat:nth-child(1) .mobile-story-copy { inset: 0 3.8rem 0 3.8rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; max-width: none; }
+  .mobile-story-beat:nth-child(2) .mobile-story-copy { inset: 0 1.4rem 0 3.8rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; max-width: none; }
+  .mobile-story-beat:nth-child(3) .mobile-story-copy { top: 9svh; }
+  .mobile-story-beat:nth-child(4) .mobile-story-copy { top: 34svh; left: 3.8rem; right: 1.4rem; text-align: center; max-width: none; }
   .mobile-story-beat:nth-child(5) .mobile-story-copy { left: 4.15rem; }
   .mobile-story-beat:nth-child(6) .mobile-story-copy { inset: 0 1.4rem 0 3.8rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; max-width: none; }
   .mobile-story-beat:nth-child(7) .mobile-story-copy { top: auto; bottom: max(2.2rem, env(safe-area-inset-bottom)); }
   .mobile-story-beat:nth-child(8) .mobile-story-copy { inset: 0 1.4rem 0 3.8rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; max-width: none; }
   .mobile-story-kicker { margin: 0 0 0.9rem; color: #e30613; font-family: 'Anton', Impact, sans-serif; font-size: 0.72rem; letter-spacing: 0.24em; text-transform: uppercase; }
-  .mobile-story-copy h2 { margin: 0; color: #fff; font-family: 'Anton', Impact, sans-serif; font-size: clamp(2.55rem, 11.7vw, 4.25rem); line-height: 0.92; letter-spacing: 0.03em; text-transform: uppercase; text-shadow: 0 1rem 2rem rgba(0,0,0,0.62); }
-  .mobile-story-copy p:not(.mobile-story-kicker) { margin: 1rem 0 0; max-width: 19.5rem; color: rgba(255,255,255,0.8); font-family: Arial, sans-serif; font-size: 0.98rem; line-height: 1.42; }
-  .mobile-story-stamp { position: absolute; left: 1.25rem; top: max(1.25rem, env(safe-area-inset-top)); z-index: 4; display: inline-flex; border-left: 2px solid #e30613; padding-left: 0.6rem; font-family: 'Anton', Impact, sans-serif; font-size: 1.35rem; line-height: 1; transition: opacity 260ms ease, transform 300ms ease; }
-  .mobile-story.is-motion .mobile-story-beat:not(.is-active) .mobile-story-stamp { opacity: 0; transform: translateY(0.5rem); }
-  .mobile-story-ctas, .mobile-story-choices { margin-top: 1.15rem; display: flex; flex-wrap: wrap; gap: 0.58rem; }
-  .mobile-story-beat:nth-child(3) .mobile-story-ctas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.4rem; max-width: 20.5rem; margin-top: 0.8rem; }
-  .mobile-story-beat:nth-child(3) .mobile-story-ctas a { min-height: 2.5rem; padding: 0.55rem 0.4rem; font-size: 0.66rem; }
-  .mobile-story-ctas a, .mobile-story-choices a { display: inline-flex; align-items: center; justify-content: center; min-height: 2.9rem; border: 1px solid rgba(255,255,255,0.34); border-radius: 999px; background: rgba(5,5,5,0.58); color: #fff; padding: 0.78rem 1rem; font-family: 'Anton', Impact, sans-serif; font-size: 0.72rem; letter-spacing: 0.13em; line-height: 1; text-decoration: none; text-transform: uppercase; backdrop-filter: blur(14px); transition: transform 140ms ease, border-color 140ms ease, background-color 140ms ease; }
-  .mobile-story-ctas a:active, .mobile-story-choices a:active { transform: scale(0.97); border-color: #e30613; background: rgba(227,6,19,0.82); }
-  .mobile-story-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 20.5rem; }
-  .mobile-story-choices a { border-radius: 0.7rem; min-height: 3.2rem; padding-inline: 0.55rem; text-align: center; }
-  /* contain keeps the 1.1s counter text rewrites from dirtying layout
-     outside the card while the user is still flinging the page */
-  .mobile-growth-card { margin-top: 0.85rem; max-width: 20.5rem; border: 1px solid rgba(255,255,255,0.16); background: rgba(5,5,5,0.52); padding: 0.8rem; backdrop-filter: blur(16px); contain: layout style; }
+  .mobile-story-copy h2 { margin: 0; color: #fff; font-family: 'Anton', Impact, sans-serif; font-size: clamp(2.55rem, 11.7vw, 4.25rem); font-weight: 400; line-height: 0.92; letter-spacing: 0.03em; text-transform: uppercase; text-shadow: 0 1rem 2rem rgba(0,0,0,0.62); }
+  .mobile-story-copy p:not(.mobile-story-kicker) { margin: 1rem 0 0; max-width: 19.5rem; color: rgba(255,255,255,0.86); font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif; font-size: 1rem; line-height: 1.45; }
+  .mobile-story-stamp { position: absolute; left: 1.25rem; top: max(1.25rem, env(safe-area-inset-top)); z-index: 4; display: inline-flex; border-left: 2px solid #e30613; padding-left: 0.6rem; font-family: 'Anton', Impact, sans-serif; font-size: 1.35rem; font-weight: 400; line-height: 1; }
+
+  /* Buttons: the site's own red and white buttons, one width per screen so
+     nothing sits ragged. No blur behind them (cheap to paint while photos
+     dissolve). */
+  .mobile-story-ctas, .mobile-story-choices { margin-top: 1.25rem; display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.6rem; width: min(100%, 16.5rem); }
+  .mobile-story-beat:nth-child(4) .mobile-story-ctas { margin-inline: auto; }
+  .mobile-story-ctas a:not(.book-now-btn), .mobile-story-choices a {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-height: 48px; border: 2px solid #fff; border-radius: 12px;
+    background: rgba(10,10,10,0.5); color: #fff; padding: 0.7rem 1rem;
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif; font-size: 0.95rem; font-weight: 700; letter-spacing: 0; line-height: 1.2;
+    text-align: center; text-decoration: none; text-transform: none;
+    transition: transform 140ms ease, border-color 140ms ease, background-color 140ms ease, color 140ms ease;
+  }
+  .mobile-story-ctas a.is-primary { border-color: #E8000D; background: #E8000D; }
+  .mobile-story-ctas a:not(.book-now-btn):active, .mobile-story-choices a:active { transform: scale(0.97); border-color: #fff; background: #fff; color: #0A0A0A; }
+  .mobile-story-ctas a.is-primary:active { border-color: #C4000B; background: #C4000B; color: #fff; }
+  .mobile-story-ctas :global(.book-now-btn) { width: 100%; min-height: 48px; }
+  .mobile-story-ctas--grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.45rem; width: min(100%, 20.5rem); margin-top: 0.8rem; }
+  .mobile-story-ctas--grid a:not(.book-now-btn) { min-height: 44px; border-width: 1.5px; border-color: rgba(255,255,255,0.7); padding: 0.5rem 0.3rem; font-size: 0.8rem; }
+  .mobile-story-choices { grid-template-columns: repeat(2, minmax(0, 1fr)); width: min(100%, 20.5rem); }
+  .mobile-story-choices a { min-height: 54px; padding-inline: 0.5rem; }
+
+  .mobile-growth-card { margin-top: 0.85rem; max-width: 20.5rem; border: 1px solid rgba(255,255,255,0.16); border-radius: 12px; background: rgba(5,5,5,0.72); padding: 0.8rem; contain: layout style; }
   .mobile-growth-label { margin: 0 0 0.45rem !important; color: #e30613 !important; font-family: 'Anton', Impact, sans-serif !important; font-size: 0.62rem !important; letter-spacing: 0.18em; text-transform: uppercase; }
-  /* Growth numbers and bars rise once when the Growth beat first lands.
-     Nothing here updates per scroll frame. The whole card stays hidden in
-     inactive beats so finished numbers are never readable early. */
-  .mobile-growth-card { transition: opacity 480ms cubic-bezier(.22,.61,.36,1); }
-  .mobile-story.is-motion .mobile-story-beat:not(.is-active) .mobile-growth-card { opacity: 0; }
-  .mobile-story-beat.is-active .mobile-growth-card { transition-delay: 200ms; }
-  .mobile-growth-card > strong { display: block; font-family: 'Anton', Impact, sans-serif; font-size: clamp(2.8rem, 13vw, 4rem); line-height: 0.92; transform-origin: 0 60%; transition: transform 700ms cubic-bezier(.22,.61,.36,1) 80ms; }
-  .mobile-story.is-motion:not(.is-growth-played) .mobile-growth-card > strong { transform: translate3d(0, 18px, 0) scale(0.76); }
+  .mobile-growth-card > strong { display: block; font-family: 'Anton', Impact, sans-serif; font-size: clamp(2.8rem, 13vw, 4rem); font-weight: 400; line-height: 0.92; transform-origin: 0 60%; transition: transform 700ms cubic-bezier(.22,.61,.36,1) 80ms; }
   .mobile-growth-bars { margin-top: 0.45rem; height: 3.4rem; display: flex; align-items: end; gap: 0.28rem; }
   .mobile-growth-bars span { flex: 1; background: #e30613; opacity: 0.5; transform-origin: bottom; transition: transform 1300ms cubic-bezier(.22,.61,.36,1); }
-  .mobile-story.is-motion:not(.is-growth-played) .mobile-growth-bars span { transform: scaleY(0.12); }
   .mobile-growth-bars span:nth-child(2) { transition-delay: 120ms; }
   .mobile-growth-bars span:nth-child(3) { transition-delay: 240ms; }
   .mobile-growth-bars span:nth-child(4) { transition-delay: 360ms; }
   .mobile-growth-bars span:nth-child(5) { transition-delay: 480ms; }
   .mobile-growth-bars span:nth-child(6) { transition-delay: 600ms; }
   .mobile-growth-grid { margin-top: 0.6rem; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.34rem; }
-  .mobile-growth-grid div { border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); padding: 0.42rem 0.28rem; text-align: center; }
-  .mobile-growth-grid strong { display: block; font-family: 'Anton', Impact, sans-serif; font-size: 1.08rem; line-height: 1; transition: transform 700ms cubic-bezier(.22,.61,.36,1) 140ms; }
-  .mobile-story.is-motion:not(.is-growth-played) .mobile-growth-grid strong { transform: translate3d(0, 8px, 0) scale(0.82); }
-  .mobile-growth-grid span { display: block; margin-top: 0.2rem; color: rgba(255,255,255,0.58); font-family: Arial, sans-serif; font-size: 0.47rem; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; }
-  .mobile-story-rail { position: fixed; left: 0.9rem; top: 5rem; bottom: 4.7rem; z-index: 20; width: 1.7rem; pointer-events: none; opacity: 0; transition: opacity 180ms ease; }
-  .mobile-story.is-in-view .mobile-story-rail { opacity: 1; }
+  .mobile-growth-grid div { border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; background: rgba(255,255,255,0.06); padding: 0.42rem 0.28rem; text-align: center; }
+  .mobile-growth-grid strong { display: block; font-family: 'Anton', Impact, sans-serif; font-size: 1.08rem; font-weight: 400; line-height: 1; transition: transform 700ms cubic-bezier(.22,.61,.36,1) 140ms; }
+  .mobile-growth-grid span { display: block; margin-top: 0.2rem; color: rgba(255,255,255,0.7); font-family: 'Inter', system-ui, sans-serif; font-size: 0.5rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+
+  .mobile-story-rail { display: none; }
+  .mobile-story-cue { display: none; }
+
+  /* ---------- Pinned story (script adds .is-pinned) ---------- */
+  .mobile-story.is-pinned .mobile-story-track { height: calc(100vh - 4rem + (var(--beats) - 1) * 85vh + 30vh); }
+  .mobile-story.is-pinned .mobile-story-sticky { position: sticky; top: 4rem; height: calc(100vh - 4rem); overflow: hidden; contain: paint; }
+  /* The words live in the part of the screen that is always visible (svh);
+     the photo fills the full height (vh) so nothing jumps when the iPhone
+     address bar slides away. */
+  .mobile-story.is-pinned .mobile-story-beat { position: absolute; inset: 0 0 auto 0; height: calc(100svh - 4rem); min-height: 0; margin: 0; overflow: visible; isolation: auto; pointer-events: none; }
+  .mobile-story.is-pinned .mobile-story-canvas { inset: 0 0 auto 0; height: calc(100vh - 4rem); -webkit-mask-image: none; mask-image: none; opacity: 0; }
+  .mobile-story.is-pinned .mobile-story-beat:first-child .mobile-story-canvas { opacity: 1; }
+  .mobile-story.is-pinned .mobile-story-beat:not(.is-warm) .mobile-story-canvas { display: none; }
+  .mobile-story.is-pinned .mobile-story-beat:not(.is-near) .mobile-story-canvas { visibility: hidden; }
+  .mobile-story.is-pinned .mobile-story-beat.is-near .mobile-story-canvas { will-change: opacity; }
+  .mobile-story.is-pinned .mobile-story-beat.is-near .mobile-story-media { will-change: transform; }
+
+  .mobile-story.is-pinned .mobile-story-copy { transition: opacity 200ms cubic-bezier(.55,0,.68,.19), visibility 0s linear 200ms; }
+  .mobile-story.is-pinned .mobile-story-beat:not(.is-active) .mobile-story-copy { opacity: 0; visibility: hidden; }
+  .mobile-story.is-pinned .mobile-story-beat.is-active .mobile-story-copy { transition: opacity 0s, visibility 0s; pointer-events: auto; }
+  .mobile-story.is-pinned .mobile-story-kicker,
+  .mobile-story.is-pinned .mobile-story-copy h2,
+  .mobile-story.is-pinned .mobile-story-copy p:not(.mobile-story-kicker),
+  .mobile-story.is-pinned .mobile-story-stamp,
+  .mobile-story.is-pinned .mobile-growth-card,
+  .mobile-story.is-pinned .mobile-story-ctas,
+  .mobile-story.is-pinned .mobile-story-choices { transition: opacity 520ms cubic-bezier(.22,.61,.36,1), transform 620ms cubic-bezier(.22,.61,.36,1); }
+  .mobile-story.is-pinned .mobile-story-beat:not(.is-active) .mobile-story-kicker,
+  .mobile-story.is-pinned .mobile-story-beat:not(.is-active) .mobile-story-copy h2,
+  .mobile-story.is-pinned .mobile-story-beat:not(.is-active) .mobile-story-copy p:not(.mobile-story-kicker),
+  .mobile-story.is-pinned .mobile-story-beat:not(.is-active) .mobile-story-stamp,
+  .mobile-story.is-pinned .mobile-story-beat:not(.is-active) .mobile-growth-card,
+  .mobile-story.is-pinned .mobile-story-beat:not(.is-active) .mobile-story-ctas,
+  .mobile-story.is-pinned .mobile-story-beat:not(.is-active) .mobile-story-choices { opacity: 0; transform: translate3d(0, 1.1rem, 0); transition-duration: 0s; transition-delay: 200ms; }
+  .mobile-story.is-pinned .mobile-story-beat.is-active .mobile-story-kicker { transition-delay: 60ms; }
+  .mobile-story.is-pinned .mobile-story-beat.is-active .mobile-story-copy h2 { transition-delay: 130ms; }
+  .mobile-story.is-pinned .mobile-story-beat.is-active .mobile-story-copy p:not(.mobile-story-kicker) { transition-delay: 220ms; }
+  .mobile-story.is-pinned .mobile-story-beat.is-active .mobile-growth-card { transition-delay: 280ms; }
+  .mobile-story.is-pinned .mobile-story-beat.is-active .mobile-story-ctas,
+  .mobile-story.is-pinned .mobile-story-beat.is-active .mobile-story-choices { transition-delay: 320ms; }
+  .mobile-story.is-pinned:not(.is-growth-played) .mobile-growth-card > strong { transform: translate3d(0, 18px, 0) scale(0.76); }
+  .mobile-story.is-pinned:not(.is-growth-played) .mobile-growth-bars span { transform: scaleY(0.12); }
+  .mobile-story.is-pinned:not(.is-growth-played) .mobile-growth-grid strong { transform: translate3d(0, 8px, 0) scale(0.82); }
+
+  .mobile-story.is-pinned .mobile-story-rail { display: block; position: absolute; left: 0.9rem; top: 1.4rem; height: calc(100svh - 4rem - 3.4rem); z-index: 20; width: 1.7rem; pointer-events: none; }
   .mobile-story-line, .mobile-story-fill { position: absolute; left: 0.82rem; top: 0; bottom: 0; width: 1px; }
   .mobile-story-line { background: rgba(255,255,255,0.24); }
-  /* scaleY, not height: progress updates never touch layout. No glow on the
-     fill itself, a shadow would stretch and crush with the scale. */
   .mobile-story-fill { background: #e30613; transform: scaleY(0); transform-origin: top; }
-  .mobile-story-line::before, .mobile-story-line::after { content: '+'; position: absolute; left: -0.25rem; color: rgba(255,255,255,0.74); font-family: Arial, sans-serif; font-size: 1rem; line-height: 1; }
-  .mobile-story-line::before { top: -0.9rem; } .mobile-story-line::after { bottom: -0.9rem; }
   .mobile-story-dots { position: absolute; left: 0.18rem; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: space-between; }
-  .mobile-story-dots span { width: 1.45rem; height: 1.45rem; border-radius: 999px; border: 1px solid rgba(255,255,255,0.26); background: rgba(0,0,0,0.34); display: grid; place-items: center; color: rgba(255,255,255,0.62); font-family: 'Anton', Impact, sans-serif; font-size: 0.58rem; letter-spacing: 0.08em; }
-  .mobile-story-dots span.is-active { border-color: #e30613; background: #e30613; color: #fff; box-shadow: 0 0 1rem rgba(227,6,19,0.5); }
-  /* Scroll cue on the first beat. Decorative, JS-gated, gone on first scroll. */
-  .mobile-story-cue { display: none; position: absolute; left: 50%; bottom: calc(1.5rem + env(safe-area-inset-bottom)); z-index: 4; transform: translateX(-50%); flex-direction: column; align-items: center; gap: 0.5rem; opacity: 0.9; transition: opacity 420ms ease, visibility 0s linear 420ms; pointer-events: none; }
-  .mobile-story.is-motion .mobile-story-cue { display: flex; }
+  .mobile-story-dots span { width: 1.45rem; height: 1.45rem; border-radius: 999px; border: 1px solid rgba(255,255,255,0.26); background: rgba(0,0,0,0.5); display: grid; place-items: center; color: rgba(255,255,255,0.62); font-family: 'Anton', Impact, sans-serif; font-size: 0.58rem; letter-spacing: 0.08em; transition: background-color 260ms ease, border-color 260ms ease, color 260ms ease, transform 260ms cubic-bezier(.22,.61,.36,1); }
+  .mobile-story-dots span.is-active { border-color: #e30613; background: #e30613; color: #fff; transform: scale(1.12); }
+
+  .mobile-story.is-pinned .mobile-story-cue { display: flex; position: absolute; left: 50%; bottom: 1.5rem; z-index: 4; transform: translateX(-50%); flex-direction: column; align-items: center; gap: 0.5rem; opacity: 0.9; transition: opacity 420ms ease, visibility 0s linear 420ms; pointer-events: none; }
   .mobile-story.is-scrolled .mobile-story-cue { opacity: 0; visibility: hidden; }
   .mobile-story.is-scrolled .mobile-story-cue-drop { animation-play-state: paused; }
-  .mobile-story-cue-label { color: rgba(255,255,255,0.62); font-family: 'Anton', Impact, sans-serif; font-size: 0.56rem; letter-spacing: 0.3em; text-transform: uppercase; }
+  .mobile-story-cue-label { color: rgba(255,255,255,0.7); font-family: 'Anton', Impact, sans-serif; font-size: 0.56rem; letter-spacing: 0.3em; text-transform: uppercase; }
   .mobile-story-cue-track { position: relative; width: 1px; height: 2.1rem; overflow: hidden; background: rgba(255,255,255,0.24); }
-  /* accelerating fall: a drop that brakes before vanishing reads mushy */
   .mobile-story-cue-drop { position: absolute; left: 0; top: 0; width: 1px; height: 0.75rem; background: #e30613; animation: mobileCueDrop 2.2s cubic-bezier(.5,0,.75,.45) infinite; }
   @keyframes mobileCueDrop { 0% { transform: translateY(-0.85rem); } 62%, 100% { transform: translateY(2.25rem); } }
-  /* Phone layouts and portrait tablets stay mobile. Landscape iPads use the
-     wide desktop storyboard; short landscape phones remain mobile. */
+
+  /* Phone layouts and portrait tablets use this story. Landscape tablets and
+     laptops use the wide one. Same motion on both. */
   @media (max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px) { .mobile-story { display: block; } }
-  @media (prefers-reduced-motion: reduce) {
-    .mobile-story-beat, .mobile-story-copy, .mobile-story-kicker, .mobile-story-copy h2, .mobile-story-copy p,
-    .mobile-story-ctas, .mobile-story-choices, .mobile-story-stamp,
-    .mobile-growth-card > strong, .mobile-growth-grid strong, .mobile-growth-bars span,
-    .mobile-story-cue, .mobile-story-cue-drop { transition: none !important; animation: none !important; transform: none !important; }
+  @media (orientation: portrait) and (min-width: 600px) {
+    .mobile-story-copy { left: 5rem; max-width: 30rem; }
+    .mobile-story-copy h2 { font-size: clamp(3.4rem, 9vw, 5.4rem); }
+    .mobile-story-copy p:not(.mobile-story-kicker) { max-width: 26rem; font-size: 1.15rem; }
+    .mobile-story-ctas { width: min(100%, 19rem); }
+    .mobile-story-ctas--grid, .mobile-story-choices, .mobile-growth-card { width: min(100%, 26rem); max-width: 26rem; }
   }
 </style>
 
@@ -312,173 +358,220 @@ const choices = [
   (function () {
     var root = document.querySelector('[data-mobile-story-rebuild]');
     if (!root) return;
-
-    var prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    // Hidden initial states are gated on this class, so content can never be
-    // stuck invisible without JS, and reduced motion keeps everything static.
-    if (!prefersReduced) root.classList.add('is-motion');
-
+    var track = root.querySelector('[data-mobile-track]');
+    var sticky = root.querySelector('[data-mobile-sticky]');
     var beats = Array.prototype.slice.call(root.querySelectorAll('[data-mobile-beat]'));
+    var canvases = beats.map(function (beat) { return beat.querySelector('[data-mobile-canvas]'); });
+    var medias = beats.map(function (beat) { return beat.querySelector('.mobile-story-media'); });
     var dots = Array.prototype.slice.call(root.querySelectorAll('[data-mobile-dot]'));
     var fill = root.querySelector('[data-mobile-story-fill]');
     var counters = Array.prototype.slice.call(root.querySelectorAll('[data-mobile-growth-count]'));
+    var video = root.querySelector('video');
+    var total = beats.length;
+    if (!track || !sticky || !total) return;
 
-    // Seed counters to zero so the count-up only ever moves upward. SSR
-    // finals stay in place for no-JS and reduced motion.
-    if (!prefersReduced) {
-      counters.forEach(function (counter) {
-        counter.textContent = formatGrowth(0, counter.getAttribute('data-format') || 'plain');
-      });
-    }
+    var storyQuery = window.matchMedia('(max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px)');
+    var reducedQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    var tallQuery = window.matchMedia('(min-height: 601px)');
 
-    var active = -1;
-    var rafId = 0;
+    // How the scroll is spent on each photo: hold it, then dissolve.
+    var SEGMENT_VH = 85;   // must match the track height in the CSS
+    var END_HOLD_VH = 30;  // must match the track height in the CSS
+    var BLEND_START = 0.5; // the dissolve uses the second half of each segment
+    var SWAP_AT = 0.76;    // words change three quarters of the way through
+
+    var pinned = false;
     var listening = false;
+    var rafId = 0;
+    var trackTop = 0;
+    var segmentPx = 1;
+    var measuredWidth = 0;
+    var floorIndex = -1;
+    var active = -1;
     var scrolled = false;
     var growthPlayed = false;
-    var beatRatios = new WeakMap();
+    var growthRafId = 0;
+    var last = {};
 
     function clamp(value, min, max) { return Math.min(Math.max(value, min), max); }
-    function easeOutCubic(value) { return 1 - Math.pow(1 - value, 3); }
+    function smooth(value) { return value * value * (3 - 2 * value); }
+    function write(key, element, property, value) {
+      if (!element || last[key] === value) return;
+      last[key] = value;
+      element.style[property] = value;
+    }
     function formatGrowth(value, format) {
       if (format === 'millions') return (value / 1000000).toFixed(value > 1900000 ? 0 : 1).replace('.0', '') + 'M+';
       if (format === 'thousands') return Math.round(value / 1000) + 'K+';
       if (format === 'comma') return Math.round(value).toLocaleString('en-US') + '+';
       return Math.round(value) + '+';
     }
+    function setCounters(amount) {
+      counters.forEach(function (counter) {
+        var target = Number(counter.getAttribute('data-target')) || 0;
+        counter.textContent = formatGrowth(target * amount, counter.getAttribute('data-format') || 'plain');
+      });
+    }
 
-    // Count-up when the Growth beat lands. Bars and number scale run as CSS
-    // transitions off .is-growth-played, so nothing growth related ever runs
-    // per scroll frame. It rearms whenever the card fully leaves the screen,
-    // so scrolling back to the beat plays the growth again.
-    var growthRafId = 0;
     function playGrowth() {
       if (growthPlayed) return;
       growthPlayed = true;
       root.classList.add('is-growth-played');
-      if (prefersReduced) return;
-      var DURATION = 2400;
+      var DURATION = 1800;
       var startTime = null;
       function frame(now) {
         if (startTime === null) startTime = now;
         var t = clamp((now - startTime) / DURATION, 0, 1);
-        var eased = easeOutCubic(t);
-        counters.forEach(function (counter) {
-          var target = Number(counter.getAttribute('data-target')) || 0;
-          var format = counter.getAttribute('data-format') || 'plain';
-          counter.textContent = formatGrowth(target * eased, format);
-        });
+        setCounters(1 - Math.pow(1 - t, 3));
         growthRafId = t < 1 ? window.requestAnimationFrame(frame) : 0;
       }
       growthRafId = window.requestAnimationFrame(frame);
     }
-
-    // Rearm only once the card is fully off screen, so a small scroll wiggle
-    // never resets numbers mid-view. The card is invisible by then (its beat
-    // is inactive), so snapping back to zero is never seen.
     function resetGrowth() {
       if (!growthPlayed) return;
       growthPlayed = false;
       root.classList.remove('is-growth-played');
       if (growthRafId) { window.cancelAnimationFrame(growthRafId); growthRafId = 0; }
-      if (prefersReduced) return;
-      counters.forEach(function (counter) {
-        counter.textContent = formatGrowth(0, counter.getAttribute('data-format') || 'plain');
-      });
+      setCounters(0);
     }
 
     function setActive(next) {
-      if (next === active || next < 0) return;
+      if (next === active) return;
       active = next;
-      beats.forEach(function (beat, index) {
-        var isActive = index === next;
-        beat.classList.toggle('is-active', isActive);
-        var video = beat.querySelector('video');
-        if (video) {
-          if (isActive) { var p = video.play(); if (p && p.catch) p.catch(function () {}); }
-          else video.pause();
-        }
-      });
+      beats.forEach(function (beat, index) { beat.classList.toggle('is-active', index === next); });
       dots.forEach(function (dot, index) { dot.classList.toggle('is-active', index === next); });
-      maybeStartGrowth();
+      if (video) {
+        var videoIndex = beats.indexOf(video.closest('[data-mobile-beat]'));
+        if (next === videoIndex) { var p = video.play(); if (p && p.catch) p.catch(function () {}); }
+        else if (!video.paused) video.pause();
+      }
+      if (next === 2) window.setTimeout(function () { if (active === 2 && pinned) playGrowth(); }, 320);
+      else if (Math.abs(next - 2) > 1) resetGrowth();
     }
 
-    // The count-up needs two things before it plays: the stats card at least
-    // half on screen AND the Growth beat active (the card is faded out until
-    // then). The old beat-index trigger alone could finish the whole count
-    // while the card was still below the fold, so nobody ever saw it grow.
-    var growthCardSeen = false;
-    function maybeStartGrowth() {
-      if (active === 2 && growthCardSeen) playGrowth();
-    }
-    var growthCard = root.querySelector('.mobile-growth-card');
-    if (growthCard) {
-      var growthObserver = new IntersectionObserver(function (entries) {
-        entries.forEach(function (entry) {
-          if (entry.intersectionRatio >= 0.5) {
-            growthCardSeen = true;
-            maybeStartGrowth();
-          } else if (!entry.isIntersecting) {
-            growthCardSeen = false;
-            resetGrowth();
+    // Only two photos are ever painted: the one on screen and the one coming.
+    // Photos further ahead are not even downloaded until they are two away.
+    function setFloor(next) {
+      if (next === floorIndex) return;
+      floorIndex = next;
+      beats.forEach(function (beat, index) {
+        if (index <= next + 2 && !beat.classList.contains('is-warm')) {
+          beat.classList.add('is-warm');
+          // Decode ahead of time so the first frame of a dissolve never waits
+          // on the photo.
+          var media = medias[index];
+          if (media && media.tagName === 'IMG') {
+            media.loading = 'eager';
+            if (typeof media.decode === 'function') media.decode().catch(function () {});
           }
-        });
-      }, { threshold: [0, 0.5] });
-      growthObserver.observe(growthCard);
+        }
+        beat.classList.toggle('is-near', index === next || index === next + 1);
+        if (index <= next) write('o' + index, canvases[index], 'opacity', '1');
+        else if (index > next + 1) write('o' + index, canvases[index], 'opacity', '0');
+      });
+      if (next >= 3) warmVideo();
     }
 
-    // Scroll-driven and rAF-coalesced: one rect read and one transform write
-    // per scrolled frame, zero work while the page sits still.
+    // The app video and its poster are only fetched once the story is close.
+    function warmVideo() {
+      if (!video || video.dataset.warm) return;
+      video.dataset.warm = 'true';
+      if (video.dataset.poster) video.poster = video.dataset.poster;
+      video.preload = 'metadata';
+    }
+
+    function measure() {
+      measuredWidth = window.innerWidth;
+      var y = window.scrollY || window.pageYOffset || 0;
+      trackTop = track.getBoundingClientRect().top + y;
+      var distance = Math.max(track.offsetHeight - sticky.offsetHeight, 1);
+      segmentPx = distance / ((total - 1) + (END_HOLD_VH / SEGMENT_VH));
+    }
+
     function update() {
       rafId = 0;
-      var vh = window.innerHeight;
-      var rect = root.getBoundingClientRect();
-      var progress = clamp((vh - rect.top) / (rect.height + vh), 0, 1);
-      if (fill) fill.style.transform = 'scaleY(' + progress.toFixed(4) + ')';
-      if (!scrolled && (window.scrollY || window.pageYOffset || 0) > 30) {
-        scrolled = true;
-        root.classList.add('is-scrolled');
+      if (!pinned) return;
+      var y = window.scrollY || window.pageYOffset || 0;
+      var pos = clamp((y - trackTop) / segmentPx, 0, total - 1);
+      var index = Math.min(Math.floor(pos), total - 1);
+      var t = pos - index;
+      if (index === total - 1) t = 0;
+      setFloor(index);
+
+      var blend = index < total - 1 ? smooth(clamp((t - BLEND_START) / (1 - BLEND_START), 0, 1)) : 0;
+      // The photo on screen drifts in very slowly while it is held, the next
+      // one settles back as it arrives. Both are tied to the thumb.
+      write('s' + index, medias[index], 'transform', 'translateZ(0) scale(' + (1 + 0.05 * t).toFixed(4) + ')');
+      if (index < total - 1) {
+        write('o' + (index + 1), canvases[index + 1], 'opacity', blend.toFixed(3));
+        write('s' + (index + 1), medias[index + 1], 'transform', 'translateZ(0) scale(' + (1.09 - 0.09 * blend).toFixed(4) + ')');
       }
+      write('fill', fill, 'transform', 'scaleY(' + (pos / (total - 1)).toFixed(4) + ')');
+      setActive(index < total - 1 && t >= SWAP_AT ? index + 1 : index);
+
+      if (!scrolled && y > 30) { scrolled = true; root.classList.add('is-scrolled'); }
     }
     function onScroll() {
       if (!rafId) rafId = window.requestAnimationFrame(update);
     }
-    function startListening() {
-      if (listening) return;
-      listening = true;
-      window.addEventListener('scroll', onScroll, { passive: true });
-      window.addEventListener('resize', onScroll);
+    function onResize() {
+      // iPhone fires resize as the address bar slides. Heights here are in
+      // fixed units, so only a real width change needs a new measurement.
+      if (Math.abs(window.innerWidth - measuredWidth) > 2) measure();
       onScroll();
     }
-    function stopListening() {
-      if (!listening) return;
-      listening = false;
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
-      if (rafId) { window.cancelAnimationFrame(rafId); rafId = 0; }
+
+    function enable() {
+      if (pinned) return;
+      pinned = true;
+      root.classList.add('is-pinned');
+      setCounters(0);
+      measure();
+      if (!listening) {
+        listening = true;
+        window.addEventListener('scroll', onScroll, { passive: true });
+        window.addEventListener('resize', onResize);
+      }
+      update();
+    }
+    function disable() {
+      if (!pinned) return;
+      pinned = false;
+      root.classList.remove('is-pinned', 'is-growth-played');
+      growthPlayed = false;
+      if (growthRafId) { window.cancelAnimationFrame(growthRafId); growthRafId = 0; }
+      setCounters(1);
+      floorIndex = -1;
+      active = -1;
+      last = {};
+      beats.forEach(function (beat, index) {
+        beat.classList.remove('is-near', 'is-active');
+        if (canvases[index]) canvases[index].style.opacity = '';
+        if (medias[index]) medias[index].style.transform = '';
+      });
+      if (video && !video.paused) video.pause();
+    }
+    function sync() {
+      if (storyQuery.matches && tallQuery.matches && !reducedQuery.matches) {
+        enable();
+        measure();
+        onScroll();
+      } else {
+        disable();
+        if (storyQuery.matches) warmVideo();
+      }
     }
 
-    // 1. Visibility observer: only listen to scroll while the story is on screen
-    var visibilityObserver = new IntersectionObserver(function (entries) {
-      entries.forEach(function (entry) {
-        if (entry.isIntersecting) { root.classList.add('is-in-view'); startListening(); }
-        else { root.classList.remove('is-in-view'); stopListening(); }
-      });
-    }, { threshold: 0 });
-    visibilityObserver.observe(root);
-
-    // 2. Active-beat observer: switch the active beat based on which one is most visible.
-    //    Doesn't fire per scroll-event so iOS momentum can't stutter it.
-    var activeObserver = new IntersectionObserver(function (entries) {
-      entries.forEach(function (entry) { beatRatios.set(entry.target, entry.intersectionRatio); });
-      var bestIndex = active;
-      var bestRatio = 0;
-      beats.forEach(function (beat, index) {
-        var ratio = beatRatios.get(beat) || 0;
-        if (ratio > bestRatio) { bestRatio = ratio; bestIndex = index; }
-      });
-      if (bestRatio > 0) setActive(bestIndex);
-    }, { threshold: [0, 0.15, 0.3, 0.5, 0.7, 0.85, 1] });
-    beats.forEach(function (beat) { activeObserver.observe(beat); });
+    [storyQuery, reducedQuery, tallQuery].forEach(function (query) {
+      if (typeof query.addEventListener === 'function') query.addEventListener('change', sync);
+      else if (typeof query.addListener === 'function') query.addListener(sync);
+    });
+    window.addEventListener('orientationchange', function () {
+      window.setTimeout(sync, 150);
+      window.setTimeout(sync, 400);
+    });
+    window.addEventListener('load', function () { if (pinned) { measure(); onScroll(); } });
+    window.addEventListener('pageshow', function () { if (pinned) { measure(); onScroll(); } });
+    sync();
   })();
 </script>

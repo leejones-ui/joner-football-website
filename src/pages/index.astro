@@ -1021,9 +1021,9 @@ const homepageSchemas = [
       }
 
       .story-copy[data-index="5"] .story-cta-link {
-        width: 9.8rem;
+        width: 12.5rem;
         height: 4.1rem;
-        min-width: 9.8rem;
+        min-width: 12.5rem;
         min-height: 4.1rem;
         padding: 0;
         text-align: center;
@@ -2058,8 +2058,8 @@ const homepageSchemas = [
               muted
               loop
               playsinline
-              preload="auto"
-              poster={beat.image}
+              preload="none"
+              data-poster={beat.image}
               style={mediaStyle(beat)}
               data-media="video"
               data-story-bg
@@ -2076,7 +2076,8 @@ const homepageSchemas = [
               data-index={index}
               data-state={index === 0 ? 'active' : 'inactive'}
             >
-              {beat.mobileImage && <source media="(max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px)" srcset={beat.mobileImage} />}
+              {/* Phones show the tall story instead, so this hidden wide story must not download photos there. */}
+              <source media="(max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px)" srcset="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" />
               <img
                 class="h-full w-full object-cover"
                 src={beat.image}
@@ -2119,7 +2120,7 @@ const homepageSchemas = [
 
         <div class="story-ball-system absolute z-20" data-story-ball aria-hidden="true">
           <div class="story-ball-pulse">
-            <img class="story-ball-image" src="/images/home-storyboard/yellow-football-object.webp" alt="" />
+            <img class="story-ball-image" src="/images/home-storyboard/yellow-football-object.webp" alt="" loading="lazy" decoding="async" />
           </div>
         </div>
 
@@ -2320,6 +2321,10 @@ const homepageSchemas = [
           var image = background.tagName === 'PICTURE' ? background.querySelector('img') : null;
           if (image && typeof image.decode === 'function') image.decode().catch(function () {});
         });
+        // Poster is set here, not in the HTML, so phones never download it.
+        backgrounds.forEach(function (background) {
+          if (background.tagName === 'VIDEO' && background.dataset.poster && !background.poster) background.poster = background.dataset.poster;
+        });
         var total = copies.length;
         var prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         var lastIndex = -1;
@@ -2470,6 +2475,13 @@ const homepageSchemas = [
           labels.forEach(function (label, index) {
             label.setAttribute('data-state', index === nextIndex ? 'active' : 'inactive');
           });
+
+          // The app video is only fetched once the story is two beats away.
+          if (nextIndex >= 3) {
+            backgrounds.forEach(function (background) {
+              if (background.tagName === 'VIDEO' && background.preload === 'none') background.preload = 'auto';
+            });
+          }
 
           if (nextIndex === 2) playGrowth();
         }
