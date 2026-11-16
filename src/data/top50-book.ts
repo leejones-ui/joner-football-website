@@ -3,9 +3,9 @@
 // drill pages, the coaching principles page, the chapter openers, the contents page).
 // Do not reword them here without changing the book.
 
-// The Shopify products are drafts until launch. Flip this to true only once both
-// products are ACTIVE on shop.jonerfootball.com, or the buttons will 404.
-const SHOP_LIVE = false
+// Both Shopify products went ACTIVE on 16 Nov 2026. Set this to false if either
+// product is ever unpublished, or the buttons will 404.
+const SHOP_LIVE = true
 const shop = (handle: string) => (SHOP_LIVE ? `https://shop.jonerfootball.com/products/${handle}` : '')
 
 export const top50Book = {
