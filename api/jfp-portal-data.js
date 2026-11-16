@@ -42,7 +42,7 @@ import { applyCredits, creditsView, giveCredit, returnCredits } from './_jfp-cre
 const CREDIT_REASONS = new Set(['balance', 'term-after-trial', 'admin-add', 'application', 'waitlist', 'family', 'sessions'])
 import { staffPrincipal, sameOrigin } from './_jfp-people.js'
 import { sendAccountInvite, accountInvite, sendFamilyInvite, sendFamilyWelcome, sendPlaceOffered, sendTrialOffered, sendTermOffered, sendDeclined, sendNextTermInvite, sendFamilyInvoice, sendQuickLinkEmail } from './_jfp-email.js'
-import { nextStatuses, setNextStatus, nextPrices, recordNext, nextInterest } from './_jfp-next.js'
+import { nextStatuses, setNextStatus, nextPrices, recordNext, nextInterest, nextOffers, saveOffer, offerLive, TIER_LABEL } from './_jfp-next.js'
 import { MAKEUP_ADMIN_ACTIONS, emergencyCancel, emergencyUncancel, emergencyEmail, makeupsList, makeupUpdate, sessionOffMap, guestsFor, guestAllowed, markGuestUsed } from './_jfp-makeups.js'
 import { attendanceFor } from './_jfp-attendance-view.js'
 import { allProfiles, findProfile, renameProfile, pickProfile, profileKey, profileView, profileSummary, cleanProfile, saveProfile, waiverPrefill, addTrialFeedback, clubSuggestions, LEVELS, PLAYING_UP, POSITIONS, FEET, YEARS } from './_jfp-profiles.js'
@@ -4197,15 +4197,20 @@ async function handle(req, res) {
       }
       case 'nextTerm': {
         const nt = config.nextTerm
-        const [roster, groups, statuses, interest] = await Promise.all([loadRoster({ fresh: true }), listGroups(), nextStatuses(nt.name), nextInterest(nt.name)])
+        const [roster, groups, statuses, interest, offers] = await Promise.all([loadRoster({ fresh: true }), listGroups(), nextStatuses(nt.name), nextInterest(nt.name), nextOffers(nt.name)])
         const byId = Object.fromEntries(groups.map((g) => [g.id, g]))
+        const live = offerLive(nt)
         const players = roster.players.filter((r) => r.holdsPlace && !isTestName(r.player)).map((r) => {
           const g = byId[r.groupId]
           const st = statuses[r.id] || null
-          return { rowId: r.id, name: r.player, parent: r.parent, email: r.email, group: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : 'Not in a group', groupId: r.groupId, coach: g ? coachLabel(coachById(config, g.coachId)) : '', status: st?.status || '', paidCents: st?.paidCents || 0, at: st?.at || '', interested: interest[r.id]?.at || '' }
+          const o = offers[r.id] || null
+          return { rowId: r.id, name: r.player, parent: r.parent, email: r.email, group: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : 'Not in a group', groupId: r.groupId, coach: g ? coachLabel(coachById(config, g.coachId)) : '', status: st?.status || '', paidCents: st?.paidCents || 0, at: st?.at || '', interested: interest[r.id]?.at || '', payreqId: st?.payreqId || '',
+            offer: o ? { tier: o.tier, kind: o.kind || '', normalCents: o.normalCents, offerCents: o.offerCents, note: o.note || '', nowCents: live ? o.offerCents : o.normalCents } : null }
         }).sort((a, b) => a.group.localeCompare(b.group) || a.name.localeCompare(b.name))
         const count = (s) => players.filter((p) => p.status === s).length
-        return res.status(200).json({ success: true, nextTerm: nt, prices: nextPrices(config, null), players, totals: { players: players.length, invited: count('invited'), held: count('held'), paid: count('paid'), no: count('no'), interested: players.filter((p) => p.interested && !p.status).length, none: players.filter((p) => !p.status).length } })
+        const withOffer = players.filter((p) => p.offer)
+        const offerTotals = { places: withOffer.length, loyal: withOffer.filter((p) => p.offer.tier === 'loyal').length, current: withOffer.filter((p) => p.offer.tier === 'current').length, paid: withOffer.filter((p) => p.status === 'paid').length, paidCents: withOffer.filter((p) => p.status === 'paid').reduce((t, p) => t + (p.paidCents || 0), 0), toComeCents: withOffer.filter((p) => !['paid', 'no'].includes(p.status)).reduce((t, p) => t + p.offer.nowCents, 0), families: new Set(withOffer.map((p) => (p.email || p.parent).toLowerCase())).size, live, tiers: TIER_LABEL }
+        return res.status(200).json({ success: true, nextTerm: nt, offerTotals, prices: nextPrices(config, null), players, totals: { players: players.length, invited: count('invited'), held: count('held'), paid: count('paid'), no: count('no'), interested: players.filter((p) => p.interested && !p.status).length, none: players.filter((p) => !p.status).length } })
       }
       case 'saveNextTerm': {
         // Statuses are kept under the term's name: no renaming once families have answered.
@@ -4214,6 +4219,30 @@ async function handle(req, res) {
         const next = await saveConfig({ nextTerm: { ...config.nextTerm, ...(body.nextTerm || {}) } })
         await audit({ by: principal.email, action: 'next.settings', target: 'config', before: config.nextTerm, after: next.nextTerm })
         return res.status(200).json({ success: true, nextTerm: next.nextTerm })
+      }
+      // One player's Term 1 2027 offer price (Lee, 16 Nov 2026): set, change or remove.
+      case 'saveNextOffer': {
+        const nt = config.nextTerm
+        const rowId = clean(body.rowId, 30)
+        const roster = await loadRoster()
+        const row = roster.players.find((r) => r.id === rowId && r.holdsPlace)
+        if (!row) return fail(res, 404, 'That player is not on this term.')
+        const before = (await nextOffers(nt.name))[rowId] || null
+        if (body.remove === true) {
+          if ((await nextStatuses(nt.name))[rowId]?.status === 'paid') return fail(res, 409, `${row.player} has already paid, so the price stays.`)
+          await saveOffer(nt.name, rowId, null)
+          await audit({ by: principal.email, action: 'next.offer.remove', target: rowId, before, after: null })
+          return res.status(200).json({ success: true })
+        }
+        const c = (v) => { const n = Math.round(Number(v)); return Number.isInteger(n) && n >= 100 && n <= 500000 ? n : null }
+        const offerCents = c(body.offerCents), normalCents = c(body.normalCents)
+        if (offerCents == null || normalCents == null) return fail(res, 400, 'Enter both prices in dollars.')
+        if (offerCents > normalCents) return fail(res, 400, 'The offer price cannot be more than the normal price.')
+        const tier = ['loyal', 'current'].includes(body.tier) ? body.tier : (before?.tier || 'current')
+        const next = { ...(before || {}), tier, kind: clean(body.kind, 60) || before?.kind || '', normalCents, offerCents, note: clean(body.note, 200), by: principal.email, player: row.player }
+        await saveOffer(nt.name, rowId, next)
+        await audit({ by: principal.email, action: before ? 'next.offer.change' : 'next.offer.add', target: rowId, before, after: next })
+        return res.status(200).json({ success: true, offer: next })
       }
       case 'nextTermInvite': {
         const nt = config.nextTerm

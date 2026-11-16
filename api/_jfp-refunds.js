@@ -81,7 +81,24 @@ export async function applyJfpRefunds(id, charge, piId) {
     const [orig] = jfpMoney ? await findLedgerByPayment(piId || record.stripePaymentIntentId || record.id) : []
     if (orig) await airtable(encodeURIComponent(TABLES.ledger), { method: 'PATCH', body: { typecast: true, records: [{ id: orig, fields: { 'Payment Status': charge.amount_refunded >= charge.amount ? 'Refunded' : 'Partially Refunded', 'Updated At': new Date().toISOString() } }] } })
     // Next term: a refunded hold or payment no longer holds the place.
-    if (record.next) {
+    // A family payment for several places: the refund comes off the places
+    // in reverse order, each back to invited once nothing is left on it.
+    if (record.next?.rows?.length) {
+      const all = await nextStatuses(record.next.term)
+      let left = amount
+      for (const x of [...record.next.rows].reverse()) {
+        if (left <= 0) break
+        const st = all[x.rowId] || {}
+        if (st.payreqId && st.payreqId !== record.id) continue
+        const take = Math.min(left, Number(st.paidCents || 0))
+        if (!take) continue
+        left -= take
+        const rest = Number(st.paidCents || 0) - take
+        await setNextStatus(record.next.term, x.rowId, { ...st, status: rest <= 0 ? 'invited' : 'held', paidCents: rest })
+        const row = await getTerm4Row(x.rowId)
+        if (row) await recordNext({ term: record.next.term, row, group: null, status: rest <= 0 ? 'invited' : 'held', amountCents: rest, note: `Refunded ${formatAud(take)} in Stripe (${refund.id}), family payment ${record.id}.`, by: 'stripe' })
+      }
+    } else if (record.next) {
       const st = (await nextStatuses(record.next.term))[record.next.rowId] || {}
       const left = Math.max(0, Number(st.paidCents || 0) - amount)
       const status = left <= 0 ? 'invited' : st.status === 'paid' && left < record.next.fullCents ? 'held' : st.status || 'invited'

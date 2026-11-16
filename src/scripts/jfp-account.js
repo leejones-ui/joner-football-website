@@ -700,7 +700,13 @@ function renderHome() {
   const finished = upcoming().filter((x) => !x.next)
   const doneBlock = finished.length ? `<div class="ja-card ja-nlist">${finished.map((x) => `<button type="button" class="ja-nrow" data-go="sessions" data-kid="${esc(x.p.key)}"><span class="ja-avatar">${esc(initials(x.p.name))}</span><span class="ja-mr-tx"><b>${esc(x.p.name)}</b><small>${esc(x.e.day)}s ${esc(x.e.time)}, ${esc(x.e.location)} · No more sessions this term</small></span>${ic('right', 'ja-mr-go')}</button>`).join('')}</div>` : ''
   const strip = todoStrip()
-  el.innerHTML = `${head}${tilesHtml()}${guideCard()}
+  // Term 1 2027 early price (Lee, 16 Nov 2026): first thing on Home until paid.
+  const N = D.nextTerm
+  const unpaid = D.keep?.open && N ? N.players.filter((x) => x.offer && !['paid', 'held', 'no'].includes(x.status)) : []
+  const tiers = new Set(unpaid.map((x) => x.tier))
+  const headline = tiers.size > 1 ? `${N?.name}: your early price` : tiers.has('loyal') ? `${N?.name}: first week free` : `${N?.name}: A$50 off per player`
+  const offerBanner = unpaid.length ? `<button type="button" class="ja-strip is-pay" data-go="keep" style="margin:0 0 14px"><span class="n">${ic('lock')}</span><span class="ja-mr-tx"><b>${esc(headline)}</b><small>${esc(N.family ? `${N.family.label} instead of ${N.family.normalLabel}` : `${unpaid[0].fullLabel} instead of ${unpaid[0].normalLabel}`)}${N.offerUntilLabel ? `, pay in full by ${esc(N.offerUntilLabel)}` : ''}</small></span></button>` : ''
+  el.innerHTML = `${head}${offerBanner}${tilesHtml()}${guideCard()}
     <div class="ja-home">
       <div class="ja-stack"><p class="ja-label">Next up</p>${nextBlock}${doneBlock}</div>
       <div class="ja-stack">${D.playerLogin ? playerWaiverStep() : strip ? `<p class="ja-label">To do</p>${strip}` : `<div class="ja-strip is-done">${ic('check')}<span class="ja-mr-tx"><b>All sorted</b><small>Nothing to sign or pay right now.</small></span></div>`}${feedbackHomeBlock(D)}${reportsHomeBlock(D)}${bookedExtrasBlock(D)}${makeupsHomeBlock(D)}${notesHomeBlock(D)}${newsBlock()}
@@ -1097,15 +1103,26 @@ function renderKeep() {
   const steps = `<div class="ja-steps" style="margin-top:18px"><div class="ja-step"><b>Tell us you want it</b><p>${D.self ? 'Press the button. No payment now.' : 'Press the button for each player. No payment now.'}</p></div><div class="ja-step"><b>First to know</b><p>We email you as soon as ${esc(k.name)} bookings open, before anyone else.</p></div><div class="ja-step"><b>Lock it in</b><p>Hold it for ${esc(k.holdLabel || 'a small fee')}, which comes off the term fee, or pay the term in full. The hold fee is non-refundable.</p></div></div>`
   // Open (or invited): the real choices.
   if (D.nextTerm) {
-    el.innerHTML = `${top}<div class="ja-keep">${D.nextTerm.players.map((x) => `<div class="ja-card ja-keep-card"><p class="ja-kicker"><i></i>${esc(D.nextTerm.name)}</p><h3 class="ja-h3" style="margin-top:8px">${esc(x.player)}</h3><p class="ja-muted ja-small">Now: ${esc(x.group)}</p>
+    const fam = D.nextTerm.family
+    const famBox = fam ? `<div class="ja-card" style="margin-bottom:14px"><p class="ja-kicker"><i></i>${esc(D.nextTerm.name)}</p><h3 class="ja-h3" style="margin-top:8px">Pay for ${esc(fam.names.map(first).join(' and '))} together</h3><p class="ja-muted" style="margin-top:6px">${esc(fam.label)}${fam.offer ? ` instead of ${esc(fam.normalLabel)}` : ''}${fam.offer && D.nextTerm.offerUntilLabel ? `, paid in full by ${esc(D.nextTerm.offerUntilLabel)}` : ''}.</p><div class="ja-actions"><button type="button" class="ja-btn ja-btn-red" data-next="family" data-row="">Pay ${esc(fam.label)}</button></div></div>` : ''
+    // The early offer (Lee, 16 Nov 2026): paid in full, no deposit step.
+    const N = D.nextTerm
+    const offerSteps = `<div class="ja-steps" style="margin-top:18px"><div class="ja-step"><b>Your spot is held</b><p>Same day, same time, same group${k.holdUntilLabel ? `, held for you until ${esc(k.holdUntilLabel)}` : ''}.</p></div><div class="ja-step"><b>Pay in full</b><p>${N.offerUntilLabel ? `Pay by ${esc(N.offerUntilLabel)} for the early price.` : 'Pay the term in full to lock it in.'} Card or Apple Pay.</p></div><div class="ja-step"><b>Locked in</b><p>You get a receipt by email and the spot is yours for ${esc(N.name)}.</p></div></div>`
+    const stepsNow = N.fullOnly || N.players.some((x) => x.offer) ? offerSteps : steps
+    el.innerHTML = `${top}${famBox}<div class="ja-keep">${D.nextTerm.players.map((x) => `<div class="ja-card ja-keep-card"><p class="ja-kicker"><i></i>${esc(D.nextTerm.name)}</p><h3 class="ja-h3" style="margin-top:8px">${esc(x.player)}</h3><p class="ja-muted ja-small">Now: ${esc(x.group)}</p>
       ${x.status === 'paid' ? `<div class="done">${ic('check')}<span>Paid in full. The spot is locked in.</span></div>`
         : x.status === 'no' ? `<p style="margin-top:12px" class="ja-muted">You told us not returning.</p><div class="ja-actions"><button type="button" class="ja-btn ja-btn-line ja-btn-sm" data-next="hold" data-row="${esc(x.rowId)}">Changed your mind? Hold the spot</button></div>`
         : x.status === 'held' ? `<div class="done">${ic('check')}<span>Spot held. Pay the rest (${esc(x.afterHoldLabel)}) when you know your schedule.</span></div><div class="ja-actions"><button type="button" class="ja-btn ja-btn-red" data-next="full" data-row="${esc(x.rowId)}">Pay the rest</button></div>`
+        : D.nextTerm.fullOnly || x.offer ? `<p style="margin-top:12px">${x.offer && x.tier === 'loyal' ? `<b>First week free.</b> ${esc(first(x.player))} trained with us every single term in 2026. ` : x.offer ? '<b>A$50 off.</b> ' : ''}${esc(x.fullLabel)}${x.offer ? ` instead of ${esc(x.normalLabel)}` : ''}${D.nextTerm.offerUntilLabel && x.offer ? `, paid in full by ${esc(D.nextTerm.offerUntilLabel)}` : ''}.</p>
+          <div class="ja-grid ja-grid-2" style="margin-top:14px">
+            <button type="button" class="j-choice" data-next="full" data-row="${esc(x.rowId)}"><span><b>Keep the spot: pay ${esc(x.fullLabel)}</b><small>Paid in full, the spot is locked in for the term. Card or Apple Pay.</small></span></button>
+            <button type="button" class="j-choice" data-next="no" data-row="${esc(x.rowId)}"><span><b>Not returning</b><small>We will offer the spot to someone else.</small></span></button>
+          </div>`
         : `<div class="ja-grid ja-grid-2" style="margin-top:14px">
             <button type="button" class="j-choice" data-next="full" data-row="${esc(x.rowId)}"><span><b>I can commit: pay ${esc(x.fullLabel)}</b><small>The spot is locked in for the term. Card, Apple Pay or Afterpay.</small></span></button>
             <button type="button" class="j-choice" data-next="hold" data-row="${esc(x.rowId)}"><span><b>Hold my spot: ${esc(x.holdLabel)}</b><small>Not sure of next term's schedule yet? Non-refundable, and it comes off the term fee.</small></span></button>
             <button type="button" class="j-choice" data-next="no" data-row="${esc(x.rowId)}"><span><b>Not returning</b><small>We will offer the spot to someone else.</small></span></button>
-          </div>`}</div>`).join('')}</div>${steps}`
+          </div>`}</div>`).join('')}</div>${stepsNow}`
     return
   }
   el.innerHTML = `${top}<div class="ja-keep">${k.players.length ? k.players.map((x) => `<div class="ja-card ja-keep-card">

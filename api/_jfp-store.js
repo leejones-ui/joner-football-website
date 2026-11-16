@@ -162,7 +162,7 @@ export const DEFAULT_CONFIG = {
   kitPriceLabel: 'A$60',
   // Next term: families keep their place with a non-refundable hold fee
   // (taken off next term's price) or pay in full, before it opens to everyone.
-  nextTerm: { name: 'Term 1 2027', holdCents: 10000, open: false, holdUntil: '' },
+  nextTerm: { name: 'Term 1 2027', holdCents: 10000, open: false, holdUntil: '', offerUntil: '', fullOnly: false, offerOnly: false },
   kitNote: 'The JF playing kit is required for every JFP player. Order it from BE Teamsport before the first session.',
   locations: DEFAULT_LOCATIONS,
   minAge: 6,
@@ -319,6 +319,12 @@ export function normaliseConfig(input = {}) {
       // The date current families' places are held until (Lee, 14 Oct 2026:
       // the deposit card says so). Optional: blank says "until bookings open".
       holdUntil: /^\d{4}-\d{2}-\d{2}$/.test(input.nextTerm?.holdUntil || '') ? input.nextTerm.holdUntil : '',
+      // The early offer (Lee, 16 Nov 2026): its price lasts to the end of this
+      // day; pay in full only (no deposit, no Afterpay); only players with an
+      // offer price see the card.
+      offerUntil: /^\d{4}-\d{2}-\d{2}$/.test(input.nextTerm?.offerUntil || '') ? input.nextTerm.offerUntil : '',
+      fullOnly: input.nextTerm?.fullOnly === true,
+      offerOnly: input.nextTerm?.offerOnly === true,
     },
     locations: cleanLocations(input.locations, b.locations),
     // { '<term>': { '<venueId>': [{ label, cents }] } }, set by saveVenueCosts.

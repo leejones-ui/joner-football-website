@@ -17,7 +17,7 @@ import crypto from 'node:crypto'
 import { stripeFetch } from './_holiday-store.js'
 import {
   getBooking, saveBooking, getGroup, getConfig, confirmPlaces, settlePlaces, releasePlaces, coachById, kvCommand, keys, clean,
-  getPayreq, savePayreq, ONLINE_TAG, audit, claimOnce, dropParentHold, normName, sydneyToday, prepaidOf, withPrepaid } from './_jfp-store.js'
+  getPayreq, savePayreq, ONLINE_TAG, audit, claimOnce, dropParentHold, normName, sydneyToday, prepaidOf, withPrepaid, formatAud } from './_jfp-store.js'
 import { commitNotes } from './_jfp-quote.js'
 import {
   createTerm4Rows, findTerm4ByTag, updateTerm4Rows, getTerm4Row, createLedgerRow, findLedgerByPayment, createWaiverRows, waiverFields,
@@ -276,6 +276,23 @@ async function runPayreqEffects(payreq, retry = new Set()) {
   if (payreq.charge) return runChargeEffects(payreq, config)
   await runEffect('airtable', payreq, save, async () => {
     // Next term: no Term 4 row changes; the place is recorded as held or paid.
+    // A family paying several places at once (Lee, 16 Nov 2026): each place
+    // is recorded paid with its own share.
+    if (payreq.next?.rows?.length) {
+      const statuses = await nextStatuses(payreq.next.term)
+      const total = payreq.paidCents ?? payreq.amountCents
+      const shares = splitBy(total, payreq.next.rows.map((x) => x.cents))
+      for (const [i, x] of payreq.next.rows.entries()) {
+        const before = statuses[x.rowId]
+        if (before?.status === 'paid' && before.payreqId === payreq.id) continue
+        if (before?.payreqId && before.payreqId !== payreq.id && ['held', 'paid'].includes(before.status)) await flagAttention(payreq, 'second-payment', savePayreq, x.player)
+        const row = await getTerm4Row(x.rowId)
+        const who = row || { id: x.rowId, player: x.player, parent: payreq.parentName, email: payreq.email, phone: '', coach: '' }
+        await recordNext({ term: payreq.next.term, row: who, group: null, status: 'paid', amountCents: shares[i], holdCents: null, paymentId: payreq.stripePaymentIntentId || payreq.id, note: `${payreq.next.term} paid in full, family payment ${payreq.id} (${formatAud(total)} for ${payreq.next.rows.length} places).`, by: 'stripe' })
+        await setNextStatus(payreq.next.term, x.rowId, { status: 'paid', payreqId: payreq.id, paidCents: shares[i] })
+      }
+      return
+    }
     if (payreq.next) {
       const row = await getTerm4Row(payreq.next.rowId)
       const before = (await nextStatuses(payreq.next.term))[payreq.next.rowId]

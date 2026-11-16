@@ -84,7 +84,7 @@ const NAV = {
 // Register, Camps and Shop keep a link of their own (Lee).
 const HUBS = {
   players: ['Players', 'families', [['families', 'All players'], ['absence', 'Missing players'], ['makeups', 'Make-ups and credits'], ['fnotes', 'Coach notes'], ['removed', 'Removed players']]],
-  timetable: ['Timetable', 'board', [['board', 'Timetable'], ['groups', 'Groups and rules'], ['next', 'Next term'], ['holiday', 'Holiday training'], ['cancellations', 'Cancellations']]],
+  timetable: ['Timetable', 'board', [['board', 'Timetable'], ['groups', 'Groups and rules'], ['holiday', 'Holiday training'], ['cancellations', 'Cancellations']]],
   joining: ['Joining', 'accounts', [['requests', 'Requests'], ['accounts', 'New accounts'], ['trials', 'Trial feedback'], ['followups', 'Follow ups'], ['feedback', 'Feedback']]],
   inbox: ['Messages', 'messages', [['messages', 'Messages'], ['announce', 'Announcements']]],
   moneyhub: ['Money', 'money', [['money', 'Money'], ['bank', 'Bank payments'], ['payments', 'Payment links'], ['prices', 'Prices'], ['sessionvalue', 'Session value']]],
@@ -93,7 +93,8 @@ const HUBS = {
   admin: ['Settings', 'settings', [['settings', 'Settings'], ['audit', 'Audit log']]],
 }
 // A [key, label] is one page; a string is a hub above; null is a thin line.
-const ADMIN_MENU = [['overview', 'Home'], ['todo', 'To do'], null, ['coach', 'Register'], 'players', 'timetable', 'joining', 'inbox', 'moneyhub', 'coaches', null, 'juniors', ['camps', 'Camps'], ['shop', 'Shop'], null, 'admin']
+// Term 1 2027 has its own link while the early offer runs (Lee, 16 Nov 2026).
+const ADMIN_MENU = [['overview', 'Home'], ['todo', 'To do'], ['next', 'Term 1 2027'], null, ['coach', 'Register'], 'players', 'timetable', 'joining', 'inbox', 'moneyhub', 'coaches', null, 'juniors', ['camps', 'Camps'], ['shop', 'Shop'], null, 'admin']
 NAV.admin = ADMIN_MENU.filter(Boolean).map((m) => (typeof m === 'string' ? [HUBS[m][0], HUBS[m][2]] : ['', [m]]))
 const hubOf = (tab) => Object.keys(HUBS).find((h) => HUBS[h][2].some(([k]) => k === tab)) || ''
 const ICON = {
@@ -1493,43 +1494,10 @@ function pickGroupThenAdd() {
   box.querySelector('#pg-go').addEventListener('click', () => { const g = P.board.groups.find((x) => x.id === box.querySelector('#pg-g').value); closeModal(); if (g) addPlayerModal(g) })
 }
 
-// ---------- next term: hold your place ----------
+// ---------- next term (Term 1 2027 offer, jfp-portal-next.js) ----------
 
 async function renderNext() {
-  const d = await need(await post('nextTerm'))
-  const nt = d.nextTerm
-  const word = { invited: ['blue', 'Invited'], held: ['violet', 'Held'], paid: ['green', 'Paid in full'], no: ['grey', 'Not returning'] }
-  const t = d.totals
-  view().innerHTML = `<div class="jp-head"><div><h1>Next term</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Current families keep their place before ${esc(nt.name)} opens to everyone: hold it with a non-refundable fee (taken off the term), pay in full, or say they are not returning. Everything is saved in Airtable under "Next term holds".</div></details></div></div>
-    <div class="j-card" style="padding:16px;margin-bottom:14px;max-width:760px">
-      <div class="j-two"><label class="j-field"><span>Next term</span><input class="j-input" id="nt-name" value="${esc(nt.name)}"></label><label class="j-field"><span>Hold fee (A$, non-refundable)</span><input class="j-input" id="nt-hold" inputmode="decimal" value="${nt.holdCents / 100}"></label></div>
-      <label class="j-field"><span>Places held for current players until <span class="muted">(optional, shown to families)</span></span><input class="j-input" id="nt-until" type="date" value="${esc(nt.holdUntil || '')}"></label>
-      <label class="j-check"><input type="checkbox" id="nt-open" ${nt.open ? 'checked' : ''}> <span><b>Open to every current family</b> in My account (otherwise only the players you invite below).</span></label>
-      <p class="j-box ${nt.open ? 'j-box-amber' : 'j-box-grey'} small" id="nt-note" style="margin:6px 0 4px"><b>${nt.open ? 'On now:' : 'What this switch does:'}</b> turning it on shows a "Keep your spot for ${esc(nt.name)}" deposit card at the top of every current family's Fees and Home in My account: "Your Wednesday 7:30am place is held for current players until ${esc(nt.holdUntil ? new Date(`${nt.holdUntil}T00:00:00Z`).toLocaleDateString('en-AU', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' }).replace(',', '') : `${nt.name} bookings open to everyone`)}. Pay a ${esc(money(nt.holdCents))} deposit to lock it in." Families who pay see "Your spot for ${esc(nt.name)} is held". Off: no card, and families can only say they want to keep it.</p>
-      <p class="muted small">Full term is ${esc(d.prices.fullLabel)} (from Prices). A held place pays ${esc(d.prices.afterHoldLabel)} more later.</p>
-      <button type="button" class="j-btn j-btn-dark j-btn-sm" id="nt-save" style="margin-top:8px">Save</button>
-    </div>
-    <div class="jp-kpis"><div class="jp-kpi"><span>Players this term</span><b>${t.players}</b></div><div class="jp-kpi"><span>Held</span><b>${t.held}</b></div><div class="jp-kpi"><span>Paid in full</span><b>${t.paid}</b></div><div class="jp-kpi"><span>Want to keep it</span><b>${t.interested || 0}</b></div><div class="jp-kpi"><span>Invited, no answer</span><b>${t.invited}</b></div><div class="jp-kpi"><span>Not returning</span><b>${t.no}</b></div></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><button type="button" class="j-btn j-btn-line j-btn-sm" id="nt-all">Select everyone not invited</button><label class="j-check" style="padding:0"><input type="checkbox" id="nt-email" checked> <span>Email the families</span></label><button type="button" class="j-btn j-btn-dark j-btn-sm" id="nt-invite">Invite selected</button></div>
-    <div class="jp-scroll"><table class="jp-table"><thead><tr><th></th><th>Player</th><th>Group now</th><th>${esc(nt.name)}</th></tr></thead><tbody>
-      ${d.players.map((p) => `<tr><td><input type="checkbox" data-nt="${esc(p.rowId)}" ${p.status ? 'disabled' : ''}></td><td><b>${esc(p.name)}</b><br><span class="muted small">${esc(p.parent)} · ${esc(p.email || 'no email')}</span></td><td>${esc(p.group)}${p.coach ? `<br><span class="muted small">Coach ${esc(p.coach)}</span>` : ''}</td><td>${p.status ? `<span class="j-pill j-pill-${word[p.status][0]}">${word[p.status][1]}</span>${p.paidCents ? ` <span class="muted small">${esc(money(p.paidCents))}</span>` : ''}` : p.interested ? '<span class="j-pill j-pill-amber">Wants to keep it</span> <span class="muted small">said so in My account</span>' : '<span class="muted small">Not invited</span>'}</td></tr>`).join('')}
-    </tbody></table></div>`
-  $('nt-save').addEventListener('click', async () => {
-    // Turning it on reaches every family's account straight away: say so first.
-    if ($('nt-open').checked && !nt.open && !(await confirmBox(`Show the ${esc(nt.name)} deposit card in every current family's Fees and Home now?`, { ok: 'Turn it on' }))) return
-    const r = await post('saveNextTerm', { nextTerm: { name: $('nt-name').value.trim(), holdCents: Math.round(Number($('nt-hold').value) * 100), open: $('nt-open').checked, holdUntil: $('nt-until').value } })
-    toast(r.ok ? 'Saved' : r.data.error); if (r.ok) renderNext()
-  })
-  $('nt-all').addEventListener('click', () => view().querySelectorAll('[data-nt]:not(:disabled)').forEach((c) => { c.checked = true }))
-  $('nt-invite').addEventListener('click', async (e) => {
-    const rowIds = [...view().querySelectorAll('[data-nt]:checked')].map((c) => c.dataset.nt)
-    if (!rowIds.length) return toast('Tick the players to invite.')
-    if (!(await confirmBox(`Invite ${rowIds.length} player${rowIds.length === 1 ? '' : 's'} to keep their place for ${esc(nt.name)}?${$('nt-email').checked ? ' Their families are emailed.' : ' No email is sent.'}`, { ok: 'Invite' }))) return
-    e.target.disabled = true
-    const r = await post('nextTermInvite', { rowIds, sendEmail: $('nt-email').checked })
-    e.target.disabled = false
-    toast(r.ok ? `${r.data.invited} invited${r.data.emailed ? `, ${r.data.emailed} emailed` : ''}${r.data.failed?.length ? `. Not sent: ${r.data.failed.map((x) => `${x.email} (${x.error})`).join(', ')}` : ''}` : r.data.error); renderNext()
-  })
+  return (await import('./jfp-portal-next.js')).renderNext({ view, post, need, toast, confirmBox, modal, closeModal, copy })
 }
 
 // ---------- holiday training ----------

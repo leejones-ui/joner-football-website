@@ -202,11 +202,45 @@ export function depositCards(D, { compact = false, self = false } = {}) {
   const k = D.keep || {}
   if (!k.open || !D.nextTerm?.players?.length) return ''
   const until = k.holdUntilLabel ? `until ${k.holdUntilLabel}` : `until ${k.name} bookings open to everyone`
-  return D.nextTerm.players.filter((x) => x.status !== 'no').map((x) => {
+  const N = D.nextTerm
+  const fam = N.family
+  // Two or more places: one payment for all of them (Lee, 16 Nov 2026).
+  const famCard = fam ? `<article class="ja-card ja-deposit" data-deposit="family">
+      <div class="ja-deposit-copy">
+        <p class="ja-kicker"><i></i>${esc(N.name)} · ${fam.offer ? 'early price' : 'current families first'}</p>
+        <h3 class="ja-deposit-t">Keep ${esc(fam.names.map(first).join(' and '))}'s spots for ${esc(N.name)}</h3>
+        <p class="ja-deposit-p">${esc(fam.rowIds.length === 2 ? (fam.names.length === 2 ? 'Pay for both together' : 'Pay for both sessions together') : `Pay for all ${fam.rowIds.length} places together`)}: ${esc(fam.label)}${fam.offer ? ` instead of ${esc(fam.normalLabel)}${N.offerUntilLabel ? `, paid in full by ${esc(N.offerUntilLabel)}` : ''}` : ''}.${k.holdUntilLabel ? ` Your spots are held ${esc(until)}.` : ''}</p>
+      </div>
+      <div class="ja-deposit-pay">
+        <p class="ja-amt"><span>${esc(fam.label)}</span>${fam.offer ? ` <small><s>${esc(fam.normalLabel)}</s></small>` : ''}</p>
+        <button type="button" class="ja-btn ja-btn-red ja-btn-block ja-btn-lg" data-next="family" data-row="">${ic('lock')}Pay ${esc(fam.label)}</button>
+        <p class="ja-small ja-muted" style="margin-top:10px">Card or Apple Pay. Or pay for each player on their own below.</p>
+      </div>
+    </article>` : ''
+  return famCard + D.nextTerm.players.filter((x) => x.status !== 'no').map((x) => {
     const whose = self ? 'Your' : `${first(x.player)}'s`
     const place = x.dayTime ? `${whose} ${x.dayTime} place` : `${whose} place`
     if (x.status === 'paid') return `<article class="ja-card ja-deposit is-done" data-deposit="${esc(x.rowId)}"><p class="ja-kicker"><i></i>${esc(D.nextTerm.name)}</p><h3 class="ja-deposit-t">${ic('check')}${esc(self ? 'Your' : `${first(x.player)}'s`)} spot for ${esc(D.nextTerm.name)} is locked in</h3><p class="ja-muted">Paid in full. ${esc(x.group)}.</p></article>`
     if (x.status === 'held') return `<article class="ja-card ja-deposit is-done" data-deposit="${esc(x.rowId)}"><p class="ja-kicker"><i></i>${esc(D.nextTerm.name)}</p><h3 class="ja-deposit-t">${ic('check')}${esc(self ? 'Your' : `${first(x.player)}'s`)} spot for ${esc(D.nextTerm.name)} is held</h3><p class="ja-muted">${esc(x.group)}. Pay the rest (${esc(x.afterHoldLabel)}) when you know your schedule.</p><div class="ja-actions"><button type="button" class="ja-btn ja-btn-line ja-btn-sm" data-next="full" data-row="${esc(x.rowId)}">Pay the rest, ${esc(x.afterHoldLabel)}</button></div></article>`
+    // The early offer: paid in full, no deposit (Lee, 16 Nov 2026).
+    if (x.offer || N.fullOnly) {
+      const who = self ? 'You' : first(x.player)
+      const title = x.offer && x.tier === 'loyal' ? `Thank you: ${self ? 'your' : `${esc(first(x.player))}'s`} first week is free` : x.offer ? `A$50 off ${self ? 'your' : `${esc(first(x.player))}'s`} ${esc(N.name)}` : `Keep your spot for ${esc(N.name)}`
+      const why = x.offer && x.tier === 'loyal' ? `${esc(who)} trained with us every single term in 2026, one of only 24 players. To say thank you, the first week of ${esc(N.name)} is free. ` : ''
+      return `<article class="ja-card ja-deposit" data-deposit="${esc(x.rowId)}">
+      <div class="ja-deposit-copy">
+        <p class="ja-kicker"><i></i>${esc(N.name)} · ${x.offer ? 'early price' : 'current players first'}</p>
+        <h3 class="ja-deposit-t">${title}</h3>
+        <p class="ja-deposit-p">${why}${esc(place)} is held for you ${esc(until)}. To keep it, pay in full${N.offerUntilLabel && x.offer ? ` by ${esc(N.offerUntilLabel)}` : ''}: ${esc(x.fullLabel)}${x.offer ? ` instead of ${esc(x.normalLabel)}` : ''}.</p>
+        ${compact ? '' : `<p class="ja-small ja-muted" style="margin-top:8px">${x.offer ? `Paid in full only. From the day after, the price is ${esc(x.normalLabel)}.` : 'Paid in full only.'} Not coming back? <button type="button" class="ja-link" data-go="keep">Tell us</button>.</p>`}
+      </div>
+      <div class="ja-deposit-pay">
+        <p class="ja-amt"><span>${esc(x.fullLabel)}</span>${x.offer ? ` <small><s>${esc(x.normalLabel)}</s></small>` : ''}</p>
+        <button type="button" class="ja-btn ja-btn-red ja-btn-block ja-btn-lg" data-next="full" data-row="${esc(x.rowId)}">${ic('lock')}Pay ${esc(x.fullLabel)}</button>
+        <p class="ja-small ja-muted" style="margin-top:10px">Card or Apple Pay.</p>
+      </div>
+    </article>`
+    }
     return `<article class="ja-card ja-deposit" data-deposit="${esc(x.rowId)}">
       <div class="ja-deposit-copy">
         <p class="ja-kicker"><i></i>${esc(D.nextTerm.name)} · current players first</p>
