@@ -286,19 +286,33 @@ const choices = [
   .mobile-story-cue { display: none; }
 
   /* ---------- Pinned story (script adds .is-pinned) ---------- */
-  .mobile-story.is-pinned .mobile-story-track { height: calc(100vh - 4rem + (var(--beats) - 1) * 85vh + 30vh); }
-  .mobile-story.is-pinned .mobile-story-sticky { position: sticky; top: 4rem; height: calc(100vh - 4rem); overflow: hidden; contain: paint; }
-  /* The words live in the part of the screen that is always visible (svh);
-     the photo fills the full height (vh) so nothing jumps when the iPhone
-     address bar slides away. */
-  .mobile-story.is-pinned .mobile-story-beat { position: absolute; inset: 0 0 auto 0; height: calc(100svh - 4rem); min-height: 0; margin: 0; overflow: visible; isolation: auto; pointer-events: none; }
-  .mobile-story.is-pinned .mobile-story-canvas { inset: 0 0 auto 0; height: calc(100vh - 4rem); -webkit-mask-image: none; mask-image: none; opacity: 0; }
+  /* EVERY height here comes from --sh, the screen height in pixels, which
+     the script measures once and then freezes. Phone browsers change the
+     screen height while you scroll (the address bar slides away and back),
+     and Chrome changes vh and svh with it. Sizes tied to those units made
+     the whole story resize and bounce mid-scroll (Lee, 17 Nov 2026). Never
+     put vh, svh, dvh or % of the viewport back into the pinned story.
+     The photo panel is 140px taller than the screen, so when the address
+     bar hides there is photo under it, not a black strip. */
+  .mobile-story { --sh: 100svh; --over: 140px; overflow-anchor: none; }
+  .mobile-story.is-pinned .mobile-story-track { height: calc(var(--sh) - 4rem + var(--over) + (var(--beats) - 1) * 0.85 * var(--sh) + 0.3 * var(--sh)); }
+  .mobile-story.is-pinned .mobile-story-sticky { position: sticky; top: 4rem; height: calc(var(--sh) - 4rem + var(--over)); overflow: hidden; contain: paint; }
+  .mobile-story.is-pinned .mobile-story-beat { position: absolute; inset: 0 0 auto 0; height: calc(var(--sh) - 4rem); min-height: 0; margin: 0; overflow: visible; isolation: auto; pointer-events: none; }
+  .mobile-story.is-pinned .mobile-story-canvas { inset: 0 0 auto 0; height: calc(var(--sh) - 4rem + var(--over)); -webkit-mask-image: none; mask-image: none; opacity: 0; }
   .mobile-story.is-pinned .mobile-story-beat:first-child .mobile-story-canvas { opacity: 1; }
   .mobile-story.is-pinned .mobile-story-beat:not(.is-warm) .mobile-story-canvas { display: none; }
   .mobile-story.is-pinned .mobile-story-beat:not(.is-near) .mobile-story-canvas { visibility: hidden; }
   .mobile-story.is-pinned .mobile-story-beat.is-near .mobile-story-canvas { will-change: opacity; }
   .mobile-story.is-pinned .mobile-story-beat.is-near .mobile-story-media { will-change: transform; }
 
+  .mobile-story.is-pinned .mobile-story-copy { top: calc(0.18 * var(--sh)); }
+  .mobile-story.is-pinned .mobile-story-beat:nth-child(1) .mobile-story-copy,
+  .mobile-story.is-pinned .mobile-story-beat:nth-child(2) .mobile-story-copy,
+  .mobile-story.is-pinned .mobile-story-beat:nth-child(6) .mobile-story-copy,
+  .mobile-story.is-pinned .mobile-story-beat:nth-child(8) .mobile-story-copy { top: 0; }
+  .mobile-story.is-pinned .mobile-story-beat:nth-child(3) .mobile-story-copy { top: calc(0.09 * var(--sh)); }
+  .mobile-story.is-pinned .mobile-story-beat:nth-child(4) .mobile-story-copy { top: calc(0.34 * var(--sh)); }
+  .mobile-story.is-pinned .mobile-story-beat:nth-child(7) .mobile-story-copy { top: auto; }
   .mobile-story.is-pinned .mobile-story-copy { transition: opacity 200ms cubic-bezier(.55,0,.68,.19), visibility 0s linear 200ms; }
   .mobile-story.is-pinned .mobile-story-beat:not(.is-active) .mobile-story-copy { opacity: 0; visibility: hidden; }
   .mobile-story.is-pinned .mobile-story-beat.is-active .mobile-story-copy { transition: opacity 0s, visibility 0s; pointer-events: auto; }
@@ -326,7 +340,7 @@ const choices = [
   .mobile-story.is-pinned:not(.is-growth-played) .mobile-growth-bars span { transform: scaleY(0.12); }
   .mobile-story.is-pinned:not(.is-growth-played) .mobile-growth-grid strong { transform: translate3d(0, 8px, 0) scale(0.82); }
 
-  .mobile-story.is-pinned .mobile-story-rail { display: block; position: absolute; left: 0.9rem; top: 1.4rem; height: calc(100svh - 4rem - 3.4rem); z-index: 20; width: 1.7rem; pointer-events: none; }
+  .mobile-story.is-pinned .mobile-story-rail { display: block; position: absolute; left: 0.9rem; top: 1.4rem; height: calc(var(--sh) - 4rem - 3.4rem); z-index: 20; width: 1.7rem; pointer-events: none; }
   .mobile-story-line, .mobile-story-fill { position: absolute; left: 0.82rem; top: 0; bottom: 0; width: 1px; }
   .mobile-story-line { background: rgba(255,255,255,0.24); }
   .mobile-story-fill { background: #e30613; transform: scaleY(0); transform-origin: top; }
@@ -372,7 +386,6 @@ const choices = [
 
     var storyQuery = window.matchMedia('(max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px)');
     var reducedQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    var tallQuery = window.matchMedia('(min-height: 601px)');
 
     // How the scroll is spent on each photo: hold it, then dissolve.
     var SEGMENT_VH = 85;   // must match the track height in the CSS
@@ -480,6 +493,20 @@ const choices = [
       video.preload = 'metadata';
     }
 
+    // Freeze the screen height in pixels. Taken once, and again only when the
+    // width really changes (rotation), never when the address bar moves.
+    var probe = null;
+    function lockHeight() {
+      if (!probe) {
+        probe = document.createElement('div');
+        probe.style.cssText = 'position:fixed;left:0;top:0;width:0;height:100svh;visibility:hidden;pointer-events:none;';
+        document.body.appendChild(probe);
+      }
+      var small = probe.offsetHeight || window.innerHeight;
+      var height = Math.round(Math.min(small, window.innerHeight || small));
+      root.style.setProperty('--sh', height + 'px');
+    }
+
     function measure() {
       measuredWidth = window.innerWidth;
       var y = window.scrollY || window.pageYOffset || 0;
@@ -517,7 +544,7 @@ const choices = [
     function onResize() {
       // iPhone fires resize as the address bar slides. Heights here are in
       // fixed units, so only a real width change needs a new measurement.
-      if (Math.abs(window.innerWidth - measuredWidth) > 2) measure();
+      if (Math.abs(window.innerWidth - measuredWidth) > 2) { lockHeight(); measure(); }
       onScroll();
     }
 
@@ -526,6 +553,7 @@ const choices = [
       pinned = true;
       root.classList.add('is-pinned');
       setCounters(0);
+      lockHeight();
       measure();
       if (!listening) {
         listening = true;
@@ -538,6 +566,7 @@ const choices = [
       if (!pinned) return;
       pinned = false;
       root.classList.remove('is-pinned', 'is-growth-played');
+      root.style.removeProperty('--sh');
       growthPlayed = false;
       if (growthRafId) { window.cancelAnimationFrame(growthRafId); growthRafId = 0; }
       setCounters(1);
@@ -551,27 +580,36 @@ const choices = [
       });
       if (video && !video.paused) video.pause();
     }
-    function sync() {
-      if (storyQuery.matches && tallQuery.matches && !reducedQuery.matches) {
+    // Whether to pin is decided when the page opens and again only when the
+    // width really changes (rotation). The address bar moving changes the
+    // height many times a scroll; it must never switch the story on or off.
+    var tallEnough = false;
+    function sync(force) {
+      var widthChanged = Math.abs(window.innerWidth - measuredWidth) > 2;
+      if (force || widthChanged || !measuredWidth) tallEnough = window.innerHeight >= 560;
+      if (storyQuery.matches && tallEnough && !reducedQuery.matches) {
+        var wasPinned = pinned;
         enable();
-        measure();
+        if (wasPinned && widthChanged) { lockHeight(); measure(); }
         onScroll();
       } else {
+        measuredWidth = window.innerWidth;
         disable();
         if (storyQuery.matches) warmVideo();
       }
     }
 
-    [storyQuery, reducedQuery, tallQuery].forEach(function (query) {
-      if (typeof query.addEventListener === 'function') query.addEventListener('change', sync);
-      else if (typeof query.addListener === 'function') query.addListener(sync);
+    [storyQuery, reducedQuery].forEach(function (query) {
+      var onChange = function () { sync(false); };
+      if (typeof query.addEventListener === 'function') query.addEventListener('change', onChange);
+      else if (typeof query.addListener === 'function') query.addListener(onChange);
     });
     window.addEventListener('orientationchange', function () {
-      window.setTimeout(sync, 150);
-      window.setTimeout(sync, 400);
+      window.setTimeout(function () { sync(false); }, 150);
+      window.setTimeout(function () { sync(false); }, 400);
     });
     window.addEventListener('load', function () { if (pinned) { measure(); onScroll(); } });
     window.addEventListener('pageshow', function () { if (pinned) { measure(); onScroll(); } });
-    sync();
+    sync(true);
   })();
 </script>
