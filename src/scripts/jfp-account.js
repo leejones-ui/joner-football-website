@@ -704,7 +704,7 @@ function renderHome() {
   const N = D.nextTerm
   const unpaid = D.keep?.open && N ? N.players.filter((x) => x.offer && !['paid', 'held', 'no'].includes(x.status)) : []
   const tiers = new Set(unpaid.map((x) => x.tier))
-  const headline = tiers.size > 1 ? `${N?.name}: your early price` : tiers.has('loyal') ? `${N?.name}: first week free` : `${N?.name}: A$50 off per player`
+  const headline = tiers.size > 1 ? `${N?.name}: your early price` : tiers.has('loyal') ? `${N?.name}: first week free` : unpaid.every((x) => x.normalCents - x.fullCents === 5000) ? `${N?.name}: A$50 off per player` : `${N?.name}: your early price`
   const offerBanner = unpaid.length ? `<button type="button" class="ja-strip is-pay" data-go="keep" style="margin:0 0 14px"><span class="n">${ic('lock')}</span><span class="ja-mr-tx"><b>${esc(headline)}</b><small>${esc(N.family ? `${N.family.label} instead of ${N.family.normalLabel}` : `${unpaid[0].fullLabel} instead of ${unpaid[0].normalLabel}`)}${N.offerUntilLabel ? `, pay in full by ${esc(N.offerUntilLabel)}` : ''}</small></span></button>` : ''
   el.innerHTML = `${head}${offerBanner}${tilesHtml()}${guideCard()}
     <div class="ja-home">
@@ -1113,7 +1113,7 @@ function renderKeep() {
       ${x.status === 'paid' ? `<div class="done">${ic('check')}<span>Paid in full. The spot is locked in.</span></div>`
         : x.status === 'no' ? `<p style="margin-top:12px" class="ja-muted">You told us not returning.</p><div class="ja-actions"><button type="button" class="ja-btn ja-btn-line ja-btn-sm" data-next="hold" data-row="${esc(x.rowId)}">Changed your mind? Hold the spot</button></div>`
         : x.status === 'held' ? `<div class="done">${ic('check')}<span>Spot held. Pay the rest (${esc(x.afterHoldLabel)}) when you know your schedule.</span></div><div class="ja-actions"><button type="button" class="ja-btn ja-btn-red" data-next="full" data-row="${esc(x.rowId)}">Pay the rest</button></div>`
-        : D.nextTerm.fullOnly || x.offer ? `<p style="margin-top:12px">${x.offer && x.tier === 'loyal' ? `<b>First week free.</b> ${esc(first(x.player))} trained with us every single term in 2026. ` : x.offer ? '<b>A$50 off.</b> ' : ''}${esc(x.fullLabel)}${x.offer ? ` instead of ${esc(x.normalLabel)}` : ''}${D.nextTerm.offerUntilLabel && x.offer ? `, paid in full by ${esc(D.nextTerm.offerUntilLabel)}` : ''}.</p>
+        : D.nextTerm.fullOnly || x.offer ? `<p style="margin-top:12px">${x.offer && x.tier === 'loyal' ? `<b>First week free.</b> ${esc(first(x.player))} trained with us every single term in 2026. ` : x.offer ? `<b>A$${Math.round(((x.normalCents || 0) - (x.fullCents || 0)) / 100)} off.</b> ` : ''}${esc(x.fullLabel)}${x.offer ? ` instead of ${esc(x.normalLabel)}` : ''}${D.nextTerm.offerUntilLabel && x.offer ? `, paid in full by ${esc(D.nextTerm.offerUntilLabel)}` : ''}.</p>
           <div class="ja-grid ja-grid-2" style="margin-top:14px">
             <button type="button" class="j-choice" data-next="full" data-row="${esc(x.rowId)}"><span><b>Keep the spot: pay ${esc(x.fullLabel)}</b><small>Paid in full, the spot is locked in for the term. Card or Apple Pay.</small></span></button>
             <button type="button" class="j-choice" data-next="no" data-row="${esc(x.rowId)}"><span><b>Not returning</b><small>We will offer the spot to someone else.</small></span></button>
