@@ -59,7 +59,11 @@ export function checkCard(body) {
     const custom = {}
     for (const [gid, v] of Object.entries(body.custom).slice(0, 40)) { const cents = c(v); if (cents == null) continue; if (!centsOk(cents)) return { error: 'That custom session rate is not right.' }; custom[clean(gid, 80)] = cents }
     if (Object.keys(custom).length) card.custom = custom
+    // Lee, 17 Nov 2026 (Sam): some custom rates are per session, whatever the length.
+    if (card.custom && Array.isArray(body.customFlat)) { const flat = body.customFlat.map((g) => clean(g, 80)).filter((g) => card.custom[g]); if (flat.length) card.customFlat = flat }
   }
+  // Lee, 17 Nov 2026 (Sam): Joners Juniors paid per session, not cut for a 45 minute session.
+  if (body.jjFlat === true) card.jjFlat = true
   // Lee, 9 Nov 2026 (Sam): a coach Lee trusts. Their hours count as logged, no approving, and go straight on their invoice.
   if (body.trustHours === true) card.trustHours = true
   card.camps = 'tbc'
@@ -170,6 +174,7 @@ export function priceLine(line, { card, group, register }) {
   if (jj) {
     const r = card.jjHead || card.jjShadow
     if (!r) return tbc('no-rate', 'No agreed Joners Juniors rate: Lee sets the amount')
+    if (card.jjFlat) return { cents: r, basis: `Joners Juniors, ${money(r)} a session`, players: null, flags: [] }
     return { cents: hourly(r, line.minutes), basis: `Joners Juniors, ${money(r)} an hour`, players: null, flags: [] }
   }
   if (line.kind === 'devsesh' && !card.devSesh) return tbc('no-rate', 'No agreed Dev Sesh rate: Lee sets the amount')
@@ -181,6 +186,7 @@ export function priceLine(line, { card, group, register }) {
   if (['session', 'cover'].includes(line.kind) && line.groupId) {
     if (!group) return tbc('no-group', 'That group is gone: Lee sets the amount')
     const own = card.custom?.[group.id]
+    if (own && card.customFlat?.includes(group.id)) return { cents: own, basis: `Agreed rate for this session, ${money(own)} a session`, players: picked || counted || null, flags: [] }
     if (own) return { cents: hourly(own, line.minutes), basis: `Agreed rate for this session, ${money(own)} an hour`, players: picked || counted || null, flags: [] }
     if (!register?.marked && !picked) return tbc('register', 'Register not marked for this session. Mark it, or tick your players in My hours')
     const n = picked || counted

@@ -93,7 +93,7 @@ const DETAIL = [['fullName', 'Full name', 'text'], ['abn', 'ABN', 'numeric'], ['
 const detailsForm = (d = {}) => `<div class="j-two">${DETAIL.map(([k, l, m]) => `<label class="j-field"><span>${l}</span><input class="j-input" data-det="${k}" value="${esc(d[k] || '')}" ${m === 'numeric' ? 'inputmode="numeric"' : m === 'email' ? 'type="email"' : m === 'tel' ? 'type="tel"' : ''}></label>`).join('')}</div>`
 
 // Rate card editor (Lee and Ligia): dollars an hour unless it says flat.
-const CARD_FIELDS = [['weekendExtra', 'Weekend extra, Sat or Sun (an hour)'], ['pathwayFlat', 'Pathway 45 min (flat)'], ['jjHead', 'Juniors head or shadow (an hour)'], ['office', 'Office hours (an hour)'], ['devSesh', 'Dev Sesh (flat, each)']]
+const CARD_FIELDS = [['weekendExtra', 'Weekend extra, Sat or Sun (an hour)'], ['pathwayFlat', 'Pathway 45 min (flat)'], ['jjHead', 'Juniors head or shadow (an hour, or per session if ticked)'], ['office', 'Office hours (an hour)'], ['devSesh', 'Dev Sesh (flat, each)']]
 // Every box the same size; boxes sit on the bottom of each row so the inputs line up.
 const rateBox = (label, attrs) => `<label class="j-field" style="margin:0;min-width:0"><span style="line-height:1.3">${label}</span><input class="j-input" style="width:100%" inputmode="decimal" ${attrs}></label>`
 const dollars = (c) => (c ? (c / 100).toFixed(2).replace(/\.00$/, '') : '')
@@ -103,9 +103,10 @@ function cardForm(c, card, bands, groups = []) {
   const mine = groups.filter((g) => g.coachId === c.id)
   return `<div class="j-card" style="padding:12px 14px;margin-bottom:10px" data-card="${esc(c.id)}"><b>${esc(c.name)}</b>${card ? ` <span class="muted small">saved ${esc(new Date(card.savedAt).toLocaleDateString('en-AU'))}</span>` : ' <span class="j-pill j-pill-grey">No rates</span>'}
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px 8px;align-items:end;margin-top:8px">${bands.map((b, i) => rateBox(esc(b), `data-band="${i}" value="${dollars(card?.bands?.[i])}"`)).join('')}${CARD_FIELDS.map(([k, l]) => rateBox(esc(l), `data-cf="${k}" value="${dollars(card?.[k])}" placeholder="Not agreed"`)).join('')}</div>
-    <div style="margin-top:10px"><b class="small">Custom rate for one session (an hour)</b>
-      ${custom.map(([gid, cents]) => `<div style="display:flex;gap:8px;align-items:center;margin-top:6px" data-cu="${esc(gid)}"><span class="small" style="flex:1">${esc(label(gid))}</span><input class="j-input" inputmode="decimal" data-cu-v value="${dollars(cents)}" style="width:150px" placeholder="Remove"></div>`).join('')}
-      <div style="display:flex;gap:8px;align-items:center;margin-top:6px"><select class="j-select" data-cu-new style="flex:1"><option value="">Add a custom rate for a session…</option>${mine.filter((g) => !card?.custom?.[g.id]).map((g) => `<option value="${esc(g.id)}">${esc(g.label)}</option>`).join('')}</select><input class="j-input" inputmode="decimal" data-cu-new-v style="width:150px" placeholder="A$"></div></div>
+    <div style="margin-top:10px"><b class="small">Custom rate for one session (an hour, or tick Per session)</b>
+      ${custom.map(([gid, cents]) => `<div style="display:flex;gap:8px;align-items:center;margin-top:6px" data-cu="${esc(gid)}"><span class="small" style="flex:1">${esc(label(gid))}</span><input class="j-input" inputmode="decimal" data-cu-v value="${dollars(cents)}" style="width:150px" placeholder="Remove"><label class="small" style="white-space:nowrap"><input type="checkbox" data-cu-flat ${card?.customFlat?.includes(gid) ? 'checked' : ''}> Per session</label></div>`).join('')}
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px"><select class="j-select" data-cu-new style="flex:1"><option value="">Add a custom rate for a session…</option>${mine.filter((g) => !card?.custom?.[g.id]).map((g) => `<option value="${esc(g.id)}">${esc(g.label)}</option>`).join('')}</select><input class="j-input" inputmode="decimal" data-cu-new-v style="width:150px" placeholder="A$"><label class="small" style="white-space:nowrap"><input type="checkbox" data-cu-new-flat> Per session</label></div></div>
+    <label class="j-check" style="margin-top:10px"><input type="checkbox" data-cf-jjflat ${card?.jjFlat ? 'checked' : ''}> <span><b>Juniors per session.</b> The Juniors rate is paid per session, not cut for a shorter session.</span></label>
     <label class="j-check" style="margin-top:10px"><input type="checkbox" data-cf-trust ${card?.trustHours ? 'checked' : ''}> <span><b>Trust their hours.</b> Hours count as they log them, with nothing for you to approve, and go straight on their invoice.</span></label>
     <p class="muted small" style="margin:6px 0">Camps: agreed with Lee before each camp (TBC). Leave a box empty when there is no agreed rate: those lines wait for you.</p>
     <button type="button" class="j-btn j-btn-dark j-btn-sm" data-card-save>Save ${esc(c.name)}'s rates</button></div>`
@@ -161,9 +162,11 @@ export async function renderCoachInvoices(ui) {
         cardBody.jjShadow = cardBody.jjHead
         cardBody.trustHours = el.querySelector('[data-cf-trust]').checked
         cardBody.custom = {}
-        el.querySelectorAll('[data-cu]').forEach((row) => { const v = cents(row.querySelector('[data-cu-v]').value); if (v != null) cardBody.custom[row.dataset.cu] = v })
+        cardBody.customFlat = []
+        cardBody.jjFlat = el.querySelector('[data-cf-jjflat]').checked
+        el.querySelectorAll('[data-cu]').forEach((row) => { const v = cents(row.querySelector('[data-cu-v]').value); if (v != null) { cardBody.custom[row.dataset.cu] = v; if (row.querySelector('[data-cu-flat]').checked) cardBody.customFlat.push(row.dataset.cu) } })
         const ng = el.querySelector('[data-cu-new]').value, nv = cents(el.querySelector('[data-cu-new-v]').value)
-        if (ng && nv != null) cardBody.custom[ng] = nv
+        if (ng && nv != null) { cardBody.custom[ng] = nv; if (el.querySelector('[data-cu-new-flat]').checked) cardBody.customFlat.push(ng) }
         const x = await post('coachPayCardSave', { coachId: el.dataset.card, card: cardBody })
         toast(x.ok ? 'Rates saved. They price new invoices.' : x.data.error)
       }))
