@@ -299,11 +299,19 @@ const choices = [
   .mobile-story.is-pinned .mobile-story-sticky { position: sticky; top: 4rem; height: calc(var(--sh) - 4rem + var(--over)); overflow: hidden; contain: paint; }
   .mobile-story.is-pinned .mobile-story-beat { position: absolute; inset: 0 0 auto 0; height: calc(var(--sh) - 4rem); min-height: 0; margin: 0; overflow: visible; isolation: auto; pointer-events: none; }
   .mobile-story.is-pinned .mobile-story-canvas { inset: 0 0 auto 0; height: calc(var(--sh) - 4rem + var(--over)); -webkit-mask-image: none; mask-image: none; opacity: 0; }
-  .mobile-story.is-pinned .mobile-story-beat:first-child .mobile-story-canvas { opacity: 1; }
   .mobile-story.is-pinned .mobile-story-beat:not(.is-warm) .mobile-story-canvas { display: none; }
-  .mobile-story.is-pinned .mobile-story-beat:not(.is-near) .mobile-story-canvas { visibility: hidden; }
-  .mobile-story.is-pinned .mobile-story-beat.is-near .mobile-story-canvas { will-change: opacity; }
-  .mobile-story.is-pinned .mobile-story-beat.is-near .mobile-story-media { will-change: transform; }
+  /* NOTHING IS WRITTEN PER SCROLL FRAME (Lee's screen recording, 17 Nov
+     2026). Writing opacity or scale from script on every frame made iPhone
+     browsers re-place the pinned panel a frame late, so it shook by a few
+     pixels the whole time a finger was moving. Script now only flips classes
+     when the beat changes; these timed fades run inside the browser's own
+     animation engine. Do not add scroll-linked styles back to this story. */
+  .mobile-story.is-pinned .mobile-story-canvas { visibility: hidden; transition: opacity 700ms cubic-bezier(.4,0,.2,1), visibility 0s linear 750ms; }
+  .mobile-story.is-pinned .mobile-story-beat.is-near .mobile-story-canvas { visibility: visible; transition: opacity 700ms cubic-bezier(.4,0,.2,1), visibility 0s; }
+  .mobile-story.is-pinned .mobile-story-beat.is-shown .mobile-story-canvas { opacity: 1; }
+  .mobile-story.is-pinned .mobile-story-media { transform: translateZ(0) scale(1.07); transition: transform 1500ms cubic-bezier(.22,.61,.36,1); }
+  .mobile-story.is-pinned .mobile-story-beat.is-active .mobile-story-media { transform: translateZ(0) scale(1); }
+  .mobile-story.is-pinned .mobile-story-fill { transition: transform 600ms cubic-bezier(.22,.61,.36,1); }
 
   .mobile-story.is-pinned .mobile-story-copy { top: calc(0.18 * var(--sh)); }
   .mobile-story.is-pinned .mobile-story-beat:nth-child(1) .mobile-story-copy,
@@ -387,11 +395,8 @@ const choices = [
     var storyQuery = window.matchMedia('(max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px)');
     var reducedQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 
-    // How the scroll is spent on each photo: hold it, then dissolve.
     var SEGMENT_VH = 85;   // must match the track height in the CSS
     var END_HOLD_VH = 30;  // must match the track height in the CSS
-    var BLEND_START = 0.5; // the dissolve uses the second half of each segment
-    var SWAP_AT = 0.76;    // words change three quarters of the way through
 
     var pinned = false;
     var listening = false;
@@ -426,33 +431,39 @@ const choices = [
       });
     }
 
+    // The numbers show their final values; the card rises in with CSS only.
+    // A script count-up would repaint the pinned panel on every frame.
     function playGrowth() {
       if (growthPlayed) return;
       growthPlayed = true;
       root.classList.add('is-growth-played');
-      var DURATION = 1800;
-      var startTime = null;
-      function frame(now) {
-        if (startTime === null) startTime = now;
-        var t = clamp((now - startTime) / DURATION, 0, 1);
-        setCounters(1 - Math.pow(1 - t, 3));
-        growthRafId = t < 1 ? window.requestAnimationFrame(frame) : 0;
-      }
-      growthRafId = window.requestAnimationFrame(frame);
     }
     function resetGrowth() {
       if (!growthPlayed) return;
       growthPlayed = false;
       root.classList.remove('is-growth-played');
-      if (growthRafId) { window.cancelAnimationFrame(growthRafId); growthRafId = 0; }
-      setCounters(0);
     }
 
+    // The only place styles change, and only when the beat changes.
     function setActive(next) {
       if (next === active) return;
       active = next;
-      beats.forEach(function (beat, index) { beat.classList.toggle('is-active', index === next); });
+      beats.forEach(function (beat, index) {
+        if (index <= next + 2 && !beat.classList.contains('is-warm')) {
+          beat.classList.add('is-warm');
+          var media = medias[index];
+          if (media && media.tagName === 'IMG') {
+            media.loading = 'eager';
+            if (typeof media.decode === 'function') media.decode().catch(function () {});
+          }
+        }
+        beat.classList.toggle('is-active', index === next);
+        beat.classList.toggle('is-shown', index <= next);
+        beat.classList.toggle('is-near', Math.abs(index - next) <= 1);
+      });
       dots.forEach(function (dot, index) { dot.classList.toggle('is-active', index === next); });
+      if (fill) fill.style.transform = 'scaleY(' + (next / (total - 1)).toFixed(4) + ')';
+      if (next >= 3) warmVideo();
       if (video) {
         var videoIndex = beats.indexOf(video.closest('[data-mobile-beat]'));
         if (next === videoIndex) { var p = video.play(); if (p && p.catch) p.catch(function () {}); }
@@ -460,29 +471,6 @@ const choices = [
       }
       if (next === 2) window.setTimeout(function () { if (active === 2 && pinned) playGrowth(); }, 320);
       else if (Math.abs(next - 2) > 1) resetGrowth();
-    }
-
-    // Only two photos are ever painted: the one on screen and the one coming.
-    // Photos further ahead are not even downloaded until they are two away.
-    function setFloor(next) {
-      if (next === floorIndex) return;
-      floorIndex = next;
-      beats.forEach(function (beat, index) {
-        if (index <= next + 2 && !beat.classList.contains('is-warm')) {
-          beat.classList.add('is-warm');
-          // Decode ahead of time so the first frame of a dissolve never waits
-          // on the photo.
-          var media = medias[index];
-          if (media && media.tagName === 'IMG') {
-            media.loading = 'eager';
-            if (typeof media.decode === 'function') media.decode().catch(function () {});
-          }
-        }
-        beat.classList.toggle('is-near', index === next || index === next + 1);
-        if (index <= next) write('o' + index, canvases[index], 'opacity', '1');
-        else if (index > next + 1) write('o' + index, canvases[index], 'opacity', '0');
-      });
-      if (next >= 3) warmVideo();
     }
 
     // The app video and its poster are only fetched once the story is close.
@@ -520,22 +508,7 @@ const choices = [
       if (!pinned) return;
       var y = window.scrollY || window.pageYOffset || 0;
       var pos = clamp((y - trackTop) / segmentPx, 0, total - 1);
-      var index = Math.min(Math.floor(pos), total - 1);
-      var t = pos - index;
-      if (index === total - 1) t = 0;
-      setFloor(index);
-
-      var blend = index < total - 1 ? smooth(clamp((t - BLEND_START) / (1 - BLEND_START), 0, 1)) : 0;
-      // The photo on screen drifts in very slowly while it is held, the next
-      // one settles back as it arrives. Both are tied to the thumb.
-      write('s' + index, medias[index], 'transform', 'translateZ(0) scale(' + (1 + 0.05 * t).toFixed(4) + ')');
-      if (index < total - 1) {
-        write('o' + (index + 1), canvases[index + 1], 'opacity', blend.toFixed(3));
-        write('s' + (index + 1), medias[index + 1], 'transform', 'translateZ(0) scale(' + (1.09 - 0.09 * blend).toFixed(4) + ')');
-      }
-      write('fill', fill, 'transform', 'scaleY(' + (pos / (total - 1)).toFixed(4) + ')');
-      setActive(index < total - 1 && t >= SWAP_AT ? index + 1 : index);
-
+      setActive(Math.round(pos));
       if (!scrolled && y > 30) { scrolled = true; root.classList.add('is-scrolled'); }
     }
     function onScroll() {
@@ -552,7 +525,6 @@ const choices = [
       if (pinned) return;
       pinned = true;
       root.classList.add('is-pinned');
-      setCounters(0);
       lockHeight();
       measure();
       if (!listening) {
@@ -568,16 +540,9 @@ const choices = [
       root.classList.remove('is-pinned', 'is-growth-played');
       root.style.removeProperty('--sh');
       growthPlayed = false;
-      if (growthRafId) { window.cancelAnimationFrame(growthRafId); growthRafId = 0; }
-      setCounters(1);
-      floorIndex = -1;
       active = -1;
-      last = {};
-      beats.forEach(function (beat, index) {
-        beat.classList.remove('is-near', 'is-active');
-        if (canvases[index]) canvases[index].style.opacity = '';
-        if (medias[index]) medias[index].style.transform = '';
-      });
+      beats.forEach(function (beat) { beat.classList.remove('is-near', 'is-active', 'is-shown'); });
+      if (fill) fill.style.transform = '';
       if (video && !video.paused) video.pause();
     }
     // Whether to pin is decided when the page opens and again only when the
