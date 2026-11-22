@@ -42,7 +42,7 @@ import { loadRoster, familyFor, createWaiverRows, waiverFields, bustRosterCache,
 import { sessionFor, sameOrigin } from './_jfp-people.js'
 import { viewAsFor, endViewAs, viewCookie, VIEW_READ, VIEW_QUIET } from './_jfp-view-as.js'
 import { needsTerms, acceptTerms, cancelExtraBooking, cancelView, refundReady, TERMS_VERSION } from './_jfp-extra-cancel.js'
-import { nextStatuses, setNextStatus, nextPrices, recordNext, createNextPayreq, nextInterest, interestKey, nextOffers, rowNextPrice, offerLive, createNextFamilyPayreq } from './_jfp-next.js'
+import { nextStatuses, setNextStatus, nextPrices, recordNext, createNextPayreq, nextInterest, interestKey, nextOffers, rowNextPrice, offerLive, createNextFamilyPayreq, onNextTerm } from './_jfp-next.js'
 import { jjAccountView, jjPay, jjRequestPay, jjNextChoice, familyJJ, jjWaiverRows, markJJWaivers } from './_jj-account.js'
 import { owedItems, payOwed as makeOwedPayreq, cancelOwed as cancelOwedPayreq } from './_jfp-account-pay.js'
 import { familyFees } from './_jfp-account-fees.js'
@@ -303,12 +303,12 @@ async function overview(res, parent, body = {}, opts = {}) {
   const nt = config.nextTerm
   const [statuses, offers] = await Promise.all([nextStatuses(nt.name), nextOffers(nt.name)])
   // The early offer (Lee, 16 Nov 2026): only players with an offer price see it.
-  const nextTerm = fam.players.flatMap((p) => p.term4.filter((r) => r.holdsPlace && (nt.open || statuses[r.id]) && (!nt.offerOnly || offers[r.id])).map((r) => {
+  const nextTerm = fam.players.flatMap((p) => p.term4.filter((r) => onNextTerm(r, offers[r.id]) && (nt.open || statuses[r.id]) && (!nt.offerOnly || offers[r.id])).map((r) => {
     const g = byGroup[r.groupId]
     const st = statuses[r.id] || { status: 'invited' }
     const pr = rowNextPrice(config, g, offers[r.id])
     const open = st.payreqId ? mine.find((q) => q.id === st.payreqId && ['open', 'checkout'].includes(q.status)) : null
-    return { rowId: r.id, player: r.player, group: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : `${r.day} ${r.time}`, dayTime: g ? `${g.day} ${g.time}` : [r.day, r.time].filter(Boolean).join(' '), status: st.status, holdLabel: pr.holdLabel, fullLabel: pr.fullLabel, fullCents: pr.fullCents, normalLabel: pr.normalLabel, normalCents: pr.normalCents, offer: pr.offer, tier: pr.offer ? pr.tier : '', afterHoldLabel: st.status === 'held' ? formatAud(Math.max(0, pr.fullCents - (st.paidCents || 0))) : pr.afterHoldLabel, openPayreqId: open?.id || '' }
+    return { rowId: r.id, player: r.player, group: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : `${r.day} ${r.time}`, dayTime: g ? `${g.day} ${g.time}` : [r.day, r.time].filter(Boolean).join(' '), status: st.status, holdLabel: pr.holdLabel, fullLabel: pr.fullLabel, fullCents: pr.fullCents, normalLabel: pr.normalLabel, normalCents: pr.normalCents, offer: pr.offer, tier: pr.offer ? pr.tier : '', creditLabel: pr.creditLabel, creditNote: pr.creditNote, afterHoldLabel: st.status === 'held' ? formatAud(Math.max(0, pr.fullCents - (st.paidCents || 0))) : pr.afterHoldLabel, openPayreqId: open?.id || '' }
   }))
   // A family with two or more places to pay can pay them all at once.
   const unpaidNext = nextTerm.filter((x) => !['paid', 'held', 'no'].includes(x.status))
@@ -750,8 +750,8 @@ async function nextTermChoice(req, res, parent, body) {
   if (!choice) return fail(res, 400, 'Choose hold, pay in full or not returning.')
   if (choice === 'hold' && nt.fullOnly) return fail(res, 409, `${nt.name} is paid in full to keep the place.`)
   if (choice === 'family') return nextFamilyChoice(req, res, parent, config)
-  const roster = await loadRoster({ fresh: true })
-  const row = roster.players.find((r) => r.id === clean(body.rowId, 30) && rowEmails(r).includes(parent.email) && r.holdsPlace)
+  const [roster, offersNow] = await Promise.all([loadRoster({ fresh: true }), nextOffers(nt.name)])
+  const row = roster.players.find((r) => r.id === clean(body.rowId, 30) && rowEmails(r).includes(parent.email) && onNextTerm(r, offersNow[r.id]))
   if (!row) return fail(res, 404, 'We could not find that player on your account.')
   // One choice at a time per player (two tabs, a double tap).
   const lock = `jfp:next-lock:${row.id}`
@@ -807,7 +807,7 @@ async function nextFamilyChoice(req, res, parent, config) {
   try {
     const [roster, statuses, offers] = await Promise.all([loadRoster({ fresh: true }), nextStatuses(nt.name), nextOffers(nt.name)])
     if (!nt.open) return fail(res, 403, `${nt.name} places are not open yet.`)
-    const rows = roster.players.filter((r) => rowEmails(r).includes(parent.email) && r.holdsPlace && (!nt.offerOnly || offers[r.id]) && !['paid', 'held', 'no'].includes(statuses[r.id]?.status || ''))
+    const rows = roster.players.filter((r) => rowEmails(r).includes(parent.email) && onNextTerm(r, offers[r.id]) && (!nt.offerOnly || offers[r.id]) && !['paid', 'held', 'no'].includes(statuses[r.id]?.status || ''))
     if (rows.length < 2) return fail(res, 409, 'Pay for each player on their own card.')
     const priced = []
     for (const r of rows) priced.push({ row: r, cents: rowNextPrice(config, r.groupId ? await getGroup(r.groupId) : null, offers[r.id]).fullCents })
@@ -989,6 +989,12 @@ async function fees(res, parent) {
   const fam = familyFor(parent.email, roster, config.termStart)
   const { payreqs } = await familyLists(parent.email, fam, ready, { payreqsOnly: true })
   const { intentIds, ...view } = await familyFees({ config, parent, fam, payreqs: payreqs.filter((q) => ownsPayreq(q, fam, parent.email)), groups })
+  // A credit carried to next term shows under that player's place.
+  const offers = config.nextTerm?.name ? await nextOffers(config.nextTerm.name).catch(() => ({})) : {}
+  for (const pl of view.places || []) {
+    const o = offers[pl.rowId]
+    if (o?.creditCents > 0) pl.credit = { label: formatAud(o.creditCents), note: String(o.creditNote || ''), term: config.nextTerm.name }
+  }
   return res.status(200).json({ success: true, fees: view })
 }
 

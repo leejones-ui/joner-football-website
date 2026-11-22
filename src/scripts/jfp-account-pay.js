@@ -265,18 +265,19 @@ const KIND = { term: 'Term fee', sessions: 'Session by session', pro: 'Pro sessi
 export function placeCards(F, D) {
   if (!F.places.length) return ''
   const recFor = (x) => F.records.find((r) => r.players.includes(x.player) && ['JFP', 'Pro sessions'].includes(r.programme))
+  const creditLine = (x) => x.credit ? `<p class="ja-small" style="margin-top:10px"><b>${esc(x.credit.label)} credit</b>${x.credit.note ? ` ${esc(x.credit.note)}` : ''}. It comes off ${esc(String(x.player).split(' ')[0])}'s ${esc(x.credit.term)} fee.</p>` : ''
   return `<div class="ja-places">${F.places.map((x) => {
     const r = recFor(x)
     const full = x.kind === 'term' && x.feeCents > 0 && x.owingCents === 0
     const head = `<div class="ja-place-head"><div><b>${esc(x.player)}</b><small>${esc(KIND[x.kind] || '')} · ${esc(x.group)}</small></div>${full ? `<span class="ja-dot ok">Paid</span>` : x.kind === 'term' && x.owingCents ? `<span class="ja-dot bad">${esc(money(x.owingCents))} to pay</span>` : ''}</div>`
     if (full) {
-      return `<article class="ja-card ja-place is-paid">${head}<div class="ja-paidfull">${ic('check')}<div><b>Paid in full</b><span class="ja-amt-s">${esc(x.paidLabel)}</span>${r?.dateLabel ? `<small>Paid ${esc(r.dateLabel)}${r.method ? ` · ${esc(r.method)}` : ''}</small>` : ''}</div>${r?.receiptUrl ? `<a class="ja-btn ja-btn-line ja-btn-sm" href="${esc(r.receiptUrl)}" target="_blank" rel="noopener noreferrer">${ic('receipt')}Receipt</a>` : ''}</div></article>`
+      return `<article class="ja-card ja-place is-paid">${head}<div class="ja-paidfull">${ic('check')}<div><b>Paid in full</b><span class="ja-amt-s">${esc(x.paidLabel)}</span>${r?.dateLabel ? `<small>Paid ${esc(r.dateLabel)}${r.method ? ` · ${esc(r.method)}` : ''}</small>` : ''}</div>${r?.receiptUrl ? `<a class="ja-btn ja-btn-line ja-btn-sm" href="${esc(r.receiptUrl)}" target="_blank" rel="noopener noreferrer">${ic('receipt')}Receipt</a>` : ''}</div>${creditLine(x)}</article>`
     }
     const body = x.kind === 'term'
       ? `<p class="ja-small ja-muted">Paid ${esc(x.paidLabel)} of ${esc(x.feeLabel)}.${x.owingCents ? ' The rest is still to pay.' : ''}</p>`
       : x.kind === 'trial' ? `<p class="ja-small ja-muted">Trial paid ${esc(x.paidLabel)}.</p>`
         : `<p class="ja-small ja-muted">Paid ${esc(x.paidLabel)} for sessions so far${x.owingCents ? `, ${esc(money(x.owingCents))} billed to pay` : ''}${x.prepaidSessions ? `. ${esc(x.prepaidSessions)} session${x.prepaidSessions > 1 ? 's' : ''} paid ahead` : ''}.</p>${x.commitment ? `<p class="ja-small ja-muted">Committed to ${esc(x.commitment.sessions)} sessions, ${esc(x.commitment.left)} to come${x.commitment.leftDates.length ? `: ${esc(x.commitment.leftDates.join(', '))}` : ''}.</p>` : ''}`
-    return `<article class="ja-card ja-place">${head}${body}</article>`
+    return `<article class="ja-card ja-place">${head}${body}${creditLine(x)}</article>`
   }).join('')}</div>`
 }
 

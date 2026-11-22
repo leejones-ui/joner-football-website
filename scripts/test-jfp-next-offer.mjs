@@ -147,6 +147,38 @@ await test('one player pays the early price by card only; after the date the nor
   assert.equal(d.offerTotals.live, false)
 })
 
+await test('an injured sibling taken off this term keeps next term with a credit the family can see', async () => {
+  assert.equal((await portal(lee, 'saveNextTerm', { nextTerm: { offerUntil: '2099-01-04' } })).status, 200)
+  const k1 = await add('Kim Inj', 'inj@example.com')
+  const k2 = await add('Lou Inj', 'inj@example.com')
+  assert.equal((await offer(k1, 'current', 70000, 75000, 'Sibling or 2 a week')).status, 200)
+  assert.equal((await offer(k2, 'current', 70000, 75000, 'Sibling or 2 a week')).status, 200)
+  assert.equal((await portal(lee, 'saveNextOffer', { rowId: k2, tier: 'current', offerCents: 70000, normalCents: 75000, creditCents: 80000 })).status, 400, 'credit above the price is refused')
+  assert.equal((await portal(lee, 'saveNextOffer', { rowId: k2, tier: 'current', offerCents: 70000, normalCents: 75000, creditCents: 37500, creditNote: 'for the 5 weeks Lou missed with an injury', keep: true })).status, 200)
+  const rm = await portal(lee, 'removePlayer', { rowId: k2, reason: 'Injury', details: 'credit 5 weeks' })
+  assert.equal(rm.status, 200, JSON.stringify(rm.data))
+  const fam = client(); await signIn(fam, 'inj@example.com')
+  const acc = (await fam.call('/api/jfp-account', { action: 'overview' })).data
+  const byRow = Object.fromEntries(acc.nextTerm.players.map((x) => [x.rowId, x]))
+  assert.ok(byRow[k2], 'the injured sibling is still on next term')
+  assert.equal(byRow[k2].fullLabel, 'A$325'); assert.equal(byRow[k2].normalLabel, 'A$375'); assert.equal(byRow[k2].creditLabel, 'A$375')
+  assert.equal(acc.nextTerm.family.label, 'A$1,025')
+  const fees = (await fam.call('/api/jfp-account', { action: 'fees' })).data.fees
+  const pl = fees.places.find((x) => x.rowId === k2)
+  assert.ok(pl, 'the paid place still shows on Fees'); assert.equal(pl.credit.label, 'A$375'); assert.equal(pl.credit.term, 'Term 1 2027')
+  const d = (await portal(lee, 'nextTerm')).data
+  const sp = d.players.find((x) => x.rowId === k2)
+  assert.equal(sp.offer.nowCents, 32500); assert.equal(sp.offer.kept, true)
+  await sign(fam, 'Parent Inj')
+  const c = await fam.call('/api/jfp-account', { action: 'nextTermChoice', choice: 'family' })
+  assert.equal(c.status, 200, JSON.stringify(c.data))
+  const pay = await fam.call('/api/jfp-account', { action: 'pay', payreqId: c.data.payreqId })
+  assert.equal(pay.status, 200, JSON.stringify(pay.data))
+  await stripe(pay.data.url, 'pay')
+  const h = (await at()).nextHolds.find((r) => r.fields['Source Term 4 Record ID'] === k2)
+  assert.equal(h.fields['Status'], 'Paid in full'); assert.equal(h.fields['Amount Paid'], 325)
+})
+
 await test('staff cannot remove a paid offer; audit has the changes', async () => {
   assert.equal((await portal(lee, 'saveNextOffer', { rowId: a1, remove: true })).status, 409)
   assert.equal((await portal(lee, 'saveNextOffer', { rowId: b1, remove: true })).status, 200)

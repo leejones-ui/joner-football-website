@@ -42,7 +42,7 @@ import { applyCredits, creditsView, giveCredit, returnCredits } from './_jfp-cre
 const CREDIT_REASONS = new Set(['balance', 'term-after-trial', 'admin-add', 'application', 'waitlist', 'family', 'sessions'])
 import { staffPrincipal, sameOrigin } from './_jfp-people.js'
 import { sendAccountInvite, accountInvite, sendFamilyInvite, sendFamilyWelcome, sendPlaceOffered, sendTrialOffered, sendTermOffered, sendDeclined, sendNextTermInvite, sendFamilyInvoice, sendQuickLinkEmail } from './_jfp-email.js'
-import { nextStatuses, setNextStatus, nextPrices, recordNext, nextInterest, nextOffers, saveOffer, offerLive, TIER_LABEL } from './_jfp-next.js'
+import { nextStatuses, setNextStatus, nextPrices, recordNext, nextInterest, nextOffers, saveOffer, offerLive, TIER_LABEL, onNextTerm } from './_jfp-next.js'
 import { MAKEUP_ADMIN_ACTIONS, emergencyCancel, emergencyUncancel, emergencyEmail, makeupsList, makeupUpdate, sessionOffMap, guestsFor, guestAllowed, markGuestUsed } from './_jfp-makeups.js'
 import { attendanceFor } from './_jfp-attendance-view.js'
 import { allProfiles, findProfile, renameProfile, pickProfile, profileKey, profileView, profileSummary, cleanProfile, saveProfile, waiverPrefill, addTrialFeedback, clubSuggestions, LEVELS, PLAYING_UP, POSITIONS, FEET, YEARS } from './_jfp-profiles.js'
@@ -4200,12 +4200,12 @@ async function handle(req, res) {
         const [roster, groups, statuses, interest, offers] = await Promise.all([loadRoster({ fresh: true }), listGroups(), nextStatuses(nt.name), nextInterest(nt.name), nextOffers(nt.name)])
         const byId = Object.fromEntries(groups.map((g) => [g.id, g]))
         const live = offerLive(nt)
-        const players = roster.players.filter((r) => r.holdsPlace && !isTestName(r.player)).map((r) => {
+        const players = roster.players.filter((r) => onNextTerm(r, offers[r.id]) && !isTestName(r.player)).map((r) => {
           const g = byId[r.groupId]
           const st = statuses[r.id] || null
           const o = offers[r.id] || null
           return { rowId: r.id, name: r.player, parent: r.parent, email: r.email, group: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : 'Not in a group', groupId: r.groupId, coach: g ? coachLabel(coachById(config, g.coachId)) : '', status: st?.status || '', paidCents: st?.paidCents || 0, at: st?.at || '', interested: interest[r.id]?.at || '', payreqId: st?.payreqId || '',
-            offer: o ? { tier: o.tier, kind: o.kind || '', normalCents: o.normalCents, offerCents: o.offerCents, note: o.note || '', nowCents: live ? o.offerCents : o.normalCents } : null }
+            offer: o ? { tier: o.tier, kind: o.kind || '', normalCents: o.normalCents, offerCents: o.offerCents, note: o.note || '', creditCents: o.creditCents || 0, kept: Boolean(o.keep && !r.holdsPlace), nowCents: Math.max(0, (live ? o.offerCents : o.normalCents) - (o.creditCents || 0)) } : null }
         }).sort((a, b) => a.group.localeCompare(b.group) || a.name.localeCompare(b.name))
         const count = (s) => players.filter((p) => p.status === s).length
         const withOffer = players.filter((p) => p.offer)
@@ -4225,9 +4225,9 @@ async function handle(req, res) {
         const nt = config.nextTerm
         const rowId = clean(body.rowId, 30)
         const roster = await loadRoster()
-        const row = roster.players.find((r) => r.id === rowId && r.holdsPlace)
-        if (!row) return fail(res, 404, 'That player is not on this term.')
         const before = (await nextOffers(nt.name))[rowId] || null
+        const row = roster.players.find((r) => r.id === rowId && onNextTerm(r, before))
+        if (!row) return fail(res, 404, 'That player is not on this term.')
         if (body.remove === true) {
           if ((await nextStatuses(nt.name))[rowId]?.status === 'paid') return fail(res, 409, `${row.player} has already paid, so the price stays.`)
           await saveOffer(nt.name, rowId, null)
@@ -4240,6 +4240,14 @@ async function handle(req, res) {
         if (offerCents > normalCents) return fail(res, 400, 'The offer price cannot be more than the normal price.')
         const tier = ['loyal', 'current'].includes(body.tier) ? body.tier : (before?.tier || 'current')
         const next = { ...(before || {}), tier, kind: clean(body.kind, 60) || before?.kind || '', normalCents, offerCents, note: clean(body.note, 200), by: principal.email, player: row.player }
+        // A credit carried to next term, and keeping the place for a player
+        // off this term (Lee, 23 Nov 2026: an injured sibling).
+        if (body.creditCents != null) {
+          const cc = Math.round(Number(body.creditCents))
+          if (!(Number.isInteger(cc) && cc >= 0 && cc < offerCents)) return fail(res, 400, 'The credit must be less than the price.')
+          next.creditCents = cc; next.creditNote = clean(body.creditNote, 160)
+        }
+        if (typeof body.keep === 'boolean') next.keep = body.keep
         await saveOffer(nt.name, rowId, next)
         await audit({ by: principal.email, action: before ? 'next.offer.change' : 'next.offer.add', target: rowId, before, after: next })
         return res.status(200).json({ success: true, offer: next })
