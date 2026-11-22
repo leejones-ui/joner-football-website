@@ -169,8 +169,21 @@ async function juniorsFor(groups, config) {
 
 // The roster cache is cleared by every change made here, so the board can use
 // it; Refresh asks Airtable again (fresh).
+// Trials waitlisted for a group next term (Lee, 23 Nov 2026), by group.
+async function nextWaitByGroup(roster) {
+  const out = {}
+  for (const [rowId, f] of Object.entries(await followUpsAll().catch(() => ({})))) {
+    if (f?.outcome !== 'nextterm' || !f.groupId) continue
+    const r = roster.players.find((x) => x.id === rowId)
+    if (!r || isTestName(r.player)) continue
+    ;(out[f.groupId] ||= []).push({ rowId, name: r.player, parent: r.parent, term: f.term || '', note: f.note || '', at: f.at })
+  }
+  for (const list of Object.values(out)) list.sort((a, b) => String(a.at).localeCompare(String(b.at)))
+  return out
+}
 async function boardData(config, { fresh = false } = {}) {
   const [groups, roster, payreqs, requests, notes] = await Promise.all([listGroups(), loadRoster({ fresh }), listPayreqs(), listApplications(), coachNotes()])
+  const nextWait = await nextWaitByGroup(roster)
   const juniors = await juniorsFor(groups, config)
   // Joners Juniors children get the same payment colours as JFP players on the
   // staff timetable (Lee, 13 Oct 2026), from the Juniors money figures.
@@ -207,6 +220,7 @@ async function boardData(config, { fresh = false } = {}) {
       sortTime: to24h(g.time),
       period: periodOf(g),
       pendingRequests: pendingBy[g.id] || 0,
+      nextWait: nextWait[g.id] || [],
     }
   })
   const unassigned = holding.filter((r) => !r.groupId || !known.has(r.groupId)).map((r) => ({ ...playerView(r, config, roster, { money: true }), session: [r.day, r.time, r.location].filter(Boolean).join(' ') || 'No session set' }))
@@ -4210,7 +4224,9 @@ async function handle(req, res) {
         const count = (s) => players.filter((p) => p.status === s).length
         const withOffer = players.filter((p) => p.offer)
         const offerTotals = { places: withOffer.length, loyal: withOffer.filter((p) => p.offer.tier === 'loyal').length, current: withOffer.filter((p) => p.offer.tier === 'current').length, paid: withOffer.filter((p) => p.status === 'paid').length, paidCents: withOffer.filter((p) => p.status === 'paid').reduce((t, p) => t + (p.paidCents || 0), 0), toComeCents: withOffer.filter((p) => !['paid', 'no'].includes(p.status)).reduce((t, p) => t + p.offer.nowCents, 0), families: new Set(withOffer.map((p) => (p.email || p.parent).toLowerCase())).size, live, tiers: TIER_LABEL }
-        return res.status(200).json({ success: true, nextTerm: nt, offerTotals, prices: nextPrices(config, null), players, totals: { players: players.length, invited: count('invited'), held: count('held'), paid: count('paid'), no: count('no'), interested: players.filter((p) => p.interested && !p.status).length, none: players.filter((p) => !p.status).length } })
+        const waitBy = await nextWaitByGroup(roster)
+        const waitlist = Object.entries(waitBy).flatMap(([gid, list]) => list.map((w) => { const g = byId[gid]; return { ...w, groupId: gid, group: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : 'Group removed' } }))
+        return res.status(200).json({ success: true, nextTerm: nt, offerTotals, prices: nextPrices(config, null), players, waitlist, totals: { players: players.length, invited: count('invited'), held: count('held'), paid: count('paid'), no: count('no'), interested: players.filter((p) => p.interested && !p.status).length, none: players.filter((p) => !p.status).length } })
       }
       case 'saveNextTerm': {
         // Statuses are kept under the term's name: no renaming once families have answered.
@@ -4311,7 +4327,24 @@ async function handle(req, res) {
       case 'trials': return res.status(200).json({ success: true, ...(await trialsData(config, { fresh: body.fresh === true })) })
       case 'trialCount': return res.status(200).json({ success: true, newCount: (await trialsData(config)).newCount })
       case 'trialDecide': return await decideTrial(res, principal, body)
-      case 'trialFollowUp': { const r = await saveFollowUp(principal, body); return r.error ? fail(res, 400, r.error) : res.status(200).json({ success: true, ...r }) }
+      case 'trialFollowUp': {
+        const nt = config.nextTerm || {}
+        if (body.outcome === 'nextterm' && !(await getGroup(clean(body.groupId, 80)))) return fail(res, 400, 'Choose the group they are waiting for.')
+        const r = await saveFollowUp(principal, { ...body, term: nt.name || 'next term' })
+        if (r.error) return fail(res, 400, r.error)
+        // Waitlisted for next term: their trial place this term is let go
+        // (Lee, 23 Nov 2026), so the group shows the place as free again.
+        if (r.followUp?.outcome === 'nextterm' && body.release === true) {
+          const row = await getTerm4Row(clean(body.rowId, 30))
+          if (row && /trial/i.test(row.paymentType || '') && row.holdsPlace) {
+            const g = await getGroup(r.followUp.groupId)
+            await updateTerm4Rows([{ id: row.id, fields: { 'Term 4 Confirmation': 'Dropped', 'Term 4 Notes': appendNote(row.notes, `Trial place let go by ${principal.name || principal.email}: waitlisted for ${g ? `${g.day} ${g.time}` : 'another group'} in ${r.followUp.term}.`) } }])
+            await audit({ by: principal.email, action: 'trial.release', target: row.id, after: { groupId: r.followUp.groupId, term: r.followUp.term } })
+            r.released = true
+          }
+        }
+        return res.status(200).json({ success: true, ...r })
+      }
       case 'requests': {
         await sweepExpiredOffers(principal)
         const [list, groups, roster, profiles] = await Promise.all([listApplications(), listGroups(), loadRoster(), allProfiles().catch((e) => { console.error('jfp profiles read failed', e); return null })])

@@ -6,13 +6,16 @@
 //
 //   jfp:trial-followup   hash rowId -> JSON {at, by, byName, note, outcome}
 //                        outcome: 'thinking' (still deciding) | 'lost' (not coming)
+//                                 | 'nextterm' (waitlisted for a group next term:
+//                                   + groupId, term; Lee, 23 Nov 2026. Settled:
+//                                   never "needs a follow up", never alerts)
 //
 // A trial is stuck when its date was 5 or more days ago and it has neither an
 // outcome nor a follow up in the last 7 days. Nothing here sends anything.
 import { kvCommand, clean, audit } from './_jfp-store.js'
 
 export const FOLLOWUP = 'jfp:trial-followup'
-export const OUTCOMES = { thinking: 'Still deciding', lost: 'Not coming' }
+export const OUTCOMES = { thinking: 'Still deciding', lost: 'Not coming', nextterm: 'Waitlist next term' }
 export const STEPS = [['booked', 'Booked'], ['came', 'Came'], ['feedback', 'Coach feedback'], ['offered', 'Place offered'], ['followed', 'Followed up'], ['paid', 'Paid']]
 const DAY = 86400000
 const days = (a, b) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / DAY)
@@ -24,11 +27,15 @@ export async function followUpsAll() {
   return out
 }
 
-export async function saveFollowUp(principal, { rowId, note, outcome }) {
+export async function saveFollowUp(principal, { rowId, note, outcome, groupId = '', term = '' }) {
   const id = clean(rowId, 30)
   if (!id) return { error: 'Which trial?' }
   if (outcome === 'undo') { await kvCommand(['HDEL', FOLLOWUP, id]); await audit({ by: principal.email, action: 'trial.followup', target: id, after: { outcome: 'undo' } }); return { followUp: null } }
   const rec = { at: new Date().toISOString(), by: principal.email, byName: principal.name || '', note: clean(note, 300), outcome: Object.prototype.hasOwnProperty.call(OUTCOMES, outcome) ? outcome : 'thinking' }
+  if (rec.outcome === 'nextterm') {
+    if (!clean(groupId, 80)) return { error: 'Choose the group they are waiting for.' }
+    Object.assign(rec, { groupId: clean(groupId, 80), term: clean(term, 40) })
+  }
   await kvCommand(['HSET', FOLLOWUP, id, JSON.stringify(rec)])
   await audit({ by: principal.email, action: 'trial.followup', target: id, after: { outcome: rec.outcome } })
   return { followUp: rec }
@@ -56,8 +63,9 @@ export function trialStage(x, today) {
     followed: Boolean(x.followUp),
     paid,
   }
-  const outcome = paid ? 'paid' : lost ? 'lost' : 'open'
-  const stage = paid ? 'paid' : lost ? 'lost' : x.followUp ? 'followed' : offered ? 'offered' : x.feedback ? 'feedback' : x.came === 'came' ? 'came' : x.came === 'missed' ? 'missed' : 'booked'
+  const waiting = !paid && !lost && x.followUp?.outcome === 'nextterm'
+  const outcome = paid ? 'paid' : lost ? 'lost' : waiting ? 'waitlist' : 'open'
+  const stage = paid ? 'paid' : lost ? 'lost' : waiting ? 'waitlist' : x.followUp ? 'followed' : offered ? 'offered' : x.feedback ? 'feedback' : x.came === 'came' ? 'came' : x.came === 'missed' ? 'missed' : 'booked'
   const since = x.trialDate ? days(x.trialDate, today) : null
   const recentFollow = x.followUp && days(x.followUp.at.slice(0, 10), today) < 7
   const stuck = outcome === 'open' && since != null && since >= 5 && !recentFollow
@@ -66,7 +74,7 @@ export function trialStage(x, today) {
 
 // The counts across the top of the page.
 export function pipelineCounts(items) {
-  const c = { booked: 0, came: 0, feedback: 0, offered: 0, followed: 0, paid: 0, lost: 0, missed: 0, stuck: 0 }
+  const c = { booked: 0, came: 0, feedback: 0, offered: 0, followed: 0, paid: 0, lost: 0, missed: 0, waitlist: 0, stuck: 0 }
   for (const x of items) { c[x.track.stage] = (c[x.track.stage] || 0) + 1; if (x.track.stuck) c.stuck += 1 }
   return c
 }

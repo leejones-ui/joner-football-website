@@ -979,6 +979,7 @@ function ttBlock(g) {
   } else {
     body = g.players.map((p) => `<div class="jp-nm" ${P.ttView === 'staff' ? `draggable="true" data-row="${esc(p.rowId)}" data-from="${esc(g.id)}" tabindex="0" role="button" aria-label="${esc(p.name)}, options"` : ''}>${P.ttView === 'staff' ? `<i class="${dotFor(p)}"></i>` : ''}<span class="nmx">${esc(p.name)}${p.age != null ? ` <span class="muted">${esc(p.age)}</span>` : ''}</span>${noteChip(p)}${P.ttView === 'staff' && p.status !== 'Confirmed' ? '<span class="muted" style="font-size:10px">awaiting</span>' : ''}${P.ttView === 'staff' && !p.waiver ? '<span class="w">W</span>' : ''}</div>`).join('')
     body += left > 0 ? `<div class="jp-open">+ ${left} open</div>` : left < 0 ? `<div class="jp-open" style="color:var(--j-red)">${-left} over capacity</div>` : '<div class="jp-open" style="color:var(--j-red)">Full</div>'
+    if (P.ttView === 'staff' && (g.nextWait || []).length) body += `<div class="jp-wait small" title="Waitlist for next term, set from Trials">Waiting for ${esc(g.nextWait[0].term || 'next term')}: ${esc(g.nextWait.map((w) => w.name).join(', '))}</div>`
     if (P.ttView === 'staff') body += `<button type="button" class="jp-addbtn" data-add="${esc(g.id)}">+ Add player</button>`
   }
   return `<section class="jp-blk ${P.sel === g.id && P.ttView === 'staff' ? 'sel' : ''}" style="--lc:${locColor(g.locationId)}" data-drop="${esc(g.id)}">${head}${body}</section>`
@@ -1813,7 +1814,8 @@ async function renderTrials(keep = false) {
     if (!t) return ''
     const missed = x.came === 'missed'
     const steps = (d.steps || []).map(([k, l]) => `<li class="${t.done[k] ? 'on' : ''}${k === 'came' && missed ? ' miss' : ''}">${esc(k === 'came' && missed ? 'Did not come' : l)}</li>`).join('')
-    const end = t.outcome === 'lost' ? '<li class="lost">Lost</li>' : ''
+    const wg = x.followUp?.outcome === 'nextterm' ? (P.board?.groups || []).find((g) => g.id === x.followUp.groupId) : null
+    const end = t.outcome === 'lost' ? '<li class="lost">Lost</li>' : t.outcome === 'waitlist' ? `<li class="wait">Waitlist ${esc(x.followUp.term || 'next term')}${wg ? `: ${esc(wg.day)} ${esc(wg.time)}` : ''}</li>` : ''
     const fu = x.followUp
     return `<ol class="tt-steps${t.stuck ? ' stuck' : ''}">${steps}${end}</ol>
       ${t.stuck ? `<p class="small" style="margin-top:6px;color:var(--j-amber-ink, #b45309)"><b>Needs a follow up.</b> Trial ${t.daysSince} days ago.</p>` : ''}
@@ -1854,14 +1856,17 @@ async function renderTrials(keep = false) {
     const x = item(b.dataset.tfFollow)
     const box = modal(`<h2 style="margin-bottom:4px">Followed up</h2><p class="muted small" style="margin-bottom:12px">${esc(x.name)} · trial in ${esc(x.group)}. Only you and Ligia see this. Nothing is sent.</p>
       <div class="j-field"><span>How did it go?</span><div class="ps-seg" id="tfu-o" role="group">${Object.entries(d.outcomes || {}).map(([k, l], i) => `<button type="button" data-o="${esc(k)}" aria-pressed="${i === 0}">${esc(l)}</button>`).join('')}</div></div>
+      <div id="tfu-w" hidden><label class="j-field"><span>Waiting for which group?</span><select class="j-input" id="tfu-g"><option value="">Choose a group</option>${groupsNow.filter((g) => g.mode !== 'hidden').slice().sort((a, b) => (DAYS.indexOf(a.day) - DAYS.indexOf(b.day)) || (a.sortTime || '').localeCompare(b.sortTime || '')).map((g) => `<option value="${esc(g.id)}">${esc(`${g.day} ${g.time}, ${g.locationName}${g.coachName ? `, ${g.coachName}` : ''} (${g.players.length}/${g.capacity})`)}</option>`).join('')}</select></label>
+        ${x.stillTrial && x.holdsPlace ? `<label class="j-check" style="display:flex;gap:8px;align-items:flex-start;margin:6px 0 10px"><input type="checkbox" id="tfu-rel" checked><span class="small">Take ${esc(x.name.split(' ')[0])} off the trial place in ${esc(x.group)}, so it shows as free</span></label>` : ''}
+        <p class="muted small" style="margin-bottom:10px">They show under that group on the Timetable and on the next term page, and never as "needs a follow up". No alerts, nothing sent.</p></div>
       <label class="j-field"><span>Note <span class="muted">(optional)</span></span><textarea class="j-input" id="tfu-n" rows="3" maxlength="300" placeholder="e.g. Called mum, deciding after school holidays"></textarea></label>
       <p class="j-err" id="tfu-err" hidden></p>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="tfu-go">Save</button></div>`)
     let outcome = Object.keys(d.outcomes || {})[0] || 'thinking'
-    box.querySelector('#tfu-o').addEventListener('click', (e) => { const o = e.target.closest('[data-o]'); if (!o) return; outcome = o.dataset.o; box.querySelectorAll('[data-o]').forEach((y) => y.setAttribute('aria-pressed', String(y === o))) })
+    box.querySelector('#tfu-o').addEventListener('click', (e) => { const o = e.target.closest('[data-o]'); if (!o) return; outcome = o.dataset.o; box.querySelectorAll('[data-o]').forEach((y) => y.setAttribute('aria-pressed', String(y === o))); box.querySelector('#tfu-w').hidden = outcome !== 'nextterm' })
     box.querySelector('#tfu-go').addEventListener('click', async (e) => {
       e.currentTarget.disabled = true
-      const r = await post('trialFollowUp', { rowId: x.rowId, outcome, note: box.querySelector('#tfu-n').value })
+      const r = await post('trialFollowUp', { rowId: x.rowId, outcome, note: box.querySelector('#tfu-n').value, ...(outcome === 'nextterm' ? { groupId: box.querySelector('#tfu-g').value, release: Boolean(box.querySelector('#tfu-rel')?.checked) } : {}) })
       if (!r.ok) { e.currentTarget.disabled = false; const er = box.querySelector('#tfu-err'); er.textContent = r.data.error; er.hidden = false; return }
       closeModal(); P.trialData = null; renderTrials()
     })

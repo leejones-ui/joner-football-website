@@ -1341,6 +1341,8 @@ a.sr-only[href="#main-content"]:focus { position: fixed !important; top: 16px; l
 .tt-steps li { font-size: 12px; padding: 2px 8px; border-radius: 99px; border: 1px solid var(--ps-line, rgba(127,127,127,.3)); opacity: .55; }
 .tt-steps li.on { opacity: 1; background: rgba(22,163,74,.14); border-color: rgba(22,163,74,.45); }
 .tt-steps li.miss, .tt-steps li.lost { opacity: 1; background: rgba(220,38,38,.12); border-color: rgba(220,38,38,.45); }
+.tt-steps li.wait { opacity: 1; background: rgba(217,119,6,.12); border-color: rgba(217,119,6,.45); }
+.jp-wait { margin: 6px 0 2px; padding: 5px 8px; border-radius: 8px; background: rgba(217,119,6,.10); color: var(--j-amber-ink, #92400e); line-height: 1.35; }
 .tt-steps.stuck li:not(.on) { border-style: dashed; }
 /* Money > Session value (Lee, 20 Oct 2026): fill and fees per coach hour. */
 .sv-ps td { vertical-align: top; }

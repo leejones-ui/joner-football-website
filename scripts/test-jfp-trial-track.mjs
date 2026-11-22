@@ -38,6 +38,8 @@ await test('stuck: 5 or more days since the trial with no outcome and no follow 
   assert.equal(trialStage({ ...base, followUp: { at: '2026-10-18T01:00:00Z', outcome: 'thinking' } }, T).stuck, false)
   assert.equal(trialStage({ ...base, followUp: { at: '2026-10-10T01:00:00Z', outcome: 'thinking' } }, T).stuck, true, 'old follow up')
   assert.equal(trialStage({ ...base, stillTrial: false, paymentStatus: 'Paid' }, T).stuck, false)
+  const w = trialStage({ ...base, trialDate: '2026-09-01', followUp: { at: '2026-09-02T01:00:00Z', outcome: 'nextterm', groupId: 'g' } }, T)
+  assert.equal(w.outcome, 'waitlist'); assert.equal(w.stage, 'waitlist'); assert.equal(w.stuck, false, 'a next term waitlist never needs a follow up')
   const c = pipelineCounts([{ track: trialStage({ ...base, trialDate: '2026-10-15' }, T) }, { track: trialStage({ ...base, stillTrial: false, paymentStatus: 'Paid' }, T) }])
   assert.equal(c.booked, 1); assert.equal(c.paid, 1); assert.equal(c.stuck, 1)
 })
@@ -70,7 +72,7 @@ await test('the trials page carries the tracker: steps, pipeline counts, outcome
   const x = d.items.find((i) => i.rowId === tia)
   assert.ok(x.track && x.track.done.booked)
   assert.ok(d.pipeline && typeof d.pipeline.booked === 'number')
-  assert.deepEqual(Object.keys(d.outcomes), ['thinking', 'lost'])
+  assert.deepEqual(Object.keys(d.outcomes), ['thinking', 'lost', 'nextterm'])
   assert.ok(d.steps.some(([k]) => k === 'followed'))
 })
 
@@ -87,6 +89,25 @@ await test('Followed up saves who, when, outcome and note; Not coming makes it l
   x = (await ok('trials')).items.find((i) => i.rowId === tia)
   assert.equal(x.followUp, null); assert.equal(x.track.outcome, 'open')
   assert.equal((await sam.call('/api/jfp-portal-data', { action: 'trialFollowUp', rowId: tia, outcome: 'lost' })).status, 403)
+  assert.equal((await emails()).length, before, 'nothing sent')
+})
+
+await test('Waitlist next term: needs a group, lets the trial place go, shows on the Timetable and the next term page, sends nothing', async () => {
+  const before = (await emails()).length
+  const W = (await ok('saveGroup', { group: { day: 'Wednesday', time: '4:20pm', location: 'Belrose HQ', coachId: 'sam', capacity: 2, mode: 'application' } })).group.id
+  const hud = (await ok('addPlayer', { groupId: G, force: true, player: { name: 'Hal Waiter', age: 9 }, parent: { name: 'Hal Parent', email: 'hal.w@example.com', mobile: '0400 222 334' }, payment: 'trial' })).rowId
+  assert.equal((await L('trialFollowUp', { rowId: hud, outcome: 'nextterm' })).status, 400, 'a group is needed')
+  const r = await ok('trialFollowUp', { rowId: hud, outcome: 'nextterm', groupId: W, release: true, note: 'Wants to train with his mate' })
+  assert.equal(r.released, true); assert.equal(r.followUp.groupId, W)
+  const x = (await ok('trials')).items.find((i) => i.rowId === hud)
+  assert.ok(x, 'still on the tracker after the place is let go')
+  assert.equal(x.track.outcome, 'waitlist'); assert.equal(x.track.stuck, false)
+  const b = await ok('board', { fresh: true })
+  const gw = b.groups.find((g) => g.id === W), gt = b.groups.find((g) => g.id === G)
+  assert.deepEqual(gw.nextWait.map((w) => w.name), ['Hal Waiter'])
+  assert.ok(!gt.players.some((p) => p.rowId === hud), 'the trial place is free again')
+  const n = await ok('nextTerm')
+  assert.ok(n.waitlist.some((w) => w.rowId === hud && w.groupId === W))
   assert.equal((await emails()).length, before, 'nothing sent')
 })
 
