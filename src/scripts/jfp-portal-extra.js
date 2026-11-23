@@ -42,7 +42,7 @@ export async function renderExtra(ui) {
   const d = S.data = await need(await post('extraList', { coachId: S.coachId }))
   const admin = d.admin
   const hours = d.weekMinutes != null ? `${Math.round((d.weekMinutes / 60) * 10) / 10} h booked this week` : ''
-  const pill = (b) => (b.paid ? '<span class="j-pill j-pill-green">Paid</span>' : b.payStatus === 'cancelled' ? '<span class="j-pill j-pill-grey">Charge cancelled</span>' : b.payreqId ? '<span class="j-pill j-pill-red">Not paid, do not train</span>' : '<span class="j-pill j-pill-red">No payment yet</span>')
+  const pill = (b) => (b.makeup ? '<span class="j-pill j-pill-blue">Make-up (free)</span>' : b.paid ? '<span class="j-pill j-pill-green">Paid</span>' : b.payStatus === 'cancelled' ? '<span class="j-pill j-pill-grey">Charge cancelled</span>' : b.payreqId ? '<span class="j-pill j-pill-red">Not paid, do not train</span>' : '<span class="j-pill j-pill-red">No payment yet</span>')
   // Extra sessions are paid before they run (Lee, 16 Nov 2026). Group friends are paid on the first booking.
   const unpaidNote = (s) => { const owing = s.bookings.filter((b) => !b.paid && !b.inGroupOf && b.payStatus !== 'cancelled'); return owing.length && !s.past ? `<p class="j-box j-box-amber small" style="margin-top:10px"><b>Not paid yet: ${esc(owing.map((b) => b.name).join(', '))}.</b> Not paid, do not train: it must be paid before the session starts. We remind the family. Only paid players go on your invoice.</p>` : '' }
   const card = (s) => `<div class="j-card" style="padding:14px 16px;margin-bottom:12px" data-xs="${esc(s.id)}">

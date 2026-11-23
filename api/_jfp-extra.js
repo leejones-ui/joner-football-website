@@ -168,6 +168,7 @@ export function staffView(config, s, payreqs = []) {
       // A group's players are paid for on the first booking's charge.
       const lead = b.groupId && !b.payreqId ? liveBookings(s).find((x) => x.id === b.groupId) : null
       const q = (b.payreqId || lead?.payreqId) ? payreqs.find((x) => x.id === (b.payreqId || lead.payreqId)) : null
+      if (b.from === 'makeup') return { ...b, paid: true, makeup: true, payStatus: 'make-up' }
       return { ...b, paid: q?.status === 'paid', payStatus: q ? q.status : b.payreqId ? 'unknown' : 'no charge yet', ...(lead ? { inGroupOf: lead.name } : {}) }
     }),
   }
@@ -426,7 +427,8 @@ export async function registerExtras(config, { coachId = '', week = '', weekEnd 
   for (const s of slots.slice(0, 100)) out.push({
     id: s.id, coachId: s.coachId, coachName: coachLabel(coachById(config, s.coachId)), date: s.date, dateLabel: dateLabel(s.date),
     time: s.time, durationMin: Number(s.durationMin) || 60, location: s.location, title: s.title || 'Extra session',
-    bookings: liveBookings(s).map((b) => ({ id: b.id, name: b.name, paid: paid.has(leadPayreq(s, b)) })), marks: s.date <= today ? await marksFor(s) : {},
+    ...(s.makeup ? { makeup: true } : {}),
+    bookings: liveBookings(s).map((b) => ({ id: b.id, name: b.name, paid: b.from === 'makeup' || paid.has(leadPayreq(s, b)), ...(b.from === 'makeup' ? { makeup: true } : {}) })), marks: s.date <= today ? await marksFor(s) : {},
     halfPay: liveBookings(s).length ? [] : lateCancelUnfilled(s).map((b) => b.name),
   })
   return out
@@ -440,6 +442,15 @@ export async function markBooking({ config, principal, isAdmin, slotId, bookingI
   if (s.date > sydneyToday()) return { error: 'Mark the register on the day.' }
   if (!['Present', 'Absent', ''].includes(status)) return { error: 'Invalid status.' }
   if (status) await kvCommand(['HSET', attKey(s), b.id, status]); else await kvCommand(['HDEL', attKey(s), b.id])
+  // A make-up at its own time: marked Here, the make-up is used; unmarked or away, booked again.
+  if (b.makeupId) {
+    const raw = await kvCommand(['HGET', 'jfp:makeups', b.makeupId])
+    const m = raw ? JSON.parse(raw) : null
+    if (m && ['booked', 'used'].includes(m.status)) {
+      const next = status === 'Present' ? { ...m, status: 'used', usedAt: new Date().toISOString(), usedBy: principal.email } : { ...m, status: 'booked', usedAt: '' }
+      await kvCommand(['HSET', 'jfp:makeups', m.id, JSON.stringify(next)])
+    }
+  }
   // The Attendance table in Airtable too, which coach invoices are checked against.
   const day = new Intl.DateTimeFormat('en-AU', { timeZone: 'UTC', weekday: 'long' }).format(new Date(`${s.date}T12:00:00Z`))
   let airtable = true
@@ -502,7 +513,7 @@ export async function boardExtras(config, today = sydneyToday()) {
       id: s.id, date: s.date, dateLabel: dateLabel(s.date), day: new Date(`${s.date}T12:00:00Z`).toLocaleDateString('en-AU', { weekday: 'long', timeZone: 'UTC' }),
       time: s.time, sortTime: to24h(s.time), period: (to24h(s.time) || '12:00') < '12:00' ? 'am' : 'pm', durationMin: s.durationMin,
       locationId: loc.id, locationName: loc.name, coachId: s.coachId, coachName: coachLabel(coachById(config, s.coachId)),
-      kind: kindOf(s), kindLabel: KIND_LABEL[kindOf(s)], title: s.title || s.priceLabel || 'Extra session', capacity: s.capacity,
+      kind: kindOf(s), kindLabel: s.makeup ? 'Make-up' : KIND_LABEL[kindOf(s)], ...(s.makeup ? { makeup: true } : {}), title: s.title || s.priceLabel || 'Extra session', capacity: s.capacity,
       players: liveBookings(s).map((b) => b.name), placesLeft: placesLeft(s, paid), whole: isWhole(s), week: Math.floor((Date.parse(`${s.date}T00:00:00Z`) - Date.parse(`${mon}T00:00:00Z`)) / (7 * 86400000)),
     }
   })

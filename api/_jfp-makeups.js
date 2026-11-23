@@ -13,7 +13,8 @@
 //   jfp:makeups       hash id -> { id, rowId, player, email, groupId, date, kind, status, ... }
 // Status: owed, requested (family asked), booked (into another session), used,
 // applied (credit used), expired (make-up not used in term), cancelled.
-import { kvCommand, clean, newId, audit, dateLabel, sydneyToday, sessionDates, listGroups, locationFor, rowEmails } from './_jfp-store.js'
+import { kvCommand, clean, newId, audit, dateLabel, sydneyToday, sessionDates, listGroups, locationFor, rowEmails, coachById, coachLabel, to24h } from './_jfp-store.js'
+import { EXTRA, getSlot, hqClash } from './_jfp-extra.js'
 import { loadRoster } from './_jfp-airtable.js'
 import { telegramAlert } from './_jfp-notify.js'
 import { sendFamilyNotice } from './_jfp-email.js'
@@ -146,14 +147,61 @@ export async function makeupsList({ config }) {
   const view = (m) => {
     const g = byId.get(m.groupId)
     const b = m.booked && byId.get(m.booked.groupId)
-    return { ...m, status: liveStatus(m, config, today), group: g ? groupLine(config, g) : m.groupId, dateLabel: dateLabel(m.date), expiresLabel: m.expiresOn ? dateLabel(m.expiresOn) : '', bookedLabel: b ? `${groupLine(config, b)}, ${dateLabel(m.booked.date)}` : '' }
+    return { ...m, status: liveStatus(m, config, today), group: g ? groupLine(config, g) : m.groupId, dateLabel: dateLabel(m.date), expiresLabel: m.expiresOn ? dateLabel(m.expiresOn) : '', bookedLabel: b ? `${groupLine(config, b)}, ${dateLabel(m.booked.date)}` : ownLabel(config, m) }
   }
   return {
     makeups: list.map(view).sort((a, c) => String(c.createdAt).localeCompare(String(a.createdAt))),
     cancelled: offs.map((o) => ({ ...o, group: byId.get(o.groupId) ? groupLine(config, byId.get(o.groupId)) : o.groupId, dateLabel: dateLabel(o.date), words: byId.get(o.groupId) && !o.emailedAt ? familyWords(config, byId.get(o.groupId), o.date, o.kind, o.reason) : '' })).sort((a, c) => String(c.date).localeCompare(String(a.date))),
+    coaches: (config.coaches || []).filter((c) => c.active !== false).map((c) => ({ id: c.id, name: coachLabel(c) })), locations: (config.locations || []).map((l) => l.name),
     groups: groups.filter((g) => g.mode !== 'closed' && g.label !== 'Joners Juniors').map((g) => ({ id: g.id, label: groupLine(config, g), dates: sessionDates(config, g.day).map((d) => ({ iso: d, label: dateLabel(d) })) })),
     reasons: REASONS, termEnd: termEnd(config), termEndLabel: dateLabel(termEnd(config)),
   }
+}
+
+// A make-up booked at its own time (Lee, 23 Nov 2026: Dean cancelled Sophia's
+// 1 on 1 and moves it to a time that is not on the timetable). It is a free,
+// private extra session for that one player: on the coach's Register and the
+// Timetable that day, never charged, never chased. Marked Here: the make-up is
+// used and the coach is paid for it like any extra session (api/_jfp-extra.js,
+// api/_jfp-coach-invoices.js). slot.makeup = true, booking.makeupId.
+export function ownLabel(config, m, coach = true) {
+  const o = m.booked?.own ? m.booked : null
+  if (!o) return ''
+  const c = coach ? coachLabel(coachById(config, o.coachId)) : ''
+  return `${dateLabel(o.date)}, ${o.time}, ${o.location}${c ? `, Coach ${c}` : ''} (own time)`
+}
+async function bookOwnTime({ principal, config, m, body }) {
+  if (m.kind !== 'makeup') return { status: 400, error: 'Only a make-up is booked into a session.' }
+  if (!['owed', 'requested'].includes(m.status)) return { status: 409, error: 'This make-up is already booked or used. Unbook it first.' }
+  const coach = coachById(config, clean(body.coachId, 30))
+  if (!coach) return { status: 400, error: 'Choose the coach.' }
+  const date = clean(body.date, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { status: 400, error: 'Pick the date.' }
+  if (date < sydneyToday()) return { status: 400, error: 'Choose a date that has not happened yet.' }
+  if (date > termEnd(config)) return { status: 400, error: 'A make-up has to be inside this term.' }
+  const time = clean(body.time, 10)
+  if (!to24h(time)) return { status: 400, error: 'Pick a start time, like 3:30pm.' }
+  const durationMin = Math.round(Number(body.durationMin) || 60)
+  if (!(durationMin >= 15 && durationMin <= 240)) return { status: 400, error: 'Length: 15 minutes to 4 hours.' }
+  const location = clean(body.location, 80)
+  if (!location) return { status: 400, error: 'Where is it?' }
+  const clash = await hqClash({ id: '', date, time, durationMin, location }, { config })
+  if (clash) return { status: 409, error: clash }
+  const now = new Date().toISOString()
+  const booking = { id: newId('XB'), name: m.player, email: m.email || '', mobile: '', rowId: m.rowId || '', profileKey: '', payreqId: '', status: 'booked', at: now, by: principal.email, from: 'makeup', makeupId: m.id }
+  const slot = {
+    id: newId('XS'), coachId: coach.id, date, time, durationMin, location, capacity: 1, priceId: '', priceCents: 0, priceLabel: 'Make-up (free)',
+    title: `Make-up: ${m.player}`, publicNote: '', note: clean(body.note, 300) || `Make-up for ${dateLabel(m.date)}`, visibility: 'private', kind: 'private',
+    makeup: true, makeupId: m.id, token: '', status: 'open', bookings: [booking], createdBy: principal.email, createdAt: now, updatedAt: now,
+  }
+  await kvCommand(['HSET', EXTRA, slot.id, JSON.stringify(slot)])
+  await saveMakeup({ ...m, updatedBy: principal.email, updatedAt: now, status: 'booked', booked: { own: true, slotId: slot.id, bookingId: booking.id, coachId: coach.id, date, time, durationMin, location, by: principal.email, at: now }, note: clean(body.note, 300) || m.note || '' })
+  await audit({ by: principal.email, action: 'makeup.bookOwn', target: m.id, after: { player: m.player, slot: slot.id, coach: coach.id, date, time } })
+  return { status: 200, slotId: slot.id }
+}
+async function unbookOwn(m, by) {
+  const s = m.booked?.slotId ? await getSlot(m.booked.slotId) : null
+  if (s && s.status === 'open') { s.status = 'cancelled'; s.cancelledBy = by; s.cancelledAt = new Date().toISOString(); await kvCommand(['HSET', EXTRA, s.id, JSON.stringify(s)]) }
 }
 
 export async function makeupUpdate({ principal, config, body }) {
@@ -163,7 +211,12 @@ export async function makeupUpdate({ principal, config, body }) {
   const now = new Date().toISOString()
   const by = principal.email
   const keep = { ...m, updatedBy: by, updatedAt: now }
-  if (op === 'book') {
+  let extra = {}
+  if (op === 'bookOwn') {
+    const r = await bookOwnTime({ principal, config, m, body })
+    if (r.status !== 200) return r
+    extra = { slotId: r.slotId }
+  } else if (op === 'book') {
     if (m.kind !== 'makeup') return { status: 400, error: 'Only a make-up is booked into a session.' }
     const groups = await listGroups()
     const g = groups.find((x) => x.id === clean(body.groupId, 80))
@@ -174,6 +227,7 @@ export async function makeupUpdate({ principal, config, body }) {
     if ((await kvCommand(['HGET', OFF, offKey(g.id, date)]))) return { status: 400, error: 'That session is cancelled.' }
     await saveMakeup({ ...keep, status: 'booked', booked: { groupId: g.id, date, by, at: now }, note: clean(body.note, 300) || m.note || '' })
   } else if (op === 'unbook') {
+    if (m.booked?.own) await unbookOwn(m, by)
     await saveMakeup({ ...keep, status: 'owed', booked: null })
   } else if (op === 'used') {
     await saveMakeup({ ...keep, status: 'used', usedAt: now })
@@ -189,12 +243,13 @@ export async function makeupUpdate({ principal, config, body }) {
     if (!(cents >= 0 && cents < 100000)) return { status: 400, error: 'Enter the credit in dollars.' }
     await saveMakeup({ ...keep, cents })
   } else if (op === 'cancel') {
+    if (m.booked?.own) await unbookOwn(m, by)
     await saveMakeup({ ...keep, status: 'cancelled' })
   } else if (op === 'reopen') {
     await saveMakeup({ ...keep, status: 'owed' })
   } else return { status: 400, error: 'Unknown change.' }
   await audit({ by, action: `makeup.${op}`, target: m.id, after: { player: m.player } })
-  return { status: 200 }
+  return { status: 200, ...extra }
 }
 
 // ---- families ----
@@ -211,7 +266,7 @@ export async function familyMakeups(rowIds, config) {
   return list.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))).map((m) => {
     const status = liveStatus(m, config, today)
     const b = m.booked && byId.get(m.booked.groupId)
-    return { id: m.id, rowId: m.rowId, player: m.player, kind: m.kind, status, dateLabel: dateLabel(m.date), reason: m.reason, cents: m.cents || 0, given: m.given === true, partUsed: (m.uses || []).length > 0, expiresLabel: m.expiresOn ? dateLabel(m.expiresOn) : '', bookedLabel: b ? `${b.day} ${b.time}, ${locationFor(config, b.location).name}, ${dateLabel(m.booked.date)}` : '', canAsk: m.kind === 'makeup' && status === 'owed' }
+    return { id: m.id, rowId: m.rowId, player: m.player, kind: m.kind, status, dateLabel: dateLabel(m.date), reason: m.reason, cents: m.cents || 0, given: m.given === true, partUsed: (m.uses || []).length > 0, expiresLabel: m.expiresOn ? dateLabel(m.expiresOn) : '', bookedLabel: b ? `${b.day} ${b.time}, ${locationFor(config, b.location).name}, ${dateLabel(m.booked.date)}` : ownLabel(config, m, false), canAsk: m.kind === 'makeup' && status === 'owed' }
   })
 }
 

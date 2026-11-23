@@ -32,7 +32,7 @@ import { isGameAnalysis, getCard, allCards, checkCard, saveCard, getDetails, sav
 const fmtMoney = (c) => `A$${(c / 100).toFixed(2)}`
 import { coachInvoicePdf } from './_jfp-coach-invoice-pdf.js'
 import { sendCoachInvoiceToStaff } from './_jfp-email.js'
-import { allSlots, liveBookings, leadPayreq, lateCancelUnfilled } from './_jfp-extra.js'
+import { allSlots, liveBookings, leadPayreq, lateCancelUnfilled, marksFor } from './_jfp-extra.js'
 import { sessionOffMap } from './_jfp-makeups.js'
 
 const KEY = 'jfp:coach-invoices'
@@ -201,14 +201,15 @@ const extraClaim = (id) => `jfp:hours-invoiced:extra:${id}`
 const addMin = (hhmm, m) => { const [h, mm] = String(hhmm || '').split(':').map(Number); if (!Number.isFinite(h)) return ''; const t = h * 60 + mm + m; return `${String(Math.floor(t / 60) % 24).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}` }
 const isWeekendIso = (iso) => [0, 6].includes(new Date(`${iso}T00:00:00Z`).getUTCDay())
 // Pure: one extra session's line. paid: Set of paid payreq ids. card: the coach's rate card.
-export function extraLine(s, { paid, card, location = s.location }) {
+export function extraLine(s, { paid, card, location = s.location, marks = {} }) {
   const live = liveBookings(s)
-  const isPaid = (b) => paid.has(leadPayreq(s, b))
+  // A make-up at its own time is free: paid to the coach when the player was marked Here.
+  const isPaid = (b) => (b.from === 'makeup' ? marks[b.id] === 'Present' : paid.has(leadPayreq(s, b)))
   const payable = live.filter(isPaid), skipped = live.filter((b) => !isPaid(b))
   const minutes = Number(s.durationMin) || 60
   const start = to24h(s.time) || ''
   const base = { players: null, hoursId: `extra:${s.id}`, extraId: s.id, date: s.date, dateLabel: dateLabel(s.date), start, end: start ? addMin(start, minutes) : '', minutes, kind: 'extra', kindLabel: 'Extra session', groupId: '', note: '', what: `Extra session ${s.time}, ${location}`, location, status: 'approved' }
-  const flags = skipped.length ? [{ code: 'not-counted', text: `Not paid for: ${skipped.map((b) => `${String(b.name).split(' ')[0]} (extra session not paid yet)`).join(', ')}` }] : []
+  const flags = skipped.length ? [{ code: 'not-counted', text: `Not paid for: ${skipped.map((b) => `${String(b.name).split(' ')[0]} (${b.from === 'makeup' ? 'make-up, not marked Here' : 'extra session not paid yet'})`).join(', ')}` }] : []
   const names = payable.map((b) => b.name)
   const out = (cents, basis, more = []) => ({ ...base, unpaid: [], description: `${names.length ? `${names.length}on1` : 'Extra session'}${names.length ? `: ${names.join(', ')}` : ''}`, playerNames: names, notCounted: skipped.map((b) => ({ rowId: b.rowId || '', name: b.name, why: 'extra session not paid yet' })), calcCents: cents, cents, basis, flags: [...flags, ...more] })
   if (!card) return out(null, 'No rate card yet: Lee sets the amount', [{ code: 'no-card', text: 'No rate card yet: Lee sets the amount' }])
@@ -220,7 +221,7 @@ export function extraLine(s, { paid, card, location = s.location }) {
     const r = card.bands[0] + weekend
     return out(Math.round(hourly(r) / 2), `Late cancel, nobody took the place: half of ${fmtMoney(r)} an hour`, [{ code: 'half-pay', text: 'Late cancel: half pay' }])
   }
-  if (!payable.length) return out(0, 'Not paid yet: an extra session is only paid once the family has paid')
+  if (!payable.length) return out(0, s.makeup ? 'Make-up not marked Here: paid once the coach marks the player Here' : 'Not paid yet: an extra session is only paid once the family has paid')
   const n = Math.min(payable.length, 7)
   const band = card.bands[n - 1]
   return out(hourly(band + weekend), `Extra session, ${BAND_LABELS[n - 1]}, ${fmtMoney(band)} an hour${weekend ? ` + ${fmtMoney(weekend)} weekend` : ''}`)
@@ -236,7 +237,9 @@ async function extraLinesFor(config, coachId, from, to, card, today = sydneyToda
   const ids = [...new Set(todo.flatMap((s) => liveBookings(s).map((b) => leadPayreq(s, b))).filter(Boolean))]
   const raw = ids.length ? (await kvCommand(['MGET', ...ids.map((id) => `jfp:payreq:${id}`)])) || [] : []
   const paid = new Set(ids.filter((id, i) => parse(raw[i] || 'null')?.status === 'paid'))
-  return todo.map((s) => extraLine(s, { paid, card, location: locationFor(config, s.location).name || s.location }))
+  const out = []
+  for (const s of todo) out.push(extraLine(s, { paid, card, location: locationFor(config, s.location).name || s.location, marks: s.makeup ? await marksFor(s) : {} }))
+  return out
 }
 // A line a coach typed by hand on a day they ran an extra session: Lee checks
 // it is not the same session twice (it comes on by itself now).

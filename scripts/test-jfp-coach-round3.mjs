@@ -204,5 +204,41 @@ await test('a cancelled session is never paid on the coach invoice (Lee, 23 Nov 
   assert.ok(l.flags.some((f) => f.code === 'cancelled'))
 })
 
+await test('a make-up at its own time: a free one-off session on the Register, never chased, marked Here makes it used, the coach is paid only then (Lee, 23 Nov 2026)', async () => {
+  const st = await ok(sam, 'staffOverview')
+  const dates = st.mySessions.find((s) => s.id === THU).dates.map((x) => x.iso)
+  const missed = dates[3]
+  const when = dates.filter((x) => x !== missed).at(-1)
+  assert.ok(when, `a date to book (${dates.join(',')})`)
+  const list = await ok(lee, 'makeupsList')
+  const m = list.makeups.find((x) => x.groupId === THU && x.date === missed && x.kind === 'makeup' && x.status === 'owed')
+  assert.ok(m, 'a make-up owed from the cancelled session')
+  assert.equal((await portal(lee, 'makeupUpdate', { id: m.id, op: 'bookOwn', coachId: 'sam', date: when, time: 'nonsense', durationMin: 60, location: 'Belrose HQ' })).status, 400, 'a real time')
+  const r = await ok(lee, 'makeupUpdate', { id: m.id, op: 'bookOwn', coachId: 'sam', date: when, time: '3:30pm', durationMin: 60, location: 'Belrose HQ', note: 'Coach moved it' })
+  const slot = JSON.parse(await kv(['HGET', 'jfp:extra', r.slotId]))
+  assert.equal(slot.makeup, true); assert.equal(slot.priceCents, 0); assert.equal(slot.visibility, 'private')
+  assert.equal(slot.bookings[0].from, 'makeup'); assert.equal(slot.bookings[0].makeupId, m.id)
+  const after = (await ok(lee, 'makeupsList')).makeups.find((x) => x.id === m.id)
+  assert.equal(after.status, 'booked'); assert.match(after.bookedLabel, /3:30pm.*own time/)
+  assert.equal((await portal(lee, 'makeupUpdate', { id: m.id, op: 'bookOwn', coachId: 'sam', date: when, time: '4:30pm', durationMin: 60, location: 'NTRA' })).status, 409, 'booked once')
+  // Never chased for payment, and the coach is paid only once it is marked Here.
+  const { unpaidBookings } = await import('../api/_jfp-extra-unpaid.js')
+  const { extraLine } = await import('../api/_jfp-coach-invoices.js')
+  assert.equal((await unpaidBookings(Date.parse(`${slot.date}T03:00:00Z`), { slots: [slot] })).length, 0)
+  const card = { bands: [4000, 5000, 6000, 7000, 7500, 8500, 9000] }
+  assert.equal(extraLine(slot, { paid: new Set(), card, marks: {} }).cents, 0)
+  assert.equal(extraLine(slot, { paid: new Set(), card, marks: { [slot.bookings[0].id]: 'Present' } }).cents, 4000)
+  // The coach marks Here on the day: the make-up is used.
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney' }).format(new Date())
+  await kv(['HSET', 'jfp:extra', slot.id, JSON.stringify({ ...slot, date: today })])
+  await ok(sam, 'extraMark', { slotId: slot.id, bookingId: slot.bookings[0].id, status: 'Present' })
+  assert.equal((await ok(lee, 'makeupsList')).makeups.find((x) => x.id === m.id).status, 'used')
+  await ok(sam, 'extraMark', { slotId: slot.id, bookingId: slot.bookings[0].id, status: '' })
+  assert.equal((await ok(lee, 'makeupsList')).makeups.find((x) => x.id === m.id).status, 'booked', 'unmarked: booked again')
+  // Unbook: the one-off session is cancelled.
+  await ok(lee, 'makeupUpdate', { id: m.id, op: 'unbook' })
+  assert.equal(JSON.parse(await kv(['HGET', 'jfp:extra', slot.id])).status, 'cancelled')
+})
+
 console.log(`${passed} passed`)
 process.exit(0)

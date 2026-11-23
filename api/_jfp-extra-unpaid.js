@@ -66,7 +66,7 @@ export function stageFor(startAt, now) {
 // The unpaid bookings on open extra sessions starting in the next 48 hours
 // (or started in the last 3). deps for tests.
 export async function unpaidBookings(now = Date.now(), { slots } = {}) {
-  const list = (slots || (await allSlots())).filter((s) => s.status === 'open' && startMs(s) && startMs(s) - now <= 48 * H && now - startMs(s) < 3 * H)
+  const list = (slots || (await allSlots())).filter((s) => s.status === 'open' && !s.makeup && startMs(s) && startMs(s) - now <= 48 * H && now - startMs(s) < 3 * H)
   const out = []
   for (const s of list) {
     for (const b of liveBookings(s)) {

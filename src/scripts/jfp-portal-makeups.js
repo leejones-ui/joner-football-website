@@ -27,7 +27,7 @@ export async function renderMakeups(ui) {
     ${d.cancelled.length ? `<h2 style="margin:22px 0 8px">Cancelled sessions</h2>${d.cancelled.map((o) => `<div class="jp-player" style="cursor:default;align-items:center"><span><b>${esc(o.group)}</b> · ${esc(o.dateLabel)}<br><span class="muted small">${esc(o.reason)} · ${esc(o.count)} player${o.count === 1 ? '' : 's'} · ${o.kind === 'makeup' ? 'free make-ups' : o.kind === 'credit' ? 'credits' : 'nothing owed'}</span></span>${o.emailedAt ? `<span class="ps-tag">Families emailed</span>` : `<button type="button" class="j-btn j-btn-line j-btn-sm" data-ec-mail="${esc(o.groupId)}|${esc(o.date)}">Email families</button>`}<button type="button" class="j-btn j-btn-line j-btn-sm" data-undo="${esc(o.groupId)}|${esc(o.date)}">Undo</button></div>`).join('')}` : ''}`
   function actions(m) {
     const b = (op, label, line = true) => `<button type="button" class="j-btn ${line ? 'j-btn-line' : 'j-btn-dark'} j-btn-sm" data-op="${op}" data-id="${esc(m.id)}">${label}</button>`
-    if (m.kind === 'makeup' && ['owed', 'requested'].includes(m.status)) return b('book', 'Book it', false) + ' ' + b('convert', 'Make it a credit') + ' ' + b('cancel', 'Remove')
+    if (m.kind === 'makeup' && ['owed', 'requested'].includes(m.status)) return b('book', 'Book it', false) + ' ' + b('own', 'Book at its own time') + ' ' + b('convert', 'Make it a credit') + ' ' + b('cancel', 'Remove')
     if (m.status === 'expired') return b('convert', 'Make it a credit') + ' ' + b('cancel', 'Remove')
     if (m.status === 'booked') return b('used', 'Mark used') + ' ' + b('unbook', 'Unbook')
     if (m.kind === 'credit' && m.status === 'owed') return b('applied', 'Mark applied', false) + ' ' + b('value', 'Set value') + ' ' + b('cancel', 'Remove')
@@ -55,6 +55,7 @@ export async function renderMakeups(ui) {
     const m = d.makeups.find((x) => x.id === b.dataset.id)
     const op = b.dataset.op
     if (op === 'book') return bookModal(ui, d, m, () => renderMakeups(ui))
+    if (op === 'own') return ownModal(ui, d, m, () => renderMakeups(ui))
     if (op === 'value') return valueModal(ui, m, 'value', () => renderMakeups(ui))
     if (op === 'convert') return valueModal(ui, m, 'convert', () => renderMakeups(ui))
     if (op === 'cancel' && !(await confirmBox(`Remove what ${esc(m.player)} is owed? They stop seeing it.`, { ok: 'Remove', danger: true }))) return
@@ -123,6 +124,33 @@ function bookModal(ui, d, m, done) {
     const r = await post('makeupUpdate', { id: m.id, op: 'book', groupId: box.querySelector('#bk-g').value, date: box.querySelector('#bk-d').value })
     if (!r.ok) { const er = box.querySelector('#bk-err'); er.textContent = r.data.error || 'Could not book.'; er.hidden = false; return }
     closeModal(); toast('Booked. The coach sees them in the register.'); done()
+  })
+}
+
+// A make-up at its own time (Lee, 23 Nov 2026): when the coach moves it to a
+// time that is not on the timetable. A free one-off session for this player:
+// on the coach's Register and the Timetable that day. Marked Here, it is used
+// and goes on the coach's invoice. Never charged or chased.
+function ownModal(ui, d, m, done) {
+  const { post, modal, closeModal } = ui
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' })
+  const box = modal(`<h2 style="margin-bottom:4px">Book ${esc(m.player.split(' ')[0])}'s make-up at its own time</h2>
+    <p class="muted small" style="margin-bottom:12px">For a time that is not on the timetable. It shows on the coach's Register and your Timetable that day, as a free make-up. Nothing is charged or sent to the family.</p>
+    <label class="j-field"><span>Coach</span><select class="j-select" id="ow-c">${(d.coaches || []).map((c) => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}</select></label>
+    <div class="j-two"><label class="j-field"><span>Date</span><input class="j-input" type="date" id="ow-d" min="${esc(today)}" max="${esc(d.termEnd)}"></label>
+    <label class="j-field"><span>Start time</span><input class="j-input" id="ow-t" placeholder="e.g. 3:30pm" autocomplete="off"></label></div>
+    <div class="j-two"><label class="j-field"><span>Length</span><select class="j-select" id="ow-l"><option value="30">30 min</option><option value="45">45 min</option><option value="60" selected>1 hour</option><option value="90">1 hour 30</option></select></label>
+    <label class="j-field"><span>Where</span><select class="j-select" id="ow-p">${(d.locations || []).map((l) => `<option>${esc(l)}</option>`).join('')}</select></label></div>
+    <label class="j-field"><span>Note <span class="muted">(optional)</span></span><input class="j-input" id="ow-n" maxlength="300" placeholder="e.g. Dean moved Monday's 1 on 1"></label>
+    <p class="j-err" id="ow-err" hidden></p>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-dark" id="ow-go">Book make-up</button></div>`, { wide: true })
+  box.querySelector('#ow-go').addEventListener('click', async (e) => {
+    const btn = e.currentTarget
+    btn.disabled = true
+    const r = await post('makeupUpdate', { id: m.id, op: 'bookOwn', coachId: box.querySelector('#ow-c').value, date: box.querySelector('#ow-d').value, time: box.querySelector('#ow-t').value, durationMin: Number(box.querySelector('#ow-l').value), location: box.querySelector('#ow-p').value, note: box.querySelector('#ow-n').value })
+    btn.disabled = false
+    if (!r.ok) { const er = box.querySelector('#ow-err'); er.textContent = r.data.error || 'Could not book.'; er.hidden = false; return }
+    closeModal(); toast('Booked. It is on the coach\'s Register and the Timetable that day.'); done()
   })
 }
 
