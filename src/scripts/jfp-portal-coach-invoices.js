@@ -93,7 +93,7 @@ const DETAIL = [['fullName', 'Full name', 'text'], ['abn', 'ABN', 'numeric'], ['
 const detailsForm = (d = {}) => `<div class="j-two">${DETAIL.map(([k, l, m]) => `<label class="j-field"><span>${l}</span><input class="j-input" data-det="${k}" value="${esc(d[k] || '')}" ${m === 'numeric' ? 'inputmode="numeric"' : m === 'email' ? 'type="email"' : m === 'tel' ? 'type="tel"' : ''}></label>`).join('')}</div>`
 
 // Rate card editor (Lee and Ligia): dollars an hour unless it says flat.
-const CARD_FIELDS = [['weekendExtra', 'Weekend extra, Sat or Sun (an hour)'], ['pathwayFlat', 'Pathway 45 min (flat)'], ['jjHead', 'Juniors head or shadow (an hour, or per session if ticked)'], ['office', 'Office hours (an hour)'], ['devSesh', 'Dev Sesh (flat, each)']]
+const CARD_FIELDS = [['weekendExtra', 'Weekend extra, Sat or Sun (an hour)'], ['pathwayFlat', 'Pathway 45 min (flat)'], ['jjHead', 'Juniors head or shadow (an hour, or per session if ticked)'], ['office', 'Office hours (an hour)'], ['devSesh', 'Dev Sesh (flat, each)'], ['gameAnalysis', 'Game analysis (flat, each)']]
 // Every box the same size; boxes sit on the bottom of each row so the inputs line up.
 const rateBox = (label, attrs) => `<label class="j-field" style="margin:0;min-width:0"><span style="line-height:1.3">${label}</span><input class="j-input" style="width:100%" inputmode="decimal" ${attrs}></label>`
 const dollars = (c) => (c ? (c / 100).toFixed(2).replace(/\.00$/, '') : '')

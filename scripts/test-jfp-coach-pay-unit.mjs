@@ -3,7 +3,7 @@
 //   node scripts/test-jfp-coach-pay-unit.mjs
 import assert from 'node:assert/strict'
 import { priceLine, pricePayable, checkCard, dueMonday, paidUpfront } from '../api/_jfp-coach-pay.js'
-import { editLine, newLine, feesOwed } from '../api/_jfp-coach-invoices.js'
+import { editLine, newLine, feesOwed, priceAdded } from '../api/_jfp-coach-invoices.js'
 import { checkPlayers, shortNames } from '../api/_jfp-hours.js'
 
 const card = { bands: [4000, 4500, 5500, 6500, 7000, 7500, 8000], weekendExtra: 1000, pathwayFlat: 5000, jjHead: 5000, jjShadow: 4000 }
@@ -123,5 +123,17 @@ t('unpaid, absent and unknown players are not paid for (Lee, 1 Nov 2026)', () =>
 })
 t('due Monday: the coming Monday, or today on a Monday', () => {
   assert.equal(dueMonday('2026-10-21'), '2026-10-26'); assert.equal(dueMonday('2026-10-26'), '2026-10-26'); assert.equal(dueMonday('2026-10-25'), '2026-10-26')
+})
+t('game analysis: a flat agreed rate; a typed line takes it, a different amount is flagged; no rate waits for Lee', () => {
+  const ga = { ...card, gameAnalysis: 10000 }
+  assert.equal(checkCard({ bands: card.bands, gameAnalysis: 10000 }).gameAnalysis, 10000)
+  assert.equal(priceLine(line({ kind: 'analysis', groupId: '' }), { card: ga }).cents, 10000)
+  assert.equal(priceLine(line({ kind: 'analysis', groupId: '' }), { card }).cents, null)
+  const typed = priceAdded(newLine({ date: '2026-11-18', description: 'Game Analysis - Casella', minutes: 60, cents: 10000 }, { by: 'x', role: 'coach', from: '2026-11-16', to: '2026-11-22' }), ga)
+  assert.equal(typed.calcCents, 10000); assert.ok(!typed.flags?.some((f) => f.code === 'edited'))
+  const blank = priceAdded(newLine({ date: '2026-11-18', description: 'game analysis', minutes: 60 }, { by: 'x', role: 'coach', from: '2026-11-16', to: '2026-11-22' }), ga)
+  assert.equal(blank.cents, 10000)
+  const more = priceAdded(newLine({ date: '2026-11-18', description: 'Game analysis', minutes: 60, cents: 12000 }, { by: 'x', role: 'coach', from: '2026-11-16', to: '2026-11-22' }), ga)
+  assert.ok(more.flags.some((f) => f.code === 'edited'))
 })
 console.log(`\n${n} passed`)

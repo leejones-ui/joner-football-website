@@ -168,11 +168,23 @@ await test('a booking made before the change keeps the 24 hour terms: 30 hours i
   assert.equal((await payreq(p)).refundedCents, 11500)
 })
 
-await test('an unpaid booking cancelled late: nothing waiting and no half pay', async () => {
+await test('an unpaid booking cancelled under 24 hours: the full price is still owed, the charge stays, the coach is paid as a late cancel', async () => {
   const s5 = await newSlot(10)
   await ok(one.A('bookExtra', { slotId: s5.id, playerKey: one.kid.key, acceptTerms: true }))
-  await ok(one.A('cancelExtra', { slotId: s5.id, confirm: true }))
-  assert.equal((await slotOf(s5.id)).bookings[0].lateCancel, undefined)
+  const q = await ok(one.A('cancelExtra', { slotId: s5.id }))
+  assert.ok(q.quote.owedLateCents > 0, 'the quote says it is still owed')
+  const r = await ok(one.A('cancelExtra', { slotId: s5.id, confirm: true }))
+  assert.equal(r.owedLateCents, q.quote.owedLateCents)
+  const lc = (await slotOf(s5.id)).bookings[0].lateCancel
+  assert.equal(lc.unpaid, true); assert.equal(lc.band, 'late'); assert.equal(lc.owedCents, q.quote.owedLateCents)
+})
+
+await test('an unpaid booking cancelled with 24 hours or more: nothing owed, nothing waiting', async () => {
+  const s6 = await newSlot(30)
+  await ok(one.A('bookExtra', { slotId: s6.id, playerKey: one.kid.key, acceptTerms: true }))
+  const r = await ok(one.A('cancelExtra', { slotId: s6.id, confirm: true }))
+  assert.equal(r.owedLateCents, 0)
+  assert.equal((await slotOf(s6.id)).bookings[0].lateCancel, undefined)
 })
 
 console.log(`\n${passed} 48 hour checks passed`)

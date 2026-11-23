@@ -28,7 +28,7 @@
 import { isSessionType, kvCommand, clean, newId, audit, dateLabel, coachById, coachLabel, formatAud, listGroups, locationFor, sydneyToday, to24h } from './_jfp-store.js'
 import { allHours, HOUR_KINDS, shortNames } from './_jfp-hours.js'
 import { loadRoster } from './_jfp-airtable.js'
-import { getCard, allCards, checkCard, saveCard, getDetails, saveDetails, registerFor, pricePayable, isPathwayGroup, dueMonday, BAND_LABELS } from './_jfp-coach-pay.js'
+import { isGameAnalysis, getCard, allCards, checkCard, saveCard, getDetails, saveDetails, registerFor, pricePayable, isPathwayGroup, dueMonday, BAND_LABELS } from './_jfp-coach-pay.js'
 const fmtMoney = (c) => `A$${(c / 100).toFixed(2)}`
 import { coachInvoicePdf } from './_jfp-coach-invoice-pdf.js'
 import { sendCoachInvoiceToStaff } from './_jfp-email.js'
@@ -88,6 +88,16 @@ export function editLine(line, edit, { by, role }) {
   } else if (changed.some((k) => k !== 'cents')) flags.push({ code: 'edited', text: `Changed by ${role === 'coach' ? 'the coach' : 'Lee or Ligia'}: ${changed.filter((k) => k !== 'cents').join(', ')}` })
   next.flags = flags
   return next
+}
+
+// A typed game analysis line takes the coach's agreed rate (Lee, 23 Nov
+// 2026): blank means the agreed amount; a different amount shows as changed.
+export function priceAdded(x, card) {
+  if (x.error || !card?.gameAnalysis || !isGameAnalysis(x)) return x
+  const r = card.gameAnalysis
+  const out = { ...x, calcCents: r, cents: x.cents == null ? r : x.cents, basis: `Game analysis, flat ${fmtMoney(r)}` }
+  if (out.cents !== r) out.flags = [...(out.flags || []), { code: 'edited', text: `Amount typed by hand: the agreed game analysis rate is ${fmtMoney(r)}` }]
+  return out
 }
 
 // Pure: a line someone added by hand.
@@ -336,7 +346,7 @@ export async function invoiceAction(res, principal, config, body, action, { isAd
     }
     const mySlots = (Array.isArray(body.added) && body.added.length) ? (await allSlots()).filter((s) => s.coachId === coachId && s.status === 'open' && s.date >= from && s.date <= to) : []
     for (const a of (Array.isArray(body.added) ? body.added : []).slice(0, 30)) {
-      const x = newLine(a || {}, { by: principal.email, role: 'coach', from, to })
+      const x = priceAdded(newLine(a || {}, { by: principal.email, role: 'coach', from, to }), await getCard(coachId))
       if (x.error) return refuse(400, x.error)
       lines.push(typedExtraFlag(x, mySlots))
     }
@@ -411,7 +421,7 @@ export async function invoiceAction(res, principal, config, body, action, { isAd
     let lines = inv.lines
     const i = Number(body.index)
     if (action === 'coachInvLineAdd') {
-      const x = newLine(body.line || {}, { by: principal.email, role: 'admin', from: inv.from, to: inv.to })
+      const x = priceAdded(newLine(body.line || {}, { by: principal.email, role: 'admin', from: inv.from, to: inv.to }), await getCard(inv.coachId))
       if (x.error) return no(400, x.error)
       lines = [...lines, x].sort((a, b) => a.date.localeCompare(b.date) || String(a.start).localeCompare(String(b.start)))
     } else {

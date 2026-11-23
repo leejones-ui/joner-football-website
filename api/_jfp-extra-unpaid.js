@@ -35,15 +35,17 @@ const shortWhen = (s) => `${dateLabel(s.date)} at ${s.time}`
 export const familyOn = (config) => config?.extraUnpaidFamily === true
 
 // The exact family text Lee is asked to say yes to (16 Nov 2026).
-export function familyText({ parentFirst, playerFirst, coach, when, url }) {
-  return `Hi ${parentFirst || 'there'}, ${playerFirst}'s extra session with Coach ${coach} on ${when} hasn't been paid yet. It needs to be paid before the session starts: ${url}. Thanks, Joner Football`
+// Lee, 23 Nov 2026 ("yes . send this and build this !"): pay before training,
+// and the player can't train until it is paid.
+export function familyText({ parentFirst, playerFirst, coach, when, url, amountCents = 0 }) {
+  return `Hi ${parentFirst || 'there'}, a reminder that ${playerFirst}'s extra session with Coach ${coach} on ${when} isn't paid yet${amountCents ? ` (${formatAud(amountCents)})` : ''}. Please pay here before the session: ${url} ${playerFirst} can't train until it's paid. Thanks, Joner Football`
 }
 export function familyEmail({ parentFirst, playerFirst, player, coach, when, url, amountCents }) {
   return {
     subject: `Extra session not paid yet: ${playerFirst}, ${when}`,
     heading: 'Your extra session is not paid yet',
     // Lee said yes to these words on 16 Nov 2026 (the text's, plus the pay button).
-    paras: [`Hi ${parentFirst || 'there'}, ${playerFirst}'s extra session with Coach ${coach} on ${when} hasn't been paid yet. It needs to be paid before the session starts.`, 'Thanks, Joner Football'],
+    paras: [`Hi ${parentFirst || 'there'}, a reminder that ${playerFirst}'s extra session with Coach ${coach} on ${when} isn't paid yet (${formatAud(amountCents)}). Please pay before the session using the button below. ${playerFirst} can't train until it's paid.`, 'Thanks, Joner Football'],
     list: [['Player', player], ['Session', when], ['Amount', formatAud(amountCents)]],
     cta: { label: `Pay ${formatAud(amountCents)}`, url },
   }
@@ -54,6 +56,8 @@ export function familyEmail({ parentFirst, playerFirst, player, coach, when, url
 export function stageFor(startAt, now) {
   const left = startAt - now
   if (left <= 0) return now - startAt < 3 * H ? 'start' : ''
+  // 2 hours before: the coach is told not to train an unpaid player (Lee, 23 Nov 2026).
+  if (left <= 2 * H) return '2h'
   if (left <= 24 * H) return '24h'
   if (left <= 48 * H) return '48h'
   return ''
@@ -122,8 +126,23 @@ export async function extraUnpaidSweep({ config, now = Date.now(), send = {} } =
       await audit({ by: 'extra unpaid', action: 'extra.unpaid.start', target: s.id, after: { booking: b.id, player: who } })
       continue
     }
-    // The coach hears at 48 and 24 hours (Lee owns the business: never chased).
     const owner = coach?.email && (config.superAdmins || []).includes(coach.email)
+    // 2 hours before: the coach only, do not train them (Lee, 23 Nov 2026).
+    if (stage === '2h') {
+      if (coach && !owner) {
+        const r = await tell({
+          coach, kind: 'coach extra unpaid 2h',
+          text: `Hi ${coach.name}, ${who} has still not paid for your extra session today at ${s.time}. Not paid, do not train. If the family pays before you start, it shows as Paid in your Register.`,
+          subject: `Not paid, do not train: ${who}, ${when}`, heading: 'Not paid, do not train',
+          paras: [`Hi Coach ${coach.name}, ${who} has still not paid for your extra session on ${when}.`, 'Extra sessions are paid before training. Please do not train them until it is paid. If the family pays before you start, it shows as Paid in your Register.'],
+          list: [['Session', `${when}, ${s.location}`], ['Player', who]],
+        }).catch((e) => ({ error: e.message }))
+        out.coach += 1
+        await audit({ by: 'extra unpaid', action: 'extra.unpaid.coach', target: s.id, after: { booking: b.id, stage, player: who, emailed: r?.emailed, texted: r?.texted } })
+      }
+      continue
+    }
+    // The coach hears at 48 and 24 hours (Lee owns the business: never chased).
     if (coach && !owner) {
       const r = await tell({
         coach, kind: 'coach extra unpaid',
@@ -183,5 +202,5 @@ async function queueFamilyText({ email, phone, parent, players, text, expiresAt 
 // For Lee and Ligia: the switch, and the family reminders held while it is off.
 export async function unpaidSettings({ config }) {
   const raw = (await kvCommand(['LRANGE', UNPAID_HELD, '0', '29'])) || []
-  return { on: familyOn(config), held: raw.map((x) => { try { return JSON.parse(x) } catch { return null } }).filter(Boolean), sample: familyText({ parentFirst: 'Sarah', playerFirst: 'Sam', coach: 'Dean', when: 'Sun 22 Nov at 10:00am', url: `${SITE}/jfp-account/?pay=PAY-…` }), today: sydneyToday() }
+  return { on: familyOn(config), held: raw.map((x) => { try { return JSON.parse(x) } catch { return null } }).filter(Boolean), sample: familyText({ amountCents: 12000, parentFirst: 'Sarah', playerFirst: 'Sam', coach: 'Dean', when: 'Sun 22 Nov at 10:00am', url: `${SITE}/jfp-account/?pay=PAY-…` }), today: sydneyToday() }
 }

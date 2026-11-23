@@ -15,8 +15,9 @@
 // Juniors, not Pathway); pathwayFlat for a 45-minute Pathway class whatever
 // the player count; Joners Juniors an hour (one rate for head or shadow, Lee
 // 20 Oct 2026: "keep $50 across the board"); office an hour; devSesh flat for
-// each Dev Sesh ("per dev sesh"); camps are always agreed with Lee before the
-// camp (TBC).
+// each Dev Sesh ("per dev sesh"); gameAnalysis flat for each game analysis
+// (Lee, 23 Nov 2026: "$100 for game analyis is right"); camps are always
+// agreed with Lee before the camp (TBC).
 //
 // Who counts (Lee, 20 Oct 2026: "if they have paid for the program upfront
 // and they dont show, they still get paid for that session!"): players marked
@@ -48,7 +49,7 @@ export function checkCard(body) {
   const bands = Array.isArray(body.bands) ? body.bands.map(c) : []
   if (bands.length !== 7 || bands.some((b) => !centsOk(b))) return { error: 'Set all seven player-count rates (1 player to 7 or more).' }
   const card = { bands }
-  for (const k of ['weekendExtra', 'pathwayFlat', 'jjHead', 'jjShadow', 'office', 'devSesh']) {
+  for (const k of ['weekendExtra', 'pathwayFlat', 'jjHead', 'jjShadow', 'office', 'devSesh', 'gameAnalysis']) {
     const v = c(body[k])
     if (v == null) continue
     if (!centsOk(v)) return { error: `That ${k} rate is not right.` }
@@ -178,6 +179,7 @@ export function priceLine(line, { card, group, register }) {
     return { cents: hourly(r, line.minutes), basis: `Joners Juniors, ${money(r)} an hour`, players: null, flags: [] }
   }
   if (line.kind === 'devsesh' && !card.devSesh) return tbc('no-rate', 'No agreed Dev Sesh rate: Lee sets the amount')
+  if (line.kind === 'analysis' && !card.gameAnalysis) return tbc('no-rate', 'No agreed game analysis rate: Lee sets the amount')
   if (line.kind === 'camp') return tbc('camp', 'Camps: the rate is agreed with Lee before the camp')
   if (line.kind === 'admin') {
     if (!card.office) return tbc('no-rate', 'No agreed office rate: Lee sets the amount')
@@ -202,9 +204,13 @@ export function priceLine(line, { card, group, register }) {
     const extra = isWeekend(line.date) && card.weekendExtra ? card.weekendExtra : 0
     return { cents: hourly(band + extra, line.minutes), basis: `${BAND_LABELS[Math.min(n, 7) - 1]}, ${money(band)} an hour${extra ? ` + ${money(extra)} weekend` : ''}`, players: n, flags }
   }
+  if (card.gameAnalysis && isGameAnalysis(line)) return { cents: card.gameAnalysis, basis: `Game analysis, flat ${money(card.gameAnalysis)}`, players: null, flags: [] }
   if (card.devSesh && (line.kind === 'devsesh' || /dev\s*sesh/i.test(line.note || ''))) return { cents: card.devSesh, basis: `Dev Sesh, flat ${money(card.devSesh)}`, players: picked || null, flags: [] }
   return tbc('no-rate', 'No agreed rate for this: Lee sets the amount')
 }
+
+// A game analysis line: its kind, or the words on a line typed by hand.
+export const isGameAnalysis = (line) => line?.kind === 'analysis' || /game\s*analy/i.test(`${line?.note || ''} ${line?.description || ''} ${line?.what || ''}`)
 
 // The weekly due date: invoices for the week before are in by Monday 9am.
 export function dueMonday(today = sydneyToday()) {

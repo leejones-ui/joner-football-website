@@ -27,7 +27,7 @@ export const isRunning = (g, live) => g.mode !== 'closed' || g.label === 'Joners
 
 const KEY = 'jfp:hours'
 export const HOURS_ACTIONS = new Set(['hoursList', 'hoursSave', 'hoursDelete', 'hoursDecide', 'hoursPlayers', 'hoursOptions'])
-export const HOUR_KINDS = { session: 'JFP session', cover: 'Cover', devsesh: 'Dev Sesh', holiday: 'Holiday training', camp: 'Camp', juniors: 'Joners Juniors', event: 'Event or trial day', admin: 'Admin or planning', other: 'Other' }
+export const HOUR_KINDS = { session: 'JFP session', cover: 'Cover', devsesh: 'Dev Sesh', analysis: 'Game analysis', holiday: 'Holiday training', camp: 'Camp', juniors: 'Joners Juniors', event: 'Event or trial day', admin: 'Admin or planning', other: 'Other' }
 const MAX_PLAYERS = 40
 
 // First names, with a last initial when two share a first name.

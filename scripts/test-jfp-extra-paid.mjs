@@ -54,11 +54,13 @@ const markPaid = async (id) => { const q = await payreq(id); await kv(['SET', `j
 
 await test('the words and stages (pure)', async () => {
   assert.equal(familyText({ parentFirst: 'Sarah', playerFirst: 'Sam', coach: 'Dean', when: 'Sun 22 Nov at 10:00am', url: 'https://jonerfootball.com/jfp-account/?pay=PAY-1' }),
-    "Hi Sarah, Sam's extra session with Coach Dean on Sun 22 Nov at 10:00am hasn't been paid yet. It needs to be paid before the session starts: https://jonerfootball.com/jfp-account/?pay=PAY-1. Thanks, Joner Football")
+    "Hi Sarah, a reminder that Sam's extra session with Coach Dean on Sun 22 Nov at 10:00am isn't paid yet. Please pay here before the session: https://jonerfootball.com/jfp-account/?pay=PAY-1 Sam can't train until it's paid. Thanks, Joner Football")
+  assert.match(familyText({ parentFirst: 'Sarah', playerFirst: 'Sam', coach: 'Dean', when: 'x', url: 'u', amountCents: 12000 }), /isn't paid yet \(A\$120\)/)
   const t = Date.parse('2026-11-22T00:00:00Z')
   assert.equal(stageFor(t, t - 50 * H), '')
   assert.equal(stageFor(t, t - 47 * H), '48h')
   assert.equal(stageFor(t, t - 23 * H), '24h')
+  assert.equal(stageFor(t, t - 90 * 60000), '2h', '2 hours before: the coach is told not to train them')
   assert.equal(stageFor(t, t + 5 * 60000), 'start')
   assert.equal(stageFor(t, t + 4 * H), '')
 })
@@ -116,7 +118,7 @@ await test('unpaid: the coach is told 48 hours before, the family reminder is he
   assert.equal((await tick(start - 39 * H)).unpaid?.coach, 0, 'once per stage')
   const st = await ok(L('extraUnpaid'))
   assert.equal(st.on, false)
-  assert.ok(st.held.some((h) => h.player === 'Pay Later' && /hasn't been paid yet/.test(h.text)))
+  assert.ok(st.held.some((h) => h.player === 'Pay Later' && /isn't paid yet/.test(h.text) && /can't train until it's paid/.test(h.text)))
   assert.equal((await D('extraUnpaid')).status, 403, 'a coach cannot switch it')
   // Dean's tab and register say it is not paid.
   const v = (await ok(D('extraList'))).slots.find((x) => x.id === slot.id)

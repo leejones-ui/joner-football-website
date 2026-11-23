@@ -42,9 +42,9 @@ export async function renderExtra(ui) {
   const d = S.data = await need(await post('extraList', { coachId: S.coachId }))
   const admin = d.admin
   const hours = d.weekMinutes != null ? `${Math.round((d.weekMinutes / 60) * 10) / 10} h booked this week` : ''
-  const pill = (b) => (b.paid ? '<span class="j-pill j-pill-green">Paid</span>' : b.payStatus === 'cancelled' ? '<span class="j-pill j-pill-grey">Charge cancelled</span>' : b.payreqId ? '<span class="j-pill j-pill-amber">Not paid yet</span>' : '<span class="j-pill j-pill-red">No payment yet</span>')
+  const pill = (b) => (b.paid ? '<span class="j-pill j-pill-green">Paid</span>' : b.payStatus === 'cancelled' ? '<span class="j-pill j-pill-grey">Charge cancelled</span>' : b.payreqId ? '<span class="j-pill j-pill-red">Not paid, do not train</span>' : '<span class="j-pill j-pill-red">No payment yet</span>')
   // Extra sessions are paid before they run (Lee, 16 Nov 2026). Group friends are paid on the first booking.
-  const unpaidNote = (s) => { const owing = s.bookings.filter((b) => !b.paid && !b.inGroupOf && b.payStatus !== 'cancelled'); return owing.length && !s.past ? `<p class="j-box j-box-amber small" style="margin-top:10px"><b>Not paid yet: ${esc(owing.map((b) => b.name).join(', '))}.</b> It must be paid before the session starts. We remind the family. Only paid players go on your invoice.</p>` : '' }
+  const unpaidNote = (s) => { const owing = s.bookings.filter((b) => !b.paid && !b.inGroupOf && b.payStatus !== 'cancelled'); return owing.length && !s.past ? `<p class="j-box j-box-amber small" style="margin-top:10px"><b>Not paid yet: ${esc(owing.map((b) => b.name).join(', '))}.</b> Not paid, do not train: it must be paid before the session starts. We remind the family. Only paid players go on your invoice.</p>` : '' }
   const card = (s) => `<div class="j-card" style="padding:14px 16px;margin-bottom:12px" data-xs="${esc(s.id)}">
     <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start">
       <div><b>${esc(s.dateLabel.replace(/\s\d{4}$/, ''))}, ${esc(s.time)}</b> <span class="muted small">${esc(s.durationMin)} min</span><br>
@@ -168,7 +168,7 @@ async function unpaidCard(ui, change) {
   const a = r.data
   el.innerHTML = `<div class="j-card" style="padding:14px 16px;margin-bottom:14px">
     <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center"><div style="min-width:0;flex:1 1 260px"><h3 style="margin-bottom:4px">Remind families who have not paid</h3>
-      <p class="muted small">${a.on ? 'On.' : 'Off.'} 48 and 24 hours before an extra session, a family that has not paid gets an email and a text with the pay link. The coach is told too, and you hear on Telegram if it starts unpaid${a.on ? '' : ' (those two are on now)'}.</p></div>
+      <p class="muted small">${a.on ? 'On.' : 'Off.'} 48 and 24 hours before an extra session, a family that has not paid gets an email and a text with the pay link, saying the player can't train until it is paid. The coach is told too (and again 2 hours before: not paid, do not train), and you hear on Telegram if it starts unpaid${a.on ? '' : ' (those two are on now)'}.</p></div>
       <button type="button" class="j-btn ${a.on ? 'j-btn-line' : 'j-btn-dark'} j-btn-sm" id="xu-switch">${a.on ? 'Switch off' : 'Switch on'}</button></div>
     <p class="small" style="margin-top:8px;white-space:pre-wrap;overflow-wrap:anywhere"><b>The text:</b> ${esc(a.sample)}</p>
     ${a.held.length && !a.on ? `<p class="small" style="margin-top:8px">While it is off, ${a.held.length} reminder${a.held.length === 1 ? ' was' : 's were'} not sent: ${a.held.slice(0, 5).map((h) => `${esc(h.player)} (${esc(h.when)})`).join(', ')}.</p>` : ''}

@@ -10,6 +10,10 @@
 // 24 hours or more, back less A$5; under 24 hours, nothing.
 // Coach pay (Lee, 7 Nov): a paid booking cancelled under 48 hours and nobody
 // takes the place: the coach is paid half. Someone takes it: as normal.
+// Not paid yet (Lee, 23 Nov 2026: pay before training): cancelled under 24
+// hours, the full price is still owed and the charge stays on their account;
+// the coach is paid as for a paid late cancel. Someone takes the place: the
+// charge comes off. 24 hours or more: nothing owed, as before.
 // Families cancel in My account; the place opens again on the public page
 // and the coach is emailed.
 //
@@ -98,8 +102,10 @@ export async function cancelView(slot, email, ready) {
   // A paid booking with time to spare needs the refund path; hidden until it is live.
   if (f.paid && qt.refundCents > 0 && !ready) return null
   // 48 hour terms: under 48 hours, the rest comes back if someone takes the place.
-  const refill = f.paid && qt.rule === '48h' && qt.band !== 'full' && qt.fullCents > qt.refundCents && placeIsWanted(f.s, f.b, await paidPayreqs([f.s]))
+  const owedLate = !f.paid && qt.band === 'late' && f.q && ['open', 'checkout'].includes(f.q.status) ? Number(f.q.amountCents || 0) : 0
+  const refill = (f.paid && qt.rule === '48h' && qt.band !== 'full' && qt.fullCents > qt.refundCents || owedLate > 0) && placeIsWanted(f.s, f.b, await paidPayreqs([f.s]))
   return {
+    owedLateCents: owedLate, owedLateLabel: owedLate ? formatAud(owedLate) : '',
     paid: f.paid, band: qt.band, rule: qt.rule, late: qt.late, refundCents: qt.refundCents, refundLabel: formatAud(qt.refundCents), paidLabel: formatAud(f.paidCents),
     refill, fullLabel: formatAud(qt.fullCents),
   }
@@ -114,9 +120,10 @@ export async function cancelExtraBooking({ config, parent, body }) {
   if (f.error) return { error: f.error, status: 404 }
   const qt = cancelQuote({ slot: f.s, paidCents: f.paidCents, rule: ruleFor(f.b) })
   if (qt.error) return { error: qt.error, status: 409 }
-  if (body.confirm !== true) return { ok: true, quote: { ...qt, paid: f.paid, refundLabel: formatAud(qt.refundCents) } }
+  const owedLate = !f.paid && qt.band === 'late' && f.q && ['open', 'checkout'].includes(f.q.status) ? Number(f.q.amountCents || 0) : 0
+  if (body.confirm !== true) return { ok: true, quote: { ...qt, paid: f.paid, refundLabel: formatAud(qt.refundCents), owedLateCents: owedLate, owedLateLabel: owedLate ? formatAud(owedLate) : '' } }
   // Before the booking comes off: would a new booking take this family's place?
-  const lateCancel = f.paid && qt.band !== 'full'
+  const lateCancel = (f.paid && qt.band !== 'full') || owedLate > 0
   const wanted = lateCancel && placeIsWanted(f.s, f.b, await paidPayreqs([f.s]))
   let refundId = ''
   if (f.paid && qt.refundCents > 0) {
@@ -133,26 +140,27 @@ export async function cancelExtraBooking({ config, parent, body }) {
   // the place; on the 48 hour terms the family then gets the rest back too.
   if (lateCancel) {
     await setLateCancel(f.s.id, f.b.id, {
-      at: new Date().toISOString(), band: qt.band, rule: qt.rule, payreqId: f.q.id, paidCents: f.paidCents, refundCents: qt.refundCents,
+      at: new Date().toISOString(), band: qt.band, rule: qt.rule, payreqId: f.q.id, paidCents: f.paidCents, refundCents: qt.refundCents, ...(owedLate ? { unpaid: true, owedCents: owedLate, chargeId: f.b.chargeId || '' } : {}),
       fullCents: qt.rule === '48h' ? qt.fullCents : qt.refundCents, refill: wanted ? 'pending' : 'open',
     }).catch((e) => console.error('jfp extra late cancel note failed', e))
   }
-  if (!f.paid) {
+  // Not paid and under 24 hours: the charge stays, the full price is owed.
+  if (!f.paid && !owedLate) {
     const { listCharges, cancelCharge } = await import('./_jfp-charges.js')
     const id = f.b.chargeId || (await listCharges()).find((c) => c.payreqId === f.b.payreqId)?.id
     if (id) await cancelCharge({ id, principal: { email, name: email }, why: 'Family cancelled the extra session' }).catch(() => {})
   }
-  await audit({ by: email, action: 'extra.family.cancel', target: f.s.id, after: { booking: f.b.id, player: f.b.name, paid: f.paid, band: qt.band, rule: qt.rule, refundCents: qt.refundCents, refundId } })
-  await tellCancelled({ config, slot: f.s, booking: f.b, qt, paid: f.paid }).catch((e) => console.error('jfp extra cancel notice failed', e))
-  return { ok: true, refundCents: qt.refundCents, refundLabel: formatAud(qt.refundCents), band: qt.band, late: qt.late, paid: f.paid }
+  await audit({ by: email, action: 'extra.family.cancel', target: f.s.id, after: { booking: f.b.id, player: f.b.name, paid: f.paid, band: qt.band, rule: qt.rule, refundCents: qt.refundCents, refundId, owedLateCents: owedLate } })
+  await tellCancelled({ config, slot: f.s, booking: f.b, qt, paid: f.paid, owedLate }).catch((e) => console.error('jfp extra cancel notice failed', e))
+  return { ok: true, refundCents: qt.refundCents, refundLabel: formatAud(qt.refundCents), band: qt.band, late: qt.late, paid: f.paid, owedLateCents: owedLate, owedLateLabel: owedLate ? formatAud(owedLate) : '' }
 }
 
-async function tellCancelled({ config, slot, booking, qt, paid }) {
+async function tellCancelled({ config, slot, booking, qt, paid, owedLate = 0 }) {
   const when = `${dateLabel(slot.date)} at ${slot.time}`
   const notice = qt.band === 'late' ? 'Under 24 hours notice' : qt.band === 'half' ? 'Under 48 hours notice' : 'Good notice'
-  const money = !paid ? 'It was not paid yet.' : qt.band === 'late' ? `${notice}, so no refund.` : qt.band === 'half' ? `${notice}, so half refunded (${formatAud(qt.refundCents)}).` : `Refunded ${formatAud(qt.refundCents)} (A$5 kept).`
+  const money = owedLate ? `${notice} and not paid, so the full ${formatAud(owedLate)} is still owed (it stays on their account).` : !paid ? 'It was not paid yet.' : qt.band === 'late' ? `${notice}, so no refund.` : qt.band === 'half' ? `${notice}, so half refunded (${formatAud(qt.refundCents)}).` : `Refunded ${formatAud(qt.refundCents)} (A$5 kept).`
   // Lee, 7 Nov 2026: nobody takes the place, the coach is paid half; someone does, as normal.
-  const coachPay = paid && qt.band !== 'full' ? 'If nobody books the place, you are paid half for this session. If someone books it, it is as normal.' : ''
+  const coachPay = (paid && qt.band !== 'full') || owedLate ? 'If nobody books the place, you are paid half for this session. If someone books it, it is as normal.' : ''
   const c = coachById(config, slot.coachId)
   const jobs = [telegramAlert(`Extra session cancelled by the family: ${booking.name}, ${when}, ${slot.location}${c ? `, Coach ${coachLabel(c)}` : ''}. ${money} The place is open again.${coachPay ? ' If nobody takes it, the coach is paid half.' : ''}`)]
   if (c?.email) jobs.push(sendStaffNotice({
@@ -178,6 +186,12 @@ export async function fillLateCancel({ slotId, filler }) {
     const lc = b.lateCancel
     const when = `${dateLabel(s.date)} ${s.time}`
     let line = `Extra session ${when}, ${s.location}: ${filler.name} took the place ${b.name} cancelled late, so the coach is paid as normal.`
+    if (lc.unpaid) {
+      const { listCharges, cancelCharge } = await import('./_jfp-charges.js')
+      const id = lc.chargeId || (await listCharges()).find((c) => c.payreqId === lc.payreqId)?.id
+      const q = lc.payreqId ? await getPayreq(lc.payreqId) : null
+      if (id && q?.status !== 'paid') { await cancelCharge({ id, principal: { email: 'system', name: 'the portal' }, why: `${filler.name} took the place` }).catch(() => {}); line += ` ${b.name}'s ${formatAud(lc.owedCents || 0)} is no longer owed.` }
+    }
     if (lc.rule === '48h' && lc.payreqId) {
       const q = await getPayreq(lc.payreqId)
       const back = Number(q?.refundedCents || 0)

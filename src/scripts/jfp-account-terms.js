@@ -67,7 +67,9 @@ export function cancelExtraSheet(x, onDone) {
   const sheet = openSheet({ title: 'Cancel this extra session', subtitle: `${x.dateLabel} · ${x.time} · ${x.players.join(', ')}` })
   const days = 'It usually shows on your card in 5 to 10 business days.'
   const refill = c.refill ? ` If someone else books your place, we refund you ${esc(c.fullLabel)} in all (A$5 kept) automatically.` : ''
-  const what = !c.paid
+  const what = !c.paid && c.owedLateCents
+    ? `<b>This is less than 24 hours before the session, so the full ${esc(c.owedLateLabel)} is still owed.</b> It stays on your account to pay.${c.refill ? ' If someone else books your place, it comes off.' : ''}`
+    : !c.paid
     ? 'It is not paid yet, so there is nothing to refund.'
     : c.band === 'late'
       ? `<b>This is less than 24 hours before the session, so there is no refund.</b> The ${esc(c.paidLabel)} you paid is not returned.${refill}`
@@ -75,7 +77,7 @@ export function cancelExtraSheet(x, onDone) {
         ? `<b>This is less than 48 hours before the session, so you get half back: ${esc(c.refundLabel)}</b> to the card you paid with. ${days}${refill}`
         : `<b>You will get ${esc(c.refundLabel)} back</b> to the card you paid with. We keep A$5 to cover card processing. ${days}`
   sheet.body.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px">
-    <div class="j-box ${c.paid && c.band !== 'full' ? 'j-box-amber' : 'j-box-green'}">${what}</div>
+    <div class="j-box ${(c.paid && c.band !== 'full') || c.owedLateCents ? 'j-box-amber' : 'j-box-green'}">${what}</div>
     <p class="ja-small">Your place is given up and the coach is told straight away. This cannot be undone, but you can book again if there is still a place.</p>
     <p class="j-err" data-xc-err hidden></p></div>`
   sheet.foot.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px;width:100%"><button type="button" class="ja-btn ja-btn-red ja-btn-block" data-xc-go>Cancel the session${c.paid && c.refundCents > 0 ? ` and refund ${esc(c.refundLabel)}` : ''}</button><button type="button" class="ja-btn ja-btn-light ja-btn-block" data-xc-keep>Keep it</button></div>`
