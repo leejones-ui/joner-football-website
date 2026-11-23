@@ -2221,7 +2221,7 @@ function productOfRow(r, g) {
 // row owed, with one ledger line per player. Any open link for these places
 // is replaced (after Lee says yes); the places themselves are never released.
 async function familyInvoice(req, res, principal, config, body) {
-  const asked = (Array.isArray(body.places) ? body.places : []).slice(0, 10)
+  const asked = (Array.isArray(body.places) ? body.places : []).slice(0, 20)
   if (!asked.length) return fail(res, 400, 'Choose the places to invoice.')
   const rows = []
   for (const a of asked) {
