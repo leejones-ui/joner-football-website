@@ -33,6 +33,7 @@ const fmtMoney = (c) => `A$${(c / 100).toFixed(2)}`
 import { coachInvoicePdf } from './_jfp-coach-invoice-pdf.js'
 import { sendCoachInvoiceToStaff } from './_jfp-email.js'
 import { allSlots, liveBookings, leadPayreq, lateCancelUnfilled } from './_jfp-extra.js'
+import { sessionOffMap } from './_jfp-makeups.js'
 
 const KEY = 'jfp:coach-invoices'
 const HOURS = 'jfp:hours'
@@ -157,7 +158,7 @@ function describe(l, group, who) {
 // The lines a coach would invoice for [from, to]: their hours not on another
 // invoice, with the register's players and the price from their rate card.
 async function linesFor(config, coachId, from, to, { listCovers }) {
-  const [hours, covers, groups, roster, card] = await Promise.all([allHours(), listCovers(), listGroups(), loadRoster().catch(() => ({ players: [] })), getCard(coachId)])
+  const [hours, covers, groups, roster, card, offs] = await Promise.all([allHours(), listCovers(), listGroups(), loadRoster().catch(() => ({ players: [] })), getCard(coachId), sessionOffMap().catch(() => new Map())])
   const byId = Object.fromEntries(groups.map((g) => [g.id, g]))
   const short = shortNames(roster.players)
   const rows = new Map(roster.players.map((r) => [r.id, { name: short.get(r.id), full: String(r.player || '').trim(), paymentType: r.paymentType, paymentStatus: r.paymentStatus, balanceAud: r.balanceAud }]))
@@ -174,6 +175,14 @@ async function linesFor(config, coachId, from, to, { listCovers }) {
     const price = pricePayable(base, { card, group: g, register, rowOf: (id) => rows.get(id) || null, findByName })
     const who = (price.payable || picked || register?.counted || []).filter((p) => p.rowId)
     const unpaid = who.map((p) => ({ p, r: rows.get(p.rowId) })).filter(({ r }) => r && feesOwed(r)).map(({ p, r }) => ({ rowId: p.rowId, name: r.full || p.name, status: r.paymentStatus || 'Not set', owedCents: Math.max(0, Math.round(Number(r.balanceAud || 0) * 100)) }))
+    // A session we cancelled (Cancellations: coach sick, cancelled by the coach,
+    // rain) is never paid (Lee, 23 Nov 2026). Its make-up is paid where it runs.
+    if (['session', 'cover'].includes(h.kind) && h.groupId && offs.has(`${h.groupId}|${h.date}`)) {
+      const o = offs.get(`${h.groupId}|${h.date}`)
+      price.cents = 0
+      price.basis = 'Session cancelled: not paid'
+      price.flags = [...price.flags.filter((f) => !['no-card', 'no-rate', 'register', 'no-players'].includes(f.code)), { code: 'cancelled', text: `This session was cancelled (${o?.reason || 'Cancellations'}), so it is not paid. The make-up is paid when it runs.` }]
+    }
     if (unpaid.length) price.flags = [...price.flags, { code: 'unpaid', text: `Fees not paid: ${unpaid.map((u) => u.name.split(' ')[0]).join(', ')}. Chase the family` }]
     out.push({ ...base, unpaid, description: describe(base, g, price.payable || picked || register?.counted || []), playerNames: (price.payable || picked || register?.counted || []).map((p) => p.name), notCounted: price.skipped, players: price.players, calcCents: price.cents, cents: price.cents, basis: price.basis, flags: [...flagsFor(base, coachId, { covers, hours, name }), ...price.flags] })
   }

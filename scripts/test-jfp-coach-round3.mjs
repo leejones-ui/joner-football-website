@@ -53,6 +53,7 @@ const ok = async (c, action, body) => { const r = await portal(c, action, body);
 const hadmin = async (action, b = {}) => (await fetch(`${B}/api/holiday-admin`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-holiday-admin-secret': 'admin', origin: B }, body: JSON.stringify({ action, ...b }) })).json()
 const day = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10)
 
+const kv = async (cmd) => (await fetch(`${B}/__kv?cmd=${encodeURIComponent(JSON.stringify(cmd))}`)).text()
 const lee = client(), sam = client(), ruby = client()
 await signIn(lee, 'leejones@jonerfootball.com', 'staff')
 await signIn(sam, 'jonerfootballsam@gmail.com', 'staff')
@@ -186,6 +187,21 @@ await test('emergency cancel: the register closes, the family is owed a make-up,
   const after = (await ok(lee, 'makeupsList')).makeups.find((m) => m.id === mine.id)
   assert.equal(after.kind, 'credit'); assert.equal(after.cents, 5000)
   const u = await ok(lee, 'emergencyUncancel', { groupId: THU, date }).catch(() => null)
+})
+
+await test('a cancelled session is never paid on the coach invoice (Lee, 23 Nov 2026)', async () => {
+  const st = await ok(sam, 'staffOverview')
+  const date = st.mySessions.find((s) => s.id === THU).dates[3].iso
+  await ok(lee, 'emergencyCancel', { groupId: THU, date, reason: 'Other emergency', kind: 'makeup' })
+  await ok(lee, 'coachPayCardSave', { coachId: 'sam', card: { bands: [4000, 5000, 6000, 7000, 7500, 8500, 9000] } })
+  // Hours are only logged on or after the day: put the entry in as if Sam logged it.
+  const me = (await ok(sam, 'me')).coachId || 'sam'
+  await kv(['HSET', 'jfp:hours', 'HR-TEST-CANCEL', JSON.stringify({ id: 'HR-TEST-CANCEL', coachId: me, date, start: '16:15', end: '17:15', minutes: 60, kind: 'session', groupId: THU, status: 'approved', players: [], createdAt: new Date().toISOString() })])
+  const d = await ok(sam, 'coachInvList', { from: date, to: date })
+  const l = d.draft.find((x) => x.groupId === THU && x.date === date)
+  assert.ok(l, 'the line shows, so Lee and Ligia can see it')
+  assert.equal(l.cents, 0, 'but it is not paid')
+  assert.ok(l.flags.some((f) => f.code === 'cancelled'))
 })
 
 console.log(`${passed} passed`)
