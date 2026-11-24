@@ -11,7 +11,7 @@ const offer = (price: string, url: string) => ({
   '@type': 'Offer',
   price,
   priceCurrency: 'AUD',
-  availability: 'https://schema.org/PreOrder',
+  availability: 'https://schema.org/InStock',
   url,
 })
 
@@ -47,7 +47,7 @@ const pad = (n: number) => String(n).padStart(2, '0')
 
 <BaseLayout
   title="Top 50 Coaching Drills by Lee Jones | Joner Football"
-  description="My top 50 drills from 20 years of coaching. One page each, with diagrams, coaching points and a QR code to the video. Out 24 November."
+  description="My top 50 drills from 20 years of coaching. One page each, with diagrams, coaching points and a QR code to the video. Out now as a PDF and a paperback."
   canonical={pageUrl}
   ogImage={`https://jonerfootball.com${book.og}`}
   schema={schema}
@@ -64,17 +64,17 @@ const pad = (n: number) => String(n).padStart(2, '0')
 
           <div class="buy-row">
             {pdfLive ? (
-              <a class="btn btn--red" href={book.pdfUrl} target="_blank" rel="noopener noreferrer" data-book-cta="pdf-hero">Pre-order the PDF <b>{book.pdfPrice}</b></a>
+              <a class="btn btn--red" href={book.pdfUrl} target="_blank" rel="noopener noreferrer" data-book-cta="pdf-hero">Buy the PDF <b>{book.pdfPrice}</b></a>
             ) : (
-              <span class="btn btn--red is-pending">Pre-order the PDF <b>{book.pdfPrice}</b></span>
+              <span class="btn btn--red is-pending">Buy the PDF <b>{book.pdfPrice}</b></span>
             )}
             {paperbackLive ? (
-              <a class="btn btn--line" href={book.paperbackUrl} target="_blank" rel="noopener noreferrer" data-book-cta="paperback-hero">Pre-order the paperback <b>{book.paperbackPrice}</b></a>
+              <a class="btn btn--line" href={book.paperbackUrl} target="_blank" rel="noopener noreferrer" data-book-cta="paperback-hero">Buy the paperback <b>{book.paperbackPrice}</b></a>
             ) : (
-              <span class="btn btn--line is-pending">Pre-order the paperback <b>{book.paperbackPrice}</b></span>
+              <span class="btn btn--line is-pending">Buy the paperback <b>{book.paperbackPrice}</b></span>
             )}
           </div>
-          <p class="hero__note">Out {book.releaseLabel}. Joner Football App members get the PDF early.</p>
+          <p class="hero__note">Out now as a PDF and a paperback.</p>
         </div>
 
         <div class="hero__book">
@@ -247,35 +247,34 @@ const pad = (n: number) => String(n).padStart(2, '0')
             <div class="format">
               <p class="format__name">PDF</p>
               <p class="format__price">{book.pdfPrice}</p>
-              <p class="format__when">Pre-order now. Delivered {book.releaseLabel}.</p>
+              <p class="format__when">Out now. Download link emailed straight after checkout.</p>
               {pdfLive ? (
-                <a class="btn btn--red" href={book.pdfUrl} target="_blank" rel="noopener noreferrer" data-book-cta="pdf">Pre-order the PDF</a>
+                <a class="btn btn--red" href={book.pdfUrl} target="_blank" rel="noopener noreferrer" data-book-cta="pdf">Buy the PDF</a>
               ) : (
-                <span class="btn btn--red is-pending">Pre-order the PDF</span>
+                <span class="btn btn--red is-pending">Buy the PDF</span>
               )}
             </div>
             <div class="format">
               <p class="format__name">Paperback</p>
               <p class="format__price">{book.paperbackPrice}</p>
-              <p class="format__when">Pre-order now. Ships from {book.releaseLabel}.</p>
+              <p class="format__when">Out now. Printed and posted to you.</p>
               {paperbackLive ? (
-                <a class="btn btn--white" href={book.paperbackUrl} target="_blank" rel="noopener noreferrer" data-book-cta="paperback">Pre-order the paperback</a>
+                <a class="btn btn--white" href={book.paperbackUrl} target="_blank" rel="noopener noreferrer" data-book-cta="paperback">Buy the paperback</a>
               ) : (
-                <span class="btn btn--white is-pending">Pre-order the paperback</span>
+                <span class="btn btn--white is-pending">Buy the paperback</span>
               )}
             </div>
           </div>
 
-          <p class="buy__note">Joner Football App members get the PDF early.</p>
           <p class="buy__more"><a href="/books/">All my books</a></p>
         </div>
       </div>
     </section>
 
-    <!-- Phone: pre-order bar once the first screen has gone -->
+    <!-- Phone: buy bar once the first screen has gone -->
     <div class="stickybuy" id="stickybuy" hidden>
       <p><b>Top 50 Coaching Drills</b><span>PDF {book.pdfPrice} · Paperback {book.paperbackPrice}</span></p>
-      <a class="btn btn--red" href="#buy">Pre-order</a>
+      <a class="btn btn--red" href="#buy">Buy the book</a>
     </div>
 
     <!-- Full size page -->
@@ -381,7 +380,7 @@ const pad = (n: number) => String(n).padStart(2, '0')
       })
     }
 
-    // Phone pre-order bar
+    // Phone buy bar
     const bar = document.getElementById('stickybuy')
     const buy = document.getElementById('buy')
     if (bar && hero && buy && 'IntersectionObserver' in window) {
@@ -565,7 +564,7 @@ const pad = (n: number) => String(n).padStart(2, '0')
   .buy__more { margin-top: 14px !important; font-size: 14px; }
   .buy__more a { color: #fff; text-decoration: underline; text-decoration-color: var(--red); text-underline-offset: 4px; }
 
-  /* Phone pre-order bar */
+  /* Phone buy bar */
   .stickybuy { display: none; }
 
   /* Full size page */
