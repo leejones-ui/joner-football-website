@@ -263,6 +263,7 @@ const pad = (n: number) => String(n).padStart(2, '0')
               ) : (
                 <span class="btn btn--white is-pending">Buy the paperback</span>
               )}
+              <p class="format__also"><a href="https://www.amazon.com.au/dp/B0HSJBMG6W" target="_blank" rel="noopener noreferrer" data-book-cta="paperback-amazon">Also on Amazon</a></p>
             </div>
           </div>
 
@@ -552,14 +553,18 @@ const pad = (n: number) => String(n).padStart(2, '0')
   .buy__cover { position: relative; display: block; width: 100%; height: auto; transform: rotate(2deg); box-shadow: 0 30px 70px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08); }
   .buy__back { position: absolute; left: 0; top: 4%; width: 84%; height: auto; transform: rotate(-6deg); transform-origin: 50% 60%; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.14); }
   .buy h2 { font-size: clamp(38px, 5.4vw, 76px); }
-  .formats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: clamp(26px, 3.4vw, 44px); }
-  .format { display: grid; align-content: start; gap: 6px; padding: 24px 22px; border: 1px solid rgba(255, 255, 255, 0.2); background: #131313; }
+  .formats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 16px; margin-top: clamp(26px, 3.4vw, 44px); }
+  /* Both cards share the same five rows, so the two buttons always line up whatever the words above them do. */
+  .format { display: grid; grid-row: span 5; grid-template-rows: subgrid; align-content: start; gap: 6px; padding: 24px 22px; border: 1px solid rgba(255, 255, 255, 0.2); background: #131313; }
   .format:first-child { border-top: 4px solid var(--red); }
   .format:last-child { border-top: 4px solid #fff; }
   .format__name { font-size: 13px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; color: var(--soft); }
   .format__price { font-family: var(--display); font-size: clamp(44px, 4.6vw, 62px); line-height: 1; }
   .format__when { margin: 4px 0 16px !important; color: #e2e2e2; font-size: 15px; line-height: 1.45; }
   .format .btn { width: 100%; }
+  .format__also { margin: 10px 0 0 !important; text-align: center; font-size: 14px; }
+  .format__also a { display: inline-block; padding: 12px 8px; color: #e2e2e2; text-decoration: underline; text-underline-offset: 3px; }
+  .format__also a:hover { color: #fff; }
   .buy__note { margin-top: 20px !important; color: var(--soft); font-size: 15px; }
   .buy__more { margin-top: 14px !important; font-size: 14px; }
   .buy__more a { color: #fff; text-decoration: underline; text-decoration-color: var(--red); text-underline-offset: 4px; }
