@@ -226,4 +226,51 @@ await test('new families for next term: apply on the booking page, offered a pla
   assert.equal(now.isNext, false); assert.ok(now.nextTerm)
 })
 
+await test('Term 1 timetable: move a player for next term only, a "Day not picked yet" lane, and offer a waitlisted trial the place it frees', async () => {
+  const W = await mk({ day: 'Wednesday', time: '3:10pm', location: 'Belrose HQ', coachId: 'sam', capacity: 2, mode: 'application', label: 'Small group' })
+  const X = await mk({ day: 'Friday', time: '3:10pm', location: 'Belrose HQ', coachId: 'sam', capacity: 8, mode: 'application', label: 'Small group' })
+  const addTo = async (gid, name, email, payment = 'offline') => { const r = await portal(lee, 'addPlayer', { groupId: gid, force: true, player: { name, dob: '2015-04-04' }, parent: { name: `Parent ${name.split(' ')[1]}`, email, mobile: '0400959598' }, payment, ...(payment === 'offline' ? { amountCents: 85000, method: 'Cash' } : {}) }); assert.equal(r.status, 200, JSON.stringify(r.data)); return r.data.rowId }
+  const kay = await addTo(W, 'Kay Undecided', 'kay@example.com')
+  const sta = await addTo(W, 'Sam Stayer', 'stayer@example.com')
+  const hal = await addTo(W, 'Hud Waiting', 'hudw@example.com', 'trial')
+  assert.equal((await portal(lee, 'trialFollowUp', { rowId: hal, outcome: 'nextterm', groupId: W, release: true })).status, 200)
+  let d = (await portal(lee, 'nextTerm')).data
+  let g = d.timetable.find((x) => x.id === W)
+  assert.ok(g, 'the group is on the timetable'); assert.equal(g.taken, 2); assert.equal(g.paid, 0)
+  assert.ok(g.players.includes(kay) && g.players.includes(sta)); assert.ok(g.waiting.includes(hal))
+  // Full: the waitlist offer asks first.
+  const full = await portal(lee, 'offerWaitlist', { rowId: hal, send: true, amountCents: 85000 })
+  assert.equal(full.status, 409); assert.equal(full.data.code, 'full')
+  // Kay has not picked a day: out of the group for next term, no place held.
+  assert.equal((await portal(lee, 'moveNextTerm', { rowId: kay, groupId: 'nogroup' })).status, 200)
+  d = (await portal(lee, 'nextTerm')).data
+  assert.deepEqual(d.noDay, [kay]); g = d.timetable.find((x) => x.id === W); assert.equal(g.taken, 1); assert.ok(!g.players.includes(kay))
+  // The family's account says the day is to be confirmed; Term 4 is unchanged.
+  const fam = client(); await gate(fam); await signIn(fam, 'kay@example.com')
+  const acct = (await fam.call('/api/jfp-account', { action: 'home' })).data
+  const nx = JSON.stringify(acct.nextTerm || acct.home?.nextTerm || acct)
+  assert.match(nx, /Day to be confirmed/)
+  assert.ok((await at()).term4.some((r) => r.fields['Player Name'] === 'Kay Undecided'), 'still on Term 4')
+  // Preview, then send the offer: a no sign-in link at the price given.
+  const pv = await portal(lee, 'offerWaitlist', { rowId: hal, amountCents: 85000 })
+  assert.equal(pv.status, 200, JSON.stringify(pv.data)); assert.match(pv.data.preview.subject, /Hud Waiting in Term 1 2027/); assert.equal(pv.data.preview.amountLabel, 'A$850')
+  assert.ok(!(await emails()).some((e) => e.to.includes('hudw@example.com') && /Term 1 2027/.test(e.subject)), 'the preview sends nothing')
+  const sent = await portal(lee, 'offerWaitlist', { rowId: hal, amountCents: 85000, send: true })
+  assert.equal(sent.status, 200, JSON.stringify(sent.data)); assert.equal(sent.data.emailed, true)
+  d = (await portal(lee, 'nextTerm')).data
+  g = d.timetable.find((x) => x.id === W)
+  assert.ok(!g.waiting.includes(hal), 'off the waitlist once offered'); assert.ok(g.news.some((x) => x.player === 'Hud Waiting' && x.status === 'offered')); assert.equal(g.taken, 2)
+  const pay = await client().call('/api/jfp-pay', { action: 'pay', id: sent.data.payreq.id })
+  assert.equal(pay.status, 200, JSON.stringify(pay.data)); await stripe(pay.data.url, 'pay')
+  d = (await portal(lee, 'nextTerm')).data
+  g = d.timetable.find((x) => x.id === W); assert.equal(g.paid, 1); assert.ok(g.news.some((x) => x.player === 'Hud Waiting' && x.status === 'paid'))
+  // Kay picks Friday later; back to his own group resets the move.
+  assert.equal((await portal(lee, 'moveNextTerm', { rowId: kay, groupId: X })).status, 200)
+  d = (await portal(lee, 'nextTerm')).data
+  assert.deepEqual(d.noDay, []); assert.ok(d.timetable.find((x) => x.id === X).players.includes(kay))
+  assert.equal((await portal(lee, 'moveNextTerm', { rowId: kay, groupId: '' })).status, 200)
+  assert.equal((await portal(lee, 'nextTerm')).data.players.find((p) => p.rowId === kay).moved, false)
+  assert.ok((await portal(lee, 'audit')).data.entries.some((e) => e.action === 'next.move' && e.target === kay))
+})
+
 console.log(`\n${passed} passed`)

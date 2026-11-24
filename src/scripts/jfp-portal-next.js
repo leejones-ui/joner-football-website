@@ -6,7 +6,7 @@ const WORD = { invited: ['blue', 'Not paid yet'], held: ['violet', 'Held (deposi
 const TIER = { loyal: ['red', 'Loyal 24'], current: ['blue', 'A$50 off'] }
 const dayLabel = (iso) => (iso ? new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-AU', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }).replace(',', '') : '')
 const ACCOUNT_LINK = 'https://jonerfootball.com/jfp-account/#keep'
-const S = { filter: 'all', q: '' }
+const S = { filter: 'all', q: '', view: 'timetable' }
 
 export async function renderNext(ui) {
   const { view, post, need, toast, confirmBox, modal, closeModal, copy } = ui
@@ -35,13 +35,7 @@ export async function renderNext(ui) {
   const priceCell = (p) => !p.offer ? '<span class="muted small">No offer price</span>'
     : `<b>${esc(money(p.offer.offerCents))}</b> <span class="muted small">instead of ${esc(money(p.offer.normalCents))}</span><br><span class="muted small">${esc(p.offer.kind)}${p.offer.note ? ` · ${esc(p.offer.note)}` : ''}</span>${famTotal(p)}`
   const rows = d.players.filter(match)
-  view().innerHTML = `<div class="jp-head"><div><h1>${esc(nt.name)}</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Every current player's ${esc(nt.name)} price and whether they have paid. Families pay in My account (${esc(ACCOUNT_LINK)}), on the Keep my spot page. A paid place shows here straight away and is saved in Airtable under "Next term holds". Nothing on this page messages a family unless you press Invite with "Email the families" ticked.</div></details></div></div>
-    <div class="j-box ${o.live ? 'j-box-green' : 'j-box-amber'}" style="margin-bottom:14px;max-width:900px">
-      ${o.live ? `<b>Early offer is on until ${esc(dayLabel(nt.offerUntil))}, 11:59pm.</b> Loyal 24: first week free (A$765 one player, A$1,350 two, A$405 Pathway). Everyone else: A$50 off per player (A$800, A$1,400 for two, A$425 Pathway). Paid in full only${nt.fullOnly ? ': no deposit, no Afterpay, no instalments' : ''}. Places held until ${esc(dayLabel(nt.holdUntil) || 'bookings open')}. From the day after, the same players pay the normal price.`
-        : nt.offerUntil ? `<b>The early offer ended ${esc(dayLabel(nt.offerUntil))}.</b> Families now pay the normal price shown.` : '<b>No early offer is set.</b>'}
-      ${nt.open ? '' : ' <b>Families cannot see or pay it yet:</b> turn on "Open to every current family" below.'}
-    </div>
-    <div class="jp-kpis"><div class="jp-kpi"><span>Players with a price</span><b>${o.places || 0}</b></div><div class="jp-kpi"><span>Families</span><b>${o.families || 0}</b></div><div class="jp-kpi"><span>Paid in full</span><b>${o.paid || 0}</b></div><div class="jp-kpi"><span>Paid so far</span><b>${esc(money(o.paidCents || 0))}</b></div><div class="jp-kpi"><span>Still to come</span><b>${esc(money(o.toComeCents || 0))}</b></div><div class="jp-kpi"><span>Not returning</span><b>${t.no}</b></div></div>
+  const listHtml = () => `
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:4px 0 10px">
       <input class="j-input" id="nx-q" placeholder="Find a player or parent" value="${esc(S.q)}" style="max-width:260px">
       <button type="button" class="j-btn j-btn-line j-btn-sm" id="nx-link">Copy the family link</button>
@@ -56,6 +50,16 @@ export async function renderNext(ui) {
         <td>${p.status ? `<span class="j-pill j-pill-${WORD[p.status][0]}">${WORD[p.status][1]}</span>${p.paidCents ? `<br><span class="muted small">${esc(money(p.paidCents))}</span>` : ''}` : p.interested ? '<span class="j-pill j-pill-amber">Wants to keep it</span>' : '<span class="muted small">Not paid yet</span>'}</td>
         <td><button type="button" class="j-btn j-btn-line j-btn-sm" data-nxedit="${esc(p.rowId)}">${p.offer ? 'Change price' : 'Add a price'}</button></td></tr>`).join('') || '<tr><td colspan="7" class="muted">Nobody here.</td></tr>'}
     </tbody></table></div>
+`
+  view().innerHTML = `<div class="jp-head"><div><h1>${esc(nt.name)}</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Every current player's ${esc(nt.name)} price and whether they have paid. Families pay in My account (${esc(ACCOUNT_LINK)}), on the Keep my spot page. A paid place shows here straight away and is saved in Airtable under "Next term holds". Nothing on this page messages a family unless you press Invite with "Email the families" ticked.</div></details></div></div>
+    <div class="j-box ${o.live ? 'j-box-green' : 'j-box-amber'}" style="margin-bottom:14px;max-width:900px">
+      ${o.live ? `<b>Early offer is on until ${esc(dayLabel(nt.offerUntil))}, 11:59pm.</b> Loyal 24: first week free (A$765 one player, A$1,350 two, A$405 Pathway). Everyone else: A$50 off per player (A$800, A$1,400 for two, A$425 Pathway). Paid in full only${nt.fullOnly ? ': no deposit, no Afterpay, no instalments' : ''}. Places held until ${esc(dayLabel(nt.holdUntil) || 'bookings open')}. From the day after, the same players pay the normal price.`
+        : nt.offerUntil ? `<b>The early offer ended ${esc(dayLabel(nt.offerUntil))}.</b> Families now pay the normal price shown.` : '<b>No early offer is set.</b>'}
+      ${nt.open ? '' : ' <b>Families cannot see or pay it yet:</b> turn on "Open to every current family" below.'}
+    </div>
+    <div class="jp-kpis"><div class="jp-kpi"><span>Players with a price</span><b>${o.places || 0}</b></div><div class="jp-kpi"><span>Families</span><b>${o.families || 0}</b></div><div class="jp-kpi"><span>Paid in full</span><b>${o.paid || 0}</b></div><div class="jp-kpi"><span>Paid so far</span><b>${esc(money(o.paidCents || 0))}</b></div><div class="jp-kpi"><span>Still to come</span><b>${esc(money(o.toComeCents || 0))}</b></div><div class="jp-kpi"><span>Not returning</span><b>${t.no}</b></div></div>
+    <div class="nt-tabs" role="tablist"><button type="button" class="ps-chip" data-nxv="timetable" aria-pressed="${S.view === 'timetable'}">Timetable</button><button type="button" class="ps-chip" data-nxv="list" aria-pressed="${S.view === 'list'}">List and prices</button></div>
+    ${S.view === 'timetable' ? timetableHtml(d) : listHtml()}
     <section class="j-card" style="padding:16px;margin-top:18px;max-width:820px"><h2 style="font-size:17px">New families for ${esc(nt.name)}</h2><p class="muted small" style="margin:4px 0 10px">${nt.newBookings ? `Open on the booking page: new families apply for ${esc(nt.name)}${nt.termStart ? ` (from ${esc(dayLabel(nt.termStart))}, ${esc(nt.weeks || 10)} weeks)` : ''}. Their requests show in Requests with a ${esc(nt.name)} tag; Offer a place sends them a link to pay.` : 'Not open to new families yet.'}</p>
       ${(d.newFamilies || []).length ? `<ul style="display:grid;gap:8px;list-style:none;padding:0;margin:0">${d.newFamilies.map((x) => `<li><b>${esc(x.player)}</b> <span class="muted small">· ${esc(x.parent || '')}</span> <span class="j-pill j-pill-${x.status === 'paid' ? 'green' : 'amber'}">${x.status === 'paid' ? `Paid ${esc(money(x.cents))}` : `Offered ${esc(money(x.cents))}, not paid`}</span><br><span class="small">${esc(x.group)}</span></li>`).join('')}</ul>` : '<p class="muted small">None yet.</p>'}</section>
     ${(d.waitlist || []).length ? `<section class="j-card" style="padding:16px;margin-top:18px;max-width:820px"><h2 style="font-size:17px">Waitlist for ${esc(nt.name)}</h2><p class="muted small" style="margin:4px 0 10px">Trials waiting for a place in a full group. Set from Trials (Followed up, then Waitlist next term). Nothing is sent to these families.</p>
@@ -74,8 +78,12 @@ export async function renderNext(ui) {
     </details>`
   const again = () => renderNext(ui)
   view().querySelectorAll('[data-nxf]').forEach((b) => b.addEventListener('click', () => { S.filter = b.dataset.nxf; again() }))
-  $('nx-q').addEventListener('change', (e) => { S.q = e.target.value.trim().toLowerCase(); again() })
-  $('nx-link').addEventListener('click', async () => { await copy(ACCOUNT_LINK); toast('Copied. Families sign in with their email and see their price under Keep my spot.') })
+  $('nx-q')?.addEventListener('change', (e) => { S.q = e.target.value.trim().toLowerCase(); again() })
+  $('nx-link')?.addEventListener('click', async () => { await copy(ACCOUNT_LINK); toast('Copied. Families sign in with their email and see their price under Keep my spot.') })
+  view().querySelectorAll('[data-nxv]').forEach((b) => b.addEventListener('click', () => { S.view = b.dataset.nxv; again() }))
+  view().querySelectorAll('[data-nxmove]').forEach((b) => b.addEventListener('click', () => moveBox(ui, d, d.players.find((p) => p.rowId === b.dataset.nxmove), again)))
+  view().querySelectorAll('[data-nxoffer]').forEach((b) => b.addEventListener('click', () => offerBox(ui, d, d.waitlist.find((w) => w.rowId === b.dataset.nxoffer), again)))
+  view().querySelectorAll('[data-nxcopy]').forEach((b) => b.addEventListener('click', async () => { await copy(b.dataset.nxcopy); toast('Payment link copied.') }))
   view().querySelectorAll('[data-nxedit]').forEach((b) => b.addEventListener('click', () => editPrice(ui, d.players.find((p) => p.rowId === b.dataset.nxedit), again)))
   $('nt-save').addEventListener('click', async () => {
     if ($('nt-open').checked && !nt.open && !(await confirmBox(`Show ${esc(nt.name)} in every current family's My account now? Families with a price can pay straight away.`, { ok: 'Turn it on' }))) return
@@ -116,5 +124,82 @@ function editPrice(ui, p, done) {
     const r = await post('saveNextOffer', { rowId: p.rowId, remove: true })
     if (!r.ok) return toast(r.data.error)
     closeModal(); toast('Removed'); done()
+  })
+}
+
+// The Term 1 timetable (Ligia, 25 Nov 2026): every group with who is in it next
+// term and whether they have paid. Moves are for next term only.
+const T1 = {
+  paid: ['green', 'Paid'], held: ['violet', 'Deposit paid'], no: ['grey', 'Not returning'],
+  keen: ['amber', 'Wants to keep it'], unpaid: ['blue', 'Not paid yet'],
+}
+const t1State = (p) => p.status === 'paid' ? 'paid' : p.status === 'held' ? 'held' : p.status === 'no' ? 'no' : p.interested && !p.status ? 'keen' : 'unpaid'
+function playerLi(p, { moveLabel = 'Move' } = {}) {
+  const [c, w] = T1[t1State(p)]
+  return `<li class="nt-p${p.status === 'no' ? ' nt-out' : ''}"><span class="nt-name"><b>${esc(p.name)}</b>${p.moved && p.t1GroupId ? ' <span class="muted small">(moved)</span>' : ''}<br><span class="muted small">${esc(p.parent || '')}</span></span>
+    <span class="j-pill j-pill-${c}">${w}${p.status === 'paid' && p.paidCents ? ` ${esc(money(p.paidCents))}` : ''}</span>
+    <button type="button" class="j-btn j-btn-line j-btn-sm" data-nxmove="${esc(p.rowId)}">${moveLabel}</button></li>`
+}
+function timetableHtml(d) {
+  const by = Object.fromEntries(d.players.map((p) => [p.rowId, p]))
+  const wait = Object.fromEntries((d.waitlist || []).map((w) => [w.rowId, w]))
+  const legend = Object.values(T1).map(([c, w]) => `<span class="j-pill j-pill-${c}">${w}</span>`).join(' ') + ' <span class="j-pill j-pill-amber">New family, offered</span> <span class="nt-waitpill">Waitlist</span>'
+  const noDay = (d.noDay || []).map((id) => by[id]).filter(Boolean)
+  const days = []
+  for (const g of d.timetable || []) { let x = days.find((y) => y.day === g.day); if (!x) days.push(x = { day: g.day, groups: [] }); x.groups.push(g) }
+  const card = (g) => {
+    const ps = g.players.map((id) => by[id]).filter(Boolean).sort((a, b) => ['paid', 'held', 'keen', 'unpaid', 'no'].indexOf(t1State(a)) - ['paid', 'held', 'keen', 'unpaid', 'no'].indexOf(t1State(b)) || a.name.localeCompare(b.name))
+    const left = g.capacity - g.taken
+    return `<article class="j-card nt-g${left < 0 ? ' nt-over' : ''}">
+      <header><b>${esc(g.time)}</b> <span class="muted small">${esc(g.location)}${g.coach ? ` · ${esc(g.coach)}` : ''}${g.closed ? ' · closed to bookings' : ''}</span>
+        <div class="small nt-count"><b>${g.paid}</b> paid · ${g.taken} of ${g.capacity || '?'} places${left > 0 ? ` · <b>${left} free</b>` : left < 0 ? ` · <b>${-left} over</b>` : ' · full'}</div></header>
+      <ul class="nt-list">${ps.map((p) => playerLi(p)).join('')}
+        ${g.news.map((x) => `<li class="nt-p"><span class="nt-name"><b>${esc(x.player)}</b> <span class="muted small">new</span><br><span class="muted small">${esc(x.parent || '')}</span></span><span class="j-pill j-pill-${x.status === 'paid' ? 'green' : 'amber'}">${x.status === 'paid' ? `Paid ${esc(money(x.cents))}` : `Offered ${esc(money(x.cents))}, not paid`}</span>${x.url ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-nxcopy="${esc(x.url)}">Copy link</button>` : ''}</li>`).join('')}
+        ${g.waiting.map((id) => wait[id]).filter(Boolean).map((w) => `<li class="nt-p nt-wait"><span class="nt-name"><b>${esc(w.name)}</b><br><span class="muted small">${esc(w.parent || '')}${w.note ? ` · ${esc(w.note)}` : ''}</span></span><span class="nt-waitpill">Waitlist</span><button type="button" class="j-btn j-btn-dark j-btn-sm" data-nxoffer="${esc(w.rowId)}">Offer the place</button></li>`).join('')}
+        ${!ps.length && !g.news.length && !g.waiting.length ? '<li class="muted small">Nobody yet.</li>' : ''}</ul></article>`
+  }
+  return `<p class="muted small" style="margin:6px 0 10px;max-width:820px">Who is in each group for ${esc(d.nextTerm.name)} and whether they have paid. Moving a player here changes ${esc(d.nextTerm.name)} only; their current term stays as it is.</p>
+    <div class="nt-legend">${legend}</div>
+    ${noDay.length ? `<section class="j-card nt-g nt-noday"><header><b>Day not picked yet</b> <span class="muted small">No place held in any group. Move them into a group once the family picks a day.</span></header><ul class="nt-list">${noDay.map((p) => playerLi(p, { moveLabel: 'Pick a group' })).join('')}</ul></section>` : ''}
+    ${days.map((x) => `<h2 class="nt-day">${esc(x.day)}</h2><div class="nt-grid">${x.groups.map(card).join('')}</div>`).join('')}`
+}
+function moveBox(ui, d, p, done) {
+  if (!p) return
+  const { modal, closeModal, post, toast } = ui
+  const opts = d.groupChoices.map((g) => `<option value="${esc(g.id)}" ${g.id === p.t1GroupId ? 'selected' : ''}>${esc(g.label)}${g.id === p.groupId ? ' (their group now)' : ''}</option>`).join('')
+  const box = modal(`<h2 style="margin-bottom:6px">${esc(p.name)} in ${esc(d.nextTerm.name)}</h2><p class="muted small" style="margin-bottom:12px">Now: ${esc(p.group)}. This changes ${esc(d.nextTerm.name)} only.</p>
+    <label class="j-field"><span>Group for ${esc(d.nextTerm.name)}</span><select class="j-input" id="mv-g"><option value="nogroup" ${p.moved && !p.t1GroupId ? 'selected' : ''}>Day not picked yet (holds no place)</option>${opts}</select></label>
+    <div style="display:flex;gap:8px;margin-top:12px"><button type="button" class="j-btn j-btn-dark j-btn-sm" id="mv-save">Save</button><button type="button" class="j-btn j-btn-line j-btn-sm" id="mv-x">Cancel</button></div>`)
+  box.querySelector('#mv-x').addEventListener('click', closeModal)
+  box.querySelector('#mv-save').addEventListener('click', async (e) => {
+    e.target.disabled = true
+    const v = box.querySelector('#mv-g').value
+    const r = await post('moveNextTerm', { rowId: p.rowId, groupId: v === p.groupId ? '' : v })
+    e.target.disabled = false
+    if (!r.ok) return toast(r.data.error)
+    closeModal(); toast('Moved for ' + d.nextTerm.name); done()
+  })
+}
+async function offerBox(ui, d, w, done) {
+  if (!w) return
+  const { modal, closeModal, post, toast, confirmBox } = ui
+  const pv = await post('offerWaitlist', { rowId: w.rowId, groupId: w.groupId, amountCents: d.newPriceCents })
+  if (!pv.ok) return toast(pv.data.error)
+  const v = pv.data.preview
+  const box = modal(`<h2 style="margin-bottom:6px">Offer ${esc(w.name)} a place</h2><p class="muted small" style="margin-bottom:10px">${esc(v.group)}, ${esc(d.nextTerm.name)}. The family gets this email with a link to pay (no sign in). The place is held for 7 days. Replies go to Ligia.</p>
+    <label class="j-field"><span>Price (A$)</span><input class="j-input" id="ow-a" inputmode="decimal" value="${(v.amountCents / 100).toFixed(0)}" style="max-width:140px"></label>
+    <div class="nt-email"><div class="small muted">To ${esc(v.to)} (${esc(v.emailMasked)})</div><div><b>${esc(v.subject)}</b></div>${v.paras.map((x) => `<p>${esc(x)}</p>`).join('')}<p><span class="j-btn j-btn-dark j-btn-sm" aria-hidden="true">Pay ${esc(v.amountLabel)}</span></p></div>
+    <p class="muted small">The email and link use the price above.</p>
+    <div style="display:flex;gap:8px;margin-top:10px"><button type="button" class="j-btn j-btn-dark j-btn-sm" id="ow-send">Send the offer</button><button type="button" class="j-btn j-btn-line j-btn-sm" id="ow-x">Cancel</button></div>`)
+  box.querySelector('#ow-x').addEventListener('click', closeModal)
+  box.querySelector('#ow-send').addEventListener('click', async (e) => {
+    const cents = Math.round(Number(box.querySelector('#ow-a').value) * 100)
+    if (!(cents >= 100)) return toast('Enter the price in dollars.')
+    e.target.disabled = true
+    let r = await post('offerWaitlist', { rowId: w.rowId, groupId: w.groupId, amountCents: cents, send: true })
+    if (!r.ok && r.data.code === 'full' && (await confirmBox(r.data.error, { ok: 'Offer anyway' }))) r = await post('offerWaitlist', { rowId: w.rowId, groupId: w.groupId, amountCents: cents, send: true, force: true })
+    e.target.disabled = false
+    if (!r.ok) return toast(r.data.error)
+    closeModal(); toast(r.data.emailed ? `Offer emailed: ${r.data.payreq.amountLabel}` : (r.data.emailError || 'Offer made')); done()
   })
 }

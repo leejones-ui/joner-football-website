@@ -1533,3 +1533,23 @@ a.sr-only[href="#main-content"]:focus { position: fixed !important; top: 16px; l
 .jp-top .jp-top-right > .jp-toplink { display: inline-flex; align-items: center; }
 .jp-top .jp-top-right > .jp-toplink[hidden] { display: none; }
 @media (max-width: 640px) { .jp-top .jp-top-right > a.jp-toplink { display: none; } }
+
+/* Term 1 timetable (Ligia, 25 Nov 2026) */
+.nt-tabs { display: flex; gap: 8px; margin: 6px 0 4px; }
+.nt-legend { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.nt-day { font-size: 16px; margin: 18px 0 8px; }
+.nt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.nt-g { padding: 12px 14px; min-width: 0; }
+.nt-g header { margin-bottom: 8px; }
+.nt-count { margin-top: 2px; }
+.nt-over { border-color: var(--j-red, #E8000D); }
+.nt-noday { max-width: 820px; margin: 10px 0 4px; border-style: dashed; }
+.nt-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.nt-p { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 0; border-top: 1px solid var(--j-line); }
+.nt-p:first-child { border-top: 0; }
+.nt-name { flex: 1 1 140px; min-width: 0; }
+.nt-out .nt-name b { text-decoration: line-through; opacity: .6; }
+.nt-wait { border-top-style: dashed; }
+.nt-waitpill { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px dashed currentColor; opacity: .8; }
+.nt-email { border: 1px solid var(--j-line); border-radius: 10px; padding: 10px 12px; margin: 10px 0; font-size: 14px; }
+.nt-email p { margin: 6px 0; }

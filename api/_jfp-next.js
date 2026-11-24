@@ -145,16 +145,35 @@ export async function nextNew(term) {
 export async function saveNextNew(term, rec) { await kvCommand(['HSET', newKey(term), rec.id, JSON.stringify(rec)]) }
 const sydToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney' }).format(new Date())
 // groupId -> places taken next term. payreqs: open next-new offers count too.
-export function nextTaken({ config, roster, statuses, news, payreqs = [], today = sydToday() }) {
+// Term 1 groups that differ from Term 4 (Ligia, 25 Nov 2026): a returning
+// player moved to another group for next term only, or out of every group
+// until the family picks a day ("Day not picked yet"). Term 4 never changes.
+// jfp:next-move:<term>, field = Term 4 row id -> { groupId } or { nogroup: true }.
+export const moveKey = (term) => `jfp:next-move:${term}`
+export async function nextMoves(term) {
+  const raw = await kvCommand(['HGETALL', moveKey(term)])
+  const out = {}
+  for (let i = 0; i + 1 < (raw || []).length; i += 2) { try { out[raw[i]] = JSON.parse(raw[i + 1]) } catch {} }
+  return out
+}
+export async function saveMove(term, rowId, value) {
+  if (!value) await kvCommand(['HDEL', moveKey(term), rowId])
+  else await kvCommand(['HSET', moveKey(term), rowId, JSON.stringify({ ...value, at: new Date().toISOString() })])
+}
+// The group a returning player is in next term ('' = no day picked yet).
+export const nextGroupOf = (r, moves = {}) => { const m = moves[r.id]; return m ? (m.nogroup ? '' : m.groupId || '') : (r.groupId || '') }
+export function nextTaken({ config, roster, statuses, news, payreqs = [], moves = {}, today = sydToday() }) {
   const nt = config.nextTerm || {}
   const holdLive = !nt.holdUntil || today <= nt.holdUntil
   const out = {}
   const add = (gid, n = 1) => { if (gid) out[gid] = (out[gid] || 0) + n }
   for (const r of roster.players) {
-    if (!r.holdsPlace || !r.groupId || /trial/i.test(r.paymentType || '')) continue
+    if (!r.holdsPlace || /trial/i.test(r.paymentType || '')) continue
+    const gid = nextGroupOf(r, moves)
+    if (!gid) continue
     const st = statuses[r.id]?.status
     if (st === 'no') continue
-    if (holdLive || ['paid', 'held'].includes(st)) add(r.groupId)
+    if (holdLive || ['paid', 'held'].includes(st)) add(gid)
   }
   for (const n of news) if (n.status !== 'cancelled') add(n.groupId)
   for (const q of payreqs) if (q.next?.new && ['open', 'checkout'].includes(q.status) && !(q.expiresAt && Date.parse(q.expiresAt) < Date.now())) add(q.next.groupId, (q.next.players || []).length || 1)

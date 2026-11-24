@@ -7,7 +7,7 @@ import { airtableCounts } from './_jfp-airtable.js'
 import { listExtraSlots } from './_jfp-extra.js'
 import { sessionKind } from './_jfp-family-extra.js'
 import { sweepExpiredOffers } from './_jfp-offers.js'
-import { nextTermConfig, newBookingsOpen, nextTaken, nextNew, nextStatuses } from './_jfp-next.js'
+import { nextTermConfig, newBookingsOpen, nextTaken, nextNew, nextStatuses, nextMoves } from './_jfp-next.js'
 import { loadRoster } from './_jfp-airtable.js'
 import { coachTick } from './_jfp-coach-alerts.js'
 import { pushTick } from './_jfp-push.js'
@@ -214,7 +214,7 @@ export default async function handler(req, res) {
       if (isNext) {
         const nt = base.nextTerm
         const [roster, statuses, news, { listPayreqs }] = await Promise.all([loadRoster(), nextStatuses(nt.name), nextNew(nt.name), import('./_jfp-store.js')])
-        counts = nextTaken({ config: base, roster, statuses, news, payreqs: (await listPayreqs()).filter((q) => q.next?.new) })
+        counts = nextTaken({ config: base, roster, statuses, news, moves: await nextMoves(base.nextTerm.name), payreqs: (await listPayreqs()).filter((q) => q.next?.new) })
       } else counts = (await airtableCounts({ groups, config })).counts
     } catch (error) {
       // Without the roster we cannot know what is free, so nothing is bookable.

@@ -42,7 +42,7 @@ import { applyCredits, creditsView, giveCredit, returnCredits } from './_jfp-cre
 const CREDIT_REASONS = new Set(['balance', 'term-after-trial', 'admin-add', 'application', 'waitlist', 'family', 'sessions'])
 import { staffPrincipal, sameOrigin } from './_jfp-people.js'
 import { sendAccountInvite, accountInvite, sendFamilyInvite, sendFamilyWelcome, sendPlaceOffered, sendTrialOffered, sendTermOffered, sendDeclined, sendNextTermInvite, sendFamilyInvoice, sendQuickLinkEmail } from './_jfp-email.js'
-import { nextStatuses, setNextStatus, nextPrices, recordNext, nextInterest, nextOffers, saveOffer, offerLive, TIER_LABEL, onNextTerm, nextTermConfig, nextTaken, nextNew } from './_jfp-next.js'
+import { nextStatuses, setNextStatus, nextPrices, recordNext, nextInterest, nextOffers, saveOffer, offerLive, TIER_LABEL, onNextTerm, nextTermConfig, nextTaken, nextNew, nextMoves, saveMove, nextGroupOf } from './_jfp-next.js'
 import { MAKEUP_ADMIN_ACTIONS, emergencyCancel, emergencyUncancel, emergencyEmail, makeupsList, makeupUpdate, sessionOffMap, guestsFor, guestAllowed, markGuestUsed } from './_jfp-makeups.js'
 import { attendanceFor } from './_jfp-attendance-view.js'
 import { allProfiles, findProfile, renameProfile, pickProfile, profileKey, profileView, profileSummary, cleanProfile, saveProfile, waiverPrefill, addTrialFeedback, clubSuggestions, LEVELS, PLAYING_UP, POSITIONS, FEET, YEARS } from './_jfp-profiles.js'
@@ -170,10 +170,15 @@ async function juniorsFor(groups, config) {
 // The roster cache is cleared by every change made here, so the board can use
 // it; Refresh asks Airtable again (fresh).
 // Trials waitlisted for a group next term (Lee, 23 Nov 2026), by group.
-async function nextWaitByGroup(roster) {
+// Once offered a place (Ligia, 25 Nov 2026) they leave the waitlist: the offer
+// or the paid place shows in the group instead. An expired or cancelled offer
+// puts them back.
+const waitOffered = (payreqs) => new Set((payreqs || []).filter((q) => q.next?.waitRowId && (q.status === 'paid' || (['open', 'checkout'].includes(q.status) && !(q.expiresAt && Date.parse(q.expiresAt) < Date.now())))).map((q) => q.next.waitRowId))
+async function nextWaitByGroup(roster, payreqs = null) {
   const out = {}
+  const offered = waitOffered(payreqs || await listPayreqs())
   for (const [rowId, f] of Object.entries(await followUpsAll().catch(() => ({})))) {
-    if (f?.outcome !== 'nextterm' || !f.groupId) continue
+    if (f?.outcome !== 'nextterm' || !f.groupId || offered.has(rowId)) continue
     const r = roster.players.find((x) => x.id === rowId)
     if (!r || isTestName(r.player)) continue
     ;(out[f.groupId] ||= []).push({ rowId, name: r.player, parent: r.parent, term: f.term || '', note: f.note || '', at: f.at })
@@ -183,7 +188,7 @@ async function nextWaitByGroup(roster) {
 }
 async function boardData(config, { fresh = false } = {}) {
   const [groups, roster, payreqs, requests, notes] = await Promise.all([listGroups(), loadRoster({ fresh }), listPayreqs(), listApplications(), coachNotes()])
-  const nextWait = await nextWaitByGroup(roster)
+  const nextWait = await nextWaitByGroup(roster, payreqs)
   const juniors = await juniorsFor(groups, config)
   // Joners Juniors children get the same payment colours as JFP players on the
   // staff timetable (Lee, 13 Oct 2026), from the Juniors money figures.
@@ -2828,8 +2833,8 @@ async function offerNextTerm(req, res, principal, config, body, r) {
   const group = await getGroup(clean(body.groupId, 80) || r.groupId)
   if (!group) return fail(res, 404, 'Group not found.')
   const n = r.players.length
-  const [roster, statuses, news] = await Promise.all([loadRoster({ fresh: true }), nextStatuses(nt.name), nextNew(nt.name)])
-  const taken = nextTaken({ config, roster, statuses, news, payreqs: (await listPayreqs()).filter((q) => q.next?.new) })[group.id] || 0
+  const [roster, statuses, news, moves] = await Promise.all([loadRoster({ fresh: true }), nextStatuses(nt.name), nextNew(nt.name), nextMoves(nt.name)])
+  const taken = nextTaken({ config, roster, statuses, news, moves, payreqs: (await listPayreqs()).filter((q) => q.next?.new) })[group.id] || 0
   const left = Math.max(0, (Number(group.capacity) || 0) - taken)
   if (left < n && body.force !== true) return fail(res, 409, `${group.day} ${group.time} has ${left} place${left === 1 ? '' : 's'} left for ${nt.name} (current families keep theirs until ${dateLabel(nt.holdUntil || nt.termStart)}). Offer anyway?`, { code: 'full' })
   const unit = nextPrices(tcfg, group).fullCents
@@ -4271,27 +4276,114 @@ async function handle(req, res) {
       }
       case 'nextTerm': {
         const nt = config.nextTerm
-        const [roster, groups, statuses, interest, offers] = await Promise.all([loadRoster({ fresh: true }), listGroups(), nextStatuses(nt.name), nextInterest(nt.name), nextOffers(nt.name)])
+        const [roster, groups, statuses, interest, offers, moves, payreqsAll] = await Promise.all([loadRoster({ fresh: true }), listGroups(), nextStatuses(nt.name), nextInterest(nt.name), nextOffers(nt.name), nextMoves(nt.name), listPayreqs()])
         const byId = Object.fromEntries(groups.map((g) => [g.id, g]))
         const live = offerLive(nt)
         const players = roster.players.filter((r) => onNextTerm(r, offers[r.id]) && !isTestName(r.player)).map((r) => {
           const g = byId[r.groupId]
           const st = statuses[r.id] || null
           const o = offers[r.id] || null
-          return { rowId: r.id, name: r.player, parent: r.parent, email: r.email, group: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : 'Not in a group', groupId: r.groupId, coach: g ? coachLabel(coachById(config, g.coachId)) : '', status: st?.status || '', paidCents: st?.paidCents || 0, at: st?.at || '', interested: interest[r.id]?.at || '', payreqId: st?.payreqId || '',
+          const t1 = nextGroupOf(r, moves)
+          return { rowId: r.id, name: r.player, parent: r.parent, email: r.email, group: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : 'Not in a group', groupId: r.groupId, t1GroupId: t1, moved: Boolean(moves[r.id]), coach: g ? coachLabel(coachById(config, g.coachId)) : '', status: st?.status || '', paidCents: st?.paidCents || 0, at: st?.at || '', interested: interest[r.id]?.at || '', payreqId: st?.payreqId || '',
             offer: o ? { tier: o.tier, kind: o.kind || '', normalCents: o.normalCents, offerCents: o.offerCents, note: o.note || '', creditCents: o.creditCents || 0, kept: Boolean(o.keep && !r.holdsPlace), nowCents: Math.max(0, (live ? o.offerCents : o.normalCents) - (o.creditCents || 0)) } : null }
         }).sort((a, b) => a.group.localeCompare(b.group) || a.name.localeCompare(b.name))
         const count = (s) => players.filter((p) => p.status === s).length
         const withOffer = players.filter((p) => p.offer)
         const offerTotals = { places: withOffer.length, loyal: withOffer.filter((p) => p.offer.tier === 'loyal').length, current: withOffer.filter((p) => p.offer.tier === 'current').length, paid: withOffer.filter((p) => p.status === 'paid').length, paidCents: withOffer.filter((p) => p.status === 'paid').reduce((t, p) => t + (p.paidCents || 0), 0), toComeCents: withOffer.filter((p) => !['paid', 'no'].includes(p.status)).reduce((t, p) => t + p.offer.nowCents, 0), families: new Set(withOffer.map((p) => (p.email || p.parent).toLowerCase())).size, live, tiers: TIER_LABEL }
-        const waitBy = await nextWaitByGroup(roster)
+        const waitBy = await nextWaitByGroup(roster, payreqsAll)
         // New families for next term (Lee, 24 Nov 2026): paid places and offers waiting.
         const gl = (gid) => { const g = byId[gid]; return g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : 'Group removed' }
-        const newPaid = (await nextNew(nt.name)).filter((x) => x.status !== 'cancelled').map((x) => ({ player: x.player, parent: x.parent, email: x.email, group: gl(x.groupId), cents: x.cents, paidAt: x.paidAt, status: 'paid' }))
-        const newOpen = (await listPayreqs()).filter((q) => q.next?.new && q.next.term === nt.name && ['open', 'checkout'].includes(q.status) && !(q.expiresAt && Date.parse(q.expiresAt) < Date.now())).map((q) => ({ player: q.playerNames.join(', '), parent: q.parentName, email: q.email, group: gl(q.groupId), cents: q.amountCents, offeredAt: q.createdAt, expiresAt: q.expiresAt, status: 'offered' }))
+        const newPaid = (await nextNew(nt.name)).filter((x) => x.status !== 'cancelled').map((x) => ({ player: x.player, parent: x.parent, email: x.email, group: gl(x.groupId), groupId: x.groupId, cents: x.cents, paidAt: x.paidAt, status: 'paid' }))
+        const newOpen = payreqsAll.filter((q) => q.next?.new && q.next.term === nt.name && ['open', 'checkout'].includes(q.status) && !(q.expiresAt && Date.parse(q.expiresAt) < Date.now())).map((q) => ({ player: q.playerNames.join(', '), parent: q.parentName, email: q.email, group: gl(q.groupId), groupId: q.groupId, cents: q.amountCents, offeredAt: q.createdAt, expiresAt: q.expiresAt, status: 'offered', payreqId: q.id, url: `${siteUrl(req)}/jfp-pay/?q=${encodeURIComponent(q.id)}` }))
         const newFamilies = [...newPaid, ...newOpen]
         const waitlist = Object.entries(waitBy).flatMap(([gid, list]) => list.map((w) => { const g = byId[gid]; return { ...w, groupId: gid, group: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : 'Group removed' } }))
-        return res.status(200).json({ success: true, nextTerm: nt, offerTotals, prices: nextPrices(config, null), players, waitlist, newFamilies, totals: { players: players.length, invited: count('invited'), held: count('held'), paid: count('paid'), no: count('no'), interested: players.filter((p) => p.interested && !p.status).length, none: players.filter((p) => !p.status).length } })
+        // The Term 1 timetable (Ligia, 25 Nov 2026): every group with who is in
+        // it next term and whether they have paid; "Day not picked yet" holds
+        // returning players with no group.
+        const mins = (s) => { const m = String(s || '').match(/(\d{1,2})(?::(\d{2}))?\s*([ap]m)?/i); if (!m) return 9999; let h = Number(m[1]) % 12; if (/pm/i.test(m[3] || '')) h += 12; return h * 60 + Number(m[2] || 0) }
+        const dayIx = (d) => { const i = DAYS.indexOf(d); return i < 0 ? 9 : i }
+        const listed = groups.filter((g) => g.mode !== 'closed' || players.some((p) => p.t1GroupId === g.id) || newFamilies.some((x) => x.groupId === g.id) || waitlist.some((w) => w.groupId === g.id))
+          .filter((g) => g.label !== 'Joners Juniors' && g.id !== 'one-to-one')
+        const timetable = listed.map((g) => {
+          const inG = players.filter((p) => p.t1GroupId === g.id)
+          const news = newFamilies.filter((x) => x.groupId === g.id)
+          const coming = inG.filter((p) => p.status !== 'no')
+          return { id: g.id, day: g.day, time: g.time, location: locationFor(config, g.location).name, coach: coachLabel(coachById(config, g.coachId)), capacity: Number(g.capacity) || 0, label: g.label || '', closed: g.mode === 'closed',
+            players: inG.map((p) => p.rowId), news: news.map((x) => ({ player: x.player, parent: x.parent, status: x.status, cents: x.cents, expiresAt: x.expiresAt || '', url: x.url || '' })), waiting: waitlist.filter((w) => w.groupId === g.id).map((w) => w.rowId),
+            taken: coming.length + news.reduce((s, x) => s + String(x.player).split(', ').length, 0),
+            paid: coming.filter((p) => p.status === 'paid').length + news.filter((x) => x.status === 'paid').reduce((s, x) => s + String(x.player).split(', ').length, 0) }
+        }).sort((a, b) => dayIx(a.day) - dayIx(b.day) || mins(a.time) - mins(b.time) || a.location.localeCompare(b.location))
+        const noDay = players.filter((p) => p.moved && !p.t1GroupId).map((p) => p.rowId)
+        const groupChoices = groups.filter((g) => g.label !== 'Joners Juniors' && g.id !== 'one-to-one').map((g) => ({ id: g.id, label: `${g.day} ${g.time}, ${locationFor(config, g.location).name}`, day: g.day, time: g.time })).sort((a, b) => dayIx(a.day) - dayIx(b.day) || mins(a.time) - mins(b.time))
+        return res.status(200).json({ success: true, nextTerm: nt, offerTotals, prices: nextPrices(config, null), players, waitlist, newFamilies, timetable, noDay, groupChoices, newPriceCents: nextPrices(nextTermConfig(config), null).fullCents, totals: { players: players.length, invited: count('invited'), held: count('held'), paid: count('paid'), no: count('no'), interested: players.filter((p) => p.interested && !p.status).length, none: players.filter((p) => !p.status).length } })
+      }
+      // Move a returning player for Term 1 only (Ligia, 25 Nov 2026): to
+      // another group, to "Day not picked yet" (groupId 'nogroup', holds no
+      // place), or back to their Term 4 group ('' ). Term 4 never changes.
+      case 'moveNextTerm': {
+        const nt = config.nextTerm
+        const rowId = clean(body.rowId, 30)
+        const [roster, offers, moves] = await Promise.all([loadRoster(), nextOffers(nt.name), nextMoves(nt.name)])
+        const row = roster.players.find((r) => r.id === rowId && onNextTerm(r, offers[r.id]))
+        if (!row) return fail(res, 404, `That player is not on ${nt.name}.`)
+        const to = clean(body.groupId, 80)
+        let value = null
+        if (to === 'nogroup') value = { nogroup: true }
+        else if (to && to !== row.groupId) {
+          const g = await getGroup(to)
+          if (!g) return fail(res, 404, 'Group not found.')
+          value = { groupId: g.id }
+        }
+        const before = moves[rowId] || null
+        await saveMove(nt.name, rowId, value ? { ...value, player: row.player, by: principal.email } : null)
+        await audit({ by: principal.email, action: 'next.move', target: rowId, before, after: value ? { ...value, term: nt.name, player: row.player } : null })
+        return res.status(200).json({ success: true })
+      }
+      // Offer a waitlisted trial a place next term (Ligia, 25 Nov 2026). Same
+      // no-sign-in link as a new family (next.new); preview first, then send.
+      case 'offerWaitlist': {
+        const nt = config.nextTerm
+        const tcfg = nextTermConfig(config)
+        const rowId = clean(body.rowId, 30)
+        const [roster, payreqsAll] = await Promise.all([loadRoster({ fresh: true }), listPayreqs()])
+        const waitBy = await nextWaitByGroup(roster, payreqsAll)
+        const w = Object.entries(waitBy).flatMap(([gid, list]) => list.map((x) => ({ ...x, groupId: gid }))).find((x) => x.rowId === rowId)
+        if (!w) return fail(res, 404, 'That player is not on the waitlist (or already has an offer).')
+        const row = roster.players.find((r) => r.id === rowId)
+        const group = await getGroup(clean(body.groupId, 80) || w.groupId)
+        if (!group) return fail(res, 404, 'Group not found.')
+        if (!validEmail(row?.email)) return fail(res, 400, `${w.name} has no parent email on file. Add one in their profile first.`)
+        const typed = Number(body.amountCents)
+        const amountCents = Number.isInteger(typed) && typed >= 100 && typed <= 2000000 ? typed : nextPrices(tcfg, group).fullCents
+        const start = sessionDates(tcfg, group.day)[0] || tcfg.termStart
+        const loc = locationFor(config, group.location).name
+        const first = String(row.parent || '').trim().split(/\s+/)[0] || 'there'
+        const email = {
+          subject: `A place for ${row.player} in ${nt.name}`, heading: `Your place for ${nt.name}`,
+          paras: [`Hi ${first},`, `Good news: a place has opened up for ${row.player} in our ${group.day} ${group.time} group at ${loc} for ${nt.name}. The term starts ${dateLabel(start)} and runs for ${tcfg.weeks} weeks.`, `To lock in the place, pay ${formatAud(amountCents)} with the button below. We hold the place for you for 7 days.`, 'If you have any questions, just reply to this email.', 'Joner Football'],
+        }
+        if (body.send !== true) return res.status(200).json({ success: true, preview: { to: row.parent, emailMasked: String(row.email).replace(/^(.).*(@.*)$/, '$1***$2'), group: `${group.day} ${group.time}, ${loc}`, amountCents, amountLabel: formatAud(amountCents), ...email } })
+        const [statuses, news, moves] = await Promise.all([nextStatuses(nt.name), nextNew(nt.name), nextMoves(nt.name)])
+        const taken = nextTaken({ config, roster, statuses, news, moves, payreqs: payreqsAll.filter((q) => q.next?.new) })[group.id] || 0
+        const left = Math.max(0, (Number(group.capacity) || 0) - taken)
+        if (left < 1 && body.force !== true) return fail(res, 409, `${group.day} ${group.time} has no places left for ${nt.name} yet (current families keep theirs until ${dateLabel(nt.holdUntil || nt.termStart)}). Offer anyway?`, { code: 'full' })
+        const q = {
+          id: newId('PAY'), quick: true, reason: 'next-new', programme: 'jfp',
+          forText: `${nt.name}: ${row.player}, ${group.day} ${group.time}, ${loc} (${tcfg.weeks} weeks from ${dateLabel(start)})`,
+          amountCents, email: row.email, parentName: row.parent, playerNames: [row.player], playerKeys: [normName(row.player)], term4Ids: [], rowId: '',
+          groupId: group.id, groupLabel: `${group.day} ${group.time}`, productLabel: `${nt.name}, full term`,
+          next: { term: nt.name, new: true, groupId: group.id, requestId: '', waitRowId: rowId, startDate: start, players: [{ name: row.player, dob: row.dob || '', age: null }], mobile: row.phone || '' },
+          afterpay: false, status: 'open', createdBy: principal.email, createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(), siteUrl: siteUrl(req),
+        }
+        await savePayreq(q)
+        const url = `${siteUrl(req)}/jfp-pay/?q=${encodeURIComponent(q.id)}`
+        const sent = await trySend('next term offered', async () => {
+          const { sendFamilyNotice } = await import('./_jfp-email.js')
+          return sendFamilyNotice({ to: row.email, name: row.parent, kind: 'next term offered', replyTo: 'ligia@jonerfootball.com', ...email, cta: { label: `Pay ${formatAud(amountCents)}`, url } })
+        })
+        if (sent.emailed) await savePayreq({ ...q, emailedAt: new Date().toISOString() })
+        await audit({ by: principal.email, action: 'next.wait.offer', target: rowId, after: { group: group.id, payreq: q.id, cents: amountCents, term: nt.name, emailed: sent.emailed } })
+        return res.status(200).json({ success: true, payreq: { id: q.id, url, amountLabel: formatAud(amountCents) }, emailed: sent.emailed, emailError: sent.emailError ? `The offer is made, but the email did not send. ${sent.emailError} Copy the link and send it yourself.` : '' })
       }
       case 'saveNextTerm': {
         // Statuses are kept under the term's name: no renaming once families have answered.

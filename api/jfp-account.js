@@ -42,7 +42,7 @@ import { loadRoster, familyFor, createWaiverRows, waiverFields, bustRosterCache,
 import { sessionFor, sameOrigin } from './_jfp-people.js'
 import { viewAsFor, endViewAs, viewCookie, VIEW_READ, VIEW_QUIET } from './_jfp-view-as.js'
 import { needsTerms, acceptTerms, cancelExtraBooking, cancelView, refundReady, TERMS_VERSION } from './_jfp-extra-cancel.js'
-import { nextStatuses, setNextStatus, nextPrices, recordNext, createNextPayreq, nextInterest, interestKey, nextOffers, rowNextPrice, offerLive, createNextFamilyPayreq, onNextTerm } from './_jfp-next.js'
+import { nextStatuses, setNextStatus, nextPrices, recordNext, createNextPayreq, nextInterest, interestKey, nextOffers, rowNextPrice, offerLive, createNextFamilyPayreq, onNextTerm, nextMoves, nextGroupOf } from './_jfp-next.js'
 import { jjAccountView, jjPay, jjRequestPay, jjNextChoice, familyJJ, jjWaiverRows, markJJWaivers } from './_jj-account.js'
 import { owedItems, payOwed as makeOwedPayreq, cancelOwed as cancelOwedPayreq } from './_jfp-account-pay.js'
 import { familyFees } from './_jfp-account-fees.js'
@@ -301,14 +301,18 @@ async function overview(res, parent, body = {}, opts = {}) {
   todo.sort((a, b) => (a.invoice?.dueDate && b.invoice?.dueDate ? a.invoice.dueDate.localeCompare(b.invoice.dueDate) : 0))
   // Next term: this family's invited players and where each one stands.
   const nt = config.nextTerm
-  const [statuses, offers] = await Promise.all([nextStatuses(nt.name), nextOffers(nt.name)])
+  const [statuses, offers, moves] = await Promise.all([nextStatuses(nt.name), nextOffers(nt.name), nextMoves(nt.name)])
   // The early offer (Lee, 16 Nov 2026): only players with an offer price see it.
+  // A player moved for Term 1 (Ligia, 25 Nov 2026) sees that group; one with
+  // no day picked yet sees "Day to be confirmed" and their Term 4 price.
   const nextTerm = fam.players.flatMap((p) => p.term4.filter((r) => onNextTerm(r, offers[r.id]) && (nt.open || statuses[r.id]) && (!nt.offerOnly || offers[r.id])).map((r) => {
-    const g = byGroup[r.groupId]
+    const t1 = nextGroupOf(r, moves)
+    const noDay = Boolean(moves[r.id]) && !t1
+    const g = noDay ? byGroup[r.groupId] : byGroup[t1]
     const st = statuses[r.id] || { status: 'invited' }
     const pr = rowNextPrice(config, g, offers[r.id])
     const open = st.payreqId ? mine.find((q) => q.id === st.payreqId && ['open', 'checkout'].includes(q.status)) : null
-    return { rowId: r.id, player: r.player, group: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : `${r.day} ${r.time}`, dayTime: g ? `${g.day} ${g.time}` : [r.day, r.time].filter(Boolean).join(' '), status: st.status, holdLabel: pr.holdLabel, fullLabel: pr.fullLabel, fullCents: pr.fullCents, normalLabel: pr.normalLabel, normalCents: pr.normalCents, offer: pr.offer, tier: pr.offer ? pr.tier : '', creditLabel: pr.creditLabel, creditNote: pr.creditNote, afterHoldLabel: st.status === 'held' ? formatAud(Math.max(0, pr.fullCents - (st.paidCents || 0))) : pr.afterHoldLabel, openPayreqId: open?.id || '' }
+    return { rowId: r.id, player: r.player, group: noDay ? 'Day to be confirmed' : g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : `${r.day} ${r.time}`, dayTime: noDay ? 'Day to be confirmed' : g ? `${g.day} ${g.time}` : [r.day, r.time].filter(Boolean).join(' '), status: st.status, holdLabel: pr.holdLabel, fullLabel: pr.fullLabel, fullCents: pr.fullCents, normalLabel: pr.normalLabel, normalCents: pr.normalCents, offer: pr.offer, tier: pr.offer ? pr.tier : '', creditLabel: pr.creditLabel, creditNote: pr.creditNote, afterHoldLabel: st.status === 'held' ? formatAud(Math.max(0, pr.fullCents - (st.paidCents || 0))) : pr.afterHoldLabel, openPayreqId: open?.id || '' }
   }))
   // A family with two or more places to pay can pay them all at once.
   const unpaidNext = nextTerm.filter((x) => !['paid', 'held', 'no'].includes(x.status))
@@ -324,8 +328,9 @@ async function overview(res, parent, body = {}, opts = {}) {
     // for current players until this date, when staff set one.
     holdUntil: nt.holdUntil || '', holdUntilLabel: nt.holdUntil ? dateLabel(nt.holdUntil) : '',
     players: fam.players.flatMap((p) => p.term4.filter((r) => r.holdsPlace && r.groupId).map((r) => {
-      const g = byGroup[r.groupId]
-      return { rowId: r.id, player: r.player, group: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : `${r.day} ${r.time}`, status: statuses[r.id]?.status || '', interested: Boolean(interest[r.id]) }
+      const t1 = nextGroupOf(r, moves)
+      const g = byGroup[t1]
+      return { rowId: r.id, player: r.player, group: moves[r.id] && !t1 ? 'Day to be confirmed' : g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : `${r.day} ${r.time}`, status: statuses[r.id]?.status || '', interested: Boolean(interest[r.id]) }
     })),
   }
   // Announcements (Lee, 17 Oct 2026): notices for everyone, this family's
