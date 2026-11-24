@@ -26,6 +26,7 @@ import { sessionFor, sameOrigin } from './_jfp-people.js'
 import { sendRequestReceived, sendRequestAlert, sendBatchReceived, sendBatchAlert } from './_jfp-email.js'
 import { telegramAlert, requestText, batchText } from './_jfp-notify.js'
 import { captureWebsiteContact } from './_master-contact-capture.js'
+import { newBookingsOpen, nextTermConfig } from './_jfp-next.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
 function fail(res, status, error, extra = {}) { return res.status(status).json({ success: false, error, ...extra }) }
@@ -60,7 +61,7 @@ function familyView(family, group, config, roster) {
 }
 
 // Validate the players a parent picked or added. Returns { players } or { error }.
-function checkPlayers(input, { family, group, config, requireWaiver, waiver, roster, checkAge = true }) {
+function checkPlayers(input, { family, group, config, requireWaiver, waiver, roster, checkAge = true, nextTerm = false }) {
   const list = Array.isArray(input) ? input.slice(0, MAX_PLAYERS) : []
   if (!list.length) return { error: 'Choose at least one player.' }
   const seen = new Set()
@@ -81,7 +82,7 @@ function checkPlayers(input, { family, group, config, requireWaiver, waiver, ros
     if (checkAge && !ageFits(group, age, config)) {
       return { error: `${name} is ${age} on the first day of term. This group is for ages ${group.minAge ?? config.minAge} to ${group.maxAge ?? config.maxAge}, so it needs an application. We may offer a trial first.`, code: 'age' }
     }
-    if (existing?.term4.some((r) => r.groupId === group.id && r.holdsPlace)) return { error: `${name} is already in this group.` }
+    if (!nextTerm && existing?.term4.some((r) => r.groupId === group.id && r.holdsPlace)) return { error: `${name} is already in this group.` }
     const needsWaiver = !existing?.waiver
     const details = {
       club: clean(x.club, 120), medical: clean(x.medical, 500),
@@ -340,7 +341,11 @@ async function request(req, res, body, parent) {
   if (!rateLimit(req, { key: 'jfp-request', limit: 6, windowMs: 60_000 }).allowed) return fail(res, 429, 'Too many tries. Wait a minute and try again.')
   const kind = ['application', 'waitlist', 'enquiry'].includes(body.kind) ? body.kind : ''
   if (!kind) return fail(res, 400, 'Invalid request.')
-  const config = await getConfig()
+  const base = await getConfig()
+  // Next term for new families (Lee, 24 Nov 2026): an application or waitlist for next term.
+  const nextT = body.term === 'next'
+  if (nextT && (!newBookingsOpen(base) || kind === 'enquiry')) return fail(res, 409, `${base.nextTerm?.name || 'Next term'} is not taking requests yet.`)
+  const config = nextT ? nextTermConfig(base) : base
   const group = body.groupId === ONE_TO_ONE.id && kind === 'enquiry' ? ONE_TO_ONE : await getGroup(body.groupId)
   if (!group || !REQUEST_MODES[kind].includes(group.mode)) return fail(res, 404, 'That group is not taking requests.')
   const roster = await loadRoster({ fresh: true })
@@ -349,10 +354,10 @@ async function request(req, res, body, parent) {
   if (who.error) return fail(res, 400, who.error)
   const w = checkWaiver(body.waiver, who.parentName)
   if (w.error) return fail(res, 400, w.error, { code: 'waiver' })
-  const pl = checkPlayers(body.players, { family: fam, group, config, requireWaiver: false, waiver: w.waiver, roster, checkAge: false })
+  const pl = checkPlayers(body.players, { family: fam, group, config, requireWaiver: false, waiver: w.waiver, roster, checkAge: false, nextTerm: nextT })
   if (pl.error) return fail(res, 400, pl.error, { code: pl.code })
   // One request per player per session (Lee, 19 Oct 2026: a family sent the same waitlist twice).
-  const dupMsg = await duplicateRequest(parent.email, group, pl.players)
+  const dupMsg = await duplicateRequest(parent.email, group, pl.players, nextT ? config.term : '')
   if (dupMsg) return fail(res, 409, dupMsg, { code: 'duplicate', groupId: group.id })
   const record = {
     id: newId(kind === 'waitlist' ? 'WAIT' : kind === 'enquiry' ? 'ENQ' : 'APP'),
@@ -361,6 +366,7 @@ async function request(req, res, body, parent) {
     answers: answersFor(group, body.answers),
     club: clean(body.answers?.club || body.club, 120), message: clean(body.message, 800),
     status: 'pending', createdAt: new Date().toISOString(),
+    ...(nextT ? { term: config.term } : {}),
   }
   await saveApplication(record)
   // The family gets a copy; Lee and Ligia get an email and a Telegram message.
@@ -379,8 +385,8 @@ async function openRequestsOf(email) {
 }
 
 // The message when a player already has an open request for this session, or ''.
-async function duplicateRequest(email, group, players) {
-  const open = await openRequestsOf(email)
+async function duplicateRequest(email, group, players, term = '') {
+  const open = (await openRequestsOf(email)).filter((a) => (a.term || '') === term)
   for (const pl of players) {
     const dup = open.find((a) => a.groupId === group.id && (a.players || []).some((q) => normName(q.name) === normName(pl.name)))
     if (dup) return `You have already applied for this spot. ${pl.name} already has ${PICK_WORD[dup.kind] || 'a request'} for ${group.day} ${group.time}, and we will be in touch about it. You can see it in My account.`
@@ -402,7 +408,10 @@ async function batch(req, res, body, parent) {
   if (!rateLimit(req, { key: 'jfp-batch', limit: 8, windowMs: 60_000 }).allowed) return fail(res, 429, 'Too many tries. Wait a minute and try again.')
   const raw = Array.isArray(body.picks) ? body.picks : []
   if (raw.length > MAX_PICKS) return fail(res, 400, `Pick up to ${MAX_PICKS} sessions at a time.`)
-  const config = await getConfig()
+  const base = await getConfig()
+  const nextT = body.term === 'next'
+  if (nextT && !newBookingsOpen(base)) return fail(res, 409, `${base.nextTerm?.name || 'Next term'} is not taking requests yet.`)
+  const config = nextT ? nextTermConfig(base) : base
   const picks = []
   const seen = new Set()
   for (const x of raw) {
@@ -413,7 +422,7 @@ async function batch(req, res, body, parent) {
     seen.add(groupId)
     const group = await getGroup(groupId)
     if (!group) return fail(res, 404, 'One of your sessions is no longer on the timetable. Refresh the page and pick again.', { code: 'gone', groupId })
-    const ok = kind === 'book' ? group.mode === 'direct' : REQUEST_MODES[kind].includes(group.mode)
+    const ok = kind === 'book' ? group.mode === 'direct' && !nextT : REQUEST_MODES[kind].includes(group.mode)
     if (!ok) return fail(res, 409, `${group.day} ${group.time} has changed since you picked it. Refresh the page and pick again.`, { code: 'changed', groupId })
     picks.push({ group, kind })
   }
@@ -428,12 +437,12 @@ async function batch(req, res, body, parent) {
   if (w.error) return fail(res, 400, w.error, { code: 'waiver' })
   let players = null
   for (const { group } of asks) {
-    const pl = checkPlayers(body.players, { family: fam, group, config, requireWaiver: false, waiver: w.waiver, roster, checkAge: false })
+    const pl = checkPlayers(body.players, { family: fam, group, config, requireWaiver: false, waiver: w.waiver, roster, checkAge: false, nextTerm: nextT })
     if (pl.error) return fail(res, 400, pl.code ? pl.error : `${group.day} ${group.time}: ${pl.error}`, { code: pl.code, groupId: group.id })
     players = players || pl.players
   }
   // Already waiting on that group: say so, rather than a second request.
-  const open = (await listApplications()).filter((a) => a.email === parent.email && ['pending', 'offered'].includes(a.status))
+  const open = (await listApplications()).filter((a) => a.email === parent.email && ['pending', 'offered'].includes(a.status) && (a.term || '') === (nextT ? config.term : ''))
   for (const { group } of asks) {
     for (const pl of players) {
       const dup = open.find((a) => a.groupId === group.id && (a.players || []).some((q) => normName(q.name) === normName(pl.name)))
@@ -452,6 +461,7 @@ async function batch(req, res, body, parent) {
     status: 'pending', createdAt,
     // Staff see these together in Requests; a waiver signed once is written once.
     batchId, batchSize: picks.length,
+    ...(nextT ? { term: config.term } : {}),
     ...(paying.length ? { batchPaying: paying.map((g) => g.id) } : {}),
   }))
   for (const r of records) await saveApplication(r)

@@ -42,7 +42,7 @@ import { applyCredits, creditsView, giveCredit, returnCredits } from './_jfp-cre
 const CREDIT_REASONS = new Set(['balance', 'term-after-trial', 'admin-add', 'application', 'waitlist', 'family', 'sessions'])
 import { staffPrincipal, sameOrigin } from './_jfp-people.js'
 import { sendAccountInvite, accountInvite, sendFamilyInvite, sendFamilyWelcome, sendPlaceOffered, sendTrialOffered, sendTermOffered, sendDeclined, sendNextTermInvite, sendFamilyInvoice, sendQuickLinkEmail } from './_jfp-email.js'
-import { nextStatuses, setNextStatus, nextPrices, recordNext, nextInterest, nextOffers, saveOffer, offerLive, TIER_LABEL, onNextTerm } from './_jfp-next.js'
+import { nextStatuses, setNextStatus, nextPrices, recordNext, nextInterest, nextOffers, saveOffer, offerLive, TIER_LABEL, onNextTerm, nextTermConfig, nextTaken, nextNew } from './_jfp-next.js'
 import { MAKEUP_ADMIN_ACTIONS, emergencyCancel, emergencyUncancel, emergencyEmail, makeupsList, makeupUpdate, sessionOffMap, guestsFor, guestAllowed, markGuestUsed } from './_jfp-makeups.js'
 import { attendanceFor } from './_jfp-attendance-view.js'
 import { allProfiles, findProfile, renameProfile, pickProfile, profileKey, profileView, profileSummary, cleanProfile, saveProfile, waiverPrefill, addTrialFeedback, clubSuggestions, LEVELS, PLAYING_UP, POSITIONS, FEET, YEARS } from './_jfp-profiles.js'
@@ -2760,6 +2760,7 @@ async function decideRequest(req, res, principal, config, body) {
     return res.status(200).json({ success: true, status: 'done' })
   }
   if (!offering) return fail(res, 400, 'Choose offer, trial, decline or done.')
+  if (r.term && r.term === config.nextTerm?.name) return offerNextTerm(req, res, principal, config, body, r)
   const trial = body.decision === 'trial'
   const group = await getGroup(clean(body.groupId, 80) || r.groupId)
   if (!group) return fail(res, 404, 'Group not found.')
@@ -2814,6 +2815,65 @@ async function decideRequest(req, res, principal, config, body) {
   for (const [i, id] of ids.entries()) await noteNewPlayer({ config, group, rowId: id, player: r.players[i]?.name || '', kind: trial ? 'trial' : 'offered' }).catch((e) => console.error('jfp coach news failed', e))
   await audit({ by: principal.email, action: trial ? 'request.trial' : 'request.offer', target: r.id, after: { group: group.id, payreq: q.id, rows: ids, cents: amountCents, emailed } })
   return res.status(200).json({ success: true, status: 'offered', payreq: { id: q.id, url: payreqUrl(req, q), amountCents: q.amountCents, amountLabel: formatAud(q.amountCents) }, emailed, emailTo: emailed ? r.email : '', emailError: sent.emailError ? `The offer is made, but the email to ${r.email} did not send. ${sent.emailError} Copy the link and send it yourself.` : '' })
+}
+
+// A place next term for a new family (Lee, 24 Nov 2026: Term 1 2027 open to
+// new families "now ! ASAP"). Nothing goes on Term 4: the family pays a
+// no-sign-in link (a quick link with next.new) and, once paid, the place is
+// recorded for next term (_jfp-finalise.js). Held 7 days while unpaid.
+async function offerNextTerm(req, res, principal, config, body, r) {
+  if (body.decision !== 'offer') return fail(res, 400, `A ${r.term} request is offered a place for the term. Trials come later.`)
+  const nt = config.nextTerm
+  const tcfg = nextTermConfig(config)
+  const group = await getGroup(clean(body.groupId, 80) || r.groupId)
+  if (!group) return fail(res, 404, 'Group not found.')
+  const n = r.players.length
+  const [roster, statuses, news] = await Promise.all([loadRoster({ fresh: true }), nextStatuses(nt.name), nextNew(nt.name)])
+  const taken = nextTaken({ config, roster, statuses, news, payreqs: (await listPayreqs()).filter((q) => q.next?.new) })[group.id] || 0
+  const left = Math.max(0, (Number(group.capacity) || 0) - taken)
+  if (left < n && body.force !== true) return fail(res, 409, `${group.day} ${group.time} has ${left} place${left === 1 ? '' : 's'} left for ${nt.name} (current families keep theirs until ${dateLabel(nt.holdUntil || nt.termStart)}). Offer anyway?`, { code: 'full' })
+  const unit = nextPrices(tcfg, group).fullCents
+  const typed = Number(body.amountCents)
+  const amountCents = Number.isInteger(typed) && typed >= 100 && typed <= 2000000 ? typed : (n === 2 && (group.product || 'group') === 'group' ? config.prices.twoAWeek : unit * n)
+  const start = sessionDates(tcfg, group.day)[0] || tcfg.termStart
+  const loc = locationFor(config, group.location).name
+  // A waiver signed with the request goes to Airtable now, as for any offer.
+  const signed = r.players.filter((p) => p.waiver)
+  if (signed.length) {
+    const wtag = `[JFP-REQ:${r.batchId || r.id}]`
+    if (!(await findWaiversByTag(wtag)).length) {
+      await createWaiverRows(signed.map((p) => waiverFields({ player: { ...p, club: p.club || r.answers?.club || r.club }, parent: { name: r.parentName, email: r.email, mobile: r.mobile }, config, signature: p.waiver.signature, acceptedAt: p.waiver.acceptedAt || r.createdAt, media: p.waiver.media, tag: wtag, kind: p.waiver.kind || '' })))
+      await bustRosterCache()
+    }
+  }
+  const names = r.players.map((p) => p.name)
+  const q = {
+    id: newId('PAY'), quick: true, reason: 'next-new', programme: 'jfp',
+    forText: `${nt.name}: ${names.join(' and ')}, ${group.day} ${group.time}, ${loc} (${tcfg.weeks} weeks from ${dateLabel(start)})`,
+    amountCents, email: r.email, parentName: r.parentName, playerNames: names, playerKeys: names.map((x) => normName(x)), term4Ids: [], rowId: '',
+    groupId: group.id, groupLabel: `${group.day} ${group.time}`, productLabel: `${nt.name}, full term`,
+    next: { term: nt.name, new: true, groupId: group.id, requestId: r.id, startDate: start, players: r.players.map((p) => ({ name: p.name, dob: p.dob || '', age: p.age ?? null })), mobile: r.mobile || '' },
+    afterpay: false, status: 'open', createdBy: principal.email, createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(), siteUrl: siteUrl(req),
+  }
+  await savePayreq(q)
+  await saveApplication({ ...r, status: 'offered', offer: 'next', offeredGroupId: group.id, payreqId: q.id, term4Ids: [], decidedBy: principal.email, decidedAt: new Date().toISOString() })
+  const url = `${siteUrl(req)}/jfp-pay/?q=${encodeURIComponent(q.id)}`
+  let sent = { emailed: false }
+  if (body.sendEmail !== false) {
+    const first = String(r.parentName || '').trim().split(/\s+/)[0] || 'there'
+    sent = await trySend('next term offered', async () => {
+      const { sendFamilyNotice } = await import('./_jfp-email.js')
+      return sendFamilyNotice({
+        to: r.email, name: r.parentName, kind: 'next term offered', replyTo: 'ligia@jonerfootball.com',
+        subject: `A place for ${names.join(' and ')} in ${nt.name}`, heading: `Your place for ${nt.name}`,
+        paras: [`Hi ${first},`, `Good news: we have a place for ${names.join(' and ')} in our ${group.day} ${group.time} group at ${loc} for ${nt.name}. The term starts ${dateLabel(start)} and runs for ${tcfg.weeks} weeks.`, `To lock in the place, pay ${formatAud(amountCents)} with the button below. We hold the place for you for 7 days.`, 'If you have any questions, just reply to this email.', 'Joner Football'],
+        cta: { label: `Pay ${formatAud(amountCents)}`, url },
+      })
+    })
+    if (sent.emailed) await savePayreq({ ...q, emailedAt: new Date().toISOString() })
+  }
+  await audit({ by: principal.email, action: 'request.offer.next', target: r.id, after: { group: group.id, payreq: q.id, cents: amountCents, term: nt.name, emailed: sent.emailed } })
+  return res.status(200).json({ success: true, status: 'offered', payreq: { id: q.id, url, amountCents, amountLabel: formatAud(amountCents) }, emailed: sent.emailed, emailTo: sent.emailed ? r.email : '', emailError: sent.emailError ? `Offered, but the email did not send. ${sent.emailError} Copy the link and send it yourself.` : '' })
 }
 
 // ---------- money ----------
@@ -4225,8 +4285,13 @@ async function handle(req, res) {
         const withOffer = players.filter((p) => p.offer)
         const offerTotals = { places: withOffer.length, loyal: withOffer.filter((p) => p.offer.tier === 'loyal').length, current: withOffer.filter((p) => p.offer.tier === 'current').length, paid: withOffer.filter((p) => p.status === 'paid').length, paidCents: withOffer.filter((p) => p.status === 'paid').reduce((t, p) => t + (p.paidCents || 0), 0), toComeCents: withOffer.filter((p) => !['paid', 'no'].includes(p.status)).reduce((t, p) => t + p.offer.nowCents, 0), families: new Set(withOffer.map((p) => (p.email || p.parent).toLowerCase())).size, live, tiers: TIER_LABEL }
         const waitBy = await nextWaitByGroup(roster)
+        // New families for next term (Lee, 24 Nov 2026): paid places and offers waiting.
+        const gl = (gid) => { const g = byId[gid]; return g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : 'Group removed' }
+        const newPaid = (await nextNew(nt.name)).filter((x) => x.status !== 'cancelled').map((x) => ({ player: x.player, parent: x.parent, email: x.email, group: gl(x.groupId), cents: x.cents, paidAt: x.paidAt, status: 'paid' }))
+        const newOpen = (await listPayreqs()).filter((q) => q.next?.new && q.next.term === nt.name && ['open', 'checkout'].includes(q.status) && !(q.expiresAt && Date.parse(q.expiresAt) < Date.now())).map((q) => ({ player: q.playerNames.join(', '), parent: q.parentName, email: q.email, group: gl(q.groupId), cents: q.amountCents, offeredAt: q.createdAt, expiresAt: q.expiresAt, status: 'offered' }))
+        const newFamilies = [...newPaid, ...newOpen]
         const waitlist = Object.entries(waitBy).flatMap(([gid, list]) => list.map((w) => { const g = byId[gid]; return { ...w, groupId: gid, group: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : 'Group removed' } }))
-        return res.status(200).json({ success: true, nextTerm: nt, offerTotals, prices: nextPrices(config, null), players, waitlist, totals: { players: players.length, invited: count('invited'), held: count('held'), paid: count('paid'), no: count('no'), interested: players.filter((p) => p.interested && !p.status).length, none: players.filter((p) => !p.status).length } })
+        return res.status(200).json({ success: true, nextTerm: nt, offerTotals, prices: nextPrices(config, null), players, waitlist, newFamilies, totals: { players: players.length, invited: count('invited'), held: count('held'), paid: count('paid'), no: count('no'), interested: players.filter((p) => p.interested && !p.status).length, none: players.filter((p) => !p.status).length } })
       }
       case 'saveNextTerm': {
         // Statuses are kept under the term's name: no renaming once families have answered.

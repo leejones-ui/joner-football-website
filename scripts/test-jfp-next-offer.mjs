@@ -187,4 +187,43 @@ await test('staff cannot remove a paid offer; audit has the changes', async () =
   assert.ok(audit.some((e) => e.action === 'next.choose.family'))
 })
 
+await test('new families for next term: apply on the booking page, offered a place, pay a no sign-in link; the place is next term only and counts against the group', async () => {
+  assert.equal((await portal(lee, 'saveNextTerm', { nextTerm: { termStart: '2099-02-02', weeks: 10, newBookings: true, open: true, holdUntil: '2099-01-04', offerUntil: '2099-01-04' } })).status, 200)
+  const G2 = await mk({ day: 'Thursday', time: '5:00pm', location: 'Belrose HQ', coachId: 'sam', capacity: 3, mode: 'application', label: 'Small group' })
+  const kid = await portal(lee, 'addPlayer', { groupId: G2, force: true, player: { name: 'Kit Current', dob: '2015-04-04' }, parent: { name: 'Parent Current', email: 'kitc@example.com', mobile: '0400959597' }, payment: 'offline', amountCents: 85000, method: 'Cash' })
+  assert.equal(kid.status, 200, JSON.stringify(kid.data))
+  const nf = client(); await gate(nf); await signIn(nf, 'newfam@example.com')
+  const before = (await nf.call('/api/jfp-groups?term=next', null, 'GET')).data
+  assert.equal(before.isNext, true); assert.ok(before.nextTerm && before.nextTerm.name === 'Term 1 2027')
+  const g = before.groups.find((x) => x.id === G2)
+  assert.equal(g.mode, 'application'); assert.match(before.termRange, /February/)
+  const req = await nf.call('/api/jfp-book', { action: 'request', term: 'next', kind: 'application', groupId: G2, players: [{ name: 'Nova Newby', dob: '2014-02-02', emergencyName: 'Ned Newby', emergencyPhone: '0400777888' }], parentName: 'Ned Newby', mobile: '0400777888', answers: { club: 'X', team: 'U12' }, waiver: { ...WAIVER, signature: 'Ned Newby' } })
+  assert.equal(req.status, 200, JSON.stringify(req.data))
+  const list = (await portal(lee, 'requests')).data.requests
+  const r = list.find((x) => x.id === req.data.id)
+  assert.equal(r.term, 'Term 1 2027')
+  const off = await portal(lee, 'decideRequest', { id: r.id, decision: 'offer', sendEmail: true })
+  assert.equal(off.status, 200, JSON.stringify(off.data))
+  assert.match(off.data.payreq.url, /jfp-pay\/\?q=/)
+  assert.ok((await emails()).some((e) => e.to.includes('newfam@example.com') && /place for Nova Newby in Term 1 2027/.test(e.subject)), 'the offer email')
+  const termRowsBefore = (await at()).term4.length
+  // Places left for next term: 3, less the current player, less the offer waiting.
+  const mid = (await nf.call('/api/jfp-groups?term=next', null, 'GET')).data.groups.find((x) => x.id === G2)
+  assert.ok(mid.placesLeft <= 2, `places left ${mid.placesLeft}`)
+  const pay = await client().call('/api/jfp-pay', { action: 'pay', id: off.data.payreq.id })
+  assert.equal(pay.status, 200, JSON.stringify(pay.data))
+  await stripe(pay.data.url, 'pay')
+  const h = (await at()).nextHolds.find((x) => x.fields['Player Name'] === 'Nova Newby')
+  assert.ok(h, 'in Next term holds'); assert.equal(h.fields['Status'], 'Paid in full')
+  assert.ok((await at()).ledger.some((x) => x.fields['Term'] === 'Term 1 2027' && /Nova Newby/.test(x.fields['Player Name'] || '')), 'a Term 1 2027 ledger line')
+  assert.equal((await at()).term4.length, termRowsBefore, 'nothing on Term 4')
+  assert.ok((await emails()).some((e) => e.to.includes('newfam@example.com') && /Term 1 2027 paid/.test(e.subject)), 'the receipt')
+  const d = (await portal(lee, 'nextTerm')).data
+  assert.ok(d.newFamilies.some((x) => x.player === 'Nova Newby' && x.status === 'paid'))
+  assert.equal((await portal(lee, 'requests')).data.requests.find((x) => x.id === r.id).status, 'done')
+  // The current term is unchanged for this family: the normal booking page has no next term request.
+  const now = (await nf.call('/api/jfp-groups', null, 'GET')).data
+  assert.equal(now.isNext, false); assert.ok(now.nextTerm)
+})
+
 console.log(`\n${passed} passed`)

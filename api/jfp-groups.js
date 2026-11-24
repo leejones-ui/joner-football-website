@@ -7,6 +7,8 @@ import { airtableCounts } from './_jfp-airtable.js'
 import { listExtraSlots } from './_jfp-extra.js'
 import { sessionKind } from './_jfp-family-extra.js'
 import { sweepExpiredOffers } from './_jfp-offers.js'
+import { nextTermConfig, newBookingsOpen, nextTaken, nextNew, nextStatuses } from './_jfp-next.js'
+import { loadRoster } from './_jfp-airtable.js'
 import { coachTick } from './_jfp-coach-alerts.js'
 import { pushTick } from './_jfp-push.js'
 async function runReportTick() {
@@ -197,21 +199,33 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ success: false, error: 'Method not allowed' })
   if (!requireParentAccess(req, res, await getConfig())) return
   try {
-    const [config, groups] = await Promise.all([getConfig(), listGroups()])
+    const [base, groups] = await Promise.all([getConfig(), listGroups()])
+    // Next term for new families (Lee, 24 Nov 2026): ?term=next shows next
+    // term's dates and places, and every group takes applications.
+    const nextOpen = newBookingsOpen(base)
+    const isNext = nextOpen && String(req.query?.term || '') === 'next'
+    const config = isNext ? nextTermConfig(base) : base
     // Joners Juniors is closed to JFP bookings but shown to families as a
     // card whose Book now goes to the Joners Juniors sign-up page (Lee, 12 Oct).
     const isJuniors = (g) => g.label === 'Joners Juniors'
     const open = groups.filter((g) => g.mode !== 'closed' || isJuniors(g))
     let counts
-    try { counts = (await airtableCounts({ groups, config })).counts } catch (error) {
+    try {
+      if (isNext) {
+        const nt = base.nextTerm
+        const [roster, statuses, news, { listPayreqs }] = await Promise.all([loadRoster(), nextStatuses(nt.name), nextNew(nt.name), import('./_jfp-store.js')])
+        counts = nextTaken({ config: base, roster, statuses, news, payreqs: (await listPayreqs()).filter((q) => q.next?.new) })
+      } else counts = (await airtableCounts({ groups, config })).counts
+    } catch (error) {
       // Without the roster we cannot know what is free, so nothing is bookable.
       console.error('jfp airtable counts failed', error)
       return res.status(503).json({ success: false, error: 'Bookings are briefly unavailable. Try again in a minute.' })
     }
-    const online = await onlineCounts(open.map((g) => g.id))
+    const online = isNext ? {} : await onlineCounts(open.map((g) => g.id))
+    const asNext = (x) => (isNext && x.mode !== 'signup' ? { ...x, mode: 'application', applyWhenFull: false, allowOneToOne: false, oneToOneOpen: false } : x)
     const list = open.map((g) => isJuniors(g)
       ? { ...publicGroup(g, config, null), mode: 'signup', signupUrl: '/jonersjuniors', placesLeft: null, full: false, trials: false, questions: [], oneToOneOpen: false }
-      : { ...publicGroup(g, config, publicPlacesLeft(g, counts[g.id], online[g.id])), oneToOneOpen: g.mode === 'direct' && g.allowOneToOne === true && !g.showFull && !(counts[g.id] > 0) && !(online[g.id] > 0) })
+      : { ...publicGroup(g, config, publicPlacesLeft(g, counts[g.id], online[g.id])), oneToOneOpen: g.mode === 'direct' && g.allowOneToOne === true && !g.showFull && !(counts[g.id] > 0) && !(online[g.id] > 0) }).map(asNext)
     const locations = config.locations.map((l) => {
       const mine = list.filter((g) => g.locationId === l.id)
       return {
@@ -236,6 +250,9 @@ export default async function handler(req, res) {
       termEnd: dateLabel(endIso),
       termRange: `${long(startIso)} to ${long(endIso)} ${endIso.slice(0, 4)}`,
       termStartIso: config.termStart,
+      // Next term for new families: the booking page shows a switch.
+      nextTerm: nextOpen ? { name: base.nextTerm.name, label: base.nextTerm.name.replace(/\s*\d{4}$/, ''), startLabel: dateLabel(base.nextTerm.termStart), weeks: Number(base.nextTerm.weeks) || 10 } : null,
+      isNext,
       weeks: config.weeks,
       trialPriceLabel: formatAud(config.prices.trial),
       kitUrl: config.kitUrl,

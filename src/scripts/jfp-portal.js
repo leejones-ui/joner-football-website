@@ -1706,7 +1706,7 @@ async function renderRequests(keep = false) {
       ${x.items.map(reqCard).join('')}</section>` : reqCard(x.items[0]))).join('') : `<div class="ps-table-wrap"><div class="ps-empty">${active ? 'No requests match. <button type="button" class="ps-link" data-rq-clear>Clear filters</button>' : 'Nothing here.'}</div></div>`}`
   function reqCard(r) {
     return `<article class="j-card" style="padding:16px;margin-bottom:10px">
-      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><span class="j-pill j-pill-${kind[r.kind]?.[0] || 'grey'}">${esc(kind[r.kind]?.[1] || r.kind)}</span> <b style="margin-left:6px">${esc(r.players.map((p) => `${p.name}${p.age != null ? `, ${p.age}` : ''}`).join(' and '))}</b>
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><span class="j-pill j-pill-${kind[r.kind]?.[0] || 'grey'}">${esc(kind[r.kind]?.[1] || r.kind)}</span>${r.term ? ` <span class="j-pill j-pill-blue">${esc(r.term)}</span>` : ''} <b style="margin-left:6px">${esc(r.players.map((p) => `${p.name}${p.age != null ? `, ${p.age}` : ''}`).join(' and '))}</b>
         ${(r.siblings || []).length ? `<span class="j-pill j-pill-green" style="margin-top:4px">Sibling of ${esc(r.siblings.map((x) => x.name).join(', '))} (paid)</span>` : ''}
         <p class="muted small" style="margin-top:4px">Wants <b>${esc(r.group)}</b> · ${esc(new Date(r.createdAt).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' }))}</p></div>
         <span class="j-pill j-pill-grey">${esc(r.status === 'offered' ? (r.offer === 'trial' ? 'Trial offered' : 'Place offered') : ({ pending: 'Waiting', declined: 'Declined', done: 'Done', expired: 'Offer expired' }[r.status] || r.status))}</span></div>
@@ -1928,7 +1928,32 @@ function declineModal(r) {
   })
 }
 
+// A request for next term (Lee, 24 Nov 2026): offer a place for that term.
+// The family pays a link with no sign-in; nothing goes on this term.
+async function nextOfferModal(r) {
+  const box = modal(`<h2 style="margin-bottom:4px">Offer a place for ${esc(r.term)}</h2>
+    <p class="muted small" style="margin-bottom:12px">${esc(r.players.map((p) => p.name).join(', '))} · ${esc(r.group)}. Nothing changes this term: they pay a link, then the place is theirs for ${esc(r.term)}. The place is held 7 days.</p>
+    <label class="j-field"><span>Amount (A$) <span class="muted">(leave blank for the normal term price)</span></span><input class="j-input" id="no-amt" inputmode="decimal" placeholder="e.g. 850"></label>
+    <label class="j-check" style="display:flex;gap:8px;align-items:center;margin:6px 0 10px"><input type="checkbox" id="no-mail" checked><span class="small">Email the family the payment link (replies go to Ligia)</span></label>
+    <p class="j-err" id="no-err" hidden></p>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-dark" id="no-go">Offer the place</button></div>`)
+  box.querySelector('#no-go').addEventListener('click', async (e) => {
+    const b = e.currentTarget
+    const v = String(box.querySelector('#no-amt').value).replace(/[^0-9.]/g, '')
+    const body = { id: r.id, decision: 'offer', sendEmail: box.querySelector('#no-mail').checked, ...(v ? { amountCents: Math.round(Number(v) * 100) } : {}) }
+    b.disabled = true
+    let res = await post('decideRequest', body)
+    if (!res.ok && res.data.code === 'full' && (await confirmBox(esc(res.data.error), { ok: 'Offer anyway' }))) res = await post('decideRequest', { ...body, force: true })
+    b.disabled = false
+    if (!res.ok) { const er = box.querySelector('#no-err'); er.textContent = res.data.error || 'Could not offer.'; er.hidden = false; return }
+    closeModal()
+    toast(res.data.emailed ? `Offered ${res.data.payreq.amountLabel}. Emailed ${res.data.emailTo}.` : `Offered ${res.data.payreq.amountLabel}. ${res.data.emailError || 'Not emailed: copy the link from Payment links.'}`, 8000)
+    renderRequests()
+  })
+}
+
 async function offerModal(r, decision) {
+  if (r?.term) return nextOfferModal(r)
   const pr = await pricing()
   const trial = decision === 'trial'
   const box = modal(`<h2 style="margin-bottom:6px">${trial ? 'Offer a trial first' : 'Accept for the term'}</h2><p class="muted small" style="margin-bottom:12px">${esc(r.players.map((p) => p.name).join(', '))}. The place is held in Airtable as Awaiting Reply for 7 days, and locks in once it is paid.</p>

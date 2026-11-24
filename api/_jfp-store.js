@@ -162,7 +162,7 @@ export const DEFAULT_CONFIG = {
   kitPriceLabel: 'A$60',
   // Next term: families keep their place with a non-refundable hold fee
   // (taken off next term's price) or pay in full, before it opens to everyone.
-  nextTerm: { name: 'Term 1 2027', holdCents: 10000, open: false, holdUntil: '', offerUntil: '', fullOnly: false, offerOnly: false },
+  nextTerm: { name: 'Term 1 2027', holdCents: 10000, open: false, holdUntil: '', offerUntil: '', fullOnly: false, offerOnly: false, termStart: '', weeks: 10, skipDates: [], newBookings: false },
   kitNote: 'The JF playing kit is required for every JFP player. Order it from BE Teamsport before the first session.',
   locations: DEFAULT_LOCATIONS,
   minAge: 6,
@@ -325,6 +325,12 @@ export function normaliseConfig(input = {}) {
       offerUntil: /^\d{4}-\d{2}-\d{2}$/.test(input.nextTerm?.offerUntil || '') ? input.nextTerm.offerUntil : '',
       fullOnly: input.nextTerm?.fullOnly === true,
       offerOnly: input.nextTerm?.offerOnly === true,
+      // Next term's dates (Lee, 24 Nov 2026: "Term 1 starts Mon 2 Feb, 10
+      // weeks") and whether new families can apply for it on the booking page.
+      termStart: /^\d{4}-\d{2}-\d{2}$/.test(input.nextTerm?.termStart || '') ? input.nextTerm.termStart : '',
+      weeks: Number.isInteger(Number(input.nextTerm?.weeks)) && Number(input.nextTerm.weeks) >= 1 && Number(input.nextTerm.weeks) <= 20 ? Number(input.nextTerm.weeks) : 10,
+      skipDates: Array.isArray(input.nextTerm?.skipDates) ? input.nextTerm.skipDates.filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x?.date || '')).slice(0, 20).map((x) => ({ date: x.date, reason: clean(x.reason, 60) || 'No session' })) : [],
+      newBookings: input.nextTerm?.newBookings === true,
     },
     locations: cleanLocations(input.locations, b.locations),
     // { '<term>': { '<venueId>': [{ label, cents }] } }, set by saveVenueCosts.

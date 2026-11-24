@@ -6,7 +6,7 @@
 // apply for them all in one go (Lee, 14 Oct 2026): see "several sessions".
 import { $, esc, api, recaptcha, toast, openSheet, closeSheet, signIn, whoAmI, waiverBlock, money } from './jfp-common.js'
 
-const S = { data: null, filters: { loc: '', coach: '', day: '', show: '' }, phoneDay: '', view: 'week', parent: null, family: null, hold: null, timer: null, toStripe: false, picks: readPicks() }
+const S = { term: (() => { try { return new URLSearchParams(location.search).get('term') === 'next' ? 'next' : sessionStorage.getItem('jfp_term') === 'next' ? 'next' : 'now' } catch { return 'now' } })(), data: null, filters: { loc: '', coach: '', day: '', show: '' }, phoneDay: '', view: 'week', parent: null, family: null, hold: null, timer: null, toStripe: false, picks: readPicks() }
 const SHOW = [['', 'All'], ['open', 'Has places'], ['book', 'Book and pay']]
 const DAY_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const SHORT = { Monday: 'Mon', Tuesday: 'Tue', Wednesday: 'Wed', Thursday: 'Thu', Friday: 'Fri', Saturday: 'Sat', Sunday: 'Sun' }
@@ -80,10 +80,13 @@ function showTab(tab) {
 window.addEventListener('hashchange', () => showTab(location.hash.slice(1)))
 
 async function load(quiet) {
-  const r = await api('/api/jfp-groups', null, { method: 'GET' })
+  const r = await api(`/api/jfp-groups${S.term === 'next' ? '?term=next' : ''}`, null, { method: 'GET' })
   if (r.status === 401) { location.reload(); return }
   if (!r.ok) { if (!quiet) $('results').innerHTML = `<div class="j-empty">${esc(r.data.error || 'Could not load the timetable. Try again in a minute.')}</div>`; return }
   S.data = r.data
+  // Next term asked for but not open (any more): back to this term.
+  if (S.term === 'next' && !r.data.isNext) { S.term = 'now'; try { sessionStorage.removeItem('jfp_term') } catch {} }
+  if (!r.data.isNext) S.nowLabel = r.data.termLabel || r.data.term
   S.loadedAt = Date.now()
   renderMeta()
   renderExtras()
@@ -117,8 +120,27 @@ function accountLink() {
   if (c) c.hidden = Boolean(S.parent)
 }
 
+// This term or next (Lee, 24 Nov 2026: new families book Term 1 2027 "now ! ASAP").
+function renderTermSwitch() {
+  const el = $('term-switch')
+  const n = S.data?.nextTerm
+  if (!el) return
+  if (!n) { el.hidden = true; return }
+  el.hidden = false
+  el.innerHTML = `<button type="button" data-term="now" aria-pressed="${S.term !== 'next'}">${esc(S.nowLabel || 'This term')}<small>now</small></button><button type="button" data-term="next" aria-pressed="${S.term === 'next'}">${esc(n.name)}<small>from ${esc(n.startLabel)}</small></button>`
+  el.querySelectorAll('[data-term]').forEach((b) => b.addEventListener('click', () => {
+    if (b.dataset.term === S.term) return
+    S.term = b.dataset.term
+    try { if (S.term === 'next') sessionStorage.setItem('jfp_term', 'next'); else sessionStorage.removeItem('jfp_term') } catch {}
+    S.picks = []; savePicks()
+    track('jfp_term_switch', { term: S.term })
+    load()
+  }))
+}
+
 function renderMeta() {
   const d = S.data
+  renderTermSwitch()
   $('term-name').textContent = d.termLabel || d.term
   $('term-range').textContent = `${d.termRange} · ${d.weeks} weeks`
   $('term-tab').textContent = d.termLabel || 'Term'
@@ -541,7 +563,7 @@ async function sendMulti() {
   let sent = []
   if (asks.length) {
     const r = await api('/api/jfp-book', {
-      action: 'batch', picks: picks.map((x) => ({ groupId: x.g.id, kind: x.kind })), players: payloadPlayers(),
+      action: 'batch', ...(S.term === 'next' ? { term: 'next' } : {}), picks: picks.map((x) => ({ groupId: x.g.id, kind: x.kind })), players: payloadPlayers(),
       parentName: F.parentName, mobile: F.mobile, answers: F.answers || {}, message: F.message || '', waiver: F.waiver || undefined,
     })
     if (!r.ok) {
@@ -600,7 +622,7 @@ async function payQueued(sent = []) {
     F.sheet.foot.querySelector('#q-skip').addEventListener('click', skip)
     F.sheet.foot.querySelector('#q-wait')?.addEventListener('click', async (e) => {
       e.target.disabled = true
-      const w = await api('/api/jfp-book', { action: 'request', kind: 'waitlist', groupId: g.id, players: q.players, parentName: q.parentName, mobile: q.mobile, message: q.notes })
+      const w = await api('/api/jfp-book', { action: 'request', ...(S.term === 'next' ? { term: 'next' } : {}), kind: 'waitlist', groupId: g.id, players: q.players, parentName: q.parentName, mobile: q.mobile, message: q.notes })
       if (!w.ok) { e.target.disabled = false; return toast(w.data.error || 'Could not send. Try again.') }
       toast(`You are on the waitlist for ${g.day} ${g.time}.`)
       skip()
@@ -1106,7 +1128,7 @@ async function sendRequest(btn) {
   const k = F.kind
   btn.disabled = true
   const r = await api('/api/jfp-book', {
-    action: 'request', kind: k, groupId: F.g.id, players: payloadPlayers(), parentName: F.parentName, mobile: F.mobile,
+    action: 'request', ...(S.term === 'next' ? { term: 'next' } : {}), kind: k, groupId: F.g.id, players: payloadPlayers(), parentName: F.parentName, mobile: F.mobile,
     answers: F.answers || {}, message: F.message || '', waiver: F.waiver || undefined,
   })
   btn.disabled = false

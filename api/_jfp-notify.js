@@ -47,7 +47,7 @@ export function requestText({ request, group, siteUrl }) {
   const players = request.players.map((p) => `${p.name}${p.age != null ? ` (${p.age})` : ''}`).join(', ')
   const a = request.answers || {}
   return [
-    `JFP: ${KIND[request.kind] || 'New request'}`,
+    `JFP: ${KIND[request.kind] || 'New request'}${request.term ? ` for ${request.term}` : ''}`,
     `${players}`,
     `${group.day} ${group.time}${group.location ? `, ${group.location}` : ''}`,
     a.club || request.club ? `Club: ${a.club || request.club}${a.team ? `, ${a.team}` : ''}` : '',
@@ -65,7 +65,7 @@ export function batchText({ requests, groups, paying = [], siteUrl }) {
   const a = first.answers || {}
   const word = { application: 'Apply', waitlist: 'Waitlist' }
   return [
-    `JFP: ${requests.length + paying.length} sessions in one go`,
+    `JFP: ${requests.length + paying.length} sessions in one go${first.term ? ` for ${first.term}` : ''}`,
     players,
     ...requests.map((r, i) => `${word[r.kind] || r.kind}: ${groups[i].day} ${groups[i].time}${groups[i].location ? `, ${groups[i].location}` : ''}`),
     ...paying.map((g) => `Booking and paying: ${g.day} ${g.time}${g.location ? `, ${g.location}` : ''}`),

@@ -120,3 +120,43 @@ export async function createNextFamilyPayreq({ config, rows, siteUrl }) {
   await savePayreq(q)
   return q
 }
+
+// ---------- new families for next term (Lee, 24 Nov 2026: "now ! ASAP") ----------
+// Term 1 2027 runs from config.nextTerm.termStart for nextTerm.weeks
+// (Lee: "Term 1 starts Mon 2 Feb, 10 weeks"). New families apply on the
+// booking page for next term (config.nextTerm.newBookings); Lee or Ligia offer
+// a place, and the family pays a no-sign-in link (a quick link with
+// next.new). Paid, the place is kept in KV jfp:next-new:<term> and in Airtable
+// "Next term holds"; no Term 4 row is touched. Places left for next term:
+// every current player still holding a place (until nextTerm.holdUntil, then
+// only those who paid or held), plus new families paid or offered.
+export const newKey = (term) => `jfp:next-new:${term}`
+export function nextTermConfig(config) {
+  const nt = config.nextTerm || {}
+  return { ...config, term: nt.name || config.term, termStart: nt.termStart || config.termStart, weeks: Number(nt.weeks) || config.weeks, skipDates: Array.isArray(nt.skipDates) ? nt.skipDates : [] }
+}
+export const newBookingsOpen = (config) => Boolean(config.nextTerm?.open && config.nextTerm?.newBookings && config.nextTerm?.termStart)
+export async function nextNew(term) {
+  const raw = await kvCommand(['HGETALL', newKey(term)])
+  const out = []
+  for (let i = 0; i + 1 < (raw || []).length; i += 2) { try { out.push(JSON.parse(raw[i + 1])) } catch {} }
+  return out
+}
+export async function saveNextNew(term, rec) { await kvCommand(['HSET', newKey(term), rec.id, JSON.stringify(rec)]) }
+const sydToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney' }).format(new Date())
+// groupId -> places taken next term. payreqs: open next-new offers count too.
+export function nextTaken({ config, roster, statuses, news, payreqs = [], today = sydToday() }) {
+  const nt = config.nextTerm || {}
+  const holdLive = !nt.holdUntil || today <= nt.holdUntil
+  const out = {}
+  const add = (gid, n = 1) => { if (gid) out[gid] = (out[gid] || 0) + n }
+  for (const r of roster.players) {
+    if (!r.holdsPlace || !r.groupId || /trial/i.test(r.paymentType || '')) continue
+    const st = statuses[r.id]?.status
+    if (st === 'no') continue
+    if (holdLive || ['paid', 'held'].includes(st)) add(r.groupId)
+  }
+  for (const n of news) if (n.status !== 'cancelled') add(n.groupId)
+  for (const q of payreqs) if (q.next?.new && ['open', 'checkout'].includes(q.status) && !(q.expiresAt && Date.parse(q.expiresAt) < Date.now())) add(q.next.groupId, (q.next.players || []).length || 1)
+  return out
+}

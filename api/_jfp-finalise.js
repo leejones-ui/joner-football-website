@@ -17,13 +17,13 @@ import crypto from 'node:crypto'
 import { stripeFetch } from './_holiday-store.js'
 import {
   getBooking, saveBooking, getGroup, getConfig, confirmPlaces, settlePlaces, releasePlaces, coachById, kvCommand, keys, clean,
-  getPayreq, savePayreq, ONLINE_TAG, audit, claimOnce, dropParentHold, normName, sydneyToday, prepaidOf, withPrepaid, formatAud } from './_jfp-store.js'
+  getPayreq, savePayreq, ONLINE_TAG, audit, claimOnce, dropParentHold, normName, sydneyToday, prepaidOf, withPrepaid, formatAud, getApplication, saveApplication } from './_jfp-store.js'
 import { commitNotes } from './_jfp-quote.js'
 import {
   createTerm4Rows, findTerm4ByTag, updateTerm4Rows, getTerm4Row, createLedgerRow, findLedgerByPayment, createWaiverRows, waiverFields,
   findWaiversByTag, appendNote, bustRosterCache, loadRoster,
 } from './_jfp-airtable.js'
-import { recordNext, setNextStatus, nextStatuses } from './_jfp-next.js'
+import { recordNext, setNextStatus, nextStatuses, saveNextNew } from './_jfp-next.js'
 import { noteNewPlayer, alertsOn } from './_jfp-coach-alerts.js'
 import { sendParentConfirmation, sendStaffAlert, sendCoachAlert, sendPaymentReceipt, sendPaymentStaffAlert, sendAttentionAlert, sendQuickPaidAlert, sendChargeReceipt, sendInvoiceReceipt } from './_jfp-email.js'
 import { addChargePayment } from './_jfp-charges.js'
@@ -36,7 +36,7 @@ export const PAY_EFFECTS = ['airtable', 'ledger', 'parentEmail', 'staffAlert']
 // A quick link with no player (Lee, 13 Oct 2026): nothing to write to a Term 4
 // row or the ledger yet (Lee matches it on Money), so staff are told it came in.
 export const QUICK_EFFECTS = ['staffAlert']
-const unplacedQuick = (r) => Boolean(r?.quick) && !(r.term4Ids || []).length
+const unplacedQuick = (r) => Boolean(r?.quick) && !(r.term4Ids || []).length && !r.next?.new
 // A player charge (_jfp-charges.js): no Term 4 row, no ledger line; the
 // charge (and its invoice) is marked paid. An invoice for a place (JFP, Pro)
 // is a row link that also marks its invoice paid.
@@ -278,6 +278,25 @@ async function runPayreqEffects(payreq, retry = new Set()) {
     // Next term: no Term 4 row changes; the place is recorded as held or paid.
     // A family paying several places at once (Lee, 16 Nov 2026): each place
     // is recorded paid with its own share.
+    // A new family's place next term (Lee, 24 Nov 2026): recorded for next
+    // term only, one line per player with an even share. Never Term 4.
+    if (payreq.next?.new) {
+      const total = payreq.paidCents ?? payreq.amountCents
+      const players = payreq.next.players?.length ? payreq.next.players : payreq.playerNames.map((name) => ({ name }))
+      const shares = splitBy(total, players.map(() => 1))
+      const paidAt = payreq.paidAt || new Date().toISOString()
+      for (const [i, pl] of players.entries()) {
+        const id = `${payreq.id}:${i}`
+        const who = { id: `NEW:${id}`, player: pl.name, parent: payreq.parentName, email: payreq.email || payreq.payerEmail || '', phone: payreq.next.mobile || '', coach: '' }
+        await recordNext({ term: payreq.next.term, row: who, group, status: 'paid', amountCents: shares[i], holdCents: null, paymentId: payreq.stripePaymentIntentId || payreq.id, note: `New family for ${payreq.next.term}, paid in full (${payreq.id}). Starts ${payreq.next.startDate || ''}.` })
+        await saveNextNew(payreq.next.term, { id, payreqId: payreq.id, requestId: payreq.next.requestId || '', groupId: payreq.next.groupId, player: pl.name, dob: pl.dob || '', age: pl.age ?? null, parent: payreq.parentName, email: who.email, mobile: payreq.next.mobile || '', cents: shares[i], startDate: payreq.next.startDate || '', status: 'paid', paidAt })
+      }
+      if (payreq.next.requestId) {
+        const a = await getApplication(payreq.next.requestId).catch(() => null)
+        if (a && a.status === 'offered') await saveApplication({ ...a, status: 'done', note: `Paid ${payreq.next.term} (${payreq.id}).` })
+      }
+      return
+    }
     if (payreq.next?.rows?.length) {
       const statuses = await nextStatuses(payreq.next.term)
       const total = payreq.paidCents ?? payreq.amountCents
