@@ -4,14 +4,14 @@
 //
 //   node scripts/test-portal-contrast.mjs
 //
-// Needs the fleet Chrome on CDP 18894. Skips (exit 0) if it is not running, so
+// Needs the fleet Chrome on CDP 18895. Skips (exit 0) if it is not running, so
 // it never blocks a build on a machine without it. Opens a tab, reads computed
 // styles, closes the tab. Loads only local files; no network, no site data.
 import fs from 'node:fs'
 import http from 'node:http'
 import path from 'node:path'
 
-const CDP = process.env.JFP_CDP || 'http://127.0.0.1:18894'
+const CDP = process.env.JFP_CDP || 'http://127.0.0.1:18895'
 const root = path.join(import.meta.dirname, '..')
 
 let version

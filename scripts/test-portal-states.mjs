@@ -6,12 +6,12 @@
 //
 //   node scripts/test-portal-states.mjs
 //
-// Needs the fleet Chrome on CDP 18894; skips (exit 0) if it is not running.
+// Needs the fleet Chrome on CDP 18895; skips (exit 0) if it is not running.
 import fs from 'node:fs'
 import http from 'node:http'
 import path from 'node:path'
 
-const CDP = process.env.JFP_CDP || 'http://127.0.0.1:18894'
+const CDP = process.env.JFP_CDP || 'http://127.0.0.1:18895'
 const root = path.join(import.meta.dirname, '..')
 let version
 try { version = await (await fetch(`${CDP}/json/version`, { signal: AbortSignal.timeout(2500) })).json() } catch {
