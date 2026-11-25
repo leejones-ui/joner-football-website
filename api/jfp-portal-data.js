@@ -4308,7 +4308,7 @@ async function handle(req, res) {
           const inG = players.filter((p) => p.t1GroupId === g.id)
           const news = newFamilies.filter((x) => x.groupId === g.id)
           const coming = inG.filter((p) => p.status !== 'no')
-          return { id: g.id, day: g.day, time: g.time, location: locationFor(config, g.location).name, coach: coachLabel(coachById(config, g.coachId)), capacity: Number(g.capacity) || 0, label: g.label || '', closed: g.mode === 'closed',
+          return { id: g.id, day: g.day, time: g.time, sortTime: to24h(g.time), period: periodOf(g), locationId: locationFor(config, g.location).id, location: locationFor(config, g.location).name, mode: g.mode, coach: coachLabel(coachById(config, g.coachId)), capacity: Number(g.capacity) || 0, label: g.label || '', closed: g.mode === 'closed',
             players: inG.map((p) => p.rowId), news: news.map((x) => ({ player: x.player, parent: x.parent, status: x.status, cents: x.cents, expiresAt: x.expiresAt || '', url: x.url || '' })), waiting: waitlist.filter((w) => w.groupId === g.id).map((w) => w.rowId),
             taken: coming.length + news.reduce((s, x) => s + String(x.player).split(', ').length, 0),
             paid: coming.filter((p) => p.status === 'paid').length + news.filter((x) => x.status === 'paid').reduce((s, x) => s + String(x.player).split(', ').length, 0) }

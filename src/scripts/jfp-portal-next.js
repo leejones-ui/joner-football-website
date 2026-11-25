@@ -6,7 +6,7 @@ const WORD = { invited: ['blue', 'Not paid yet'], held: ['violet', 'Held (deposi
 const TIER = { loyal: ['red', 'Loyal 24'], current: ['blue', 'A$50 off'] }
 const dayLabel = (iso) => (iso ? new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-AU', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }).replace(',', '') : '')
 const ACCOUNT_LINK = 'https://jonerfootball.com/jfp-account/#keep'
-const S = { filter: 'all', q: '', view: 'timetable' }
+const S = { filter: 'all', q: '', view: 'timetable', day: '', loc: '' }
 
 export async function renderNext(ui) {
   const { view, post, need, toast, confirmBox, modal, closeModal, copy } = ui
@@ -80,6 +80,8 @@ export async function renderNext(ui) {
   view().querySelectorAll('[data-nxf]').forEach((b) => b.addEventListener('click', () => { S.filter = b.dataset.nxf; again() }))
   $('nx-q')?.addEventListener('change', (e) => { S.q = e.target.value.trim().toLowerCase(); again() })
   $('nx-link')?.addEventListener('click', async () => { await copy(ACCOUNT_LINK); toast('Copied. Families sign in with their email and see their price under Keep my spot.') })
+  view().querySelectorAll('[data-nxday]').forEach((b) => b.addEventListener('click', () => { S.day = b.dataset.nxday; again() }))
+  view().querySelectorAll('[data-nxloc]').forEach((b) => b.addEventListener('click', () => { S.loc = b.dataset.nxloc; again() }))
   view().querySelectorAll('[data-nxv]').forEach((b) => b.addEventListener('click', () => { S.view = b.dataset.nxv; again() }))
   view().querySelectorAll('[data-nxmove]').forEach((b) => b.addEventListener('click', () => moveBox(ui, d, d.players.find((p) => p.rowId === b.dataset.nxmove), again)))
   view().querySelectorAll('[data-nxoffer]').forEach((b) => b.addEventListener('click', () => offerBox(ui, d, d.waitlist.find((w) => w.rowId === b.dataset.nxoffer), again)))
@@ -127,41 +129,56 @@ function editPrice(ui, p, done) {
   })
 }
 
-// The Term 1 timetable (Ligia, 25 Nov 2026): every group with who is in it next
-// term and whether they have paid. Moves are for next term only.
+// The Term 1 timetable (Ligia, 25 Nov 2026), drawn like the Term 4 one: days
+// across, morning and afternoon down, a block per group with a coloured dot
+// per player. Moves are for next term only.
 const T1 = {
-  paid: ['green', 'Paid'], held: ['violet', 'Deposit paid'], no: ['grey', 'Not returning'],
-  keen: ['amber', 'Wants to keep it'], unpaid: ['blue', 'Not paid yet'],
+  paid: ['i-paid', 'Paid'], held: ['i-trial', 'Deposit paid'], keen: ['i-part', 'Wants to keep it'],
+  unpaid: ['i-link', 'Not paid yet'], no: ['i-off', 'Not returning'],
 }
 const t1State = (p) => p.status === 'paid' ? 'paid' : p.status === 'held' ? 'held' : p.status === 'no' ? 'no' : p.interested && !p.status ? 'keen' : 'unpaid'
-function playerLi(p, { moveLabel = 'Move' } = {}) {
-  const [c, w] = T1[t1State(p)]
-  return `<li class="nt-p${p.status === 'no' ? ' nt-out' : ''}"><span class="nt-name"><b>${esc(p.name)}</b>${p.moved && p.t1GroupId ? ' <span class="muted small">(moved)</span>' : ''}<br><span class="muted small">${esc(p.parent || '')}</span></span>
-    <span class="j-pill j-pill-${c}">${w}${p.status === 'paid' && p.paidCents ? ` ${esc(money(p.paidCents))}` : ''}</span>
-    <button type="button" class="j-btn j-btn-line j-btn-sm" data-nxmove="${esc(p.rowId)}">${moveLabel}</button></li>`
+const T1DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+const T1PERIODS = [['am', 'Morning'], ['pm', 'Afternoon']]
+const T1ORDER = ['paid', 'held', 'keen', 'unpaid', 'no']
+const nameRow = (p) => {
+  const [dot, word] = T1[t1State(p)]
+  return `<button type="button" class="jp-nm nt-nm${p.status === 'no' ? ' nt-out' : ''}" data-nxmove="${esc(p.rowId)}" title="${esc(`${p.name}: ${word}${p.status === 'paid' && p.paidCents ? ` ${money(p.paidCents)}` : ''}. Tap to move for next term.`)}"><i class="${dot}"></i><span class="nmx">${esc(p.name)}</span>${p.moved && p.t1GroupId ? '<span class="w nt-tag">moved</span>' : ''}</button>`
+}
+function t1Block(g, by, wait) {
+  const ps = g.players.map((id) => by[id]).filter(Boolean).sort((a, b) => T1ORDER.indexOf(t1State(a)) - T1ORDER.indexOf(t1State(b)) || a.name.localeCompare(b.name))
+  const left = g.capacity - g.taken
+  const waiting = g.waiting.map((id) => wait[id]).filter(Boolean)
+  return `<section class="jp-blk" style="--lc:var(--j-loc-${esc(g.locationId || 'belrose')})">
+    <div class="jp-blk-head"><b>${esc(g.time)}</b><span class="n">${g.taken}/${g.capacity}</span></div>
+    <div class="sub">${esc(g.coach || 'No coach')} · ${esc(g.location)}${g.paid ? ` · <b style="color:var(--j-green)">${g.paid} paid</b>` : ''}</div>
+    ${ps.map(nameRow).join('')}
+    ${g.news.map((x) => `<div class="jp-nm"><i class="${x.status === 'paid' ? 'i-paid' : 'i-part'}"></i><span class="nmx">${esc(x.player)}</span><span class="w nt-tag" title="${esc(x.status === 'paid' ? `New family, paid ${money(x.cents)}` : `New family, offered ${money(x.cents)}, not paid`)}">${x.status === 'paid' ? 'new' : 'offered'}</span>${x.url ? `<button type="button" class="nt-mini" data-nxcopy="${esc(x.url)}" title="Copy the payment link">link</button>` : ''}</div>`).join('')}
+    ${left > 0 ? `<div class="jp-open">+ ${left} open</div>` : left < 0 ? `<div class="jp-open" style="color:var(--j-red)">${-left} over capacity</div>` : '<div class="jp-open" style="color:var(--j-red)">Full</div>'}
+    ${waiting.length ? `<div class="jp-wait small">Waitlist: ${waiting.map((w) => `<span class="nt-w">${esc(w.name)} <button type="button" class="nt-mini" data-nxoffer="${esc(w.rowId)}">Offer</button></span>`).join(' ')}</div>` : ''}
+  </section>`
 }
 function timetableHtml(d) {
   const by = Object.fromEntries(d.players.map((p) => [p.rowId, p]))
   const wait = Object.fromEntries((d.waitlist || []).map((w) => [w.rowId, w]))
-  const legend = Object.values(T1).map(([c, w]) => `<span class="j-pill j-pill-${c}">${w}</span>`).join(' ') + ' <span class="j-pill j-pill-amber">New family, offered</span> <span class="nt-waitpill">Waitlist</span>'
+  const all = d.timetable || []
+  const locs = [...new Map(all.map((g) => [g.locationId, g.location])).entries()]
+  const groups = all.filter((g) => (!S.day || g.day === S.day) && (!S.loc || g.locationId === S.loc))
   const noDay = (d.noDay || []).map((id) => by[id]).filter(Boolean)
-  const days = []
-  for (const g of d.timetable || []) { let x = days.find((y) => y.day === g.day); if (!x) days.push(x = { day: g.day, groups: [] }); x.groups.push(g) }
-  const card = (g) => {
-    const ps = g.players.map((id) => by[id]).filter(Boolean).sort((a, b) => ['paid', 'held', 'keen', 'unpaid', 'no'].indexOf(t1State(a)) - ['paid', 'held', 'keen', 'unpaid', 'no'].indexOf(t1State(b)) || a.name.localeCompare(b.name))
-    const left = g.capacity - g.taken
-    return `<article class="j-card nt-g${left < 0 ? ' nt-over' : ''}">
-      <header><b>${esc(g.time)}</b> <span class="muted small">${esc(g.location)}${g.coach ? ` · ${esc(g.coach)}` : ''}${g.closed ? ' · closed to bookings' : ''}</span>
-        <div class="small nt-count"><b>${g.paid}</b> paid · ${g.taken} of ${g.capacity || '?'} places${left > 0 ? ` · <b>${left} free</b>` : left < 0 ? ` · <b>${-left} over</b>` : ' · full'}</div></header>
-      <ul class="nt-list">${ps.map((p) => playerLi(p)).join('')}
-        ${g.news.map((x) => `<li class="nt-p"><span class="nt-name"><b>${esc(x.player)}</b> <span class="muted small">new</span><br><span class="muted small">${esc(x.parent || '')}</span></span><span class="j-pill j-pill-${x.status === 'paid' ? 'green' : 'amber'}">${x.status === 'paid' ? `Paid ${esc(money(x.cents))}` : `Offered ${esc(money(x.cents))}, not paid`}</span>${x.url ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-nxcopy="${esc(x.url)}">Copy link</button>` : ''}</li>`).join('')}
-        ${g.waiting.map((id) => wait[id]).filter(Boolean).map((w) => `<li class="nt-p nt-wait"><span class="nt-name"><b>${esc(w.name)}</b><br><span class="muted small">${esc(w.parent || '')}${w.note ? ` · ${esc(w.note)}` : ''}</span></span><span class="nt-waitpill">Waitlist</span><button type="button" class="j-btn j-btn-dark j-btn-sm" data-nxoffer="${esc(w.rowId)}">Offer the place</button></li>`).join('')}
-        ${!ps.length && !g.news.length && !g.waiting.length ? '<li class="muted small">Nobody yet.</li>' : ''}</ul></article>`
-  }
-  return `<p class="muted small" style="margin:6px 0 10px;max-width:820px">Who is in each group for ${esc(d.nextTerm.name)} and whether they have paid. Moving a player here changes ${esc(d.nextTerm.name)} only; their current term stays as it is.</p>
-    <div class="nt-legend">${legend}</div>
-    ${noDay.length ? `<section class="j-card nt-g nt-noday"><header><b>Day not picked yet</b> <span class="muted small">No place held in any group. Move them into a group once the family picks a day.</span></header><ul class="nt-list">${noDay.map((p) => playerLi(p, { moveLabel: 'Pick a group' })).join('')}</ul></section>` : ''}
-    ${days.map((x) => `<h2 class="nt-day">${esc(x.day)}</h2><div class="nt-grid">${x.groups.map(card).join('')}</div>`).join('')}`
+  const cols = T1DAYS.filter((x) => groups.some((g) => g.day === x))
+  const periods = T1PERIODS.filter(([p]) => groups.some((g) => g.period === p))
+  const cell = (day, p) => groups.filter((g) => g.day === day && g.period === p).sort((a, b) => String(a.sortTime).localeCompare(String(b.sortTime))).map((g) => t1Block(g, by, wait)).join('')
+  const grid = !cols.length ? '<div class="j-empty">No groups match.</div>'
+    : S.day ? periods.map(([p, label]) => `<div class="j-tt-row" style="margin:6px 0 8px">${esc(S.day)} ${esc(label.toLowerCase())}</div><div class="jp-board" style="margin-bottom:14px">${cell(S.day, p)}</div>`).join('')
+    : `<div class="jp-tt" style="--cols:${cols.length}">${cols.map((x) => `<div class="j-tt-day">${esc(x)}</div>`).join('')}${periods.map(([p, label]) => `<div class="j-tt-row">${esc(label)}</div>${cols.map((x) => `<div class="j-tt-cell">${cell(x, p)}</div>`).join('')}`).join('')}</div>`
+  const tot = all.reduce((s, g) => ({ paid: s.paid + g.paid, taken: s.taken + g.taken }), { paid: 0, taken: 0 })
+  return `<p class="muted small" style="margin:6px 0 10px">${tot.paid} paid of ${tot.taken} places taken for ${esc(d.nextTerm.name)}. Tap a name to move them for ${esc(d.nextTerm.name)} only; their current term stays as it is.</p>
+    <div class="j-daybar" style="margin-bottom:10px">${[['', 'Whole week'], ...T1DAYS.filter((x) => all.some((g) => g.day === x)).map((x) => [x, x])].map(([v, l]) => `<button type="button" data-nxday="${esc(v)}" aria-selected="${(S.day || '') === v}">${esc(l)}</button>`).join('')}</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+      <div class="jp-seg">${[['', 'All locations'], ...locs].map(([v, l]) => `<button type="button" data-nxloc="${esc(v)}" aria-pressed="${(S.loc || '') === v}">${esc(l)}</button>`).join('')}</div>
+      <div class="jp-legend" style="margin-left:auto">${Object.values(T1).map(([dot, word]) => `<span><i class="${dot}"></i>${word}</span>`).join('')}</div>
+    </div>
+    ${noDay.length ? `<div class="j-box j-box-amber nt-noday" style="margin-bottom:12px"><b>Day not picked yet</b> <span class="small">No place held in any group. Tap a name to put them in a group once the family picks a day.</span><div class="nt-nodaylist">${noDay.map(nameRow).join('')}</div></div>` : ''}
+    <div class="jp-tt-wrap">${grid}</div>`
 }
 function moveBox(ui, d, p, done) {
   if (!p) return
