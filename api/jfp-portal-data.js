@@ -42,7 +42,7 @@ import { applyCredits, creditsView, giveCredit, returnCredits } from './_jfp-cre
 const CREDIT_REASONS = new Set(['balance', 'term-after-trial', 'admin-add', 'application', 'waitlist', 'family', 'sessions'])
 import { staffPrincipal, sameOrigin } from './_jfp-people.js'
 import { sendAccountInvite, accountInvite, sendFamilyInvite, sendFamilyWelcome, sendPlaceOffered, sendTrialOffered, sendTermOffered, sendDeclined, sendNextTermInvite, sendFamilyInvoice, sendQuickLinkEmail } from './_jfp-email.js'
-import { nextStatuses, setNextStatus, nextPrices, recordNext, nextInterest, nextOffers, saveOffer, offerLive, TIER_LABEL, onNextTerm, nextTermConfig, nextTaken, nextNew, nextMoves, saveMove, nextGroupOf } from './_jfp-next.js'
+import { nextStatuses, setNextStatus, nextPrices, recordNext, nextInterest, nextOffers, saveOffer, offerLive, TIER_LABEL, onNextTerm, nextTermConfig, nextTaken, nextNew, nextMoves, saveMove, nextGroupOf, rowNextPrice } from './_jfp-next.js'
 import { MAKEUP_ADMIN_ACTIONS, emergencyCancel, emergencyUncancel, emergencyEmail, makeupsList, makeupUpdate, sessionOffMap, guestsFor, guestAllowed, markGuestUsed } from './_jfp-makeups.js'
 import { attendanceFor } from './_jfp-attendance-view.js'
 import { allProfiles, findProfile, renameProfile, pickProfile, profileKey, profileView, profileSummary, cleanProfile, saveProfile, waiverPrefill, addTrialFeedback, clubSuggestions, LEVELS, PLAYING_UP, POSITIONS, FEET, YEARS } from './_jfp-profiles.js'
@@ -174,6 +174,13 @@ async function juniorsFor(groups, config) {
 // or the paid place shows in the group instead. An expired or cancelled offer
 // puts them back.
 const waitOffered = (payreqs) => new Set((payreqs || []).filter((q) => q.next?.waitRowId && (q.status === 'paid' || (['open', 'checkout'].includes(q.status) && !(q.expiresAt && Date.parse(q.expiresAt) < Date.now())))).map((q) => q.next.waitRowId))
+const remindKey = (term) => `jfp:next-remind:${term}`
+async function kvHash(key) {
+  const raw = await kvCommand(['HGETALL', key])
+  const out = {}
+  for (let i = 0; i + 1 < (raw || []).length; i += 2) out[raw[i]] = raw[i + 1]
+  return out
+}
 async function nextWaitByGroup(roster, payreqs = null) {
   const out = {}
   const offered = waitOffered(payreqs || await listPayreqs())
@@ -4276,7 +4283,7 @@ async function handle(req, res) {
       }
       case 'nextTerm': {
         const nt = config.nextTerm
-        const [roster, groups, statuses, interest, offers, moves, payreqsAll] = await Promise.all([loadRoster({ fresh: true }), listGroups(), nextStatuses(nt.name), nextInterest(nt.name), nextOffers(nt.name), nextMoves(nt.name), listPayreqs()])
+        const [roster, groups, statuses, interest, offers, moves, payreqsAll, reminded] = await Promise.all([loadRoster({ fresh: true }), listGroups(), nextStatuses(nt.name), nextInterest(nt.name), nextOffers(nt.name), nextMoves(nt.name), listPayreqs(), kvHash(remindKey(nt.name))])
         const byId = Object.fromEntries(groups.map((g) => [g.id, g]))
         const live = offerLive(nt)
         const players = roster.players.filter((r) => onNextTerm(r, offers[r.id]) && !isTestName(r.player)).map((r) => {
@@ -4284,7 +4291,8 @@ async function handle(req, res) {
           const st = statuses[r.id] || null
           const o = offers[r.id] || null
           const t1 = nextGroupOf(r, moves)
-          return { rowId: r.id, name: r.player, parent: r.parent, email: r.email, group: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : 'Not in a group', groupId: r.groupId, t1GroupId: t1, moved: Boolean(moves[r.id]), coach: g ? coachLabel(coachById(config, g.coachId)) : '', status: st?.status || '', paidCents: st?.paidCents || 0, at: st?.at || '', interested: interest[r.id]?.at || '', payreqId: st?.payreqId || '',
+          const remindedAt = reminded[r.id] || ''
+          return { rowId: r.id, name: r.player, parent: r.parent, email: r.email, group: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : 'Not in a group', groupId: r.groupId, t1GroupId: t1, moved: Boolean(moves[r.id]), remindedAt, released: Boolean(st?.released), coach: g ? coachLabel(coachById(config, g.coachId)) : '', status: st?.status || '', paidCents: st?.paidCents || 0, at: st?.at || '', interested: interest[r.id]?.at || '', payreqId: st?.payreqId || '',
             offer: o ? { tier: o.tier, kind: o.kind || '', normalCents: o.normalCents, offerCents: o.offerCents, note: o.note || '', creditCents: o.creditCents || 0, kept: Boolean(o.keep && !r.holdsPlace), nowCents: Math.max(0, (live ? o.offerCents : o.normalCents) - (o.creditCents || 0)) } : null }
         }).sort((a, b) => a.group.localeCompare(b.group) || a.name.localeCompare(b.name))
         const count = (s) => players.filter((p) => p.status === s).length
@@ -4384,6 +4392,76 @@ async function handle(req, res) {
         if (sent.emailed) await savePayreq({ ...q, emailedAt: new Date().toISOString() })
         await audit({ by: principal.email, action: 'next.wait.offer', target: rowId, after: { group: group.id, payreq: q.id, cents: amountCents, term: nt.name, emailed: sent.emailed } })
         return res.status(200).json({ success: true, payreq: { id: q.id, url, amountLabel: formatAud(amountCents) }, emailed: sent.emailed, emailError: sent.emailError ? `The offer is made, but the email did not send. ${sent.emailError} Copy the link and send it yourself.` : '' })
+      }
+      // Before and after the hold date (Ligia, 25 Nov 2026): one email to every
+      // family with a Term 1 place not paid yet; preview first, then send.
+      case 'nextUnpaidReminder': {
+        const nt = config.nextTerm
+        const [roster, groups, statuses, offers, moves, reminded] = await Promise.all([loadRoster({ fresh: true }), listGroups(), nextStatuses(nt.name), nextOffers(nt.name), nextMoves(nt.name), kvHash(remindKey(nt.name))])
+        const byId = Object.fromEntries(groups.map((g) => [g.id, g]))
+        const fams = new Map()
+        for (const r of roster.players) {
+          if (!onNextTerm(r, offers[r.id]) || isTestName(r.player) || (nt.offerOnly && !offers[r.id])) continue
+          if (['paid', 'held', 'no'].includes(statuses[r.id]?.status || '')) continue
+          const g = byId[nextGroupOf(r, moves)]
+          if (!g || !validEmail(r.email)) continue
+          const k = r.email.toLowerCase()
+          const f = fams.get(k) || { email: r.email, parent: r.parent, rows: [] }
+          f.rows.push({ rowId: r.id, player: r.player, group: `${g.day} ${g.time}, ${locationFor(config, g.location).name}`, cents: rowNextPrice(config, g, offers[r.id]).fullCents })
+          fams.set(k, f)
+        }
+        const list = [...fams.values()]
+        const firstName = (s) => String(s || '').trim().split(/\s+/)[0]
+        const both = (a) => a.length < 2 ? a[0] : `${a.slice(0, -1).join(', ')} and ${a.at(-1)}`
+        const emailFor = (f) => {
+          const kids = f.rows.map((x) => firstName(x.player))
+          const total = f.rows.reduce((s, x) => s + x.cents, 0)
+          const whose = f.rows.length === 1 ? `${kids[0]}'s spot` : `${both(kids)}'s spots`
+          return {
+            subject: `${nt.name}: ${whose} ${f.rows.length === 1 ? 'is' : 'are'} not paid yet`,
+            heading: `Lock in ${whose} for ${nt.name}`,
+            paras: [`Hi ${firstName(f.parent) || 'there'},`, `${whose[0].toUpperCase()}${whose.slice(1)} for ${nt.name} ${f.rows.length === 1 ? 'is' : 'are'} not paid yet. The term starts ${dateLabel(nt.termStart)} and runs for ${Number(nt.weeks) || 10} weeks.`, ...f.rows.map((x) => `${x.player}: ${x.group}, ${formatAud(x.cents)}`), `To keep ${f.rows.length === 1 ? 'the spot' : 'the spots'}, please pay ${formatAud(total)} in your account. If we do not hear from you, we will offer ${f.rows.length === 1 ? 'the spot' : 'the spots'} to a family on our waitlist.`, `Not coming back next term? Just reply to this email and let us know.`, 'Thanks,', 'Ligia, Joner Football'],
+            list: [],
+            total,
+          }
+        }
+        const mask = (e) => String(e).replace(/^(.).*(@.*)$/, '$1***$2')
+        if (body.send !== true) {
+          return res.status(200).json({ success: true, families: list.length, players: list.reduce((s, f) => s + f.rows.length, 0),
+            list: list.map((f) => ({ parent: f.parent, email: mask(f.email), players: f.rows.map((x) => x.player), remindedAt: f.rows.map((x) => reminded[x.rowId]).filter(Boolean).sort().at(-1) || '' })),
+            sample: list.length ? { to: list[0].parent, email: mask(list[0].email), ...emailFor(list[0]), cta: `Pay ${formatAud(emailFor(list[0]).total)}` } : null })
+        }
+        const { sendFamilyNotice } = await import('./_jfp-email.js')
+        const url = `${siteUrl(req)}/jfp-account/#keep`
+        let sent = 0
+        const failed = []
+        for (const f of list) {
+          const e = emailFor(f)
+          const r = await trySend('next term reminder', () => sendFamilyNotice({ to: f.email, name: f.parent, kind: 'next term reminder', replyTo: 'ligia@jonerfootball.com', subject: e.subject, heading: e.heading, paras: e.paras, cta: { label: `Pay ${formatAud(e.total)}`, url } }))
+          if (r.emailed) { sent += 1; for (const x of f.rows) await kvCommand(['HSET', remindKey(nt.name), x.rowId, new Date().toISOString()]) } else failed.push(f.parent)
+        }
+        await audit({ by: principal.email, action: 'next.remind.unpaid', target: nt.name, after: { families: list.length, sent, failed } })
+        return res.status(200).json({ success: true, sent, failed })
+      }
+      // Release a returning player's place they have not paid for (Ligia,
+      // 25 Nov 2026), or undo it. The place then counts as free.
+      case 'releaseNextPlace': {
+        const nt = config.nextTerm
+        const rowId = clean(body.rowId, 30)
+        const [roster, offers, statuses] = await Promise.all([loadRoster(), nextOffers(nt.name), nextStatuses(nt.name)])
+        const row = roster.players.find((r) => r.id === rowId && onNextTerm(r, offers[r.id]))
+        if (!row) return fail(res, 404, `That player is not on ${nt.name}.`)
+        const st = statuses[rowId]
+        if (body.undo === true) {
+          if (!st?.released) return fail(res, 409, `${row.player}'s place was not released.`)
+          await kvCommand(['HDEL', keys.next(nt.name), rowId])
+          await recordNext({ term: nt.name, row, group: null, status: 'invited', note: `Release undone by ${principal.email}.`, by: principal.email })
+          return res.status(200).json({ success: true })
+        }
+        if (['paid', 'held'].includes(st?.status)) return fail(res, 409, `${row.player} has paid, so the place stays.`)
+        await setNextStatus(nt.name, rowId, { ...(st || {}), status: 'no', released: true, releasedBy: principal.email })
+        await recordNext({ term: nt.name, row, group: null, status: 'no', note: `Place released by ${principal.email}: not paid by ${nt.holdUntil ? dateLabel(nt.holdUntil) : 'the date'}.`, by: principal.email })
+        return res.status(200).json({ success: true })
       }
       case 'saveNextTerm': {
         // Statuses are kept under the term's name: no renaming once families have answered.

@@ -82,6 +82,7 @@ export async function renderNext(ui) {
   $('nx-link')?.addEventListener('click', async () => { await copy(ACCOUNT_LINK); toast('Copied. Families sign in with their email and see their price under Keep my spot.') })
   view().querySelectorAll('[data-nxday]').forEach((b) => b.addEventListener('click', () => { S.day = b.dataset.nxday; again() }))
   view().querySelectorAll('[data-nxloc]').forEach((b) => b.addEventListener('click', () => { S.loc = b.dataset.nxloc; again() }))
+  $('nx-remind')?.addEventListener('click', () => remindBox(ui, d, again))
   view().querySelectorAll('[data-nxv]').forEach((b) => b.addEventListener('click', () => { S.view = b.dataset.nxv; again() }))
   view().querySelectorAll('[data-nxmove]').forEach((b) => b.addEventListener('click', () => moveBox(ui, d, d.players.find((p) => p.rowId === b.dataset.nxmove), again)))
   view().querySelectorAll('[data-nxoffer]').forEach((b) => b.addEventListener('click', () => offerBox(ui, d, d.waitlist.find((w) => w.rowId === b.dataset.nxoffer), again)))
@@ -141,8 +142,9 @@ const T1DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturda
 const T1PERIODS = [['am', 'Morning'], ['pm', 'Afternoon']]
 const T1ORDER = ['paid', 'held', 'keen', 'unpaid', 'no']
 const nameRow = (p) => {
-  const [dot, word] = T1[t1State(p)]
-  return `<button type="button" class="jp-nm nt-nm${p.status === 'no' ? ' nt-out' : ''}" data-nxmove="${esc(p.rowId)}" title="${esc(`${p.name}: ${word}${p.status === 'paid' && p.paidCents ? ` ${money(p.paidCents)}` : ''}. Tap to move for next term.`)}"><i class="${dot}"></i><span class="nmx">${esc(p.name)}</span>${p.moved && p.t1GroupId ? '<span class="w nt-tag">moved</span>' : ''}</button>`
+  const [dot, w0] = T1[t1State(p)]
+  const word = p.released ? 'Released (not paid)' : p.remindedAt && t1State(p) === 'unpaid' ? `Not paid yet, emailed ${new Date(p.remindedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}` : w0
+  return `<button type="button" class="jp-nm nt-nm${p.status === 'no' ? ' nt-out' : ''}" data-nxmove="${esc(p.rowId)}" title="${esc(`${p.name}: ${word}${p.status === 'paid' && p.paidCents ? ` ${money(p.paidCents)}` : ''}. Tap to move for next term.`)}"><i class="${dot}"></i><span class="nmx">${esc(p.name)}</span>${p.released ? '<span class="w nt-tag">released</span>' : p.moved && p.t1GroupId ? '<span class="w nt-tag">moved</span>' : ''}${p.remindedAt && t1State(p) === 'unpaid' ? '<span class="w nt-tag" title="Reminder emailed">emailed</span>' : ''}</button>`
 }
 function t1Block(g, by, wait) {
   const ps = g.players.map((id) => by[id]).filter(Boolean).sort((a, b) => T1ORDER.indexOf(t1State(a)) - T1ORDER.indexOf(t1State(b)) || a.name.localeCompare(b.name))
@@ -170,6 +172,11 @@ function timetableHtml(d) {
   const grid = !cols.length ? '<div class="j-empty">No groups match.</div>'
     : S.day ? periods.map(([p, label]) => `<div class="j-tt-row" style="margin:6px 0 8px">${esc(S.day)} ${esc(label.toLowerCase())}</div><div class="jp-board" style="margin-bottom:14px">${cell(S.day, p)}</div>`).join('')
     : `<div class="jp-tt" style="--cols:${cols.length}">${cols.map((x) => `<div class="j-tt-day">${esc(x)}</div>`).join('')}${periods.map(([p, label]) => `<div class="j-tt-row">${esc(label)}</div>${cols.map((x) => `<div class="j-tt-cell">${cell(x, p)}</div>`).join('')}`).join('')}</div>`
+  const gids = new Set(all.map((g) => g.id))
+  const unpaid = d.players.filter((p) => gids.has(p.t1GroupId) && /@/.test(p.email || '') && (p.offer || !d.nextTerm.offerOnly) && t1State(p) !== 'paid' && !['held', 'no'].includes(p.status))
+  const hold = d.nextTerm.holdUntil || ''
+  const holdLabel = hold ? new Date(`${hold}T12:00:00`).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' }) : 'the hold date'
+  const pastHold = Boolean(hold) && new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' }) > hold
   const tot = all.reduce((s, g) => ({ paid: s.paid + g.paid, taken: s.taken + g.taken }), { paid: 0, taken: 0 })
   return `<p class="muted small" style="margin:6px 0 10px">${tot.paid} paid of ${tot.taken} places taken for ${esc(d.nextTerm.name)}. Tap a name to move them for ${esc(d.nextTerm.name)} only; their current term stays as it is.</p>
     <div class="j-daybar" style="margin-bottom:10px">${[['', 'Whole week'], ...T1DAYS.filter((x) => all.some((g) => g.day === x)).map((x) => [x, x])].map(([v, l]) => `<button type="button" data-nxday="${esc(v)}" aria-selected="${(S.day || '') === v}">${esc(l)}</button>`).join('')}</div>
@@ -177,6 +184,7 @@ function timetableHtml(d) {
       <div class="jp-seg">${[['', 'All locations'], ...locs].map(([v, l]) => `<button type="button" data-nxloc="${esc(v)}" aria-pressed="${(S.loc || '') === v}">${esc(l)}</button>`).join('')}</div>
       <div class="jp-legend" style="margin-left:auto">${Object.values(T1).map(([dot, word]) => `<span><i class="${dot}"></i>${word}</span>`).join('')}</div>
     </div>
+    ${unpaid.length ? `<div class="j-box ${pastHold ? 'j-box-red' : 'j-box-blue'}" style="margin-bottom:12px;display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><span><b>${unpaid.length} player${unpaid.length === 1 ? '' : 's'} not paid yet</b> (blue dots). ${pastHold ? `Places were held until ${esc(holdLabel)}. Email them, then release any spot still not paid and offer it to the waitlist.` : `Places are held until ${esc(holdLabel)}.`}</span><button type="button" class="j-btn j-btn-dark j-btn-sm" id="nx-remind">Email everyone not paid</button></div>` : ''}
     ${noDay.length ? `<div class="j-box j-box-amber nt-noday" style="margin-bottom:12px"><b>Day not picked yet</b> <span class="small">No place held in any group. Tap a name to put them in a group once the family picks a day.</span><div class="nt-nodaylist">${noDay.map(nameRow).join('')}</div></div>` : ''}
     <div class="jp-tt-wrap">${grid}</div>`
 }
@@ -186,7 +194,22 @@ function moveBox(ui, d, p, done) {
   const opts = d.groupChoices.map((g) => `<option value="${esc(g.id)}" ${g.id === p.t1GroupId ? 'selected' : ''}>${esc(g.label)}${g.id === p.groupId ? ' (their group now)' : ''}</option>`).join('')
   const box = modal(`<h2 style="margin-bottom:6px">${esc(p.name)} in ${esc(d.nextTerm.name)}</h2><p class="muted small" style="margin-bottom:12px">Now: ${esc(p.group)}. This changes ${esc(d.nextTerm.name)} only.</p>
     <label class="j-field"><span>Group for ${esc(d.nextTerm.name)}</span><select class="j-input" id="mv-g"><option value="nogroup" ${p.moved && !p.t1GroupId ? 'selected' : ''}>Day not picked yet (holds no place)</option>${opts}</select></label>
-    <div style="display:flex;gap:8px;margin-top:12px"><button type="button" class="j-btn j-btn-dark j-btn-sm" id="mv-save">Save</button><button type="button" class="j-btn j-btn-line j-btn-sm" id="mv-x">Cancel</button></div>`)
+    <div style="display:flex;gap:8px;margin-top:12px"><button type="button" class="j-btn j-btn-dark j-btn-sm" id="mv-save">Save</button><button type="button" class="j-btn j-btn-line j-btn-sm" id="mv-x">Cancel</button></div>
+    ${p.released ? `<hr style="margin:16px 0;border:0;border-top:1px solid var(--j-line)"><p class="small">The spot was released (not paid). <button type="button" class="j-btn j-btn-line j-btn-sm" id="mv-unrel">Undo release</button></p>`
+      : !['paid', 'held', 'no'].includes(p.status) ? `<hr style="margin:16px 0;border:0;border-top:1px solid var(--j-line)"><p class="small muted" style="margin-bottom:8px">Not paid yet${p.remindedAt ? `, reminder emailed ${esc(new Date(p.remindedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }))}` : ''}. Releasing frees the place for the waitlist. Nothing is sent to the family.</p><button type="button" class="j-btn j-btn-line j-btn-sm" id="mv-rel" style="color:var(--j-red)">Release the spot (not paid)</button>` : ''}`)
+  box.querySelector('#mv-rel')?.addEventListener('click', async (e) => {
+    if (!(await ui.confirmBox(`Release ${esc(p.name)}'s ${esc(d.nextTerm.name)} spot? The place becomes free for the waitlist. Nothing is sent to the family.`, { ok: 'Release the spot' }))) return
+    e.target.disabled = true
+    const r = await post('releaseNextPlace', { rowId: p.rowId })
+    if (!r.ok) { e.target.disabled = false; return toast(r.data.error) }
+    closeModal(); toast('Spot released'); done()
+  })
+  box.querySelector('#mv-unrel')?.addEventListener('click', async (e) => {
+    e.target.disabled = true
+    const r = await post('releaseNextPlace', { rowId: p.rowId, undo: true })
+    if (!r.ok) { e.target.disabled = false; return toast(r.data.error) }
+    closeModal(); toast('Release undone'); done()
+  })
   box.querySelector('#mv-x').addEventListener('click', closeModal)
   box.querySelector('#mv-save').addEventListener('click', async (e) => {
     e.target.disabled = true
@@ -218,5 +241,28 @@ async function offerBox(ui, d, w, done) {
     e.target.disabled = false
     if (!r.ok) return toast(r.data.error)
     closeModal(); toast(r.data.emailed ? `Offer emailed: ${r.data.payreq.amountLabel}` : (r.data.emailError || 'Offer made')); done()
+  })
+}
+
+// One email to every family not paid yet (Ligia, 25 Nov 2026): see the exact
+// email first, then send.
+async function remindBox(ui, d, done) {
+  const { modal, closeModal, post, toast, confirmBox } = ui
+  const pv = await post('nextUnpaidReminder', {})
+  if (!pv.ok) return toast(pv.data.error)
+  const v = pv.data
+  if (!v.families) return toast('Everyone has paid or told us. Nothing to send.')
+  const s = v.sample
+  const box = modal(`<h2 style="margin-bottom:6px">Email everyone not paid</h2><p class="muted small" style="margin-bottom:10px">${v.families} famil${v.families === 1 ? 'y' : 'ies'}, ${v.players} player${v.players === 1 ? '' : 's'}. One email each, with their own players, groups and amount. The button opens their account to pay. Replies go to Ligia.</p>
+    <div class="nt-email"><div class="small muted">Example: to ${esc(s.to)} (${esc(s.email)})</div><div><b>${esc(s.subject)}</b></div>${s.paras.map((x) => `<p>${esc(x)}</p>`).join('')}${s.list.map(([k, val]) => `<p class="small"><b>${esc(k)}</b>: ${esc(val)}</p>`).join('')}<p><span class="j-btn j-btn-dark j-btn-sm" aria-hidden="true">${esc(s.cta)}</span></p></div>
+    <details style="margin:8px 0"><summary class="small">Who gets it (${v.families})</summary><ul class="small" style="margin:6px 0 0;padding-left:18px">${v.list.map((f) => `<li>${esc(f.parent)} (${esc(f.email)}): ${esc(f.players.join(', '))}${f.remindedAt ? ` <span class="muted">· emailed ${esc(new Date(f.remindedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }))}</span>` : ''}</li>`).join('')}</ul></details>
+    <div style="display:flex;gap:8px;margin-top:10px"><button type="button" class="j-btn j-btn-dark j-btn-sm" id="rm-send">Send ${v.families} email${v.families === 1 ? '' : 's'}</button><button type="button" class="j-btn j-btn-line j-btn-sm" id="rm-x">Cancel</button></div>`)
+  box.querySelector('#rm-x').addEventListener('click', closeModal)
+  box.querySelector('#rm-send').addEventListener('click', async (e) => {
+    if (!(await confirmBox(`Send ${v.families} email${v.families === 1 ? '' : 's'} now?`, { ok: 'Send' }))) return
+    e.target.disabled = true
+    const r = await post('nextUnpaidReminder', { send: true })
+    if (!r.ok) { e.target.disabled = false; return toast(r.data.error) }
+    closeModal(); toast(`${r.data.sent} sent${r.data.failed.length ? `, ${r.data.failed.length} did not send: ${r.data.failed.join(', ')}` : ''}`); done()
   })
 }

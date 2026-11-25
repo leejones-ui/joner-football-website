@@ -217,7 +217,7 @@ export function depositCards(D, { compact = false, self = false } = {}) {
         <p class="ja-small ja-muted" style="margin-top:10px">Card or Apple Pay. Or pay for each player on their own below.</p>
       </div>
     </article>` : ''
-  return famCard + D.nextTerm.players.filter((x) => x.status !== 'no').map((x) => {
+  return famCard + D.nextTerm.players.filter((x) => x.status !== 'no' && !x.noDay).map((x) => {
     const whose = self ? 'Your' : `${first(x.player)}'s`
     const place = x.dayTime ? `${whose} ${x.dayTime} place` : `${whose} place`
     if (x.status === 'paid') return `<article class="ja-card ja-deposit is-done" data-deposit="${esc(x.rowId)}"><p class="ja-kicker"><i></i>${esc(D.nextTerm.name)}</p><h3 class="ja-deposit-t">${ic('check')}${esc(self ? 'Your' : `${first(x.player)}'s`)} spot for ${esc(D.nextTerm.name)} is locked in</h3><p class="ja-muted">Paid in full. ${esc(x.group)}.</p></article>`

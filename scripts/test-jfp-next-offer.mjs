@@ -273,4 +273,45 @@ await test('Term 1 timetable: move a player for next term only, a "Day not picke
   assert.ok((await portal(lee, 'audit')).data.entries.some((e) => e.action === 'next.move' && e.target === kay))
 })
 
+await test('4 January buttons: email everyone not paid (preview, then one email a family), release an unpaid spot and undo it, no paying for a spot that has gone, no paying with no day', async () => {
+  const R = await mk({ day: 'Thursday', time: '3:20pm', location: 'Belrose HQ', coachId: 'sam', capacity: 2, mode: 'application', label: 'Small group' })
+  const addTo = async (name, email) => { const r = await portal(lee, 'addPlayer', { groupId: R, force: true, player: { name, dob: '2015-04-04' }, parent: { name: `Parent ${name.split(' ')[1]}`, email, mobile: '0400959599' }, payment: 'offline', amountCents: 85000, method: 'Cash' }); assert.equal(r.status, 200, JSON.stringify(r.data)); return r.data.rowId }
+  const u1 = await addTo('Una Late', 'late@example.com')
+  const u2 = await addTo('Vic Late', 'late@example.com')
+  for (const id of [u1, u2]) assert.equal((await offer(id, 'current', 80000, 85000, 'Small group')).status, 200)
+  const pv = await portal(lee, 'nextUnpaidReminder')
+  assert.equal(pv.status, 200, JSON.stringify(pv.data))
+  const fam = pv.data.list.find((f) => f.players.includes('Una Late'))
+  assert.ok(fam && fam.players.includes('Vic Late'), 'one family, both players'); assert.match(fam.email, /^l\*\*\*@example\.com$/)
+  assert.ok(!(await emails()).some((e) => e.to.includes('late@example.com') && /not paid yet/.test(e.subject)), 'the preview sends nothing')
+  const sent = await portal(lee, 'nextUnpaidReminder', { send: true })
+  assert.equal(sent.status, 200, JSON.stringify(sent.data)); assert.ok(sent.data.sent >= 1)
+  const got = (await emails()).filter((e) => e.to.includes('late@example.com') && /not paid yet/.test(e.subject))
+  assert.equal(got.length, 1, 'one email for the family'); assert.match(got[0].subject, /Una and Vic's spots are not paid yet/)
+  let d = (await portal(lee, 'nextTerm')).data
+  assert.ok(d.players.find((p) => p.rowId === u1).remindedAt, 'marked emailed')
+  // After the hold date with the group full, a family that has not paid cannot pay.
+  assert.equal((await portal(lee, 'saveNextTerm', { nextTerm: { holdUntil: '2020-01-04' } })).status, 200)
+  const nf = client(); await gate(nf); await signIn(nf, 'r3new@example.com')
+  const req = await nf.call('/api/jfp-book', { action: 'request', term: 'next', kind: 'application', groupId: R, players: [{ name: 'Wes Waiting', dob: '2014-02-02', emergencyName: 'Wes P', emergencyPhone: '0400777889' }, { name: 'Xia Waiting', dob: '2014-02-02', emergencyName: 'Wes P', emergencyPhone: '0400777889' }], parentName: 'Wes Parent', mobile: '0400777889', answers: { club: 'X', team: 'U12' }, waiver: { ...WAIVER, signature: 'Wes Parent' } })
+  assert.equal(req.status, 200, JSON.stringify(req.data))
+  const off = await portal(lee, 'decideRequest', { id: req.data.id, decision: 'offer', sendEmail: false })
+  assert.equal(off.status, 200, JSON.stringify(off.data))
+  const late = client(); await gate(late); await signIn(late, 'late@example.com')
+  const try1 = await late.call('/api/jfp-account', { action: 'nextTermChoice', rowId: u1, choice: 'full' })
+  assert.equal(try1.status, 409, JSON.stringify(try1.data)); assert.match(try1.data.error, /group is now full/)
+  // Release and undo.
+  assert.equal((await portal(lee, 'releaseNextPlace', { rowId: u2 })).status, 200)
+  d = (await portal(lee, 'nextTerm')).data
+  assert.equal(d.players.find((p) => p.rowId === u2).released, true); assert.equal(d.players.find((p) => p.rowId === u2).status, 'no')
+  assert.equal((await portal(lee, 'releaseNextPlace', { rowId: u2, undo: true })).status, 200)
+  assert.equal((await portal(lee, 'nextTerm')).data.players.find((p) => p.rowId === u2).status, '')
+  // No day picked yet: no paying.
+  assert.equal((await portal(lee, 'saveNextTerm', { nextTerm: { holdUntil: '2099-01-04' } })).status, 200)
+  assert.equal((await portal(lee, 'moveNextTerm', { rowId: u1, groupId: 'nogroup' })).status, 200)
+  const try2 = await late.call('/api/jfp-account', { action: 'nextTermChoice', rowId: u1, choice: 'full' })
+  assert.equal(try2.status, 409); assert.match(try2.data.error, /not set yet/)
+  assert.ok((await portal(lee, 'audit')).data.entries.some((e) => e.action === 'next.remind.unpaid'))
+})
+
 console.log(`\n${passed} passed`)

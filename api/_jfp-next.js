@@ -143,7 +143,7 @@ export async function nextNew(term) {
   return out
 }
 export async function saveNextNew(term, rec) { await kvCommand(['HSET', newKey(term), rec.id, JSON.stringify(rec)]) }
-const sydToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney' }).format(new Date())
+export const sydToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney' }).format(new Date())
 // groupId -> places taken next term. payreqs: open next-new offers count too.
 // Term 1 groups that differ from Term 4 (Ligia, 25 Nov 2026): a returning
 // player moved to another group for next term only, or out of every group
@@ -178,4 +178,24 @@ export function nextTaken({ config, roster, statuses, news, payreqs = [], moves 
   for (const n of news) if (n.status !== 'cancelled') add(n.groupId)
   for (const q of payreqs) if (q.next?.new && ['open', 'checkout'].includes(q.status) && !(q.expiresAt && Date.parse(q.expiresAt) < Date.now())) add(q.next.groupId, (q.next.players || []).length || 1)
   return out
+}
+
+// After the hold date (Ligia, 25 Nov 2026: places held until 4 Jan, then
+// unpaid places can go to the waitlist): a returning family that has not paid
+// can still pay while their group has room, never once it is full.
+// Returns the rows whose place has gone.
+export function placesGone({ config, roster, statuses, news, payreqs = [], moves = {}, rows, capacityOf, today = sydToday() }) {
+  const nt = config.nextTerm || {}
+  if (!nt.holdUntil || today <= nt.holdUntil) return []
+  const taken = nextTaken({ config, roster, statuses, news, payreqs, moves, today })
+  const need = {}
+  const gone = []
+  for (const r of rows) {
+    if (['held', 'paid'].includes(statuses[r.id]?.status)) continue
+    const gid = nextGroupOf(r, moves)
+    if (!gid) continue
+    need[gid] = (need[gid] || 0) + 1
+    if ((taken[gid] || 0) + need[gid] > capacityOf(gid)) gone.push(r)
+  }
+  return gone
 }

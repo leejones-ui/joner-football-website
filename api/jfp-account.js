@@ -42,7 +42,7 @@ import { loadRoster, familyFor, createWaiverRows, waiverFields, bustRosterCache,
 import { sessionFor, sameOrigin } from './_jfp-people.js'
 import { viewAsFor, endViewAs, viewCookie, VIEW_READ, VIEW_QUIET } from './_jfp-view-as.js'
 import { needsTerms, acceptTerms, cancelExtraBooking, cancelView, refundReady, TERMS_VERSION } from './_jfp-extra-cancel.js'
-import { nextStatuses, setNextStatus, nextPrices, recordNext, createNextPayreq, nextInterest, interestKey, nextOffers, rowNextPrice, offerLive, createNextFamilyPayreq, onNextTerm, nextMoves, nextGroupOf } from './_jfp-next.js'
+import { nextStatuses, setNextStatus, nextPrices, recordNext, createNextPayreq, nextInterest, interestKey, nextOffers, rowNextPrice, offerLive, createNextFamilyPayreq, onNextTerm, nextMoves, nextGroupOf, nextNew, placesGone } from './_jfp-next.js'
 import { jjAccountView, jjPay, jjRequestPay, jjNextChoice, familyJJ, jjWaiverRows, markJJWaivers } from './_jj-account.js'
 import { owedItems, payOwed as makeOwedPayreq, cancelOwed as cancelOwedPayreq } from './_jfp-account-pay.js'
 import { familyFees } from './_jfp-account-fees.js'
@@ -312,10 +312,10 @@ async function overview(res, parent, body = {}, opts = {}) {
     const st = statuses[r.id] || { status: 'invited' }
     const pr = rowNextPrice(config, g, offers[r.id])
     const open = st.payreqId ? mine.find((q) => q.id === st.payreqId && ['open', 'checkout'].includes(q.status)) : null
-    return { rowId: r.id, player: r.player, group: noDay ? 'Day to be confirmed' : g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : `${r.day} ${r.time}`, dayTime: noDay ? 'Day to be confirmed' : g ? `${g.day} ${g.time}` : [r.day, r.time].filter(Boolean).join(' '), status: st.status, holdLabel: pr.holdLabel, fullLabel: pr.fullLabel, fullCents: pr.fullCents, normalLabel: pr.normalLabel, normalCents: pr.normalCents, offer: pr.offer, tier: pr.offer ? pr.tier : '', creditLabel: pr.creditLabel, creditNote: pr.creditNote, afterHoldLabel: st.status === 'held' ? formatAud(Math.max(0, pr.fullCents - (st.paidCents || 0))) : pr.afterHoldLabel, openPayreqId: open?.id || '' }
+    return { rowId: r.id, noDay, player: r.player, group: noDay ? 'Day to be confirmed' : g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : `${r.day} ${r.time}`, dayTime: noDay ? 'Day to be confirmed' : g ? `${g.day} ${g.time}` : [r.day, r.time].filter(Boolean).join(' '), status: st.status, holdLabel: pr.holdLabel, fullLabel: pr.fullLabel, fullCents: pr.fullCents, normalLabel: pr.normalLabel, normalCents: pr.normalCents, offer: pr.offer, tier: pr.offer ? pr.tier : '', creditLabel: pr.creditLabel, creditNote: pr.creditNote, afterHoldLabel: st.status === 'held' ? formatAud(Math.max(0, pr.fullCents - (st.paidCents || 0))) : pr.afterHoldLabel, openPayreqId: open?.id || '' }
   }))
   // A family with two or more places to pay can pay them all at once.
-  const unpaidNext = nextTerm.filter((x) => !['paid', 'held', 'no'].includes(x.status))
+  const unpaidNext = nextTerm.filter((x) => !['paid', 'held', 'no'].includes(x.status) && !x.noDay)
   const big = (c) => `A$${(c / 100).toLocaleString('en-AU', { maximumFractionDigits: 2 })}`
   const nextFamily = unpaidNext.length >= 2 ? { rowIds: unpaidNext.map((x) => x.rowId), cents: unpaidNext.reduce((t, x) => t + x.fullCents, 0), label: big(unpaidNext.reduce((t, x) => t + x.fullCents, 0)), normalLabel: big(unpaidNext.reduce((t, x) => t + x.normalCents, 0)), offer: unpaidNext.some((x) => x.offer), names: [...new Set(unpaidNext.map((x) => x.player))] } : null
   // "Keep my spot" (Lee, 13 Oct 2026): every family sees next term coming,
@@ -767,7 +767,13 @@ async function nextTermChoice(req, res, parent, body) {
   if (!nt.open && !st) return fail(res, 403, `${nt.name} places are not open yet.`)
   if (st && ['held', 'paid'].includes(st.status) && choice !== 'full') return fail(res, 409, `${row.player}'s place is already ${st.status === 'held' ? 'held' : 'paid'}.`)
   if (st?.status === 'paid') return fail(res, 409, `${row.player} is already paid for ${nt.name}.`)
-  const group = row.groupId ? await getGroup(row.groupId) : null
+  // The Term 1 group (moved for next term, Ligia 25 Nov 2026). A player with
+  // no day picked yet cannot pay until staff put them in a group.
+  const moves = await nextMoves(nt.name)
+  const t1 = nextGroupOf(row, moves)
+  if (choice !== 'no' && moves[row.id] && !t1) return fail(res, 409, `${row.player}'s day for ${nt.name} is not set yet. Reply to our email or contact Ligia and we will sort it out.`)
+  const group = t1 ? await getGroup(t1) : null
+  if (choice !== 'no' && group && !(await stillHasPlace(config, [row], statuses, moves))) return fail(res, 409, goneMsg(nt, [row]))
   // Any open next-term link for this player closes before a new choice.
   const existing = st?.payreqId ? await getPayreq(st.payreqId) : null
   if (existing && ['open', 'checkout'].includes(existing.status) && !(choice !== 'no' && existing.next?.choice === choice)) {
@@ -803,6 +809,16 @@ async function nextTermChoice(req, res, parent, body) {
   } finally { await kvCommand(['DEL', lock]) }
 }
 
+// After the hold date a place only stays while the group has room.
+async function stillHasPlace(config, rows, statuses, moves) {
+  const nt = config.nextTerm
+  if (!nt.holdUntil) return true
+  const [roster, news, payreqs, groups] = await Promise.all([loadRoster(), nextNew(nt.name), listPayreqs(), listGroups()])
+  const cap = Object.fromEntries(groups.map((g) => [g.id, Number(g.capacity) || 0]))
+  return !placesGone({ config, roster, statuses, news, moves, rows, capacityOf: (id) => cap[id] ?? 0, payreqs: payreqs.filter((q) => q.next?.new) }).length
+}
+const goneMsg = (nt, rows) => `Sorry, ${rows.length === 1 ? `${rows[0].player}'s place was` : 'these places were'} held until ${dateLabel(nt.holdUntil)} and the group is now full. Contact Ligia (ligia@jonerfootball.com) and we will add you to the waitlist.`
+
 // Pay for all of a family's next term places at once (Lee, 16 Nov 2026:
 // siblings and two a week pay one amount, e.g. A$1,400 for two).
 async function nextFamilyChoice(req, res, parent, config) {
@@ -814,8 +830,13 @@ async function nextFamilyChoice(req, res, parent, config) {
     if (!nt.open) return fail(res, 403, `${nt.name} places are not open yet.`)
     const rows = roster.players.filter((r) => rowEmails(r).includes(parent.email) && onNextTerm(r, offers[r.id]) && (!nt.offerOnly || offers[r.id]) && !['paid', 'held', 'no'].includes(statuses[r.id]?.status || ''))
     if (rows.length < 2) return fail(res, 409, 'Pay for each player on their own card.')
+    // A player with no day picked yet is left out of the family payment.
+    const moves = await nextMoves(nt.name)
+    for (let i = rows.length - 1; i >= 0; i--) if (moves[rows[i].id] && !nextGroupOf(rows[i], moves)) rows.splice(i, 1)
+    if (rows.length < 2) return fail(res, 409, 'Pay for each player on their own card.')
+    if (!(await stillHasPlace(config, rows, statuses, moves))) return fail(res, 409, goneMsg(nt, rows))
     const priced = []
-    for (const r of rows) priced.push({ row: r, cents: rowNextPrice(config, r.groupId ? await getGroup(r.groupId) : null, offers[r.id]).fullCents })
+    for (const r of rows) { const gid = nextGroupOf(r, moves); priced.push({ row: r, cents: rowNextPrice(config, gid ? await getGroup(gid) : null, offers[r.id]).fullCents }) }
     const total = priced.reduce((t, x) => t + x.cents, 0)
     // The same family link, same places and amount, is reused.
     const prior = statuses[rows[0].id]?.payreqId ? await getPayreq(statuses[rows[0].id].payreqId) : null
