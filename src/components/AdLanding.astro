@@ -112,14 +112,14 @@ const hookPhotos = Object.fromEntries(hooks.map((h) => [h.code, { photo: h.photo
 
     <section class="lp-band lp-watch" data-cta-section="watch">
       <p class="lp-eyebrow">See a session</p>
-      <h2>Watch 1 minute of real sessions.</h2>
+      <h2>Six programs. Watch 1 minute.</h2>
       <div class="lp-watch-frame" id="lp-watch">
-        <button type="button" class="lp-watch-play" id="lp-watch-play" data-src="/videos/go/session-2min.mp4" aria-label="Play 1 minute of real sessions, with sound">
-          <img src="/videos/go/session-2min-poster.jpg" alt="Lee Jones holding a ball and coaching to camera on a training pitch" width="1280" height="720" loading="lazy" />
+        <button type="button" class="lp-watch-play" id="lp-watch-play" data-src="/videos/go/programs-mashup.mp4" aria-label="Play 1 minute of the six programs, with sound">
+          <img src="/videos/go/programs-mashup-poster.jpg" alt="Lee Jones with a ball at his feet on a training pitch" width="1280" height="720" loading="lazy" />
           <span class="lp-watch-label"><span class="lp-watch-icon" aria-hidden="true"></span>Play 1 minute, sound on</span>
         </button>
       </div>
-      <p class="lp-watch-note">Dribbling, passing, first touch, juggling, finishing and fast feet. I film every session and do every rep with you.</p>
+      <p class="lp-watch-note">Dribbling, Fast Feet, Passing and 1st Touch, Weak Foot, Score More Goals and Juggling. All in the app, and I do every rep with you.</p>
       <a href={monthlyUrl} class="lp-cta" data-meta-plan-type="monthly">Start 7 days free</a>
     </section>
 
@@ -423,7 +423,7 @@ const hookPhotos = Object.fromEntries(hooks.map((h) => [h.code, { photo: h.photo
       v.controls = true
       v.playsInline = true
       v.preload = 'auto'
-      v.poster = '/videos/go/session-2min-poster.jpg'
+      v.poster = '/videos/go/programs-mashup-poster.jpg'
       v.src = watchBtn.dataset.src || ''
       v.setAttribute('aria-label', 'One minute of real follow-along sessions')
       watchFrame.replaceChildren(v)
