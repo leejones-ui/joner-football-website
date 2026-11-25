@@ -27,6 +27,18 @@ const { title, audience, hooks, problemHead, problemBody, steps, programs, quote
 const defaultHook = hooks.find((h) => h.code === 'default') || hooks[0]
 const monthlyUrl = 'https://app.jonerfootball.com/checkout/new?o=230699'
 const annualUrl = 'https://app.jonerfootball.com/checkout/new?o=183092'
+// Proof near the top. Only numbers Lee has confirmed.
+const proof = [
+  { n: '2.5M', l: 'followers online' },
+  { n: '100,000+', l: 'app downloads' },
+  { n: '20+', l: 'years coaching' },
+]
+// Real screens from the app.
+const shots = [
+  { src: 'screenshot-4', alt: 'The Ages 6 to 9 section in the Joner Football app', cap: 'Sessions by age' },
+  { src: 'screenshot-1', alt: 'The home screen of the Joner Football app', cap: 'New sessions each week' },
+  { src: 'screenshot-2', alt: 'Favourites, playlists and downloads in the Joner Football app', cap: 'Save, download, replay' },
+]
 const hookPhotos = Object.fromEntries(hooks.map((h) => [h.code, { photo: h.photo, pos: h.pos || 'center 30%' }]))
 ---
 
@@ -39,6 +51,9 @@ const hookPhotos = Object.fromEntries(hooks.map((h) => [h.code, { photo: h.photo
         var raw = params.get('hook') || params.get('utm_content') || '';
         var match = raw.match(/\b[HS]0[1-9]\b/i);
         if (match) hook = match[0].toUpperCase();
+        // The Dad Email ad has no short code: its utm_content is the full ad name.
+        if (!hook && (/dad email/i.test(raw) || params.get('campaign_id') === '120251344050060035')) hook = 'DAD';
+        if (!hook && /^dad$/i.test(raw)) hook = 'DAD';
         if (!hook) hook = window.sessionStorage.getItem('jf_ad_hook') || '';
         if (codes.indexOf(hook) === -1) hook = '';
         if (hook) window.sessionStorage.setItem('jf_ad_hook', hook);
@@ -89,15 +104,30 @@ const hookPhotos = Object.fromEntries(hooks.map((h) => [h.code, { photo: h.photo
         <p class="lp-fine">Plus plan. Then <span data-price="plus-monthly">$19.99</span> a month. Cancel before day 7 and you pay nothing.</p>
         <ul class="lp-facts" aria-label="Quick facts">
           <li>Every session filmed</li>
-          <li>550+ videos on Plus</li>
           <li>iPhone, Android, web</li>
         </ul>
       </div>
     </section>
 
+    <ul class="lp-proof" aria-label="Joner Football in numbers">
+      {proof.map((p) => <li><strong>{p.n}</strong><span>{p.l}</span></li>)}
+    </ul>
+
     <section class="lp-band lp-problem" data-cta-section="problem">
       <h2>{problemHead}</h2>
       {problemBody.map((p) => <p>{p}</p>)}
+    </section>
+
+    <section class="lp-band" data-cta-section="proof">
+      <p class="lp-eyebrow">From members</p>
+      <div class="lp-quotes">
+        {quotes.map((q) => (
+          <figure class="lp-quote">
+            <blockquote>"{q.quote}"</blockquote>
+            <figcaption><strong>{q.name}</strong> {q.role}</figcaption>
+          </figure>
+        ))}
+      </div>
     </section>
 
     <section class="lp-band" data-cta-section="how-it-works">
@@ -114,6 +144,19 @@ const hookPhotos = Object.fromEntries(hooks.map((h) => [h.code, { photo: h.photo
 
     {promiseFirst && <AdPromise annualUrl={annualUrl} />}
 
+    <section class="lp-band" data-cta-section="app-screens">
+      <p class="lp-eyebrow">Inside the app</p>
+      <h2>Open it. Pick a session. Train.</h2>
+      <div class="lp-shots" tabindex="0" aria-label="Screens from the Joner Football app">
+        {shots.map((sh) => (
+          <figure class="lp-shot">
+            <img src={`/images/app/${sh.src}.webp`} alt={sh.alt} width="400" height="820" loading="lazy" />
+            <figcaption>{sh.cap}</figcaption>
+          </figure>
+        ))}
+      </div>
+    </section>
+
     <section class="lp-band" data-cta-section="programs">
       <p class="lp-eyebrow">Inside Plus</p>
       <h2>Programs that tell you exactly what to do.</h2>
@@ -129,17 +172,6 @@ const hookPhotos = Object.fromEntries(hooks.map((h) => [h.code, { photo: h.photo
       <p class="lp-swipe" aria-hidden="true">Swipe for more</p>
     </section>
 
-    <section class="lp-band" data-cta-section="proof">
-      <p class="lp-eyebrow">From members</p>
-      <div class="lp-quotes">
-        {quotes.map((q) => (
-          <figure class="lp-quote">
-            <blockquote>"{q.quote}"</blockquote>
-            <figcaption><strong>{q.name}</strong> {q.role}</figcaption>
-          </figure>
-        ))}
-      </div>
-    </section>
 
     {!promiseFirst && <AdPromise annualUrl={annualUrl} />}
 
@@ -201,7 +233,8 @@ const hookPhotos = Object.fromEntries(hooks.map((h) => [h.code, { photo: h.photo
   :global(html[data-hook="S01"]) .lp-hook[data-v="S01"],
   :global(html[data-hook="S02"]) .lp-hook[data-v="S02"],
   :global(html[data-hook="S03"]) .lp-hook[data-v="S03"],
-  :global(html[data-hook="S04"]) .lp-hook[data-v="S04"] { display: block; }
+  :global(html[data-hook="S04"]) .lp-hook[data-v="S04"],
+  :global(html[data-hook="DAD"]) .lp-hook[data-v="DAD"] { display: block; }
   .lp h1 { font-size: clamp(40px, 11.5vw, 76px); line-height: .95; letter-spacing: .01em; margin: 0 0 14px; text-wrap: balance; }
   .lp h1 :global(em) { font-style: normal; color: var(--red); }
   .lp-strike { font: 400 clamp(22px, 6vw, 34px)/1.05 var(--font-heading); text-transform: uppercase; color: var(--muted); text-decoration: line-through; text-decoration-color: var(--red); text-decoration-thickness: 4px; margin: 0 0 8px; }
@@ -212,6 +245,17 @@ const hookPhotos = Object.fromEntries(hooks.map((h) => [h.code, { photo: h.photo
   .lp-fine { font-size: 14px; color: var(--muted); margin: 10px 0 0; line-height: 1.45; }
   .lp-facts { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; margin: 20px 0 0; }
   .lp-facts li { font-size: 13px; font-weight: 600; color: #ddd; border: 1px solid var(--line); border-radius: 999px; padding: 6px 11px; }
+
+  .lp-proof { list-style: none; margin: 28px auto 0; padding: 0 16px; max-width: 760px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .lp-proof li { display: grid; gap: 6px; align-content: start; text-align: center; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 6px; }
+  .lp-proof strong { font: 400 clamp(24px, 7.4vw, 40px)/1 var(--font-heading); letter-spacing: .02em; }
+  .lp-proof span { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); line-height: 1.25; }
+
+  .lp-shots { display: grid; grid-auto-flow: column; grid-auto-columns: 62%; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: 16px; margin: 0 -16px; padding: 4px 16px 6px; scrollbar-width: none; overscroll-behavior-x: contain; }
+  .lp-shots::-webkit-scrollbar { display: none; }
+  .lp-shot { margin: 0; scroll-snap-align: start; }
+  .lp-shot img { width: 100%; height: auto; aspect-ratio: 400 / 820; object-fit: cover; object-position: top; display: block; border-radius: 22px; border: 2px solid #333; background: #111; }
+  .lp-shot figcaption { margin-top: 10px; font-size: 15px; font-weight: 700; text-align: center; }
 
   .lp-band { padding: 44px 16px 8px; max-width: 760px; margin: 0 auto; }
   .lp h2 { font-size: clamp(32px, 8.5vw, 52px); line-height: 1; margin: 0 0 16px; text-wrap: balance; }
@@ -272,7 +316,9 @@ const hookPhotos = Object.fromEntries(hooks.map((h) => [h.code, { photo: h.photo
     .lp-hero-copy { margin: 0; padding: 120px 48px 48px; align-self: center; }
     .lp-programs { grid-auto-flow: row; grid-template-columns: repeat(2, 1fr); overflow: visible; margin: 0; padding: 0; }
     .lp-swipe { display: none; }
+    .lp-shots { grid-auto-flow: row; grid-template-columns: repeat(3, 1fr); overflow: visible; margin: 0; padding: 0; }
     .lp-quotes { grid-template-columns: 1fr 1fr; }
+    .lp-quote:first-child:nth-last-child(odd) { grid-column: 1 / -1; }
     .lp-sticky { display: none; }
   }
 </style>
@@ -282,8 +328,8 @@ const hookPhotos = Object.fromEntries(hooks.map((h) => [h.code, { photo: h.photo
   // first guess so most visitors never see the wrong currency.
   const plusPrices: Record<string, { symbol: string; monthly: number; annual: number }> = {
     US: { symbol: '$', monthly: 19.99, annual: 179.99 },
-    AU: { symbol: '$', monthly: 28.49, annual: 254.99 },
-    CA: { symbol: '$', monthly: 28.99, annual: 254.99 },
+    AU: { symbol: 'A$', monthly: 28.49, annual: 254.99 },
+    CA: { symbol: 'CA$', monthly: 28.99, annual: 254.99 },
     EUR: { symbol: '€', monthly: 18.55, annual: 155.55 },
     GB: { symbol: '£', monthly: 15.45, annual: 134.45 },
   }
