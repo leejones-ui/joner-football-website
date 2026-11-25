@@ -228,6 +228,15 @@ const renderSlides = marquee ? [...slides, ...slides] : slides
 <script>
   // Marquee mode: slow continuous auto-scroll that pauses on hover / touch.
   document.querySelectorAll<HTMLElement>('[data-marquee="true"]').forEach((track) => {
+    // Covers slide in sideways, so lazy images can show as empty cards.
+    // Load them all once the row is close to the screen.
+    const loadAll = () => track.querySelectorAll<HTMLImageElement>('img[loading="lazy"]').forEach((img) => { img.loading = 'eager' })
+    if ('IntersectionObserver' in window) {
+      const io = new IntersectionObserver((entries) => {
+        if (entries.some((e) => e.isIntersecting)) { loadAll(); io.disconnect() }
+      }, { rootMargin: '800px 0px' })
+      io.observe(track)
+    } else loadAll()
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     if (reduced) return
     const slides = Array.from(track.querySelectorAll<HTMLElement>('.chl-slide'))

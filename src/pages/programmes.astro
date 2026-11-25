@@ -9,21 +9,20 @@ import TestimonialsSlider from '../components/TestimonialsSlider.astro'
 
 // Player and parent testimonials (from the app testimonials bank)
 const programTestimonials = [
+  { quote: 'Your system works. Tyler is proof of it.', name: 'Chris', role: "Dad. His son scored 25 of his team's 33 goals in 10 games." },
+  { quote: 'Thank you, this really helped me improve.', name: 'Ollie', role: 'Player, Dribbling Program' },
+  { quote: 'It is so good. Thanks, it helped my passing and shooting.', name: 'Sae', role: 'Player' },
+  { quote: 'There is not in my opinion another app nor channel on the web like yours with so much quality to offer for football training, skills, mindset, etc.', name: 'Milan B.', role: 'Parent and Plus member' },
   { quote: 'You are great, thanks for the help. This is the first video I saw in this app and it already helped.', name: 'Josh P.', role: 'Player' },
   { quote: 'Because of you and the content you provide, I now help local players aged 6 to 16 with their technical development. You have truly helped my players and me.', name: 'Matthew H.', role: 'Parent & Volunteer Coach' },
-  { quote: 'Back to the basics. Do simple things well.', name: 'Edgar P.', role: 'Player' },
-  { quote: 'New to this app and very impressed so far.', name: 'Steve', role: 'Member' },
-  { quote: 'Love it. Awesome drill.', name: 'Joseph B.', role: 'Player' },
-  { quote: 'Great drill, exactly the detail I needed.', name: 'Kieran Y.', role: 'Player' },
 ]
 import { faqSchema, webPageSchema, breadcrumbSchema } from '../lib/seoSchema'
 
 const JOIN_LINK = '/join'
-const BUNDLE_LINK = 'https://app.jonerfootball.com/checkout/new?o=227739'
 
 const tickerFacts = [
   'Voted Top 10 In The World For Technical Training',
-  '50,000+ Downloads',
+  '100,000+ Downloads',
   '15+ Countries',
   '2,000+ Training Videos',
   '100 Day Development Program',
@@ -51,24 +50,13 @@ const programSlides = [
   { image: '/images/programmes/covers/sc-cover.jpg', alt: '12 Week Strength and Conditioning Program', href: programsCategoryUrl, target: '_blank', badge: '7' },
 ]
 
-// (Program details kept for reference; the carousel now uses cover images.)
-const programs = [
-  { num: '01', title: 'Juggling Program', meta: '2 Days', body: 'Build your foundation. Ball feel, coordination and touch.' },
-  { num: '02', title: 'Fast Feet Program', meta: '7 Sessions', body: 'Quick feet that leave defenders guessing.' },
-  { num: '03', title: 'Passing & First Touch', meta: '13 Sessions', body: 'The foundation of everything. Control under pressure, crisp passing.' },
-  { num: '04', title: 'Dribbling Program', meta: '8 Sessions', body: 'Beat any defender. Close control and changes of direction.' },
-  { num: '05', title: 'Weak Foot Program', meta: '11 Sessions', body: 'Double your options on the pitch.' },
-  { num: '06', title: 'Score More Goals', meta: '9 Sessions', body: 'Turn chances into goals. Finishing technique and composure.' },
-  { num: '07', title: 'Strength & Conditioning', meta: '12 Weeks', body: 'Advanced S&C for older players ready to build a real physical base.' },
-]
-
 const faqs: Array<{ q: string; a: string }> = [
   { q: 'What ages and levels is this for?', a: 'The programs work for players of all ages and levels. Whether you are 10 or 30, just starting out or playing at a high level, the structured pathway meets you where you are and builds from there.' },
   { q: 'How long are the sessions?', a: 'Sessions run from 20 minutes up to an hour, depending on the program and the day. Designed to fit around work, school and team training.' },
   { q: 'Do I need any equipment?', a: 'Each program will clearly tell you what you need to complete it. Everything is based around minimal equipment.' },
   { q: 'What if I already train with a team?', a: 'This is individual development. The extra work that separates good players from great ones. It complements team training, it does not replace it.' },
-  { q: 'How does the 100 day guarantee work?', a: 'Annual members only. Follow the program for 100 days. If you do not see improvement, we give you an extra 100 days free and you can DM Lee directly inside the app.' },
-  { q: 'Are the programs available on monthly?', a: 'The structured 100 day pathway and the guarantee are exclusive to Annual members. Monthly members access the full video library. Move to Annual to access the programs.' },
+  { q: 'How does the 100 day guarantee work?', a: 'Follow the program for 100 days. If you do not see improvement, we give you an extra 100 days free. The guarantee is for Annual members only.' },
+  { q: 'Which plan do I need?', a: 'The 100 Day Transformation Program is included in the Plus and Max plans, paid monthly or yearly. Plus starts with a 7 day free trial. The 100 day guarantee is for Annual members only.' },
   { q: 'What about the S&C program?', a: 'The 12 Week Advanced Strength and Conditioning Program is included with Annual membership. Designed for older players ready to take their physical development seriously.' },
 ]
 
@@ -122,7 +110,7 @@ const sanityPage = await fetchSanityPage('programmes')
           <h1 class="font-heading text-4xl sm:text-5xl md:text-6xl font-bold text-white uppercase leading-none mb-5">The 100 Day Transformation Program</h1>
           <p class="text-gray-200 font-body text-lg md:text-xl max-w-xl mb-7">100 days of structured football training for players who want to stand out. One clear plan inside the app.</p>
           <div>
-            <a href={JOIN_LINK} class="btn-red text-base px-8 py-4 inline-flex text-center">Start Free Trial</a>
+            <a href={JOIN_LINK} class="btn-red text-base px-8 py-4 inline-flex text-center">Start 7 Days Free</a>
           </div>
         </div>
       </div>
@@ -134,8 +122,9 @@ const sanityPage = await fetchSanityPage('programmes')
     <section class="bg-joner-black py-12 md:py-16">
       <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 text-center">
         <p class="mb-3 font-heading text-xs uppercase tracking-[0.28em] text-joner-red sm:text-sm">Watch This First</p>
-        <h2 class="mb-6 font-heading text-2xl md:text-4xl font-bold uppercase leading-tight text-white">See exactly how the 100 day transformation program works.</h2>
-        <PlayButtonVideo src="/videos/100-day-landing.mp4" poster="/videos/100-day-landing-poster.jpg" label="Play the 100 day intro video" />
+        <h2 class="mb-6 font-heading text-2xl md:text-4xl font-bold uppercase leading-tight text-white">Every program in 1 minute.</h2>
+        <PlayButtonVideo src="/videos/go/programs-mashup-v21.mp4" poster="/videos/go/programs-mashup-poster.jpg" label="Play 1 minute of the programs, with sound" />
+        <p class="mt-5 font-body text-base text-gray-300">Dribbling, Fast Feet, Passing and 1st Touch, Weak Foot, Score More Goals and Juggling. I do every rep with you.</p>
       </div>
     </section>
 
@@ -146,7 +135,7 @@ const sanityPage = await fetchSanityPage('programmes')
           <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">The Reality</p>
           <h2 class="font-heading text-4xl md:text-6xl font-bold text-joner-black uppercase leading-none mb-6">Not Enough Players Train On Their Own With Structure</h2>
           <p class="text-lg text-gray-700 font-body mb-8 max-w-xl">Team training is once or twice a week. So is everyone else's. The players who pull ahead do structured work on their own, every week. Most players never do because they have no plan.</p>
-          <a href="https://app.jonerfootball.com/programs/6-weeks-program-week-1-session-1-41ba39" target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 inline-flex text-center">Try A Free Session!</a>
+          <a href="https://app.jonerfootball.com/programs/6-weeks-program-week-1-session-1-41ba39" target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 inline-flex text-center">Try A Free Session</a>
         </div>
         <div class="order-1 lg:order-2 overflow-hidden rounded-[24px] shadow-[0_28px_70px_rgba(0,0,0,0.24)] ring-1 ring-black/10">
           <img src="/images/programmes/100-day/train-smart.jpg" alt="Train smart. Improve every day. Train with structure, detailed follow along sessions, hold yourself accountable, guaranteed improvement if you follow the steps." class="block w-full object-cover" loading="lazy" />
@@ -168,7 +157,7 @@ const sanityPage = await fetchSanityPage('programmes')
     <CoachesHighlightsCarousel heading="Every Program Included" slides={programSlides} marquee compact />
     <div class="bg-joner-black pb-12 md:pb-20">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <a href={JOIN_LINK} class="btn-red text-base px-8 py-4 inline-flex text-center">Start Free Trial</a>
+        <a href={JOIN_LINK} class="btn-red text-base px-8 py-4 inline-flex text-center">Start 7 Days Free</a>
       </div>
     </div>
 
@@ -190,7 +179,7 @@ const sanityPage = await fetchSanityPage('programmes')
             <img src="/images/programmes/100-day/lee-avatar.jpg" alt="Lee Jones" class="w-10 h-10 rounded-full border-2 border-joner-red object-cover shrink-0" loading="lazy" />
             <p class="font-heading text-white text-xs uppercase tracking-widest italic">Lee, Founder Joner Football</p>
           </div>
-          <a href={JOIN_LINK} class="btn-red text-base px-8 py-4 inline-flex w-full justify-center text-center">Start Free Trial</a>
+          <a href={JOIN_LINK} class="btn-red text-base px-8 py-4 inline-flex w-full justify-center text-center">Start 7 Days Free</a>
           <p class="text-gray-400 font-body text-xs uppercase tracking-widest mt-4">Annual members only</p>
         </div>
       </div>
@@ -213,7 +202,7 @@ const sanityPage = await fetchSanityPage('programmes')
                 <img src="/images/programmes/100-day/lee-avatar.jpg" alt="Lee Jones" class="w-11 h-11 rounded-full border-2 border-joner-red object-cover shrink-0" loading="lazy" />
                 <p class="font-heading text-white text-sm uppercase tracking-widest italic">Lee, Founder Joner Football</p>
               </div>
-              <a href={JOIN_LINK} class="btn-red text-base px-8 py-4 inline-flex self-start text-center">Start Free Trial</a>
+              <a href={JOIN_LINK} class="btn-red text-base px-8 py-4 inline-flex self-start text-center">Start 7 Days Free</a>
               <p class="text-gray-500 font-body text-xs uppercase tracking-widest mt-4">Annual members only</p>
             </div>
           </div>
@@ -263,7 +252,7 @@ const sanityPage = await fetchSanityPage('programmes')
         },
         {
           heading: 'Best next step',
-          body: 'Start a free trial in the app and begin day one. Annual members get the full 100 day pathway and the improvement guarantee backed by Lee Jones.',
+          body: 'Start a 7 day free trial on the Plus plan and begin day one. Plus and Max members get the full 100 day pathway. Annual members also get the improvement guarantee backed by Lee Jones.',
         },
       ]}
       links={[
@@ -280,7 +269,7 @@ const sanityPage = await fetchSanityPage('programmes')
         <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">Your Next Level</p>
         <h2 class="font-heading text-4xl md:text-5xl lg:text-6xl font-bold text-white uppercase leading-none mb-6">Your Next Level Starts Today</h2>
         <p class="text-gray-300 font-body text-lg mb-8 max-w-2xl mx-auto">Pick a program. Follow the plan. Watch yourself improve.</p>
-        <a href={JOIN_LINK} class="btn-red text-base px-8 py-4 inline-flex text-center">Start Free Trial</a>
+        <a href={JOIN_LINK} class="btn-red text-base px-8 py-4 inline-flex text-center">Start 7 Days Free</a>
       </div>
     </section>
   </main>
