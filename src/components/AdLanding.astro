@@ -80,6 +80,7 @@ const hookPhotos = Object.fromEntries(hooks.map((h) => [h.code, { photo: h.photo
           fetchpriority="high"
           style={`object-position:${defaultHook.pos || 'center 30%'}`}
         />
+        <video id="lp-hero-video" class="lp-hero-video" muted loop playsinline preload="none" aria-hidden="true" tabindex="-1" data-src="/videos/go/session-loop.mp4"></video>
         <script is:inline define:vars={{ hookPhotos }}>
           (function () {
             var hook = document.documentElement.getAttribute('data-hook');
@@ -107,6 +108,19 @@ const hookPhotos = Object.fromEntries(hooks.map((h) => [h.code, { photo: h.photo
           <li>iPhone, Android, web</li>
         </ul>
       </div>
+    </section>
+
+    <section class="lp-band lp-watch" data-cta-section="watch">
+      <p class="lp-eyebrow">See a session</p>
+      <h2>Watch 2 minutes of a real session.</h2>
+      <div class="lp-watch-frame" id="lp-watch">
+        <button type="button" class="lp-watch-play" id="lp-watch-play" data-src="/videos/go/session-2min.mp4" aria-label="Play 2 minutes of a session, with sound">
+          <img src="/videos/go/session-2min-poster.jpg" alt="Lee Jones starting a follow-along session on a training pitch" width="1280" height="720" loading="lazy" />
+          <span class="lp-watch-label"><span class="lp-watch-icon" aria-hidden="true"></span>Play 2 minutes, sound on</span>
+        </button>
+      </div>
+      <p class="lp-watch-note">This is how every session runs. I explain it, then I do every rep with you.</p>
+      <a href={monthlyUrl} class="lp-cta" data-meta-plan-type="monthly">Start 7 days free</a>
     </section>
 
     <ul class="lp-proof" aria-label="Joner Football in numbers">
@@ -246,6 +260,21 @@ const hookPhotos = Object.fromEntries(hooks.map((h) => [h.code, { photo: h.photo
   .lp-facts { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; margin: 20px 0 0; }
   .lp-facts li { font-size: 13px; font-weight: 600; color: #ddd; border: 1px solid var(--line); border-radius: 999px; padding: 6px 11px; }
 
+  .lp-hero-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 35%; opacity: 0; transition: opacity .6s ease; }
+  .lp-hero-video.is-on { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) { .lp-hero-video { display: none; } }
+
+  .lp-watch { padding-top: 28px; }
+  .lp-watch-frame { position: relative; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; background: #000; border: 1px solid var(--line); }
+  .lp-watch-frame :global(video) { width: 100%; height: 100%; display: block; background: #000; }
+  .lp-watch-play { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; background: none; cursor: pointer; color: #fff; -webkit-tap-highlight-color: transparent; }
+  .lp-watch-play img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .lp-watch-play::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(10,10,10,.75) 0%, rgba(10,10,10,0) 45%); }
+  .lp-watch-label { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 1; display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; background: var(--red); border-radius: 999px; padding: 8px 18px 8px 8px; font: 800 15px/1 var(--font-body); box-shadow: 0 6px 24px rgba(0,0,0,.45); }
+  .lp-watch-icon { position: relative; flex: none; width: 34px; height: 34px; border-radius: 50%; background: #fff; }
+  .lp-watch-icon::after { content: ''; position: absolute; left: 13px; top: 9px; border-style: solid; border-width: 8px 0 8px 12px; border-color: transparent transparent transparent var(--red); }
+  .lp-watch-note { font-size: 16px; line-height: 1.5; color: #e2e2e2; margin: 14px 0 18px; }
+
   .lp-proof { list-style: none; margin: 28px auto 0; padding: 0 16px; max-width: 760px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .lp-proof li { display: grid; gap: 6px; align-content: start; text-align: center; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 6px; }
   .lp-proof strong { font: 400 clamp(24px, 7.4vw, 40px)/1 var(--font-heading); letter-spacing: .02em; }
@@ -362,6 +391,49 @@ const hookPhotos = Object.fromEntries(hooks.map((h) => [h.code, { photo: h.photo
     .then((r) => { if (!r.ok) throw new Error('ipapi blocked'); return r.json() })
     .then((d) => showPrices(regionFromCountryCode(d.country_code)))
     .catch(() => {})
+
+  // Hero loop: the photo paints first. The clip is fetched only after the page has
+  // loaded, and never for visitors who asked for less motion or less data.
+  const heroVideo = document.getElementById('lp-hero-video') as HTMLVideoElement | null
+  const conn = (navigator as any).connection
+  const lean = window.matchMedia('(prefers-reduced-motion: reduce)').matches || (conn && (conn.saveData || /(^|-)2g$/.test(conn.effectiveType || '')))
+  if (heroVideo && !lean) {
+    const start = () => {
+      heroVideo.addEventListener('playing', () => heroVideo.classList.add('is-on'), { once: true })
+      heroVideo.src = heroVideo.dataset.src || ''
+      const p = heroVideo.play()
+      if (p && p.catch) p.catch(() => {})
+    }
+    const later = () => window.setTimeout(start, 400)
+    if (document.readyState === 'complete') later()
+    else window.addEventListener('load', later, { once: true })
+    document.addEventListener('visibilitychange', () => {
+      if (!heroVideo.src) return
+      if (document.hidden) heroVideo.pause()
+      else { const p = heroVideo.play(); if (p && p.catch) p.catch(() => {}) }
+    })
+  }
+
+  // Two minutes of a session: nothing is downloaded until the visitor taps play.
+  const watchBtn = document.getElementById('lp-watch-play')
+  const watchFrame = document.getElementById('lp-watch')
+  if (watchBtn && watchFrame) {
+    watchBtn.addEventListener('click', () => {
+      const v = document.createElement('video')
+      v.controls = true
+      v.playsInline = true
+      v.preload = 'auto'
+      v.poster = '/videos/go/session-2min-poster.jpg'
+      v.src = watchBtn.dataset.src || ''
+      v.setAttribute('aria-label', 'Two minutes of a follow-along session')
+      watchFrame.replaceChildren(v)
+      if (heroVideo) heroVideo.pause()
+      const p = v.play()
+      if (p && p.catch) p.catch(() => {})
+      v.focus()
+      try { (window as any).gtag && (window as any).gtag('event', 'landing_video_play', { page_path: window.location.pathname }) } catch (e) {}
+    }, { once: true })
+  }
 
   // Sticky bar shows once the hero button is off screen, and steps aside at the offer.
   const sticky = document.getElementById('lp-sticky')
