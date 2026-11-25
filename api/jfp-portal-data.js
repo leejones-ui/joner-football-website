@@ -2144,7 +2144,7 @@ async function sendPaymentLink(req, res, principal, config, body) {
   const openLinks = (await listPayreqs()).filter((q) => ['open', 'checkout'].includes(q.status) && q.term4Ids.some((id) => ids.includes(id)))
   if (openLinks.length && body.replace !== true) return fail(res, 409, `${rows.map((r) => r.player).join(' and ')} already ${openLinks.length > 1 ? 'have open links' : `has an open link for ${formatAud(openLinks[0].amountCents)}`}. Replace it with this new one?`, { code: 'link_open' })
   for (const q of openLinks) {
-    const c = await cancelLink(q, principal, 'Replaced by a new link')
+    const c = await cancelLink(q, principal, 'Replaced by a new link', { release: false })
     if (c.error) return fail(res, c.status, c.error)
     for (const r of rows) { const fresh = await getTerm4Row(r.id); if (fresh) Object.assign(r, fresh) }
   }
@@ -2354,7 +2354,7 @@ async function sessionInvoice(req, res, principal, config, body) {
     if (openLinks.some((q) => q.term4Ids.some((id) => !ids.includes(id)))) return fail(res, 409, 'One of these players shares an open link with someone else. Cancel it in Payment links first.')
     if (openLinks.length && body.replace !== true) return fail(res, 409, `There is already an open link (${openLinks.map((q) => `${q.playerNames.join(' + ')} ${formatAud(q.amountCents)}`).join(', ')}). Replace it with this one?`, { code: 'link_open' })
     // A replaced session link takes its sessions back off the fee (restoreFields).
-    for (const q of openLinks) { const c = await cancelLink(q, principal, 'Replaced by a new session link'); if (c.error) return fail(res, c.status, c.error) }
+    for (const q of openLinks) { const c = await cancelLink(q, principal, 'Replaced by a new session link', { release: false }); if (c.error) return fail(res, c.status, c.error) }
   }
   const restoreFields = []
   const updates = []
@@ -2673,7 +2673,7 @@ async function quickLink(req, res, principal, config, body) {
     const open = (await listPayreqs()).filter((x) => ['open', 'checkout'].includes(x.status) && (x.term4Ids || []).includes(row.id))
     if (open.length && body.replace !== true) return fail(res, 409, `${row.player} already has an open link for ${formatAud(open[0].amountCents)}. Replace it with this new one?`, { code: 'link_open' })
     for (const o of open) {
-      const c = await cancelLink(o, principal, 'Replaced by a quick link')
+      const c = await cancelLink(o, principal, 'Replaced by a quick link', { release: false })
       if (c.error) return fail(res, c.status, c.error)
     }
   }
@@ -2714,7 +2714,10 @@ async function quickLinkChecked(res, principal, body) {
 
 // Close a payment link so it can no longer be paid: shut the Stripe page,
 // put back what a price-list link changed, and give back a place it held.
-async function cancelLink(q, principal, why, { keepPlace = false } = {}) {
+// A link replaced by a new one for the same place (release: false) never gives
+// the place back: the new link carries it on (Ligia, 25 Nov 2026: a trial
+// changed to the rest of term dropped the player off the timetable).
+async function cancelLink(q, principal, why, { keepPlace = false, release = true } = {}) {
   if (q.status === 'paid') return { status: 409, error: 'Already paid. Refunds are made in Stripe.' }
   if (!['open', 'checkout'].includes(q.status)) return { released: 0 }
   const closed = q.status === 'checkout' ? await closeCheckout(q.stripeSessionId) : 'expired'
@@ -2730,7 +2733,7 @@ async function cancelLink(q, principal, why, { keepPlace = false } = {}) {
     // The fee is back as it was, so a credit used on this link is owed again.
     if (q.creditUsed?.length) await returnCredits(q, { by: principal.email, why })
   }
-  const released = ['application', 'waitlist', 'trial', 'admin-add'].includes(q.reason) ? await releaseOffer(q, principal, why) : 0
+  const released = release && ['application', 'waitlist', 'trial', 'admin-add'].includes(q.reason) ? await releaseOffer(q, principal, why) : 0
   await audit({ by: principal.email, action: 'payreq.cancel', target: q.id, after: { released, why } })
   return { released }
 }

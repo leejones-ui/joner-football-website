@@ -314,4 +314,19 @@ await test('4 January buttons: email everyone not paid (preview, then one email 
   assert.ok((await portal(lee, 'audit')).data.entries.some((e) => e.action === 'next.remind.unpaid'))
 })
 
+await test('a trial changed to the rest of term: replacing the trial link keeps the place (Rayan, 25 Nov 2026)', async () => {
+  const F = await mk({ day: 'Friday', time: '5:10pm', location: 'Belrose HQ', coachId: 'sam', capacity: 6, mode: 'application', label: 'Small group' })
+  const fam = client(); await gate(fam); await signIn(fam, 'rayan@example.com')
+  const req = await fam.call('/api/jfp-book', { action: 'request', kind: 'application', groupId: F, players: [{ name: 'Ray Trial', dob: '2013-02-02', emergencyName: 'Ria Trial', emergencyPhone: '0400777810' }], parentName: 'Ria Trial', mobile: '0400777810', answers: { club: 'X', team: 'U14' }, waiver: { ...WAIVER, signature: 'Ria Trial' } })
+  assert.equal(req.status, 200, JSON.stringify(req.data))
+  const tr = await portal(lee, 'decideRequest', { id: req.data.id, decision: 'trial', sendEmail: false })
+  assert.equal(tr.status, 200, JSON.stringify(tr.data))
+  const row = (await at()).term4.find((r) => r.fields['Player Name'] === 'Ray Trial')
+  assert.equal(row.fields['Term 4 Confirmation'], 'Awaiting Reply')
+  const link = await portal(lee, 'sendPaymentLink', { rowId: row.id, product: 'group', replace: true, sendEmail: false })
+  assert.equal(link.status, 200, JSON.stringify(link.data))
+  const after = (await at()).term4.find((r) => r.id === row.id)
+  assert.equal(after.fields['Term 4 Confirmation'], 'Awaiting Reply', 'still holding the place')
+})
+
 console.log(`\n${passed} passed`)
