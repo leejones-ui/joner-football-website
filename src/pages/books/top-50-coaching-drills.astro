@@ -290,6 +290,38 @@ const pad = (n: number) => String(n).padStart(2, '0')
   const root = document.getElementById('t50')
   if (root) {
     root.classList.add('js')
+
+    // Carry ad tags (utm_*, fbclid, Meta ids) from this page to the shop Buy links,
+    // so Shopify can see which sales came from which ad.
+    try {
+      const KEEP = /^(utm_[a-z_]+|fbclid|campaign_id|adset_id|ad_id)$/
+      const tags: Record<string, string> = {}
+      new URLSearchParams(window.location.search).forEach((v, k) => {
+        if (KEEP.test(k) && v) tags[k] = v.slice(0, 300)
+      })
+      let saved: Record<string, string> = {}
+      try {
+        saved = JSON.parse(sessionStorage.getItem('jf-book-tags') || '{}') || {}
+      } catch {}
+      const use = Object.keys(tags).length ? tags : saved
+      if (Object.keys(tags).length) {
+        try {
+          sessionStorage.setItem('jf-book-tags', JSON.stringify(tags))
+        } catch {}
+      }
+      if (Object.keys(use).length) {
+        root.querySelectorAll<HTMLAnchorElement>('a[data-book-cta]').forEach((a) => {
+          try {
+            const u = new URL(a.href)
+            if (u.hostname !== 'shop.jonerfootball.com') return
+            Object.keys(use).forEach((k) => {
+              if (KEEP.test(k)) u.searchParams.set(k, String(use[k]))
+            })
+            a.href = u.toString()
+          } catch {}
+        })
+      }
+    } catch {}
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
     // Reveal on scroll
