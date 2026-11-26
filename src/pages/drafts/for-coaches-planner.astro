@@ -1,0 +1,107 @@
+---
+// DRAFT for Lee (27 Nov 2026). New top for /app/for-coaches, built around the Session Planner.
+// Goal it serves: more coaches choosing Max, and more book sales.
+// Not linked from anywhere, noindex, out of the sitemap. The live page is unchanged.
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import PlayButtonVideo from '../../components/PlayButtonVideo.astro'
+import { top50Book as book } from '../../data/top50-book'
+
+const steps = [
+  { n: '1', t: 'Pick the session', b: 'Choose by age, topic and difficulty. Every session is one I run with my own players.' },
+  { n: '2', t: 'Open the plan', b: 'The set up, coaching points, common mistakes and progressions on one page. Save it or print it.' },
+  { n: '3', t: 'Watch it, then coach it', b: 'Every plan has the video built in, so you see the drill running before you take it to training.' },
+]
+---
+
+<BaseLayout title="Draft: coaches page with the Session Planner | Joner Football" description="Draft page for Lee to review." noindex noTracking>
+  <main class="cd bg-joner-black text-white">
+    <p class="cd-flag">Draft for Lee. Not live. The real coaches page has not changed.</p>
+
+    <section class="cd-hero">
+      <div class="cd-hero__copy">
+        <p class="cd-kicker">For coaches · In the Max plan</p>
+        <h1>Your next session, planned.</h1>
+        <p class="cd-lead">Session plans with the video built in. Pick one, open it, coach it. No more winging it on the drive to training.</p>
+        <a href="/join" class="btn-red cd-btn">Get the Max plan</a>
+        <p class="cd-small">From $20.83 USD per month. Cancel anytime.</p>
+      </div>
+      <div class="cd-hero__shot">
+        <img src="/images/coaches-only/features/pdf-session-planner.jpg" alt="A Joner Football session plan page with set up, coaching points and progressions" width="1672" height="941" loading="eager" decoding="async" />
+        <p class="cd-note">Lee: a 30 to 60 second screen recording of you using the planner goes here.</p>
+      </div>
+    </section>
+
+    <section class="cd-steps" aria-labelledby="cd-steps-title">
+      <h2 id="cd-steps-title">How it works</h2>
+      <ol>
+        {steps.map((s) => (
+          <li>
+            <span class="cd-num" aria-hidden="true">{s.n}</span>
+            <h3>{s.t}</h3>
+            <p>{s.b}</p>
+          </li>
+        ))}
+      </ol>
+    </section>
+
+    <section class="cd-watch">
+      <h2>Watch how I plan a session</h2>
+      <PlayButtonVideo src="/videos/coaches-only-intro.mp4" poster="/images/coaches-only/app-session-planner.webp" label="Play Lee's walkthrough of the coaches section" />
+      <a href="/join" class="btn-red cd-btn">Get the Max plan</a>
+    </section>
+
+    <section class="cd-book" aria-labelledby="cd-book-title">
+      <a class="cd-book__cover" href={book.page} aria-label="Top 50 Coaching Drills by Lee Jones">
+        <img src={book.cover} alt="Cover of Top 50 Coaching Drills by Lee Jones" width="800" height="1132" loading="lazy" decoding="async" />
+      </a>
+      <div>
+        <p class="cd-kicker">Prefer it on paper?</p>
+        <h2 id="cd-book-title">Top 50 Coaching Drills</h2>
+        <p class="cd-lead">My top 50 drills from 20 years of coaching. One page each. Every drill on video.</p>
+        <a href={book.page} class="btn-outline cd-btn">See the book</a>
+        <p class="cd-small">PDF {book.pdfPrice}. Paperback {book.paperbackPrice}.</p>
+      </div>
+    </section>
+
+    <p class="cd-flag">The rest of the coaches page (who it is for, what is inside, prices, FAQ) stays as it is below this.</p>
+  </main>
+</BaseLayout>
+
+<style>
+  .cd { padding-bottom: 48px; }
+  .cd h1, .cd h2, .cd h3 { font-family: var(--font-heading); text-transform: uppercase; font-weight: 400; line-height: 1; margin: 0; }
+  .cd-flag { margin: 0; padding: 10px 16px; text-align: center; font-size: 13px; font-weight: 700; background: #fff; color: #0a0a0a; }
+  .cd-kicker { margin: 0 0 12px; font-family: var(--font-heading); font-size: 12px; letter-spacing: .24em; text-transform: uppercase; color: var(--color-joner-red); }
+  .cd-lead { margin: 16px 0 0; font-size: 18px; line-height: 1.5; color: #e5e7eb; max-width: 520px; }
+  .cd-small { margin: 12px 0 0; font-size: 14px; color: #d1d5db; }
+  .cd-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 52px; padding: 0 28px; margin-top: 24px; font-size: 16px; }
+  .cd-note { margin: 10px 0 0; font-size: 13px; color: #fca5a5; }
+
+  .cd-hero { display: grid; grid-template-columns: minmax(0, 1fr); gap: 32px; align-items: center; max-width: 1200px; margin: 0 auto; padding: 48px 16px; }
+  .cd-hero h1 { font-size: clamp(40px, 9vw, 76px); }
+  .cd-hero__shot img { display: block; width: 100%; height: auto; border-radius: 16px; border: 1px solid rgba(255, 255, 255, .12); }
+
+  .cd-steps { background: #fff; color: #0a0a0a; padding: 56px 16px; }
+  .cd-steps h2 { text-align: center; font-size: clamp(32px, 6vw, 52px); }
+  .cd-steps ol { list-style: none; margin: 32px auto 0; padding: 0; max-width: 1100px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .cd-steps li { border: 1px solid #e5e7eb; border-radius: 16px; padding: 24px; }
+  .cd-num { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--color-joner-red); color: #fff; font-family: var(--font-heading); font-size: 20px; }
+  .cd-steps h3 { margin-top: 16px; font-size: 24px; }
+  .cd-steps li p { margin: 10px 0 0; font-size: 16px; line-height: 1.5; color: #374151; }
+
+  .cd-watch { max-width: 1000px; margin: 0 auto; padding: 56px 16px; text-align: center; }
+  .cd-watch h2 { font-size: clamp(30px, 6vw, 48px); margin-bottom: 24px; }
+
+  .cd-book { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; align-items: center; max-width: 1000px; margin: 0 auto; padding: 48px 16px 56px; border-top: 1px solid rgba(255, 255, 255, .1); text-align: center; }
+  .cd-book h2 { font-size: clamp(32px, 6vw, 52px); }
+  .cd-book .cd-lead { margin-left: auto; margin-right: auto; }
+  .cd-book__cover { display: block; justify-self: center; width: min(56vw, 260px); }
+  .cd-book__cover img { display: block; width: 100%; height: auto; box-shadow: 0 24px 44px rgba(0, 0, 0, .6); }
+
+  @media (min-width: 860px) {
+    .cd-hero { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 56px; padding: 72px 24px; }
+    .cd-steps ol { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .cd-book { grid-template-columns: minmax(0, 280px) minmax(0, 1fr); gap: 56px; text-align: left; }
+    .cd-book .cd-lead { margin-left: 0; }
+  }
+</style>
