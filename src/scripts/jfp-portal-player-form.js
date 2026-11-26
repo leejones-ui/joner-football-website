@@ -15,6 +15,7 @@ export const PROFILE_LISTS = {
   positions: ['Goalkeeper', 'Centre back', 'Full back', 'Defensive midfield', 'Central midfield', 'Attacking midfield', 'Winger', 'Striker'],
   feet: ['Right', 'Left', 'Both'],
   years: ['Under 1 year', '1 to 2 years', '3 to 4 years', '5 or more years'],
+  clubRoles: ['Coaches a team', 'On the committee', 'Team manager or helper', 'No'],
 }
 export const todayIso = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' })
 
@@ -47,6 +48,7 @@ export function playerFormHtml(px, { row = {}, v = {}, opts = {}, add = false } 
       <div class="j-two">${txt(`${px}-assoc`, `Association ${opt}`, v.association, 'placeholder="For example, MWFA or NWSF"')}${txt(`${px}-prev`, `Previous clubs ${opt}`, v.previousClubs)}</div>
       <div class="j-two"><label class="j-field"><span>Years playing</span>${sel(`${px}-years`, o.years, v.yearsPlaying, 'Not known')}</label>${txt(`${px}-rep`, `Rep, academy or squads ${opt}`, v.repTeam, 'placeholder="For example, Manly United academy"')}</div>
       ${txt(`${px}-other`, `Other training each week ${opt}`, v.otherTraining, 'placeholder="For example, futsal on Mondays"')}
+      <label class="j-field"><span>Anyone in the family coach or help at the club? ${opt}</span>${sel(`${px}-crole`, o.clubRoles, v.clubRole, 'Not known')}</label>
       <div class="j-two"><label class="j-field"><span>Level</span>${sel(`${px}-level`, o.levels, v.level, 'Not known')}</label><label class="j-field"><span>Plays</span>${sel(`${px}-up`, o.playingUp, v.playingUp, 'Not known')}</label></div>
       <div class="j-field"><span>Positions</span><div class="j-chips jpf-pos" style="flex-wrap:wrap" id="${px}-pos">${o.positions.map((x) => `<button type="button" class="j-chip" data-pos="${esc(x)}" aria-pressed="${(v.positions || []).includes(x)}">${esc(x)}</button>`).join('')}</div></div>
       <label class="j-field"><span>Stronger foot</span>${sel(`${px}-foot`, o.feet, v.foot, 'Not known')}</label>
@@ -60,7 +62,7 @@ export function playerFormHtml(px, { row = {}, v = {}, opts = {}, add = false } 
 }
 
 // Profile values and the form field each one fills.
-const PROFILE_IDS = { club: 'club', team: 'team', association: 'assoc', previousClubs: 'prev', yearsPlaying: 'years', repTeam: 'rep', otherTraining: 'other', level: 'level', playingUp: 'up', foot: 'foot', goals: 'goals', emergencyName: 'ename', emergencyPhone: 'ephone', emergencyRelation: 'erel', medical: 'med', parent2Name: 'p2name', parent2Mobile: 'p2mob', parent2Email: 'p2email' }
+const PROFILE_IDS = { club: 'club', team: 'team', association: 'assoc', previousClubs: 'prev', yearsPlaying: 'years', repTeam: 'rep', otherTraining: 'other', clubRole: 'crole', level: 'level', playingUp: 'up', foot: 'foot', goals: 'goals', emergencyName: 'ename', emergencyPhone: 'ephone', emergencyRelation: 'erel', medical: 'med', parent2Name: 'p2name', parent2Mobile: 'p2mob', parent2Email: 'p2email' }
 
 // Wires the own-contact switch (labels, hidden parent fields, the adult
 // suggestion from the date of birth). onChange(words) lets the caller relabel
@@ -118,7 +120,7 @@ export function wirePlayerForm(box, px, { onChange = () => {}, today = todayIso(
       const row = { name: val('name'), parent: own ? '' : val('parent'), email: val('email'), phone: val('mobile') }
       const values = {
         dob: val('dob'), club: val('club'), team: val('team'), level: val('level'), playingUp: val('up'), foot: val('foot'),
-        association: val('assoc'), previousClubs: val('prev'), yearsPlaying: val('years'), repTeam: val('rep'), otherTraining: val('other'),
+        association: val('assoc'), previousClubs: val('prev'), yearsPlaying: val('years'), repTeam: val('rep'), otherTraining: val('other'), clubRole: val('crole'),
         positions: [...box.querySelectorAll(`#${px}-pos [data-pos][aria-pressed="true"]`)].map((b) => b.dataset.pos),
         emergencyName: val('ename'), emergencyPhone: val('ephone'), emergencyRelation: val('erel'), medical: val('med'), goals: val('goals'),
         ...(own ? {} : { parent2Name: val('p2name'), parent2Mobile: val('p2mob'), parent2Email: val('p2email'), parentName: row.parent, parentMobile: row.phone }),

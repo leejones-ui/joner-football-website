@@ -845,6 +845,7 @@ const OPT = {
   playingUp: ['Own age', 'Playing up', 'Playing down'],
   positions: ['Goalkeeper', 'Centre back', 'Full back', 'Defensive midfield', 'Central midfield', 'Attacking midfield', 'Winger', 'Striker'],
   feet: ['Right', 'Left', 'Both'],
+  clubRoles: ['Coaches a team', 'On the committee', 'Team manager or helper', 'No'],
 }
 function renderInfo() {
   const el = document.querySelector('[data-pane="info"]')
@@ -880,6 +881,7 @@ function renderInfo() {
         <label class="j-field"><span>Years playing</span><select class="j-select" data-f="yearsPlaying"><option value="">Choose</option>${(o.years || ['Under 1 year', '1 to 2 years', '3 to 4 years', '5 or more years']).map((x) => `<option ${v.yearsPlaying === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
         ${f('repTeam', 'Rep, academy or squads <span class="muted">(optional)</span>', v.repTeam, 'placeholder="For example, Manly United academy"')}
         ${f('otherTraining', 'Other training each week <span class="muted">(optional)</span>', v.otherTraining, 'placeholder="For example, futsal on Mondays"')}
+        ${pl.self || D.self ? '' : `<label class="j-field"><span>Do you or anyone in the family coach or help at ${esc(first(pl.name))}'s club? <span class="muted">(optional)</span></span><select class="j-select" data-f="clubRole"><option value="">Choose</option>${(o.clubRoles || OPT.clubRoles).map((x) => `<option ${v.clubRole === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label>`}
         <label class="j-field"><span>Level</span><select class="j-select" data-f="level"><option value="">Choose</option>${o.levels.map((x) => `<option ${v.level === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
         ${pl.self ? '' : seg('playingUp', o.playingUp)}
         <div class="j-field full"><span>Positions <span class="muted">(choose any)</span></span><div class="ja-seg" data-multi="positions">${o.positions.map((x) => `<button type="button" class="j-chip" data-val="${esc(x)}" aria-pressed="${(v.positions || []).includes(x)}">${esc(x)}</button>`).join('')}</div></div>

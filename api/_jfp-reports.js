@@ -34,6 +34,11 @@ export const REMINDER_MAX = 600
 export const QR_DEFAULTS = {
   list: { url: 'https://www.jonerfootball.com/stay', label: 'Join the JFP list', sub: 'Scan for term dates' },
   app: { url: 'https://app.jonerfootball.com', label: 'Train on the app', sub: 'Scan to train at home' },
+  // Goal: 1,000 paid book copies by 30 Jun 2027 (Lee, 27 Nov 2026).
+  book: { url: 'https://jonerfootball.com/books/top-50-coaching-drills/', label: 'Top 50 Coaching Drills', sub: 'The Joner Football book' },
+  // Goal: 500 Scanning App unlocks. Blank = not shown. Put the App Store link
+  // here once the app is live and Lee says it can be public (quiet until 13 Dec).
+  scan: { url: '', label: 'Joner Scanning App', sub: 'Scan to train your scanning' },
 }
 
 const K = { rec: (id) => `jfp:report:${id}`, index: 'jfp:reports', read: 'jfp:report-read' }

@@ -210,6 +210,10 @@
   .rc-footer { padding: 14px 36px 16px; display: flex; align-items: center; justify-content: space-between; gap: 20px; border-top: 2px solid #eee; background: #fff; flex-shrink: 0; }
   .rc-footer-left { font-size: 10px; color: #999; letter-spacing: 1px; }
   .rc-qr-row { display: flex; gap: 26px; align-items: center; }
+  .rc-qr-row.many { gap: 14px; }
+  .rc-qr-row.many .rc-qr { gap: 8px; }
+  .rc-qr-row.many .rc-qr-code, .rc-qr-row.many .rc-qr svg { width: 66px; height: 66px; }
+  .rc-qr-row.many .rc-qr-label { font-size: 10px; letter-spacing: 0.8px; max-width: 104px; }
   .rc-qr { display: flex; align-items: center; gap: 10px; }
   .rc-qr-code { width: 84px; height: 84px; flex-shrink: 0; }
   .rc-qr svg { width: 84px; height: 84px; display: block; }
@@ -280,6 +284,10 @@
   <div class="form-row">
     <div class="form-group"><label>Mailing list QR wording</label><input type="text" id="qrListLabel" value="Join the JFP list"></div>
     <div class="form-group"><label>App QR wording</label><input type="text" id="qrAppLabel" value="Train on the app"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Book link</label><input type="url" id="qrBookUrl" value="https://jonerfootball.com/books/top-50-coaching-drills/"></div>
+    <div class="form-group"><label>Scanning App link (blank until it is live)</label><input type="url" id="qrScanUrl" value=""></div>
   </div>
 
   <div class="section-title">Next Term Reminder</div>
@@ -680,7 +688,12 @@ function generateReport(){
   var qrs='';
   if(listUrl)qrs+=qrBlock(listUrl,listLbl,'Scan for term dates');
   if(appUrl)qrs+=qrBlock(appUrl,appLbl,'Scan to train at home');
-  var footerLeft=qrs?'<div class="rc-qr-row">'+qrs+'</div>'
+  var bookUrl=((document.getElementById('qrBookUrl')||{}).value||'').trim(),
+      scanUrl=((document.getElementById('qrScanUrl')||{}).value||'').trim();
+  if(bookUrl)qrs+=qrBlock(bookUrl,'Top 50 Coaching Drills','The Joner Football book');
+  if(scanUrl)qrs+=qrBlock(scanUrl,'Joner Scanning App','Scan to train your scanning');
+  var nQr=(qrs.match(/class="rc-qr"/g)||[]).length;
+  var footerLeft=qrs?'<div class="rc-qr-row'+(nQr>2?' many':'')+'">'+qrs+'</div>'
                     :'<div class="rc-footer-left">USE OUR APP TO IMPROVE, app.jonerfootball.com</div>';
 
   /* Signature row, pinned to the bottom of the body so the page reads as finished. */

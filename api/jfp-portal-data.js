@@ -45,7 +45,7 @@ import { sendAccountInvite, accountInvite, sendFamilyInvite, sendFamilyWelcome, 
 import { nextStatuses, setNextStatus, nextPrices, recordNext, nextInterest, nextOffers, saveOffer, offerLive, TIER_LABEL, onNextTerm, nextTermConfig, nextTaken, nextNew, nextMoves, saveMove, nextGroupOf, rowNextPrice } from './_jfp-next.js'
 import { MAKEUP_ADMIN_ACTIONS, emergencyCancel, emergencyUncancel, emergencyEmail, makeupsList, makeupUpdate, sessionOffMap, guestsFor, guestAllowed, markGuestUsed } from './_jfp-makeups.js'
 import { attendanceFor } from './_jfp-attendance-view.js'
-import { allProfiles, findProfile, renameProfile, pickProfile, profileKey, profileView, profileSummary, cleanProfile, saveProfile, waiverPrefill, addTrialFeedback, clubSuggestions, LEVELS, PLAYING_UP, POSITIONS, FEET, YEARS } from './_jfp-profiles.js'
+import { allProfiles, findProfile, renameProfile, pickProfile, profileKey, profileView, profileSummary, cleanProfile, saveProfile, waiverPrefill, addTrialFeedback, clubSuggestions, LEVELS, PLAYING_UP, POSITIONS, FEET, YEARS, CLUB_ROLES } from './_jfp-profiles.js'
 import { releaseOffer, sweepExpiredOffers } from './_jfp-offers.js'
 import { emailErrorText, emailsTo } from './_jfp-email-log.js'
 import { contactWords, withOwnContact, isAdult } from './_jfp-contact.js'
@@ -1154,7 +1154,7 @@ async function getPlayerProfile(res, config, body) {
   const prof = await findProfile({ key, rowIds: [row.id] })
   const waiver = prof ? null : waiverFor(row.player, { emails: rowEmails(row), phones: [row.phone], dob: row.dob }, roster.waivers)
   const prefill = waiver ? await waiverPrefill(waiver.id) : {}
-  return res.status(200).json({ success: true, row: { rowId: row.id, name: row.player, parent: row.parent, email: row.email, phone: row.phone, ownContact: row.ownContact, paymentType: row.paymentType || '', feeAud: row.feeAud, paidAud: row.paidAud, perSessionCents: row.perSessionCents || null, freePlace: row.freePlace === true, paymentTypes: PAYMENT_TYPES }, profile: profileView(prof), prefill: { ...prefill, dob: prefill.dob || isoDate(row.dob) || '' }, options: { levels: LEVELS, playingUp: PLAYING_UP, positions: POSITIONS, feet: FEET, years: YEARS, clubs: clubSuggestions(roster.waivers) } })
+  return res.status(200).json({ success: true, row: { rowId: row.id, name: row.player, parent: row.parent, email: row.email, phone: row.phone, ownContact: row.ownContact, paymentType: row.paymentType || '', feeAud: row.feeAud, paidAud: row.paidAud, perSessionCents: row.perSessionCents || null, freePlace: row.freePlace === true, paymentTypes: PAYMENT_TYPES }, profile: profileView(prof), prefill: { ...prefill, dob: prefill.dob || isoDate(row.dob) || '' }, options: { levels: LEVELS, playingUp: PLAYING_UP, positions: POSITIONS, feet: FEET, years: YEARS, clubRoles: CLUB_ROLES, clubs: clubSuggestions(roster.waivers) } })
 }
 async function savePlayerProfile(res, principal, config, body) {
   const row = await rowOr404(res, body.rowId); if (!row) return

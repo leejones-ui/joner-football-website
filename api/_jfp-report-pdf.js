@@ -236,18 +236,23 @@ export async function renderReportPdf(rec) {
 
   // Footer: QR codes left, brand right.
   page.drawLine({ start: { x: 0, y: footerH }, end: { x: W, y: footerH }, thickness: 0.6, color: C.line })
+  // A blank URL leaves that code off. Up to three codes share the row with the
+  // brand; a fourth takes the brand's space.
+  const codes = ['list', 'app', 'book', 'scan'].map((k) => QR_DEFAULTS[k]).filter((d) => d && d.url)
   const q = 40
   let qx = PAD + 4
   const qy = (footerH - q) / 2
-  for (const k of ['list', 'app']) {
-    const d = QR_DEFAULTS[k]
+  const step = codes.length >= 4 ? (W - 2 * PAD) / 4 : codes.length === 3 ? 148 : q + 10 + 118
+  for (const d of codes) {
     drawQr(L, page, d.url, qx, qy, q)
-    spaced(page, d.label.toUpperCase(), { x: qx + q + 10, y: qy + q / 2 + 2, size: 6.8, font: anton, color: C.black, track: 1 })
-    page.drawText(d.sub, { x: qx + q + 10, y: qy + q / 2 - 9, size: 5.8, font: reg, color: C.grey })
-    qx += q + 10 + 118
+    spaced(page, d.label.toUpperCase(), { x: qx + q + 8, y: qy + q / 2 + 2, size: 6.4, font: anton, color: C.black, track: 0.8 })
+    page.drawText(d.sub, { x: qx + q + 8, y: qy + q / 2 - 9, size: 5.6, font: reg, color: C.grey })
+    qx += step
   }
-  spaced(page, '@JonerFootball', { x: W - PAD, y: footerH / 2 + 3, size: 7, font: bold, color: C.red, track: 0.8, right: true })
-  spaced(page, 'jonerfootball.com', { x: W - PAD, y: footerH / 2 - 8, size: 7, font: reg, color: C.grey, track: 0.8, right: true })
+  if (codes.length < 4) {
+    spaced(page, '@JonerFootball', { x: W - PAD, y: footerH / 2 + 3, size: 7, font: bold, color: C.red, track: 0.8, right: true })
+    spaced(page, 'jonerfootball.com', { x: W - PAD, y: footerH / 2 - 8, size: 7, font: reg, color: C.grey, track: 0.8, right: true })
+  }
 
   // A long report runs on to a second page.
   if (rest.length) {

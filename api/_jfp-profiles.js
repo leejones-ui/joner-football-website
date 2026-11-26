@@ -18,6 +18,9 @@ export const PLAYING_UP = ['Own age', 'Playing up', 'Playing down']
 export const POSITIONS = ['Goalkeeper', 'Centre back', 'Full back', 'Defensive midfield', 'Central midfield', 'Attacking midfield', 'Winger', 'Striker']
 export const FEET = ['Right', 'Left', 'Both']
 export const YEARS = ['Under 1 year', '1 to 2 years', '3 to 4 years', '5 or more years']
+// Does anyone in the family coach or help at the player's club? Feeds the
+// warm club list for JF Teams (goal: 20 paying Teams clubs, Lee 27 Nov 2026).
+export const CLUB_ROLES = ['Coaches a team', 'On the committee', 'Team manager or helper', 'No']
 
 // The editable values and their Airtable columns.
 const FIELD = {
@@ -25,7 +28,7 @@ const FIELD = {
   association: 'Association', previousClubs: 'Previous Clubs', yearsPlaying: 'Years Playing', repTeam: 'Rep or Academy', otherTraining: 'Other Training',
   parentName: 'Parent Name', parentMobile: 'Parent Mobile', parent2Name: 'Second Parent Name', parent2Email: 'Second Parent Email', parent2Mobile: 'Second Parent Mobile',
   emergencyName: 'Emergency Contact Name', emergencyPhone: 'Emergency Contact Phone', emergencyRelation: 'Emergency Contact Relationship',
-  medical: 'Medical Notes', goals: 'Player Goals',
+  medical: 'Medical Notes', goals: 'Player Goals', clubRole: 'Parent Club Role',
 }
 export const PROFILE_KEYS = Object.keys(FIELD)
 // What the Players tab list shows and filters on. No contacts, no medical.
@@ -78,6 +81,7 @@ export function cleanProfile(input = {}) {
   }
   if (has('level')) v.level = LEVELS.includes(input.level) ? input.level : ''
   if (has('playingUp')) v.playingUp = PLAYING_UP.includes(input.playingUp) ? input.playingUp : ''
+  if (has('clubRole')) v.clubRole = CLUB_ROLES.includes(input.clubRole) ? input.clubRole : ''
   if (has('foot')) v.foot = FEET.includes(input.foot) ? input.foot : ''
   if (has('yearsPlaying')) v.yearsPlaying = YEARS.includes(input.yearsPlaying) ? input.yearsPlaying : ''
   if (has('positions')) v.positions = [...new Set((Array.isArray(input.positions) ? input.positions : []).filter((x) => POSITIONS.includes(x)))]

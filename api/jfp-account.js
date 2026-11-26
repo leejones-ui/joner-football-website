@@ -31,7 +31,7 @@ import { telegramAlert } from './_jfp-notify.js'
 import { eligiblePlayers, appAccessOf, familyAppView, requestAppAccess } from './_jfp-app-access.js'
 import { syncLinks, syncLink, NOTHING_OWING, PAID_ELSEWHERE } from './_jfp-fee-sync.js'
 import { withPayreqLease } from './_jfp-finalise.js'
-import { familyProfiles, findProfile, pickProfile, profileKey, profileView, cleanProfile, saveProfile, savePhoto, waiverPrefill, DOB_MIN, dobMax, clubSuggestions, LEVELS, PLAYING_UP, POSITIONS, FEET, YEARS } from './_jfp-profiles.js'
+import { familyProfiles, findProfile, pickProfile, profileKey, profileView, cleanProfile, saveProfile, savePhoto, waiverPrefill, DOB_MIN, dobMax, clubSuggestions, LEVELS, PLAYING_UP, POSITIONS, FEET, YEARS, CLUB_ROLES } from './_jfp-profiles.js'
 import { markToldAway, clearToldAway } from './_jfp-away.js'
 import { asksComing, comingDates, saveComing, clearComing } from './_jfp-coming.js'
 import { agentFor, allAgents } from './_jfp-agents.js'
@@ -680,7 +680,7 @@ async function profiles(res, parent) {
     players.push({ key: p.key, name: p.name, age: p.age, self: isSelf(p, fam, prof?.dob), profile: profileView(prof), prefill: { ...prefill, dob: prefill.dob || p.dob || '', parentName: prefill.parentName || fam.parentName || '', parentMobile: prefill.parentMobile || fam.mobile || '' } })
   }
   players.sort((a, b) => a.name.localeCompare(b.name))
-  return res.status(200).json({ success: true, players, dob: { min: DOB_MIN, max: dobMax() }, options: { levels: LEVELS, playingUp: PLAYING_UP, positions: POSITIONS, feet: FEET, years: YEARS, clubs: clubSuggestions(roster.waivers) } })
+  return res.status(200).json({ success: true, players, dob: { min: DOB_MIN, max: dobMax() }, options: { levels: LEVELS, playingUp: PLAYING_UP, positions: POSITIONS, feet: FEET, years: YEARS, clubRoles: CLUB_ROLES, clubs: clubSuggestions(roster.waivers) } })
 }
 
 async function saveMyProfile(res, parent, body) {
