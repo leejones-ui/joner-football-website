@@ -12,3 +12,5 @@
 
 /* Paid Max access is distinct from the red trial actions. */
 .join-button.max-cta{background:#252727;border-color:#252727;color:#fff}.join-button.max-cta:hover{background:#414545;border-color:#414545;color:#fff}
+
+.app-join-stats{list-style:none;margin:14px auto 0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:520px}.app-join-stats li{display:grid;gap:3px;align-content:start;text-align:center;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:10px 6px}.app-join-stats strong{font-family:var(--font-heading);font-weight:400;font-size:clamp(20px,5.6vw,28px);line-height:1;letter-spacing:.02em}.app-join-stats span{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--join-muted);line-height:1.25}

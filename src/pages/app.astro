@@ -7,6 +7,7 @@ import HighlightsCarousel from '../components/HighlightsCarousel.astro'
 import CloserLook from '../components/CloserLook.astro'
 import FactsMarquee from '../components/FactsMarquee.astro'
 import TestimonialsSlider from '../components/TestimonialsSlider.astro'
+import PlayButtonVideo from '../components/PlayButtonVideo.astro'
 
 // Best testimonials for the main app page (mix of coaches, parents, players; from the bank)
 const bestTestimonials = [
@@ -106,8 +107,8 @@ const appSchemas = [
   <SanityPageRenderer page={sanityPage} />
 ) : (
 <BaseLayout
-  title="Football Training App | Train Like A Pro | Joner Football"
-  description="Train like a pro with the Joner Football app. Get clear football drills, soccer training sessions and coach-led plans for players, kids and coaches."
+  title="Football Training App | 100,000+ Downloads | Joner Football"
+  description="The football training app from coach Lee Jones. 100,000+ downloads. 2,000+ drills, sessions and follow-along programs for players, kids and coaches."
   keywords="football training app, soccer training app, football drills app, soccer drills app, football training app for kids, football coaching app, Joner Football app"
   schema={appSchemas}
 >
@@ -169,6 +170,17 @@ const appSchemas = [
   <FactsMarquee facts={appFacts} />
 
   <HighlightsCarousel />
+
+  <!-- Six programs in 1 minute (same video as the ad landing pages) -->
+  <section class="bg-joner-black py-12 md:py-16" data-cta-section="watch">
+    <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 text-center">
+      <p class="mb-3 font-heading text-xs uppercase tracking-[0.28em] text-joner-red sm:text-sm">See inside</p>
+      <h2 class="mb-6 font-heading text-2xl md:text-4xl font-bold uppercase leading-tight text-white">Six programs. Watch 1 minute.</h2>
+      <PlayButtonVideo src="/videos/go/programs-mashup-v21.mp4" poster="/videos/go/programs-mashup-poster.jpg" label="Play 1 minute of the six programs, with sound" />
+      <p class="mt-5 font-body text-base text-gray-300">Dribbling, Fast Feet, Passing and 1st Touch, Weak Foot, Score More Goals and Juggling. I do every rep with you.</p>
+      <a href="/join" class="btn-red mt-7 inline-flex px-8 py-4 text-base">SEE THE PLANS</a>
+    </div>
+  </section>
 
   <!-- SECTION 2: Three Audience Feature Cards -->
   <section class="app-audience-section bg-joner-gray pt-8 pb-16 md:py-28" data-audience-feature data-active="0">
