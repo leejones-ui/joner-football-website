@@ -57,7 +57,7 @@ const faqs: Array<{ q: string; a: string }> = [
   { q: 'What if I already train with a team?', a: 'This is individual development. The extra work that separates good players from great ones. It complements team training, it does not replace it.' },
   { q: 'How does the 100 day guarantee work?', a: 'Follow the program for 100 days. If you do not see improvement, we give you an extra 100 days free. The guarantee is for Annual members only.' },
   { q: 'Which plan do I need?', a: 'The 100 Day Transformation Program is included in the Plus and Max plans, paid monthly or yearly. Plus starts with a 7 day free trial. The 100 day guarantee is for Annual members only.' },
-  { q: 'What about the S&C program?', a: 'The 12 Week Advanced Strength and Conditioning Program is included with Annual membership. Designed for older players ready to take their physical development seriously.' },
+  { q: 'What about the S&C program?', a: 'The 12 Week Advanced Strength and Conditioning Program is a bonus for players aged 13 and over who want to train at a more elite level. It is included in the Plus and Max plans.' },
 ]
 
 const programSchemas = [
@@ -124,7 +124,7 @@ const sanityPage = await fetchSanityPage('programmes')
         <p class="mb-3 font-heading text-xs uppercase tracking-[0.28em] text-joner-red sm:text-sm">Watch This First</p>
         <h2 class="mb-6 font-heading text-2xl md:text-4xl font-bold uppercase leading-tight text-white">Every program in 1 minute.</h2>
         <PlayButtonVideo src="/videos/go/programs-mashup-v21.mp4" poster="/videos/go/programs-mashup-poster.jpg" label="Play 1 minute of the programs, with sound" />
-        <p class="mt-5 font-body text-base text-gray-300">Dribbling, Fast Feet, Passing and 1st Touch, Weak Foot, Score More Goals and Juggling. I do every rep with you.</p>
+        <p class="mt-5 font-body text-base text-gray-300">Dribbling, Fast Feet, Passing and 1st Touch, Weak Foot, Score More Goals and Juggling. Plus a bonus Strength and Conditioning program for players 13 and over.</p>
       </div>
     </section>
 
@@ -244,7 +244,7 @@ const sanityPage = await fetchSanityPage('programmes')
         },
         {
           heading: 'What you get',
-          body: 'Seven progressive programs over 100 days inside the Joner Football App: juggling, fast feet, passing and first touch, dribbling, weak foot, finishing and strength and conditioning. Each day gives the player a clear job.',
+          body: 'Seven progressive programs over 100 days inside the Joner Football App: juggling, fast feet, passing and first touch, dribbling, weak foot, finishing, plus a bonus strength and conditioning program for players aged 13 and over. Each day gives the player a clear job.',
         },
         {
           heading: 'Why it works',
